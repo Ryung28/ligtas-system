@@ -1,17 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-export type AuthMode = 'login' | 'register'
+export type AuthMode = 'login' | 'register' | 'forgot-password'
 
-const authSchema = z.object({
+const registerSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
+    fullName: z.string().min(2, 'Full name must be at least 2 characters'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    fullName: z.string().min(2, 'Full name is required').optional(),
+    confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+})
+
+const loginSchema = z.object({
+    email: z.string().email('Please enter a valid email address'),
+    password: z.string().min(6, 'Password is required'),
 })
 
 export function useAuth() {
@@ -25,20 +34,72 @@ export function useAuth() {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
 
+    // ── Senior Dev: Capture OAuth Errors from URL ──
+    useEffect(() => {
+        const checkError = () => {
+            const url = new URL(window.location.href)
+            // Supabase sends errors in the URL hash or query params
+            const errorDescription = url.searchParams.get('error_description') ||
+                new URLSearchParams(url.hash.substring(1)).get('error_description')
+
+            if (errorDescription) {
+                // Clean up the URL for a professional look
+                const cleanUrl = window.location.pathname
+                window.history.replaceState({}, document.title, cleanUrl)
+
+                // Set the error to be displayed
+                setError(errorDescription)
+                toast.error('Authentication failed')
+            }
+        }
+        checkError()
+    }, [])
+
     const handleSubmit = async (formData: any) => {
         setError(null)
         setSuccess(null)
         setIsLoading(true)
 
         try {
-            // Validate based on mode
-            const validationData = mode === 'login'
-                ? { email: formData.email, password: formData.password }
-                : { email: formData.email, password: formData.password, fullName: formData.fullName }
+            if (mode === 'forgot-password') {
+                const { error: resetError } = await supabase.auth.resetPasswordForEmail(formData.email.trim(), {
+                    redirectTo: `${window.location.origin}/auth/reset-password`,
+                })
+                if (resetError) throw resetError
+                setSuccess('Password reset link sent! Please check your email inbox.')
+                toast.success('Reset link sent')
+                return
+            }
 
-            authSchema.parse(validationData)
+            // ── Senior Dev Validation Flow ──
+            if (mode === 'register') {
+                registerSchema.parse(formData)
 
-            if (mode === 'login') {
+                const { data, error: authError } = await supabase.auth.signUp({
+                    email: formData.email.trim(),
+                    password: formData.password,
+                    options: {
+                        data: {
+                            full_name: formData.fullName,
+                        },
+                        emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    }
+                })
+
+                if (authError) throw authError
+
+                if (data.user) {
+                    setSuccess('Verification link sent! Please check your email to activate your account.')
+                    toast.success('Account created! Check your email.')
+                    // Don't auto-switch mode immediately; let them read the message
+                    setTimeout(() => {
+                        setMode('login')
+                        setSuccess(null)
+                    }, 6000)
+                }
+            } else {
+                loginSchema.parse(formData)
+
                 const { data, error: authError } = await supabase.auth.signInWithPassword({
                     email: formData.email.trim(),
                     password: formData.password,
@@ -50,28 +111,6 @@ export function useAuth() {
                     toast.success('Signed in successfully')
                     router.push('/dashboard')
                     router.refresh()
-                }
-            } else {
-                if (formData.password !== formData.confirmPassword) {
-                    throw new Error('Passwords do not match')
-                }
-
-                const { data, error: authError } = await supabase.auth.signUp({
-                    email: formData.email.trim(),
-                    password: formData.password,
-                    options: {
-                        data: {
-                            full_name: formData.fullName,
-                        }
-                    }
-                })
-
-                if (authError) throw authError
-
-                if (data.user) {
-                    setSuccess('Account created! Please check your email to confirm.')
-                    toast.success('Account created successfully')
-                    setTimeout(() => setMode('login'), 3000)
                 }
             }
         } catch (err: any) {
@@ -113,6 +152,7 @@ export function useAuth() {
 
     return {
         mode,
+        setMode,
         isLoading,
         error,
         success,

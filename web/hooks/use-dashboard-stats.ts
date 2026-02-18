@@ -1,13 +1,14 @@
 'use client'
 
 import useSWR from 'swr'
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export interface InventoryItem {
     item_name: string
     stock_available: number
     category?: string
+    status?: string
 }
 
 export interface DashboardStats {
@@ -16,6 +17,7 @@ export interface DashboardStats {
     outOfStockCount: number
     totalStock: number
     activeBorrows: number
+    damagedCount: number
 }
 
 export interface DashboardData {
@@ -40,22 +42,26 @@ const fetchDashboardData = async (): Promise<DashboardData> => {
     // Fetch inventory
     const { data: inventoryItems, error: inventoryError } = await supabase
         .from('inventory')
-        .select('item_name, stock_available, category')
+        .select('item_name, stock_available, category, status')
 
     if (inventoryError) throw inventoryError
 
-    // Fetch borrow logs for active borrows count
+    // Fetch borrow logs for active borrows count (Sum of quantities in field)
     const { data: logs, error: logsError } = await supabase
         .from('borrow_logs')
-        .select('status')
+        .select('quantity')
         .eq('status', 'borrowed')
 
     if (logsError) throw logsError
 
     const totalItems = inventoryItems?.length || 0
     const totalStock = inventoryItems?.reduce((sum, item) => sum + (item.stock_available || 0), 0) || 0
-    const lowStockCount = inventoryItems?.filter(item => item.stock_available > 0 && item.stock_available < 5).length || 0
-    const outOfStockCount = inventoryItems?.filter(item => item.stock_available === 0).length || 0
+    const lowStockCount = inventoryItems?.filter(item => (item.stock_available || 0) > 0 && (item.stock_available || 0) < 5).length || 0
+    const outOfStockCount = inventoryItems?.filter(item => (item.stock_available || 0) === 0).length || 0
+    const damagedCount = inventoryItems?.filter(item =>
+        ['Maintenance', 'Damaged', 'Lost'].includes(item.status || '')
+    ).length || 0
+    const activeBorrows = logs?.reduce((sum, log) => sum + (log.quantity || 0), 0) || 0
 
     return {
         inventory: (inventoryItems || []) as InventoryItem[],
@@ -64,7 +70,8 @@ const fetchDashboardData = async (): Promise<DashboardData> => {
             lowStockCount,
             outOfStockCount,
             totalStock,
-            activeBorrows: logs?.length || 0,
+            activeBorrows,
+            damagedCount,
         },
         timestamp: new Date().toLocaleTimeString()
     }
@@ -104,6 +111,30 @@ export function useDashboardStats() {
             .slice(0, 5)
     }, [data?.inventory])
 
+    // Real-time subscriptions
+    useEffect(() => {
+        // Subscribe to inventory changes
+        const inventoryChannel = supabase
+            .channel('dashboard-inventory-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
+                refresh()
+            })
+            .subscribe()
+
+        // Subscribe to borrow_logs changes
+        const logsChannel = supabase
+            .channel('dashboard-logs-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
+                refresh()
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(inventoryChannel)
+            supabase.removeChannel(logsChannel)
+        }
+    }, [refresh])
+
     return {
         data,
         error,
@@ -111,6 +142,6 @@ export function useDashboardStats() {
         refresh,
         topItemsData,
         categoryDistribution,
-        stats: data?.stats || { totalItems: 0, lowStockCount: 0, outOfStockCount: 0, totalStock: 0, activeBorrows: 0 }
+        stats: data?.stats || { totalItems: 0, lowStockCount: 0, outOfStockCount: 0, totalStock: 0, activeBorrows: 0, damagedCount: 0 }
     }
 }

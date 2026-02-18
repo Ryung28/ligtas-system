@@ -48,13 +48,26 @@ export async function signOut() {
 }
 
 /**
- * Get current user
+ * Get current user with profile data
  */
 export async function getCurrentUser() {
     try {
         const { data: { user }, error } = await supabase.auth.getUser()
-        if (error) throw error
-        return user
+        if (error || !user) return null
+
+        // Fetch custom profile data (role, status, etc.)
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+
+        return {
+            ...user,
+            ...profile,
+            role: profile?.role || 'viewer',
+            status: profile?.status || 'pending'
+        }
     } catch (error) {
         console.error('Get user error:', error)
         return null

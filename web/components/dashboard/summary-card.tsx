@@ -23,10 +23,10 @@ export function SummaryCard({ title, value, label, color }: SummaryCardProps) {
         <Card className="border-none shadow-sm bg-white overflow-hidden rounded-2xl ring-1 ring-slate-100 group hover:shadow-md transition-all">
             <div className={`h-1 bg-gradient-to-r ${colorMap[color].split(' shadow-')[0]}`} />
             <CardContent className="p-4 14in:p-5">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1">{title}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1.5 leading-none">{title}</p>
                 <div className="flex items-baseline gap-2">
-                    <div className="text-2xl 14in:text-3xl font-heading font-bold text-slate-900 tracking-tight group-hover:scale-105 transition-transform origin-left">{value}</div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+                    <div className="text-2xl 14in:text-3xl font-heading font-bold text-slate-900 tracking-tight group-hover:scale-105 transition-transform origin-left leading-none">{value}</div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">{label}</span>
                 </div>
             </CardContent>
         </Card>

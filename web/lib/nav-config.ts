@@ -45,7 +45,7 @@ export const navItems: NavItem[] = [
         icon: Users,
     },
     {
-        label: 'User Management',
+        label: 'System Users',
         href: '/dashboard/users',
         icon: Users,
     },

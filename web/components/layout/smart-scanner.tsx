@@ -174,7 +174,7 @@ export function SmartScanner() {
             <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2 bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:text-white shadow-md rounded-xl h-10 ring-offset-2 ring-blue-500/20 active:scale-95 transition-all">
                     <QrCode className="h-4 w-4" />
-                    <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Smart Scan</span>
+                    <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Quick Scanner</span>
                 </Button>
             </DialogTrigger>
 
@@ -187,7 +187,7 @@ export function SmartScanner() {
                                     <div className="p-2 bg-blue-100 rounded-lg">
                                         <QrCode className="h-5 w-5 text-blue-600" />
                                     </div>
-                                    <span className="font-black uppercase tracking-tighter text-blue-900">Smart Scanner</span>
+                                    <span className="font-black uppercase tracking-tighter text-blue-900">Item Scanner</span>
                                 </div>
                                 {!isCameraActive && (
                                     <Button variant="ghost" size="sm" onClick={startScanner} className="h-8 px-3 rounded-lg bg-blue-50 text-blue-700 font-bold text-[10px] uppercase tracking-widest gap-2">
@@ -273,7 +273,7 @@ export function SmartScanner() {
                                         </div>
 
                                         <div className="space-y-3">
-                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">Field Holdings</h4>
+                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-1">Borrowed By</h4>
                                             {activeBorrowers.length === 0 ? (
                                                 <div className="bg-green-50 rounded-2xl p-8 border border-green-100 text-center">
                                                     <div className="inline-flex p-3 bg-green-100 rounded-full mb-3">
@@ -312,7 +312,7 @@ export function SmartScanner() {
                                 ) : scanValue && (
                                     <div className="text-center py-10 opacity-30">
                                         <Search className="h-12 w-12 text-gray-400 mx-auto mb-3 animate-pulse" />
-                                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-[.3em]">Querying Records...</p>
+                                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-[.3em]">Looking for record...</p>
                                     </div>
                                 )}
                             </div>
@@ -325,13 +325,13 @@ export function SmartScanner() {
                                 <div className="p-2 bg-orange-200 rounded-lg">
                                     <RotateCcw className="h-5 w-5" />
                                 </div>
-                                <span className="font-black uppercase tracking-tighter">Field Audit Result</span>
+                                <span className="font-black uppercase tracking-tighter">Confirm Return</span>
                             </DialogTitle>
                         </DialogHeader>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Validated Item</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Item to Return</label>
                                 <div className="flex items-center gap-4 p-5 bg-orange-50/30 rounded-3xl border border-orange-100 text-orange-900">
                                     <div className="bg-orange-800 p-2 rounded-xl text-white">
                                         <Package className="h-6 w-6" />
@@ -345,7 +345,7 @@ export function SmartScanner() {
 
                             <div className="space-y-6">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Condition Assessment</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Item Condition</label>
                                     <Select value={returnCondition} onValueChange={setReturnCondition}>
                                         <SelectTrigger className="h-16 rounded-3xl border-gray-100 shadow-sm font-black text-sm uppercase tracking-widest ring-offset-orange-600 focus:ring-orange-600">
                                             <SelectValue />
@@ -380,9 +380,9 @@ export function SmartScanner() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Audit Notes</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Notes</label>
                                     <Input
-                                        placeholder="Add mission-critical details..."
+                                        placeholder="Any additional information..."
                                         className="h-16 rounded-3xl border-gray-100 font-bold px-6 shadow-inner bg-gray-50/50"
                                         value={returnNotes}
                                         onChange={(e) => setReturnNotes(e.target.value)}

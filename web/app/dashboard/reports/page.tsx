@@ -2,9 +2,9 @@
 
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Printer, FileText, Download, Calendar, Package, ClipboardList } from 'lucide-react'
+import { Printer, Package, ClipboardList, TrendingDown, BarChart3, RefreshCw } from 'lucide-react'
 
 type ReportType = 'inventory' | 'logs' | 'low-stock' | 'summary'
 
@@ -17,69 +17,65 @@ export default function PrintReports() {
         setSelectedReport(type)
 
         try {
-            let reportData: any = {}
+            let reportData: any = null
             let reportTitle = ''
 
             switch (type) {
                 case 'inventory':
-                    const { data: inventoryData } = await supabase
-                        .from('inventory')
-                        .select('*')
-                        .order('item_name')
-                    reportData = inventoryData
-                    reportTitle = 'Complete Inventory Report'
+                    const { data: inv } = await supabase.from('inventory').select('*').order('item_name')
+                    reportData = inv
+                    reportTitle = 'Complete Inventory Registry'
                     break
 
                 case 'logs':
-                    const { data: logsData } = await supabase
-                        .from('borrow_logs')
-                        .select('*')
-                        .order('created_at', { ascending: false })
-                    reportData = logsData
-                    reportTitle = 'Borrow/Return Logs Report'
+                    const { data: logs } = await supabase.from('borrow_logs').select('*').order('created_at', { ascending: false })
+                    reportData = logs
+                    reportTitle = 'Borrow/Return Transaction History'
                     break
 
                 case 'low-stock':
-                    const { data: lowStockData } = await supabase
-                        .from('inventory')
-                        .select('*')
-                        .lt('stock_available', 5)
-                        .order('stock_available')
-                    reportData = lowStockData
-                    reportTitle = 'Low Stock Items Report'
+                    const { data: low } = await supabase.from('inventory').select('*').lt('stock_available', 5).order('stock_available')
+                    reportData = low
+                    reportTitle = 'Critical Low-Stock Monitoring Report'
                     break
 
                 case 'summary':
-                    reportTitle = 'System Summary Report'
+                    const { data: inventory } = await supabase.from('inventory').select('stock_available, category')
+                    const { data: borrowed } = await supabase.from('borrow_logs').select('quantity').eq('status', 'borrowed')
+
+                    const catMap: Record<string, number> = {}
+                    inventory?.forEach(i => { catMap[i.category] = (catMap[i.category] || 0) + i.stock_available })
+
+                    reportData = {
+                        totalTypes: inventory?.length || 0,
+                        totalUnits: inventory?.reduce((sum, i) => sum + i.stock_available, 0) || 0,
+                        unitsLent: borrowed?.reduce((sum, b) => sum + b.quantity, 0) || 0,
+                        categories: Object.entries(catMap).map(([name, count]) => ({ name, count }))
+                    }
+                    reportTitle = 'Executive System Status Summary'
                     break
             }
 
-            // Generate HTML report
             const reportHTML = generateReportHTML(reportTitle, reportData, type)
-
-            // Open print dialog
             const printWindow = window.open('', '_blank')
             if (printWindow) {
                 printWindow.document.write(reportHTML)
                 printWindow.document.close()
-                setTimeout(() => {
-                    printWindow.print()
-                }, 500)
+                setTimeout(() => printWindow.print(), 500)
             }
         } catch (error) {
-            console.error('Error generating report:', error)
-            alert('Failed to generate report. Please try again.')
+            console.error('Report Error:', error)
+            alert('Failed to generate official report.')
         } finally {
             setIsGenerating(false)
             setSelectedReport(null)
         }
     }, [])
 
-    const generateReportHTML = (title: string, data: any[], type: ReportType) => {
+    const generateReportHTML = (title: string, data: any, type: ReportType) => {
         const currentDate = new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
         })
 
         let tableContent = ''
@@ -88,75 +84,72 @@ export default function PrintReports() {
             tableContent = `
                 <table>
                     <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>Category</th>
-                            <th>Available Stock</th>
-                            <th>Status</th>
-                        </tr>
+                        <tr><th>Asset Name</th><th>Category</th><th>Stock</th><th>Readiness</th></tr>
                     </thead>
                     <tbody>
-                        ${data.map(item => `
+                        ${data.map((item: any) => `
                             <tr>
-                                <td>${item.item_name}</td>
+                                <td style="font-weight: 600;">${item.item_name}</td>
                                 <td>${item.category}</td>
                                 <td>${item.stock_available}</td>
-                                <td>${item.stock_available === 0 ? 'Out of Stock' : item.stock_available < 5 ? 'Low Stock' : 'In Stock'}</td>
+                                <td><span class="badge ${item.stock_available === 0 ? 'bg-red' : item.stock_available < 5 ? 'bg-orange' : 'bg-green'}">
+                                    ${item.stock_available === 0 ? 'Out' : item.stock_available < 5 ? 'Low' : 'Ready'}
+                                </span></td>
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
-            `
+                </table>`
         } else if (type === 'logs') {
             tableContent = `
                 <table>
                     <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Quantity</th>
-                            <th>Borrower</th>
-                            <th>Organization</th>
-                            <th>Borrow Date</th>
-                            <th>Status</th>
-                        </tr>
+                        <tr><th>Date</th><th>Borrower</th><th>Item</th><th>Qty</th><th>Status</th></tr>
                     </thead>
                     <tbody>
-                        ${data.map(log => `
+                        ${data.map((log: any) => `
                             <tr>
+                                <td style="font-size: 11px;">${new Date(log.created_at).toLocaleDateString()}</td>
+                                <td style="font-weight: 600;">${log.borrower_name}</td>
                                 <td>${log.item_name}</td>
                                 <td>${log.quantity}</td>
-                                <td>${log.borrower_name}</td>
-                                <td>${log.borrower_organization || 'N/A'}</td>
-                                <td>${new Date(log.borrow_date).toLocaleDateString()}</td>
-                                <td>${log.status}</td>
+                                <td><span class="badge ${log.status === 'borrowed' ? 'bg-orange' : 'bg-green'}">${log.status}</span></td>
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
-            `
+                </table>`
         } else if (type === 'low-stock') {
             tableContent = `
+                <div style="background: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #c53030; font-weight: 600;">
+                    LOGISTICS WARNING: The following items are below operational thresholds.
+                </div>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>Category</th>
-                            <th>Available Stock</th>
-                            <th>Action Required</th>
-                        </tr>
+                        <tr><th>Critical Item</th><th>Available</th><th>Requirement</th></tr>
                     </thead>
                     <tbody>
-                        ${data.map(item => `
+                        ${data.map((item: any) => `
                             <tr>
-                                <td>${item.item_name}</td>
-                                <td>${item.category}</td>
-                                <td style="color: ${item.stock_available === 0 ? 'red' : 'orange'}; font-weight: bold;">${item.stock_available}</td>
-                                <td>${item.stock_available === 0 ? 'Immediate Restocking' : 'Monitor & Restock'}</td>
+                                <td style="font-weight: 600;">${item.item_name}</td>
+                                <td style="color:red; font-weight:700;">${item.stock_available}</td>
+                                <td>Immediate Procurement</td>
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
-            `
+                </table>`
+        } else if (type === 'summary') {
+            tableContent = `
+                <div class="summary-grid">
+                    <div class="card"><div class="label">Item types</div><div class="val">${data.totalTypes}</div></div>
+                    <div class="card"><div class="label">Units on-hand</div><div class="val">${data.totalUnits}</div></div>
+                    <div class="card"><div class="label">Units lent</div><div class="val">${data.unitsLent}</div></div>
+                </div>
+                <h3 style="margin: 30px 0 15px 0;">Readiness by Category</h3>
+                <table>
+                    <thead><tr><th>Category</th><th>Available Units</th></tr></thead>
+                    <tbody>
+                        ${data.categories.map((cat: any) => `<tr><td style="font-weight:600;">${cat.name}</td><td>${cat.count}</td></tr>`).join('')}
+                    </tbody>
+                </table>`
         }
 
         return `
@@ -164,107 +157,32 @@ export default function PrintReports() {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>${title}</title>
                 <style>
-                    @media print {
-                        @page { margin: 1cm; }
-                    }
-                    body {
-                        font-family: Arial, sans-serif;
-                        padding: 20px;
-                        max-width: 1200px;
-                        margin: 0 auto;
-                    }
-                    .header {
-                        text-align: center;
-                        margin-bottom: 30px;
-                        border-bottom: 3px solid #2563eb;
-                        padding-bottom: 20px;
-                    }
-                    .header h1 {
-                        color: #1e40af;
-                        margin: 0;
-                        font-size: 28px;
-                    }
-                    .header p {
-                        color: #64748b;
-                        margin: 10px 0 0 0;
-                    }
-                    .report-info {
-                        display: flex;
-                        justify-content: space-between;
-                        margin-bottom: 20px;
-                        padding: 15px;
-                        background: #f8fafc;
-                        border-radius: 8px;
-                    }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 20px;
-                    }
-                    th {
-                        background: #2563eb;
-                        color: white;
-                        padding: 12px;
-                        text-align: left;
-                        font-weight: 600;
-                    }
-                    td {
-                        padding: 10px;
-                        border-bottom: 1px solid #e2e8f0;
-                    }
-                    tr:nth-child(even) {
-                        background: #f8fafc;
-                    }
-                    .footer {
-                        margin-top: 40px;
-                        text-align: center;
-                        color: #64748b;
-                        font-size: 12px;
-                        border-top: 1px solid #e2e8f0;
-                        padding-top: 20px;
-                    }
-                    .print-button {
-                        background: #2563eb;
-                        color: white;
-                        padding: 10px 20px;
-                        border: none;
-                        border-radius: 6px;
-                        cursor: pointer;
-                        margin-bottom: 20px;
-                    }
-                    @media print {
-                        .print-button { display: none; }
-                    }
+                    body { font-family: -apple-system, system-ui, sans-serif; color: #2d3748; padding: 40px; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1e40af; padding-bottom: 20px; margin-bottom: 30px; }
+                    .header h1 { font-size: 26px; color: #1e40af; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+                    .header p { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin: 5px 0 0 0; letter-spacing: 0.5px; }
+                    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+                    .summary-grid .card { background: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; }
+                    .card .label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px; }
+                    .card .val { font-size: 28px; font-weight: 700; color: #1e293b; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th { text-align: left; padding: 12px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
+                    td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+                    .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; color: white; text-transform: uppercase; display: inline-block; letter-spacing: 0.3px; }
+                    .bg-red { background: #dc2626; } .bg-orange { background: #ea580c; } .bg-green { background: #16a34a; }
+                    .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #94a3b8; font-weight: 600; letter-spacing: 0.5px; }
+                    @media print { .no-print { display: none; } }
                 </style>
             </head>
             <body>
-                <button class="print-button" onclick="window.print()">🖨️ Print Report</button>
-                
                 <div class="header">
-                    <h1>LIGTAS CDRRMO System</h1>
-                    <p>City Disaster Risk Reduction & Management Office</p>
+                    <div><h1>LIGTAS System</h1><p>CDRRMO Operational Command</p></div>
+                    <div style="text-align:right; font-size:11px; font-weight:600; color:#64748b;">GEN: ${currentDate}</div>
                 </div>
-
-                <div class="report-info">
-                    <div>
-                        <strong>Report Type:</strong> ${title}
-                    </div>
-                    <div>
-                        <strong>Generated:</strong> ${currentDate}
-                    </div>
-                    <div>
-                        <strong>Total Records:</strong> ${data.length}
-                    </div>
-                </div>
-
+                <h2 style="font-size: 18px; margin-bottom: 20px; color: #1e293b; font-weight: 600;">${title}</h2>
                 ${tableContent}
-
-                <div class="footer">
-                    <p>This is an official report generated by the LIGTAS CDRRMO System</p>
-                    <p>© ${new Date().getFullYear()} CDRRMO. All rights reserved.</p>
-                </div>
+                <div class="footer">OFFICIAL CDRRMO RECORD - COPIES UNAUTHORIZED WITHOUT ADMIN CLEARANCE</div>
             </body>
             </html>
         `
@@ -273,82 +191,98 @@ export default function PrintReports() {
     const reportTypes = [
         {
             type: 'inventory' as ReportType,
-            title: 'Complete Inventory Report',
-            description: 'Full list of all items in the inventory system',
+            title: 'Inventory Report',
+            subtitle: 'Complete asset registry',
             icon: Package,
             color: 'blue',
         },
         {
             type: 'logs' as ReportType,
-            title: 'Borrow/Return Logs Report',
-            description: 'Transaction history of borrowed and returned items',
+            title: 'Transaction Logs',
+            subtitle: 'Borrow & return history',
             icon: ClipboardList,
-            color: 'green',
+            color: 'emerald',
         },
         {
             type: 'low-stock' as ReportType,
-            title: 'Low Stock Alert Report',
-            description: 'Items with stock levels below threshold',
-            icon: FileText,
+            title: 'Low Stock Alert',
+            subtitle: 'Critical inventory levels',
+            icon: TrendingDown,
             color: 'orange',
         },
         {
             type: 'summary' as ReportType,
-            title: 'System Summary Report',
-            description: 'Overview of system statistics and analytics',
-            icon: Calendar,
-            color: 'purple',
+            title: 'System Summary',
+            subtitle: 'Executive overview',
+            icon: BarChart3,
+            color: 'violet',
         },
     ]
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-screen-2xl mx-auto space-y-6 p-1 14in:p-2 animate-in fade-in duration-500">
             {/* Page Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Print Reports</h1>
-                <p className="text-gray-600 mt-1">Generate and print system reports for record keeping</p>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
+                <div>
+                    <h1 className="text-xl 14in:text-2xl font-bold tracking-tight text-slate-900 font-heading">Print Reports</h1>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-1">Document Generation & Export</p>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                    <Printer className="h-3.5 w-3.5 text-slate-400" />
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Ready to Print</p>
+                </div>
             </div>
 
-            {/* Report Cards */}
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* Report Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {reportTypes.map((report) => {
                     const Icon = report.icon
-                    const colors = {
-                        blue: 'from-blue-600 to-blue-500 border-blue-100 bg-blue-50',
-                        green: 'from-green-600 to-green-500 border-green-100 bg-green-50',
-                        orange: 'from-orange-600 to-orange-500 border-orange-100 bg-orange-50',
-                        purple: 'from-purple-600 to-purple-500 border-purple-100 bg-purple-50',
-                    }
+                    const colorClasses = {
+                        blue: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/20',
+                        emerald: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20',
+                        orange: 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-orange-500/20',
+                        violet: 'bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 border-violet-500/20',
+                    }[report.color as 'blue' | 'emerald' | 'orange' | 'violet']
+
+                    const buttonClasses = {
+                        blue: 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20',
+                        emerald: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20',
+                        orange: 'bg-orange-600 hover:bg-orange-700 shadow-orange-600/20',
+                        violet: 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/20',
+                    }[report.color as 'blue' | 'emerald' | 'orange' | 'violet']
 
                     return (
-                        <Card key={report.type} className="bg-white rounded-2xl shadow-lg border-2 overflow-hidden hover:shadow-xl transition-all">
-                            <div className={`h-1.5 bg-gradient-to-r ${colors[report.color as keyof typeof colors].split(' ')[0]} ${colors[report.color as keyof typeof colors].split(' ')[1]}`}></div>
-                            <CardHeader className={`${colors[report.color as keyof typeof colors].split(' ')[3]}`}>
-                                <div className="flex items-start gap-3">
-                                    <div className={`p-3 rounded-xl bg-white border-2 ${colors[report.color as keyof typeof colors].split(' ')[2]}`}>
-                                        <Icon className={`h-6 w-6 text-${report.color}-600`} />
+                        <Card
+                            key={report.type}
+                            className="bg-white/90 backdrop-blur-xl border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 overflow-hidden group"
+                        >
+                            <CardContent className="p-5 space-y-4">
+                                {/* Icon & Title */}
+                                <div className="space-y-3">
+                                    <div className={`inline-flex p-3 rounded-xl border transition-all duration-300 ${colorClasses}`}>
+                                        <Icon className="h-5 w-5" />
                                     </div>
-                                    <div className="flex-1">
-                                        <CardTitle className="text-lg">{report.title}</CardTitle>
-                                        <CardDescription className="mt-1">{report.description}</CardDescription>
+                                    <div className="space-y-1">
+                                        <h3 className="font-heading font-bold text-sm text-slate-900 tracking-tight">{report.title}</h3>
+                                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{report.subtitle}</p>
                                     </div>
                                 </div>
-                            </CardHeader>
-                            <CardContent>
+
+                                {/* Action Button */}
                                 <Button
                                     onClick={() => generateReport(report.type)}
                                     disabled={isGenerating && selectedReport === report.type}
-                                    className={`w-full gap-2 bg-${report.color}-600 hover:bg-${report.color}-700 rounded-xl`}
+                                    className={`w-full h-9 ${buttonClasses} text-white text-xs font-semibold tracking-wide shadow-lg transition-all active:scale-95 rounded-lg`}
                                 >
                                     {isGenerating && selectedReport === report.type ? (
                                         <>
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <RefreshCw className="h-3.5 w-3.5 animate-spin mr-2" />
                                             Generating...
                                         </>
                                     ) : (
                                         <>
-                                            <Printer className="h-4 w-4" />
-                                            Generate & Print
+                                            <Printer className="h-3.5 w-3.5 mr-2" />
+                                            Print
                                         </>
                                     )}
                                 </Button>
@@ -357,25 +291,6 @@ export default function PrintReports() {
                     )
                 })}
             </div>
-
-            {/* Instructions */}
-            <Card className="bg-gradient-to-r from-blue-50 to-white rounded-2xl shadow-md border-l-4 border-blue-500">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-900">
-                        <FileText className="h-5 w-5" />
-                        How to Use
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="text-gray-700">
-                    <ol className="list-decimal list-inside space-y-2">
-                        <li>Select the type of report you want to generate</li>
-                        <li>Click "Generate & Print" button</li>
-                        <li>A new window will open with the formatted report</li>
-                        <li>Use your browser's print function (Ctrl+P or Cmd+P) or click the print button</li>
-                        <li>Configure your printer settings and print</li>
-                    </ol>
-                </CardContent>
-            </Card>
         </div>
     )
 }

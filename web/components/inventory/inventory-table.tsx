@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
-import { Search, Filter, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Activity, Maximize2 } from 'lucide-react'
+import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
 import {
     Dialog as ShadinDialog,
     DialogContent as ShadinDialogContent,
@@ -26,23 +26,12 @@ interface InventoryTableProps {
     items: InventoryItem[]
     onDelete: (id: number, name: string) => void
     isDeleting: boolean
+    onRefresh?: () => void
 }
 
 const ITEMS_PER_PAGE = 10
 
-const CATEGORY_STYLES: Record<string, string> = {
-    'Rescue': 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20',
-    'Medical': 'bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20',
-    'Comms': 'bg-violet-500/10 text-violet-700 ring-1 ring-violet-500/20',
-    'Vehicles': 'bg-teal-500/10 text-teal-700 ring-1 ring-teal-500/20',
-    'Office': 'bg-slate-500/10 text-slate-700 ring-1 ring-slate-500/20',
-    'Tools': 'bg-blue-500/10 text-blue-700 ring-1 ring-blue-500/20',
-    'PPE': 'bg-orange-500/10 text-orange-700 ring-1 ring-orange-500/20',
-    'Logistics': 'bg-indigo-500/10 text-indigo-700 ring-1 ring-indigo-500/20',
-    'Default': 'bg-slate-500/10 text-slate-600 ring-1 ring-slate-500/20'
-}
-
-export function InventoryTable({ items, onDelete, isDeleting }: InventoryTableProps) {
+export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: InventoryTableProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [statusFilter, setStatusFilter] = useState<'all' | 'low' | 'out' | 'good'>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
@@ -81,105 +70,71 @@ export function InventoryTable({ items, onDelete, isDeleting }: InventoryTablePr
         setCurrentPage(1)
     }, [searchQuery, statusFilter, conditionFilter])
 
-    const getStatusBadge = (item: InventoryItem) => {
-        if (item.stock_available === 0) return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20">
-                Out of Stock
-            </span>
-        )
-        if (item.stock_available < 5) return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-500/10 text-orange-700 ring-1 ring-orange-500/20">
-                Low Stock
-            </span>
-        )
-        return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20">
-                In Stock
-            </span>
-        )
+    const getStockDisplay = (item: InventoryItem) => {
+        if (item.stock_available === 0) return {
+            label: 'Out of Stock',
+            color: 'bg-red-50 text-red-700 ring-1 ring-red-600/10'
+        }
+        if (item.stock_available < 5) return {
+            label: 'Low Stock',
+            color: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10'
+        }
+        return {
+            label: 'In Stock',
+            color: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10'
+        }
     }
 
-    const getConditionBadge = (status: string) => {
+    const getConditionDot = (status: string) => {
         const s = (status || 'Good').toLowerCase()
-        if (s.includes('damaged') || s.includes('repair')) return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-700 ring-1 ring-rose-500/20">
-                Needs Repair
-            </span>
-        )
-        if (s.includes('maintenance')) return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20">
-                Maintenance
-            </span>
-        )
-        if (s.includes('lost')) return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-500/10 text-slate-700 ring-1 ring-slate-500/20">
-                Lost
-            </span>
-        )
-        return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-700 ring-1 ring-blue-500/20">
-                Operational
-            </span>
-        )
+        if (s.includes('damaged') || s.includes('repair')) return { color: 'bg-red-500', label: 'Needs Repair' }
+        if (s.includes('maintenance')) return { color: 'bg-amber-500', label: 'Maintenance' }
+        if (s.includes('lost')) return { color: 'bg-slate-400', label: 'Lost' }
+        return { color: 'bg-emerald-500', label: 'Operational' }
     }
 
     return (
-        <Card className="bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-200/50 border-none rounded-[2rem] ring-1 ring-slate-100 overflow-hidden flex flex-col">
-            <CardHeader className="bg-white/50 border-b border-slate-50 p-4 14in:p-5">
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+        <Card className="bg-white border border-gray-200/60 rounded-xl overflow-hidden flex flex-col shadow-sm">
+            <CardHeader className="border-b border-gray-100 p-3 14in:p-4">
+                <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                        <h2 className="text-sm font-heading font-bold text-slate-900 uppercase tracking-wide">Inventory Registry</h2>
-                        <Badge variant="secondary" className="bg-slate-50 text-slate-400 border-none font-bold text-[9px] uppercase tracking-widest px-2 py-0.5">{filteredItems.length} Assets</Badge>
+                        <h2 className="text-[13px] font-semibold text-gray-900">All Items</h2>
+                        <span className="text-[11px] text-gray-400 font-medium">{filteredItems.length} results</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                        {/* Search */}
-                        <div className="relative flex-1 md:w-72">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                        <div className="relative flex-1 md:w-64">
+                            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                             <Input
-                                placeholder="Search by name, category..."
+                                placeholder="Search items..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 h-11 text-sm bg-slate-50/50 border-none rounded-xl focus-visible:ring-blue-500/20"
+                                className="pl-9 h-9 text-[13px] bg-white border-gray-200 rounded-lg focus-visible:ring-1 focus-visible:ring-gray-300 focus-visible:border-gray-300 placeholder:text-gray-400"
                             />
                         </div>
 
-                        {/* Condition Filter */}
                         <Select value={conditionFilter} onValueChange={setConditionFilter}>
-                            <SelectTrigger className="w-[160px] h-11 bg-slate-50/50 border-none rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                                <div className="flex items-center gap-2">
-                                    <Activity className="h-3.5 w-3.5 text-blue-500" />
-                                    <span className="truncate">
-                                        {conditionFilter === 'all' ? 'All Conditions' : conditionFilter}
-                                    </span>
-                                </div>
+                            <SelectTrigger className="w-[140px] h-9 bg-white border-gray-200 rounded-lg text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                <SelectValue placeholder="Condition" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                <SelectItem value="all" className="text-xs font-semibold">All Conditions</SelectItem>
-                                <SelectItem value="Good" className="text-xs font-semibold">Operational</SelectItem>
-                                <SelectItem value="Maintenance" className="text-xs font-semibold">Maintenance</SelectItem>
-                                <SelectItem value="Damaged" className="text-xs font-semibold">Defective</SelectItem>
-                                <SelectItem value="Lost" className="text-xs font-semibold">Lost</SelectItem>
+                            <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
+                                <SelectItem value="all" className="text-[13px] rounded-md">All Conditions</SelectItem>
+                                <SelectItem value="Good" className="text-[13px] rounded-md">Operational</SelectItem>
+                                <SelectItem value="Maintenance" className="text-[13px] rounded-md">Maintenance</SelectItem>
+                                <SelectItem value="Damaged" className="text-[13px] rounded-md">Damaged</SelectItem>
+                                <SelectItem value="Lost" className="text-[13px] rounded-md">Lost</SelectItem>
                             </SelectContent>
                         </Select>
 
-                        {/* Status Filter */}
                         <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                            <SelectTrigger className="w-[160px] h-11 bg-slate-50/50 border-none rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                                <div className="flex items-center gap-2">
-                                    <Filter className="h-3.5 w-3.5 text-purple-500" />
-                                    <span className="truncate">
-                                        {statusFilter === 'all' ? 'All Status' :
-                                            statusFilter === 'low' ? 'Low Stock' :
-                                                statusFilter === 'out' ? 'Exhausted' : 'Good Stock'}
-                                    </span>
-                                </div>
+                            <SelectTrigger className="w-[140px] h-9 bg-white border-gray-200 rounded-lg text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                <SelectValue placeholder="Stock" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                <SelectItem value="all" className="text-xs font-medium">All Items</SelectItem>
-                                <SelectItem value="good" className="text-xs font-medium">In Stock</SelectItem>
-                                <SelectItem value="low" className="text-xs font-medium">Low Stock</SelectItem>
-                                <SelectItem value="out" className="text-xs font-medium">Exhausted</SelectItem>
+                            <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
+                                <SelectItem value="all" className="text-[13px] rounded-md">All Stock</SelectItem>
+                                <SelectItem value="good" className="text-[13px] rounded-md">In Stock</SelectItem>
+                                <SelectItem value="low" className="text-[13px] rounded-md">Low Stock</SelectItem>
+                                <SelectItem value="out" className="text-[13px] rounded-md">Out of Stock</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -187,149 +142,149 @@ export function InventoryTable({ items, onDelete, isDeleting }: InventoryTablePr
             </CardHeader>
 
             <CardContent className="p-0 flex-1">
-                <div className="overflow-x-auto min-h-[400px]">
+                <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
-                            <TableRow className="bg-slate-50/30 hover:bg-slate-50/30 border-b border-slate-50">
-                                <TableHead className="px-6 py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Asset Information</TableHead>
-                                <TableHead className="py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Cluster</TableHead>
-                                <TableHead className="py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Operational Status</TableHead>
-                                <TableHead className="text-center py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Total</TableHead>
-                                <TableHead className="text-center py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Available</TableHead>
-                                <TableHead className="py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Stock Level</TableHead>
-                                <TableHead className="text-right px-6 py-3 font-semibold text-slate-400 uppercase text-[9px] tracking-[0.15em]">Command</TableHead>
+                            <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-100">
+                                <TableHead className="pl-4 14in:pl-6 pr-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Item</TableHead>
+                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Category</TableHead>
+                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Condition</TableHead>
+                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider text-right">Stock</TableHead>
+                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Status</TableHead>
+                                <TableHead className="pl-3 pr-4 14in:pr-6 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {paginatedItems.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-80 text-center">
-                                        <div className="flex flex-col items-center justify-center text-center p-10">
-                                            <div className="bg-slate-50 h-20 w-20 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
-                                                <Package className="h-10 w-10 text-slate-200" />
+                                    <TableCell colSpan={6} className="h-72 text-center">
+                                        <div className="flex flex-col items-center justify-center p-10">
+                                            <div className="bg-gray-50 h-12 w-12 rounded-xl flex items-center justify-center mb-4">
+                                                <Package className="h-6 w-6 text-gray-300" />
                                             </div>
-                                            <p className="text-slate-900 font-bold text-lg font-heading tracking-tight">Zero Results matching filters</p>
-                                            <p className="text-sm text-slate-400 mt-2 max-w-xs mx-auto font-medium">
-                                                Adjust your search parameters or cluster filters to locate specific inventory assets.
+                                            <p className="text-gray-900 font-semibold text-sm">No items found</p>
+                                            <p className="text-[13px] text-gray-400 mt-1 max-w-[280px]">
+                                                Try adjusting your search or filter criteria.
                                             </p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                paginatedItems.map((item) => (
-                                    <TableRow key={item.id} className="hover:bg-slate-50/50 group transition-colors border-b border-slate-50">
-                                        <TableCell className="px-6 py-4">
-                                            <div className="flex flex-row items-center gap-4">
-                                                <div
-                                                    className="h-12 w-12 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-zoom-in transition-all hover:ring-2 hover:ring-blue-100"
-                                                    onClick={() => item.image_url && setExpandedImage({ url: item.image_url, name: item.item_name })}
-                                                >
-                                                    {item.image_url ? (
-                                                        <>
-                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                            <img src={item.image_url} alt={item.item_name} className="w-full h-full object-contain p-1" />
-                                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                                                <Maximize2 className="h-4 w-4 text-white" />
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <Package className="h-5 w-5 text-slate-200" />
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-2">
-                                                        {item.status !== 'Good' && <AlertCircle className="h-3.5 w-3.5 text-rose-500" />}
-                                                        <span className="font-heading font-semibold text-slate-900 tracking-tight text-sm 14in:text-base leading-tight">{item.item_name}</span>
+                                paginatedItems.map((item) => {
+                                    const stock = getStockDisplay(item)
+                                    const condition = getConditionDot(item.status)
+                                    return (
+                                        <TableRow key={item.id} className="hover:bg-gray-50/60 group transition-colors border-b border-gray-100/80">
+                                            <TableCell className="pl-4 14in:pl-6 pr-3 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="h-9 w-9 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-pointer transition-all hover:border-gray-200"
+                                                        onClick={() => item.image_url && setExpandedImage({ url: item.image_url, name: item.item_name })}
+                                                    >
+                                                        {item.image_url ? (
+                                                            <>
+                                                                <img src={item.image_url} alt={item.item_name} className="w-full h-full object-contain p-1" />
+                                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                                                    <Maximize2 className="h-3 w-3 text-white" />
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <Package className="h-4 w-4 text-gray-300" />
+                                                        )}
                                                     </div>
-                                                    {item.description && (
-                                                        <span className="text-[10px] 14in:text-[11px] text-slate-500 font-medium mt-0.5 truncate max-w-[240px]">
-                                                            {item.description}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-1.5 14in:py-2">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${CATEGORY_STYLES[item.category] || CATEGORY_STYLES['Default']}`}>
-                                                {item.category}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="py-1.5 14in:py-2">{getConditionBadge(item.status)}</TableCell>
-                                        <TableCell className="text-center py-1.5 14in:py-2 text-slate-600 text-xs 14in:text-sm font-medium">{item.stock_total}</TableCell>
-                                        <TableCell className="text-center py-1.5 14in:py-2">
-                                            <div className="flex flex-col items-center gap-0.5">
-                                                <span className={`text-sm 14in:text-base font-heading font-semibold transition-all ${item.stock_available === 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                                                    {item.stock_available}
-                                                </span>
-                                                {(item as any).active_borrows?.length > 0 && (
-                                                    <div className="flex flex-col items-center">
-                                                        <div className="flex -space-x-1.5 overflow-hidden mb-1">
-                                                            {(item as any).active_borrows.slice(0, 3).map((b: any, i: number) => (
-                                                                <div
-                                                                    key={i}
-                                                                    className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 border-2 border-white text-[9px] font-bold text-blue-600 uppercase shadow-sm"
-                                                                    title={`${b.name} (${b.quantity}x)`}
-                                                                >
-                                                                    {b.name.charAt(0)}
-                                                                </div>
-                                                            ))}
-                                                            {(item as any).active_borrows.length > 3 && (
-                                                                <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 border-2 border-white text-[9px] font-bold text-slate-500 shadow-sm">
-                                                                    +{(item as any).active_borrows.length - 3}
-                                                                </div>
-                                                            )}
+                                                    <div className="flex flex-col min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {item.status !== 'Good' && <AlertCircle className="h-3 w-3 text-rose-500 flex-shrink-0" />}
+                                                            <span className="text-[13px] font-semibold text-gray-900 truncate">{item.item_name}</span>
                                                         </div>
-                                                        <span className="text-[9px] text-slate-400 font-medium uppercase tracking-tight">
-                                                            In Field
-                                                        </span>
+                                                        {item.description && (
+                                                            <span className="text-[12px] text-gray-400 truncate max-w-[200px] mt-0.5">
+                                                                {item.description}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-2">{getStatusBadge(item)}</TableCell>
-                                        <TableCell className="text-right px-6 py-2">
-                                            <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 transform sm:group-hover:translate-x-0 sm:translate-x-2">
-                                                <QRDialog item={item} />
-                                                <InventoryItemDialog
-                                                    existingItem={item}
-                                                    trigger={
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors">
-                                                            <Edit2 className="h-4.5 w-4.5" />
-                                                        </Button>
-                                                    }
-                                                />
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-9 w-9 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                                                    onClick={() => onDelete(item.id, item.item_name)}
-                                                    disabled={isDeleting}
-                                                >
-                                                    <Trash2 className="h-4.5 w-4.5" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-3">
+                                                <span className="text-[12px] font-medium text-gray-600">
+                                                    {item.category}
+                                                </span>
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`h-1.5 w-1.5 rounded-full ${condition.color}`} />
+                                                    <span className="text-[12px] text-gray-600">{condition.label}</span>
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-3 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[13px] font-semibold text-gray-900 tabular-nums">
+                                                        {item.stock_available}
+                                                        <span className="text-gray-400 font-normal"> / {item.stock_total}</span>
+                                                    </span>
+                                                    {(item as any).active_borrows?.length > 0 && (
+                                                        <span className="text-[10px] text-blue-600 font-medium mt-0.5">
+                                                            {(item as any).active_borrows.length} borrowed
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-3">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${stock.color}`}>
+                                                    {stock.label}
+                                                </span>
+                                            </TableCell>
+
+                                            <TableCell className="pl-3 pr-4 14in:pr-6 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
+                                                    <QRDialog item={item} />
+                                                    <InventoryItemDialog
+                                                        existingItem={item}
+                                                        onSuccess={onRefresh}
+                                                        trigger={
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                                                                <Edit2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        }
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                        onClick={() => onDelete(item.id, item.item_name)}
+                                                        disabled={isDeleting}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })
                             )}
                         </TableBody>
                     </Table>
                 </div>
             </CardContent>
 
-            {/* Pagination Footer */}
             {totalPages > 1 && (
-                <CardFooter className="bg-slate-50/50 border-t border-slate-50 p-4 flex items-center justify-between">
-                    <div className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
-                        Section <span className="text-slate-900 font-semibold">{currentPage}</span> of <span className="text-slate-900 font-semibold">{totalPages}</span>
-                    </div>
-                    <div className="flex gap-2">
+                <CardFooter className="border-t border-gray-100 bg-white px-4 14in:px-6 py-3 flex items-center justify-between">
+                    <p className="text-[12px] text-gray-500">
+                        Page <span className="font-semibold text-gray-900">{currentPage}</span> of <span className="font-semibold text-gray-900">{totalPages}</span>
+                        <span className="text-gray-400 ml-2">·</span>
+                        <span className="ml-2 text-gray-400">{filteredItems.length} items</span>
+                    </p>
+                    <div className="flex gap-1.5">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
-                            className="h-9 w-9 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-600 p-0"
+                            className="h-8 w-8 p-0 rounded-lg border-gray-200 hover:bg-gray-50 text-gray-600"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -338,7 +293,7 @@ export function InventoryTable({ items, onDelete, isDeleting }: InventoryTablePr
                             size="sm"
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
-                            className="h-9 w-9 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-600 p-0"
+                            className="h-8 w-8 p-0 rounded-lg border-gray-200 hover:bg-gray-50 text-gray-600"
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -346,21 +301,19 @@ export function InventoryTable({ items, onDelete, isDeleting }: InventoryTablePr
                 </CardFooter>
             )}
 
-            {/* High-Fidelity Image Expansion Modal */}
             <ShadinDialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
-                <ShadinDialogContent className="max-w-4xl border-none bg-black/95 p-0 overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-white/10">
-                    <ShadinDialogHeader className="absolute top-6 left-6 z-50 pointer-events-none">
-                        <ShadinDialogTitle className="text-white font-heading text-lg tracking-tight bg-black/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
+                <ShadinDialogContent className="max-w-3xl border-none bg-black/95 p-0 overflow-hidden rounded-2xl shadow-2xl">
+                    <ShadinDialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
+                        <ShadinDialogTitle className="text-white text-sm font-medium bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg">
                             {expandedImage?.name}
                         </ShadinDialogTitle>
                     </ShadinDialogHeader>
                     <div className="relative w-full aspect-square md:aspect-video flex items-center justify-center p-8">
                         {expandedImage && (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                                 src={expandedImage.url}
                                 alt={expandedImage.name}
-                                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
+                                className="max-w-full max-h-full object-contain rounded-lg animate-in zoom-in-95 duration-300"
                             />
                         )}
                     </div>

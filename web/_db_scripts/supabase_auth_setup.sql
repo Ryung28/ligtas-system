@@ -12,7 +12,7 @@
 
 -- For testing, use the Supabase Authentication console to create a user with:
 -- Email: admin@cdrrmo.gov.ph
--- Password: cdrrmo2024
+-- Password: cdrrmo2026
 
 -- Or use this SQL to manually insert (password will be hashed by Supabase):
 -- This is typically done through the Supabase UI or Auth API, not raw SQL
@@ -150,7 +150,7 @@ WHERE tablename IN ('inventory', 'user_profiles', 'activity_log');
 -- 2. Click "Add User" → "Create new user"
 -- 3. Enter:
 --    Email: admin@cdrrmo.gov.ph
---    Password: cdrrmo2024
+--    Password: cdrrmo2026
 --    Auto Confirm User: YES
 -- 4. The user profile will be automatically created via the trigger
 -- 5. You can now log in with these credentials!

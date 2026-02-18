@@ -136,21 +136,21 @@ export function BorrowItemDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="gap-2 bg-green-600 hover:bg-green-700 rounded-xl">
+                <Button className="h-10 bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/20 text-xs font-semibold tracking-wide transition-all active:scale-95 px-5 rounded-xl gap-2">
                     <ClipboardList className="h-4 w-4" />
-                    New Borrowing
+                    Borrow Item
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader className={isSmartReturn ? "bg-orange-50 -mx-6 -mt-6 p-6 border-b border-orange-100 rounded-t-lg" : ""}>
-                        <DialogTitle className="text-2xl font-bold text-gray-900">
-                            {isSmartReturn ? "Process Item Return" : "Add New Borrowing"}
+                        <DialogTitle className="text-xl font-heading font-bold text-gray-900 tracking-tight">
+                            {isSmartReturn ? "🔄 Process Item Return" : "📦 Dispatch Item"}
                         </DialogTitle>
-                        <DialogDescription className={isSmartReturn ? "text-orange-700" : "text-gray-600"}>
+                        <DialogDescription className={isSmartReturn ? "text-orange-700 font-medium" : "text-slate-500 font-medium"}>
                             {isSmartReturn
                                 ? `System detected that ${borrowerName} already has this item. Switching to Return Assessment.`
-                                : "Record a new borrowing transaction and update inventory."}
+                                : "Assign inventory items to operational personnel and update registry levels."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -404,7 +404,7 @@ export function BorrowItemDialog() {
                         <Button
                             type="submit"
                             disabled={isPending || !selectedItem}
-                            className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all ${isSmartReturn ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                            className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all ${isSmartReturn ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
                         >
                             {isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -416,7 +416,7 @@ export function BorrowItemDialog() {
                             ) : (
                                 <>
                                     <ClipboardList className="h-4 w-4" />
-                                    Complete Borrowing
+                                    Confirm Dispatch
                                 </>
                             )}
                         </Button>

@@ -1,8 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Package, TrendingDown, AlertCircle } from 'lucide-react'
 import { InventoryItem } from '@/lib/supabase'
 
 interface InventoryStatsProps {
@@ -21,50 +19,33 @@ export function InventoryStats({ items }: InventoryStatsProps) {
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatsCard
-                title="Total Items"
-                value={stats.totalItems}
-                icon={<Package className="h-5 w-5 text-blue-600" />}
-                bg="bg-blue-50"
-                border="border-blue-100"
-            />
-            <StatsCard
-                title="Total Stock"
-                value={stats.totalStock}
-                icon={<Package className="h-5 w-5 text-indigo-600" />}
-                bg="bg-indigo-50"
-                border="border-indigo-100"
-            />
-            <StatsCard
-                title="Low Stock"
-                value={stats.lowStockItems}
-                icon={<TrendingDown className="h-5 w-5 text-orange-600" />}
-                bg="bg-orange-50"
-                textColor="text-orange-600"
-                border="border-orange-100"
-            />
-            <StatsCard
-                title="Out of Stock"
-                value={stats.outOfStockItems}
-                icon={<AlertCircle className="h-5 w-5 text-red-600" />}
-                bg="bg-red-50"
-                textColor="text-red-600"
-                border="border-red-100"
-            />
+            <StatCard label="Total Items" value={stats.totalItems} />
+            <StatCard label="Total Stock" value={stats.totalStock} />
+            <StatCard label="Low Stock" value={stats.lowStockItems} accent={stats.lowStockItems > 0 ? 'amber' : undefined} />
+            <StatCard label="Out of Stock" value={stats.outOfStockItems} accent={stats.outOfStockItems > 0 ? 'red' : undefined} />
         </div>
     )
 }
 
-function StatsCard({ title, value, icon, bg, textColor = 'text-slate-900', border }: any) {
+function StatCard({ label, value, accent }: { label: string; value: number; accent?: 'amber' | 'red' }) {
+    const valueColor = accent === 'red' ? 'text-red-600' : accent === 'amber' ? 'text-orange-600' : 'text-slate-900'
+
     return (
-        <Card className={`bg-white shadow-sm border-none ring-1 ring-slate-100 hover:shadow-md transition-all duration-300 rounded-2xl group`}>
-            <CardContent className="p-3 14in:p-4 flex items-center justify-between">
-                <div className="min-w-0">
-                    <p className="text-[9px] font-semibold tracking-[0.15em] text-slate-400 uppercase truncate">{title}</p>
-                    <p className={`text-xl 14in:text-2xl font-heading font-bold mt-0.5 tracking-tight leading-none ${textColor}`}>{value}</p>
+        <div className="bg-white border border-gray-200/60 rounded-xl p-3 14in:p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all duration-300 group">
+            <div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1.5 transition-colors group-hover:text-slate-500 leading-none">{label}</p>
+                <div className="flex items-baseline gap-2">
+                    <p className={`text-2xl 14in:text-3xl font-heading font-bold tabular-nums leading-none tracking-tight ${valueColor} group-hover:scale-105 transition-transform origin-left`}>
+                        {value}
+                    </p>
+                    {accent && (
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{accent === 'red' ? 'ALERT' : 'WARNING'}</span>
+                    )}
                 </div>
-                <div className={`p-2.5 14in:p-3 rounded-xl shadow-sm ${bg} group-hover:scale-110 transition-transform duration-300`}>{icon}</div>
-            </CardContent>
-        </Card>
+            </div>
+            {accent && (
+                <div className={`h-2 w-2 rounded-full relative ${accent === 'red' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-orange-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'} animate-pulse`} />
+            )}
+        </div>
     )
 }

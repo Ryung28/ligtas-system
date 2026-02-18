@@ -86,19 +86,11 @@ export default function BorrowReturnLogs() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
                 <div>
                     <h1 className="text-xl 14in:text-2xl font-bold tracking-tight text-slate-900 font-heading">Borrow/Return Logs</h1>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-1">Operational Transaction Registry</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-1.5" suppressHydrationWarning>
+                        Operational Transaction Registry
+                    </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        onClick={() => refresh()}
-                        disabled={isLoading}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 14in:h-9 text-[10px] 14in:text-xs uppercase tracking-wide font-medium bg-white border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
-                    >
-                        <RefreshCw className={`h-3 w-3 14in:h-3.5 14in:w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-                        Sync
-                    </Button>
+                <div className="flex items-center gap-2 font-heading">
                     <BorrowItemDialog />
                 </div>
             </div>

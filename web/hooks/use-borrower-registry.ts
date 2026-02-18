@@ -15,34 +15,47 @@ export function useBorrowerRegistry() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // Sync Progress Logic (30s Heartbeat Visualization)
+    // Real-time subscription for user_profiles to keep staff list updated
     useEffect(() => {
-        const interval = setInterval(() => {
-            setSyncProgress(prev => {
-                if (prev >= 100) return 0
-                return prev + (100 / 300) // Update every 100ms for 30s
-            })
-        }, 100)
-        return () => clearInterval(interval)
-    }, [])
+        const channel = supabase
+            .channel('borrower-registry-profiles')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'user_profiles'
+                },
+                () => {
+                    // Re-fetch staff when profiles change
+                    fetchStaff()
+                    refresh() // Also refresh logs as they might be related
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [refresh])
 
     // Update last sync time when validation completes
     useEffect(() => {
         if (!isValidating && !isLoading) {
             setLastSync(new Date())
-            setSyncProgress(0)
         }
     }, [isValidating, isLoading])
 
     // Fetch registered staff to cross-reference
-    useEffect(() => {
-        async function fetchStaff() {
-            const { data } = await supabase.from('user_profiles').select('full_name, email')
-            if (data) {
-                const names = new Set(data.map(u => u.full_name?.toLowerCase() || u.email.split('@')[0].toLowerCase()))
-                setRegisteredStaff(names)
-            }
+    async function fetchStaff() {
+        const { data } = await supabase.from('user_profiles').select('full_name, email')
+        if (data) {
+            const names = new Set(data.map(u => u.full_name?.toLowerCase() || u.email.split('@')[0].toLowerCase()))
+            setRegisteredStaff(names)
         }
+    }
+
+    useEffect(() => {
         fetchStaff()
     }, [])
 
@@ -79,7 +92,6 @@ export function useBorrowerRegistry() {
         isLoading,
         isValidating,
         lastSync,
-        syncProgress,
         refresh
     }
 }

@@ -25,7 +25,7 @@ export function InventoryClient() {
                     toast.error(result.error)
                 }
             } catch (error) {
-                toast.error('An unexpected error occurred during tactical deletion.')
+                toast.error('An unexpected error occurred while removing the item.')
             }
         })
     }
@@ -44,6 +44,7 @@ export function InventoryClient() {
                 items={inventory}
                 onDelete={handleDelete}
                 isDeleting={isDeleting}
+                onRefresh={refresh}
             />
         </div>
     )

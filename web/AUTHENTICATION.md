@@ -68,7 +68,7 @@ web/
 4. Enter:
    ```
    Email: admin@cdrrmo.gov.ph
-   Password: cdrrmo2024
+   Password: cdrrmo2026
    Auto Confirm User: ✅ YES
    ```
 5. Click **"Create user"**
@@ -88,7 +88,7 @@ If you want user profiles and role-based access:
 3. Enter credentials:
    ```
    Email: admin@cdrrmo.gov.ph
-   Password: cdrrmo2024
+   Password: cdrrmo2026
    ```
 4. Click **"Sign In"**
 5. You'll be redirected to the dashboard!

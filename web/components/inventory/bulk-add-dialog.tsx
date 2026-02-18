@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Upload, Save, Trash2, AlertCircle } from 'lucide-react'
+import { Plus, ListPlus, Save, Trash2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -33,7 +33,12 @@ interface BulkItemRow {
 
 const CATEGORIES = ['Rescue', 'Medical', 'Comms', 'Vehicles', 'Office', 'Tools', 'PPE', 'Logistics']
 
-export function BulkAddDialog() {
+interface BulkAddDialogProps {
+    trigger?: React.ReactNode
+    onSuccess?: () => void
+}
+
+export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
     const [open, setOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [rows, setRows] = useState<BulkItemRow[]>([
@@ -86,6 +91,7 @@ export function BulkAddDialog() {
         if (result.success) {
             toast.success(result.message)
             setOpen(false)
+            if (onSuccess) onSuccess()
             // Reset form
             setRows([
                 { id: '1', name: '', category: 'Rescue', stock_total: '1', status: 'Good' },
@@ -100,16 +106,18 @@ export function BulkAddDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-blue-600">
-                    <Upload className="h-4 w-4" />
-                    Batch Entry
-                </Button>
+                {trigger || (
+                    <Button variant="outline" className="gap-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-blue-600">
+                        <ListPlus className="h-4 w-4" />
+                        Bulk Add
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[900px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
                 <DialogHeader className="p-6 pb-2">
-                    <DialogTitle className="flex items-center gap-2 text-xl font-heading">
-                        <Upload className="h-5 w-5 text-blue-600" />
-                        Batch Item Entry
+                    <DialogTitle className="flex items-center gap-2 text-xl font-heading font-bold tracking-tight">
+                        <ListPlus className="h-5 w-5 text-blue-600" />
+                        Bulk Item Entry
                     </DialogTitle>
                     <DialogDescription>
                         Quickly add multiple items to inventory. Empty name rows will be ignored.

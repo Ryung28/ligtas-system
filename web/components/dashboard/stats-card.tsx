@@ -28,9 +28,9 @@ export function StatsCard({ title, value, icon: Icon, color, description }: Stat
                     <Icon className={`h-5 w-5 ${theme.icon}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5 truncate">{title}</h4>
-                    <h3 className="text-xl 14in:text-2xl font-heading font-bold tracking-tight text-slate-900 leading-none">{value}</h3>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-tight truncate">{description}</p>
+                    <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1.5 truncate leading-none">{title}</h4>
+                    <h3 className="text-2xl 14in:text-3xl font-heading font-bold tracking-tight text-slate-900 leading-none group-hover:scale-105 transition-transform origin-left">{value}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tight truncate leading-none">{description}</p>
                 </div>
             </CardContent>
         </Card>

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect } from 'react'
-import useSWR from 'swr'
+import useSWR, { mutate } from 'swr'
 import { supabase } from '@/lib/supabase'
 import { InventoryItem } from '@/lib/supabase'
 import { BorrowLog } from '@/lib/types/inventory'
@@ -51,15 +51,26 @@ export function useInventory() {
     }, [inventory, logs])
 
     useEffect(() => {
-        const channel = supabase
+        // Subscribe to inventory changes
+        const inventoryChannel = supabase
             .channel('inventory-realtime-global')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
                 refresh()
             })
             .subscribe()
 
+        // Subscribe to borrow_logs changes (for active status)
+        const logsChannel = supabase
+            .channel('inventory-logs-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
+                refresh() // Refresh inventory
+                mutate('borrow_logs') // Refresh logs cache
+            })
+            .subscribe()
+
         return () => {
-            supabase.removeChannel(channel)
+            supabase.removeChannel(inventoryChannel)
+            supabase.removeChannel(logsChannel)
         }
     }, [refresh])
 

@@ -14,7 +14,6 @@ export default function BorrowerRegistryPage() {
         isLoading,
         isValidating,
         lastSync,
-        syncProgress,
         refresh
     } = useBorrowerRegistry()
 
@@ -34,11 +33,10 @@ export default function BorrowerRegistryPage() {
     }
 
     return (
-        <div className="space-y-4 animate-in fade-in duration-500 relative">
+        <div className="space-y-4 animate-in fade-in duration-500">
             <BorrowerHeader
                 lastSync={lastSync}
                 isValidating={isValidating}
-                syncProgress={syncProgress}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
             />

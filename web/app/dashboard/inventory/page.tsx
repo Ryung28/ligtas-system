@@ -13,19 +13,19 @@ export default function InventoryDashboardPage() {
 
 function InventorySkeleton() {
     return (
-        <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-pulse">
+        <div className="space-y-3 animate-pulse">
             {/* Header Skeleton */}
-            <div className="h-20 14in:h-24 bg-white/50 rounded-xl border border-slate-50 shadow-sm"></div>
+            <div className="h-16 bg-white rounded-xl border border-gray-200/60"></div>
 
             {/* Stats Skeleton */}
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                 {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-24 14in:h-28 bg-white/50 rounded-2xl border border-slate-50 italic"></div>
+                    <div key={i} className="h-20 bg-white rounded-xl border border-gray-200/60"></div>
                 ))}
             </div>
 
             {/* Table Skeleton */}
-            <div className="h-[500px] bg-white/50 rounded-[2rem] border border-slate-50 shadow-xl"></div>
+            <div className="h-[500px] bg-white rounded-xl border border-gray-200/60"></div>
         </div>
     )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { supabase } from '@/lib/supabase'
 import { BorrowLog } from '@/lib/types/inventory'
@@ -88,10 +88,26 @@ const fetchNotificationData = async () => {
 }
 
 export function useNotifications() {
-    const { data: notifications = [], mutate, isLoading } = useSWR('notifications', fetchNotificationData, {
+    // Senior Dev: Use localStorage to persist "Read" status since we don't have a DB table for notifs
+    const [readIds, setReadIds] = useState<string[]>([])
+
+    useEffect(() => {
+        const saved = localStorage.getItem('ligtas-read-notifications')
+        if (saved) setReadIds(JSON.parse(saved))
+    }, [])
+
+    const { data: rawNotifications = [], mutate, isLoading } = useSWR('notifications', fetchNotificationData, {
         revalidateOnFocus: true,
         refreshInterval: 30000, // 30s
     })
+
+    // Merge raw data with read status from localStorage
+    const notifications = useMemo(() => {
+        return rawNotifications.map(n => ({
+            ...n,
+            isRead: readIds.includes(n.id)
+        }))
+    }, [rawNotifications, readIds])
 
     useEffect(() => {
         const channel = supabase
@@ -103,13 +119,17 @@ export function useNotifications() {
         return () => { supabase.removeChannel(channel) }
     }, [mutate])
 
+    const markAsRead = () => {
+        const allIds = notifications.map(n => n.id)
+        const newReadIds = Array.from(new Set([...readIds, ...allIds]))
+        setReadIds(newReadIds)
+        localStorage.setItem('ligtas-read-notifications', JSON.stringify(newReadIds))
+    }
+
     return {
         notifications,
         unreadCount: notifications.filter(n => !n.isRead).length,
-        markAsRead: () => {
-            // In a real app, update DB. Here we just mutate local cache
-            mutate(notifications.map(n => ({ ...n, isRead: true })), false)
-        },
+        markAsRead,
         isLoading,
         refresh: mutate
     }

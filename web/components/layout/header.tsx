@@ -1,6 +1,6 @@
 'use client'
 
-import { Menu, User, Bell } from 'lucide-react'
+import { Menu, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from './sidebar'
@@ -40,10 +40,6 @@ export function Header() {
             <div className="flex items-center gap-3">
                 <SmartScanner />
                 <NotificationBell />
-                <Button variant="ghost" size="icon" className="text-gray-500 hover:bg-gray-100 rounded-full h-10 w-10">
-                    <User className="h-5 w-5" />
-                    <span className="sr-only">User menu</span>
-                </Button>
             </div>
         </header>
     )

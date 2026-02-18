@@ -116,7 +116,7 @@ export function QRDialog({ item, trigger }: QRDialogProps) {
                             level="H"
                             includeMargin={false}
                             imageSettings={{
-                                src: "/ligtaslogo.png",
+                                src: "/oro-cervo.png",
                                 x: undefined,
                                 y: undefined,
                                 height: 60,

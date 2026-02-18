@@ -76,12 +76,12 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
         <div className={cn('flex h-full flex-col bg-white/95 backdrop-blur-xl border-r border-slate-100', className)}>
             {/* Logo/Header */}
             <div className="flex flex-col gap-2 px-6 py-8 border-b border-slate-50 items-center">
-                <div className="relative h-14 w-full">
+                <div className="relative h-20 w-20 shadow-sm rounded-full bg-white p-1 border border-slate-100 mb-2">
                     <Image
-                        src="/ligtaslogo.png"
-                        alt="LIGTAS Logo"
+                        src="/oro-cervo.png"
+                        alt="CDRRMO Logo"
                         fill
-                        className="object-contain object-center scale-110"
+                        className="object-contain p-1.5"
                         priority
                     />
                 </div>
@@ -119,17 +119,19 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 </div>
 
                 {/* ADMIN SECTION */}
-                <div className="space-y-1.5">
-                    <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Personnel</p>
-                    {navItems.filter(i => ['Borrower Registry', 'User Management'].includes(i.label)).map((item) => (
-                        <SidebarItem
-                            key={item.href}
-                            item={item}
-                            active={isActive(item.href)}
-                            onNavigate={onNavigate}
-                        />
-                    ))}
-                </div>
+                {user?.role === 'admin' && (
+                    <div className="space-y-1.5">
+                        <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Personnel</p>
+                        {navItems.filter(i => ['Borrower Registry', 'System Users'].includes(i.label)).map((item) => (
+                            <SidebarItem
+                                key={item.href}
+                                item={item}
+                                active={isActive(item.href)}
+                                onNavigate={onNavigate}
+                            />
+                        ))}
+                    </div>
+                )}
             </nav>
 
 

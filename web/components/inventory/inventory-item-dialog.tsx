@@ -35,9 +35,10 @@ interface InventoryItemDialogProps {
     trigger?: React.ReactNode
     open?: boolean
     onOpenChange?: (open: boolean) => void
+    onSuccess?: () => void
 }
 
-export function InventoryItemDialog({ existingItem, trigger, open: controlledOpen, onOpenChange }: InventoryItemDialogProps) {
+export function InventoryItemDialog({ existingItem, trigger, open: controlledOpen, onOpenChange, onSuccess }: InventoryItemDialogProps) {
     const [internalOpen, setInternalOpen] = useState(false)
     const [isPending, startTransition] = useTransition()
     const [isUploading, setIsUploading] = useState(false)
@@ -127,6 +128,7 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
             if (result.success) {
                 toast.success(result.message)
                 setOpen(false)
+                if (onSuccess) onSuccess()
                 router.refresh()
             } else {
                 toast.error(result.error || 'Operation failed')
