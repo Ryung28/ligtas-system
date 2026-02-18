@@ -65,7 +65,13 @@ export async function middleware(request: NextRequest) {
     }
 
     if (isLoginPage && session) {
-        return NextResponse.redirect(new URL('/dashboard/inventory', request.url))
+        // ── Senior Dev: Prevent redirect loop ──
+        // If the user is on the login page with an error (e.g., unauthorized redirect from layout),
+        // don't redirect them back to the dashboard.
+        const error = request.nextUrl.searchParams.get('error')
+        if (!error) {
+            return NextResponse.redirect(new URL('/dashboard/inventory', request.url))
+        }
     }
 
     return response

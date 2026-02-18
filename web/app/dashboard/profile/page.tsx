@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Mail, Shield, Building, Loader2, Camera, User, Lock, Save } from 'lucide-react'
+import { Mail, Shield, Building, Loader2, User, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { UserProfile } from '@/hooks/use-user-management'
 
@@ -16,7 +16,6 @@ export default function ProfilePage() {
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
-    const [sendingReset, setSendingReset] = useState(false)
 
     // Form states
     const [fullName, setFullName] = useState('')
@@ -87,26 +86,6 @@ export default function ProfilePage() {
         }
     }
 
-    const handleResetPassword = async () => {
-        if (!profile?.email) return
-
-        try {
-            setSendingReset(true)
-            const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-                redirectTo: `${window.location.origin}/auth/update-password`,
-            })
-
-            if (error) throw error
-
-            toast.success('Password reset email sent!')
-        } catch (error) {
-            console.error('Error sending reset email:', error)
-            toast.error('Failed to send reset email')
-        } finally {
-            setSendingReset(false)
-        }
-    }
-
     if (loading) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
@@ -128,7 +107,7 @@ export default function ProfilePage() {
         <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-heading">My Profile</h1>
-                <p className="text-gray-500 mt-1">Manage your professional identity and security settings.</p>
+                <p className="text-gray-500 mt-1">Manage your professional identity and account details.</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-[320px_1fr]">
@@ -212,32 +191,6 @@ export default function ProfilePage() {
                                     className="bg-white"
                                     placeholder="e.g. Logistics & Inventory"
                                 />
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-gray-100">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Lock className="h-4 w-4 text-gray-400" />
-                                <h3 className="text-sm font-medium text-gray-900">Security</h3>
-                            </div>
-                            <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-orange-900">Password Reset</p>
-                                    <p className="text-xs text-orange-700 mt-1">Receive an email to securely reset your password.</p>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleResetPassword}
-                                    disabled={sendingReset}
-                                    className="text-orange-700 border-orange-200 hover:bg-orange-100 hover:text-orange-800 bg-white"
-                                >
-                                    {sendingReset ? (
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                        <Mail className="h-4 w-4 mr-2" />
-                                    )}
-                                    Send Email
-                                </Button>
                             </div>
                         </div>
                     </CardContent>

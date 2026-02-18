@@ -48,7 +48,7 @@ export function BorrowerManagementCard({
 
     if (isLoading) {
         return (
-            <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm h-full">
+            <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm h-full min-h-[600px]">
                 <CardHeader className="border-b border-gray-100 p-4">
                     <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                         <Smartphone className="h-4 w-4" />
@@ -64,7 +64,7 @@ export function BorrowerManagementCard({
     }
 
     return (
-        <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
+        <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden h-full flex flex-col min-h-[600px]">
             <Tabs defaultValue="requests" className="flex-1 flex flex-col">
                 <CardHeader className="border-b border-gray-100 p-4 pb-0">
                     <div className="flex items-center justify-between mb-4">
@@ -93,7 +93,7 @@ export function BorrowerManagementCard({
 
                 <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
                     {/* REQUESTS TAB */}
-                    <TabsContent value="requests" className="flex-1 m-0 overflow-y-auto max-h-[600px]">
+                    <TabsContent value="requests" className="flex-1 m-0 overflow-y-auto min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
                         {pendingBorrowers.length === 0 ? (
                             <div className="p-8 text-center flex flex-col items-center justify-center h-full min-h-[300px]">
                                 <div className="bg-emerald-50 h-16 w-16 rounded-full mx-auto mb-4 flex items-center justify-center">
@@ -190,7 +190,7 @@ export function BorrowerManagementCard({
                     </TabsContent>
 
                     {/* ACTIVE DIRECTORY TAB */}
-                    <TabsContent value="active" className="flex-1 m-0 overflow-y-auto max-h-[600px] flex flex-col">
+                    <TabsContent value="active" className="flex-1 m-0 overflow-y-auto min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
                         <div className="p-3 border-b border-gray-50 bg-white sticky top-0 z-10">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />

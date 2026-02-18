@@ -29,6 +29,50 @@ export async function GET(request: Request) {
         )
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (user?.email) {
+                // ── Senior Dev: Strict Whitelist Access Control ──
+                // Check if this user is explicitly invited/whitelisted
+                const { data: whitelistEntry } = await supabase
+                    .from('authorized_emails')
+                    .select('role')
+                    .eq('email', user.email.toLowerCase())
+                    .single()
+
+                if (!whitelistEntry) {
+                    // ⛔ UNAUTHORIZED: User is NOT in the whitelist
+                    // We must prevent them from clogging up the "Pending Requests" list.
+                    console.log(`[Auth] Blocked unauthorized login attempt: ${user.email}`)
+
+                    // 1. Initialize Service Role Client to purge the unauthorized account
+                    // (This prevents the user from existing in Auth and user_profiles)
+                    const { createClient } = require('@supabase/supabase-js')
+                    const supabaseAdmin = createClient(
+                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                        process.env.SUPABASE_SERVICE_ROLE_KEY!
+                    )
+
+                    await supabaseAdmin.auth.admin.deleteUser(user.id)
+
+                    return NextResponse.redirect(`${origin}/login?error=ACCESS DENIED: You must be invited by an Administrator to use this system.`)
+                }
+
+                // ✅ AUTHORIZED: Promote based on whitelist role
+                if (whitelistEntry) {
+                    await supabase
+                        .from('user_profiles')
+                        .update({
+                            role: whitelistEntry.role,
+                            status: 'active',
+                            approved_at: new Date().toISOString()
+                        })
+                        .eq('id', user.id)
+
+                    console.log(`[Auth] Authorized & Promoted ${user.email} as ${whitelistEntry.role}`)
+                }
+            }
+
             return NextResponse.redirect(`${origin}${next}`)
         }
     }

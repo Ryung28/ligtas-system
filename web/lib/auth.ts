@@ -60,13 +60,32 @@ export async function getCurrentUser() {
             .from('user_profiles')
             .select('*')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
+
+        // ── Senior Dev: Runtime Authorization Fallback ──
+        // If the profile is pending or not found, check the whitelist directly
+        let role = profile?.role || 'viewer'
+        let status = profile?.status || 'pending'
+
+        if (status !== 'active') {
+            const { data: whitelist } = await supabase
+                .from('authorized_emails')
+                .select('role')
+                .eq('email', user.email?.toLowerCase())
+                .maybeSingle()
+
+            if (whitelist) {
+                role = whitelist.role
+                status = 'active' // Force active for whitelisted staff
+                console.log(`[Auth] Manual runtime promotion for ${user.email}`)
+            }
+        }
 
         return {
             ...user,
             ...profile,
-            role: profile?.role || 'viewer',
-            status: profile?.status || 'pending'
+            role,
+            status
         }
     } catch (error) {
         console.error('Get user error:', error)

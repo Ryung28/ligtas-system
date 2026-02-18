@@ -18,7 +18,7 @@ interface StaffManagementCardProps {
 export function StaffManagementCard({ staff, isLoading, onRemove, onInvite }: StaffManagementCardProps) {
     if (isLoading) {
         return (
-            <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm">
+            <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm h-full min-h-[600px]">
                 <CardHeader className="border-b border-gray-100 p-4">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -37,7 +37,7 @@ export function StaffManagementCard({ staff, isLoading, onRemove, onInvite }: St
 
     if (staff.length === 0) {
         return (
-            <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm">
+            <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm h-full min-h-[600px]">
                 <CardHeader className="border-b border-gray-100 p-4">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -52,14 +52,14 @@ export function StaffManagementCard({ staff, isLoading, onRemove, onInvite }: St
                         <Shield className="h-8 w-8 text-blue-600" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">No Staff Yet</h3>
-                    <p className="text-sm text-gray-500 mb-4">Use "INVITE STAFF" to add administrators and managers.</p>
+                    <p className="text-sm text-gray-500 mb-4">Use &quot;INVITE STAFF&quot; to add administrators and managers.</p>
                 </CardContent>
             </Card>
         )
     }
 
     return (
-        <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden">
+        <Card className="bg-white border border-gray-200/60 rounded-xl shadow-sm overflow-hidden h-full min-h-[600px]">
             <CardHeader className="border-b border-gray-100 p-4">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
