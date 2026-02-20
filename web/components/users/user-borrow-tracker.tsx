@@ -15,7 +15,7 @@ import { Package, RotateCcw, Calendar, User, History, ArrowUpRight, ArrowDownLef
 import { BorrowLog } from '@/lib/types/inventory'
 import { returnItem } from '@/app/actions/inventory'
 import { toast } from 'sonner'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 interface UserBorrowTrackerProps {
@@ -42,7 +42,7 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         try {
             setIsHistoryLoading(true)
             const { data, error } = await supabase
@@ -59,7 +59,7 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
         } finally {
             setIsHistoryLoading(false)
         }
-    }
+    }, [supabase, userName])
 
     // Auto-fetch history when tab changes
     useEffect(() => {

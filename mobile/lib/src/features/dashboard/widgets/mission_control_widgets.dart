@@ -430,9 +430,8 @@ class OperationFeedSection extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  // Use timeago package for reliable timestamp formatting
-                  // Senior Dev: This properly handles time differences without the "now" issue
-                  timeago.format(loan.borrowDate, locale: 'en_short'),
+                  // Use timeago package for reliable timestamp formatting (same as recent_activity_section)
+                  timeago.format(loan.borrowDate),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
