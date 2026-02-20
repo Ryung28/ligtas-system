@@ -4,130 +4,102 @@ import '../models/loan_model.dart';
 import '../repositories/loan_repository.dart';
 import '../../../core/di/app_providers.dart';
 import '../../../core/errors/app_exceptions.dart';
+import '../models/loan_filter.dart';
+import 'loan_filter_provider.dart';
 
 // Repository provider - using centralized DI
 final loanRepositoryProvider = AppProviders.loanRepositoryProvider;
 
-// State notifier for user's borrowed items (not all loans)
-class MyBorrowedItemsNotifier extends StateNotifier<AsyncValue<List<LoanModel>>> {
-  MyBorrowedItemsNotifier(this._repository) : super(const AsyncValue.loading()) {
-    loadMyBorrowedItems();
-  }
+// Main provider for user's borrowed items - using StreamProvider for real-time offline-first support
+final myBorrowedItemsProvider = StreamProvider<List<LoanModel>>((ref) {
+  final repository = ref.watch(loanRepositoryProvider);
+  return repository.watchActiveLoans();
+});
+
+// Centralized filtered and sorted provider
+final sortedFilteredLoansProvider = Provider<List<LoanModel>>((ref) {
+  final rawLoansAsync = ref.watch(myBorrowedItemsProvider);
+  final filter = ref.watch(loanFilterProvider);
+
+  return rawLoansAsync.when(
+    data: (loans) {
+      // Create a growable copy for sorting
+      var filtered = List<LoanModel>.from(loans);
+
+      // 1. Filter by search query
+      if (filter.query.isNotEmpty) {
+        final query = filter.query.toLowerCase();
+        filtered = filtered.where((loan) {
+          return loan.itemName.toLowerCase().contains(query) ||
+                 loan.itemCode.toLowerCase().contains(query) ||
+                 loan.purpose.toLowerCase().contains(query);
+        }).toList();
+      }
+
+      // 2. Sort (Senior Dev: Always sort by Newest by default) - Use borrowDate for accuracy
+      switch (filter.sortBy) {
+        case LoanSortOption.newest:
+          filtered.sort((a, b) => b.borrowDate.compareTo(a.borrowDate));
+          break;
+        case LoanSortOption.oldest:
+          filtered.sort((a, b) => a.borrowDate.compareTo(b.borrowDate));
+          break;
+        case LoanSortOption.alphabetical:
+          filtered.sort((a, b) => a.itemName.compareTo(b.itemName));
+          break;
+      }
+
+      return filtered;
+    },
+    loading: () => [],
+    error: (_, __) => [],
+  );
+});
+
+// Controller for handling loan-related actions (submit, update, etc.)
+class LoanController extends StateNotifier<AsyncValue<void>> {
+  LoanController(this._repository) : super(const AsyncValue.data(null));
 
   final LoanRepository _repository;
 
-  Future<void> loadMyBorrowedItems() async {
+  Future<void> submitBorrowRequest(CreateLoanRequest request) async {
     state = const AsyncValue.loading();
     try {
-      final loans = await _repository.getMyBorrowedItems();
-      state = AsyncValue.data(loans);
-    } on AppException catch (error, stackTrace) {
-      // Handle known app exceptions
-      state = AsyncValue.error(error, stackTrace);
-    } catch (error, stackTrace) {
-      // Handle unknown exceptions
-      final appError = ExceptionHandler.fromException(error as Exception);
-      state = AsyncValue.error(appError, stackTrace);
-    }
-  }
-
-  Future<void> submitBorrowRequest(CreateLoanRequest request) async {
-    try {
       await _repository.createLoan(request);
-      await loadMyBorrowedItems(); // Refresh user's items
-    } on AppException {
-      rethrow; // Let the UI handle app exceptions
-    } catch (error) {
-      throw ExceptionHandler.fromException(error as Exception);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
     }
-  }
-
-  Future<void> refresh() async {
-    await loadMyBorrowedItems();
   }
 }
 
-// Main provider for user's borrowed items
-final myBorrowedItemsProvider = StateNotifierProvider<MyBorrowedItemsNotifier, AsyncValue<List<LoanModel>>>((ref) {
+final loanControllerProvider = StateNotifierProvider<LoanController, AsyncValue<void>>((ref) {
   final repository = ref.watch(loanRepositoryProvider);
-  return MyBorrowedItemsNotifier(repository);
+  return LoanController(repository);
 });
 
-// Computed providers for user's items by status
+// Computed providers for user's items by status (Now using the sorted list)
 final myActiveItemsProvider = Provider<List<LoanModel>>((ref) {
-  final borrowedItemsAsync = ref.watch(myBorrowedItemsProvider);
-  
-  return borrowedItemsAsync.when(
-    data: (loans) => loans.where((loan) => 
-      loan.status == LoanStatus.active
-    ).toList(),
-    loading: () => [],
-    error: (_, __) => [],
-  );
+  final loans = ref.watch(sortedFilteredLoansProvider);
+  return loans.where((loan) => loan.status == LoanStatus.active).toList();
 });
 
 final myOverdueItemsProvider = Provider<List<LoanModel>>((ref) {
-  final borrowedItemsAsync = ref.watch(myBorrowedItemsProvider);
-  
-  return borrowedItemsAsync.when(
-    data: (loans) => loans.where((loan) => 
-      loan.status == LoanStatus.active && loan.daysOverdue > 0
-    ).toList(),
-    loading: () => [],
-    error: (_, __) => [],
-  );
+  final loans = ref.watch(sortedFilteredLoansProvider);
+  return loans.where((loan) => 
+    loan.status == LoanStatus.active && loan.daysOverdue > 0
+  ).toList();
 });
 
 final myReturnedItemsProvider = Provider<List<LoanModel>>((ref) {
-  final borrowedItemsAsync = ref.watch(myBorrowedItemsProvider);
-  
-  return borrowedItemsAsync.when(
-    data: (loans) => loans.where((loan) => 
-      loan.status == LoanStatus.returned
-    ).toList(),
-    loading: () => [],
-    error: (_, __) => [],
-  );
+  final loans = ref.watch(sortedFilteredLoansProvider);
+  return loans.where((loan) => loan.status == LoanStatus.returned).toList();
 });
 
-// Search providers for user's items
-final filteredMyActiveItemsProvider = Provider.family<List<LoanModel>, String>((ref, searchQuery) {
-  final activeItems = ref.watch(myActiveItemsProvider);
-  
-  if (searchQuery.isEmpty) return activeItems;
-  
-  final query = searchQuery.toLowerCase();
-  return activeItems.where((loan) {
-    return loan.itemName.toLowerCase().contains(query) ||
-           loan.itemCode.toLowerCase().contains(query) ||
-           loan.purpose.toLowerCase().contains(query);
-  }).toList();
-});
-
-final filteredMyOverdueItemsProvider = Provider.family<List<LoanModel>, String>((ref, searchQuery) {
-  final overdueItems = ref.watch(myOverdueItemsProvider);
-  
-  if (searchQuery.isEmpty) return overdueItems;
-  
-  final query = searchQuery.toLowerCase();
-  return overdueItems.where((loan) {
-    return loan.itemName.toLowerCase().contains(query) ||
-           loan.itemCode.toLowerCase().contains(query) ||
-           loan.purpose.toLowerCase().contains(query);
-  }).toList();
-});
-
-final filteredMyReturnedItemsProvider = Provider.family<List<LoanModel>, String>((ref, searchQuery) {
-  final returnedItems = ref.watch(myReturnedItemsProvider);
-  
-  if (searchQuery.isEmpty) return returnedItems;
-  
-  final query = searchQuery.toLowerCase();
-  return returnedItems.where((loan) {
-    return loan.itemName.toLowerCase().contains(query) ||
-           loan.itemCode.toLowerCase().contains(query) ||
-           loan.purpose.toLowerCase().contains(query);
-  }).toList();
+final myPendingItemsProvider = Provider<List<LoanModel>>((ref) {
+  final loans = ref.watch(sortedFilteredLoansProvider);
+  return loans.where((loan) => loan.status == LoanStatus.pending).toList();
 });
 
 // User statistics provider

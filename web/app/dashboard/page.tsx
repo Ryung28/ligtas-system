@@ -29,7 +29,7 @@ export default function DashboardOverview() {
                     <Package className="h-8 w-8 text-blue-600" />
                 </div>
                 <div className="max-w-md space-y-2">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-heading">LIGTAS Command</h1>
+                    <h1 className="text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">LIGTAS Command</h1>
                     <p className="text-slate-500">Registry initialized. Awaiting equipment data ingestion.</p>
                 </div>
                 <Button asChild size="lg" className="h-12 px-6 rounded-xl gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg font-medium uppercase tracking-wide text-[10px]">
@@ -43,8 +43,14 @@ export default function DashboardOverview() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl 14in:text-3xl font-bold tracking-tight text-slate-900 font-heading">Dashboard Summary</h1>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Operational Overview</span>
+                    </div>
+                    <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
+                        Dashboard Summary
+                    </h1>
                 </div>
                 <div className="flex gap-2">
                     <Button asChild className="h-9 px-5 rounded-xl gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-md font-medium text-[10px] uppercase tracking-wide transition-all active:scale-95">

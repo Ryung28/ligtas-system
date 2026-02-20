@@ -4,6 +4,3 @@ targets:
       json_serializable:
         options:
           explicit_to_json: true
-      hive_generator:
-        options:
-          auto_dispose: true

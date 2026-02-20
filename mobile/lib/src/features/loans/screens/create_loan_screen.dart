@@ -11,6 +11,8 @@ import '../providers/loan_providers.dart';
 import '../services/cdrrmo_items_service.dart';
 import '../models/cdrrmo_item_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../inventory/providers/inventory_providers.dart';
+import '../../inventory/models/inventory_model.dart';
 
 /// Screen for submitting borrow requests with QR scanner integration
 class CreateLoanScreen extends ConsumerStatefulWidget {
@@ -80,22 +82,66 @@ class _CreateLoanScreenState extends ConsumerState<CreateLoanScreen> {
   Future<void> _loadItemDetails() async {
     if (_selectedItemId == null) return;
     
-    // Find item in CDRRMO items service
-    final item = CdrrmoItemsService.findItem(_selectedItemId!);
+    // 1. Try finding in static/hardcoded CDRRMO service first
+    final staticItem = CdrrmoItemsService.findItem(_selectedItemId!);
     
-    setState(() {
-      if (item != null) {
-        _selectedItemName = item.name;
-        _selectedItemCode = item.code;
-        _selectedItemCategory = item.category;
-        _selectedItemDescription = item.description;
-      } else {
+    if (staticItem != null) {
+      if (mounted) {
+        setState(() {
+          _selectedItemName = staticItem.name;
+          _selectedItemCode = staticItem.code;
+          _selectedItemCategory = staticItem.category;
+          _selectedItemDescription = staticItem.description;
+        });
+      }
+      return;
+    }
+
+    // 2. Fallback: Try finding in dynamic Inventory Repository (Web Items)
+    try {
+      final repo = ref.read(inventoryRepositoryProvider);
+      
+      // Try searching (since we might have a code string or an int ID string)
+      // Note: This is an optimistic search. Ideally we'd have a reliable getByCode.
+      final results = await repo.searchItems(_selectedItemId!);
+      
+      // Filter for exact code match or ID match to be safe
+      InventoryModel? dynamicItem;
+      try {
+        dynamicItem = results.firstWhere((item) => 
+          item.code.toLowerCase() == _selectedItemId!.toLowerCase() || 
+          item.id.toString() == _selectedItemId
+        );
+      } catch (_) {
+        // No exact match found in search results
+        if (results.isNotEmpty) dynamicItem = results.first; // Last resort: take first search result?
+      }
+
+      if (dynamicItem != null && mounted) {
+        final item = dynamicItem; // Local non-nullable capture
+        setState(() {
+          _selectedItemName = item.name;
+          _selectedItemCode = item.code;
+          _selectedItemCategory = item.category;
+          _selectedItemDescription = item.description.isNotEmpty 
+              ? item.description 
+              : 'Inventory Item from Web Database';
+        });
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error fetching dynamic item details: $e');
+    }
+
+    // 3. Item truly not found
+    if (mounted) {
+      setState(() {
         _selectedItemName = 'Unknown Item';
         _selectedItemCode = _selectedItemId!;
         _selectedItemCategory = 'Unknown';
-        _selectedItemDescription = 'Item not found in CDRRMO inventory';
-      }
-    });
+        _selectedItemDescription = 'Item not found in any inventory';
+      });
+    }
   }
 
   @override
@@ -642,6 +688,8 @@ class _CreateLoanScreenState extends ConsumerState<CreateLoanScreen> {
     try {
       final request = CreateLoanRequest(
         inventoryItemId: _selectedItemId!,
+        itemName: _selectedItemName ?? 'Unknown Item',
+        itemCode: _selectedItemCode,
         borrowerName: _borrowerNameController.text.trim(),
         borrowerContact: _borrowerContactController.text.trim(),
         borrowerEmail: _borrowerEmailController.text.trim(),
@@ -654,7 +702,7 @@ class _CreateLoanScreenState extends ConsumerState<CreateLoanScreen> {
             : _notesController.text.trim(),
       );
 
-      await ref.read(myBorrowedItemsProvider.notifier).submitBorrowRequest(request);
+      await ref.read(loanControllerProvider.notifier).submitBorrowRequest(request);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

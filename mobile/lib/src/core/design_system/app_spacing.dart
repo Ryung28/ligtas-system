@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/src/generated/app_localizations.dart';
+
 
 /// Professional spacing system based on 8px grid
 class AppSpacing {
@@ -90,6 +92,7 @@ class AppSizing {
   static const double buttonSm = 32.0;
   static const double buttonMd = 40.0;
   static const double buttonLg = 48.0;
+  static const double buttonXl = 58.0;
   
   // Input heights
   static const double inputSm = 36.0;
@@ -107,4 +110,9 @@ class AppSizing {
   static const double chipHeight = 32.0;
   static const double tabHeight = 48.0;
   static const double listItemHeight = 56.0;
+}
+
+/// Helper extension to access localization strings easily
+extension ContextExtension on BuildContext {
+  AppLocalizations get l10n => AppLocalizations.of(this)!;
 }

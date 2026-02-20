@@ -9,13 +9,27 @@ import { BorrowLog, BorrowSession, LogStats, TransactionStatus } from '@/lib/typ
 export const LOGS_CACHE_KEY = 'borrow_logs'
 
 export const fetchLogs = async () => {
+    // Senior Dev: Implementing full identity resolution across all logs
+    // This fixes "Unknown Item" issues caused by incomplete mobile syncs
     const { data, error } = await supabase
         .from('borrow_logs')
-        .select('*')
+        .select(`
+            *,
+            inventory:inventory_id (
+                item_name
+            )
+        `)
         .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data as BorrowLog[]
+
+    // Resolution Logic: Priority = Log Name > Inventory Name > Fallback
+    return (data as any[]).map(log => ({
+        ...log,
+        item_name: (log.item_name && log.item_name !== 'Unknown Item')
+            ? log.item_name
+            : (log.inventory?.item_name || log.item_name || 'Unknown Item')
+    })) as BorrowLog[]
 }
 
 export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
@@ -125,6 +139,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         borrowed: logs.filter(l => l.status === 'borrowed').length,
         returned: logs.filter(l => l.status === 'returned').length,
         overdue: logs.filter(l => l.status === 'overdue').length,
+        pending: logs.filter(l => l.status === 'pending').length,
     }), [logs])
 
     const paginatedSessions = useMemo(() => {

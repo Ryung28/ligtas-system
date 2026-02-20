@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
+import '../../../core/design_system/app_theme.dart';
 
 class ScannerView extends StatefulWidget {
   final Function(String) onQrCodeDetected;
@@ -21,6 +23,7 @@ class ScannerView extends StatefulWidget {
 class _ScannerViewState extends State<ScannerView> {
   late MobileScannerController controller;
   bool _isProcessing = false;
+  bool _isTorchOn = false;
 
   @override
   void initState() {
@@ -28,6 +31,7 @@ class _ScannerViewState extends State<ScannerView> {
     controller = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
       facing: CameraFacing.back,
+      torchEnabled: false,
     );
   }
 
@@ -49,7 +53,7 @@ class _ScannerViewState extends State<ScannerView> {
         setState(() => _isProcessing = true);
         widget.onQrCodeDetected(barcode.rawValue!);
         
-        // Reset processing state after a delay to allow for the callback to finish
+        // Reset processing state after a delay
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
             setState(() => _isProcessing = false);
@@ -60,97 +64,179 @@ class _ScannerViewState extends State<ScannerView> {
     }
   }
 
+  void _toggleTorch() {
+    controller.toggleTorch();
+    setState(() => _isTorchOn = !_isTorchOn);
+    HapticFeedback.lightImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera view
+          // 1. Camera Feed
           MobileScanner(
             controller: controller,
             onDetect: _onDetect,
           ),
           
-          // Overlay with scan window
-          _buildScanOverlay(),
+          // 2. Dark Overlay with Cutout
+          CustomPaint(
+            painter: _ScannerOverlayPainter(
+              borderColor: AppTheme.primaryBlue,
+              borderRadius: 24,
+              borderLength: 40,
+              cutOutSize: 280,
+              overlayColor: Colors.black.withOpacity(0.7),
+            ),
+            child: Container(),
+          ),
           
-          // Animated "Scanning" Line
+          // 3. Animated "Laser" Pulse
           Center(
             child: Container(
-              width: 250,
-              height: 2,
+              width: 280,
+              height: 120, // Height for the fade
               decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.5),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
                 gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                   colors: [
-                    Colors.blue.withOpacity(0),
-                    Colors.blue,
-                    Colors.blue.withOpacity(0),
+                    AppTheme.primaryBlue.withOpacity(0),
+                    AppTheme.primaryBlue.withOpacity(0.5),
+                    AppTheme.primaryBlue.withOpacity(0),
                   ],
+                  stops: const [0.0, 0.5, 1.0],
                 ),
               ),
             )
             .animate(onPlay: (controller) => controller.repeat())
-            .moveY(begin: -125, end: 125, duration: 2.seconds, curve: Curves.easeInOut)
-            .fadeIn(duration: 500.ms),
+            .moveY(begin: -140, end: 140, duration: 2.5.seconds, curve: Curves.easeInOut)
+            .fadeIn(duration: 300.ms),
           ),
           
-          // Top bar with back button
+          // 4. Glass Controls (Top)
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.black26,
-                    child: IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: Colors.white),
-                    ),
+                  _GlassIconButton(
+                    icon: Icons.close_rounded,
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
-                  const Spacer(),
-                  CircleAvatar(
-                    backgroundColor: Colors.black26,
-                    child: IconButton(
-                      onPressed: () => controller.toggleTorch(),
-                      icon: const Icon(Icons.flash_off, color: Colors.white),
-                    ),
+                  _GlassIconButton(
+                    icon: _isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                    color: _isTorchOn ? AppTheme.warningAmber : Colors.white,
+                    onPressed: _toggleTorch,
                   ),
                 ],
               ),
             ),
           ),
           
-          // Processing indicator
+          // 5. Bottom Instructions (Glass Pill)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 100),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.overlayText ?? 'Scan Equipment Label',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const Gap(4),
+                        Text(
+                          'Align code within the frame',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
+          
+          // 6. Processing Overlay (Glass Dialog)
           if (_isProcessing)
             Container(
-              color: Colors.black87,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(
-                      color: Colors.blue,
-                      strokeWidth: 3,
-                    ).animate().scale(duration: 400.ms, curve: Curves.easeOut),
-                    const Gap(20),
-                    const Text(
-                      'Identifying Equipment...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ).animate().fadeIn(delay: 200.ms).moveY(begin: 10, end: 0),
-                  ],
+              color: Colors.black.withOpacity(0.6),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withOpacity(0.2),
+                          blurRadius: 32,
+                          spreadRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: CircularProgressIndicator(
+                            color: AppTheme.primaryBlue,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const Gap(24),
+                        const Text(
+                          'Identifying...',
+                          style: TextStyle(
+                            color: AppTheme.neutralGray900,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const Gap(8),
+                        Text(
+                          'Verifying equipment details',
+                          style: TextStyle(
+                            color: AppTheme.neutralGray600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack),
                 ),
               ),
             ),
@@ -158,50 +244,36 @@ class _ScannerViewState extends State<ScannerView> {
       ),
     );
   }
+}
 
-  Widget _buildScanOverlay() {
-    return Container(
-      decoration: ShapeDecoration(
-        shape: QrScannerOverlayShape(
-          borderColor: Colors.blue,
-          borderRadius: 20,
-          borderLength: 40,
-          borderWidth: 6,
-          cutOutSize: 250,
-          overlayColor: Colors.black.withOpacity(0.7),
-        ),
-      ),
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 80),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.overlayText ?? 'Scan LIGTAS QR Code',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Hold camera steady near the label',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 12,
-                ),
-              ),
-            ],
+class _GlassIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final Color color;
+
+  const _GlassIconButton({
+    required this.icon,
+    required this.onPressed,
+    this.color = Colors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: GestureDetector(
+          onTap: onPressed,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: Icon(icon, color: color, size: 24),
           ),
         ),
       ),
@@ -209,7 +281,8 @@ class _ScannerViewState extends State<ScannerView> {
   }
 }
 
-class QrScannerOverlayShape extends ShapeBorder {
+// Custom Painter for the Corner Brackets
+class _ScannerOverlayPainter extends CustomPainter {
   final Color borderColor;
   final double borderWidth;
   final Color overlayColor;
@@ -217,138 +290,87 @@ class QrScannerOverlayShape extends ShapeBorder {
   final double borderLength;
   final double cutOutSize;
 
-  const QrScannerOverlayShape({
-    this.borderColor = Colors.red,
-    this.borderWidth = 3.0,
-    this.overlayColor = const Color.fromRGBO(0, 0, 0, 80),
-    this.borderRadius = 0,
-    this.borderLength = 40,
-    this.cutOutSize = 250,
+  _ScannerOverlayPainter({
+    required this.borderColor,
+    this.borderWidth = 4.0,
+    required this.overlayColor,
+    required this.borderRadius,
+    required this.borderLength,
+    required this.cutOutSize,
   });
 
   @override
-  EdgeInsetsGeometry get dimensions => const EdgeInsets.all(10);
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+    final rect = Rect.fromLTWH(0, 0, width, height);
+    
+    final cutoutRect = Rect.fromCenter(
+      center: Offset(width / 2, height / 2),
+      width: cutOutSize,
+      height: cutOutSize,
+    );
 
-  @override
-  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
-    return Path()
-      ..fillType = PathFillType.evenOdd
-      ..addPath(getOuterPath(rect), Offset.zero);
-  }
-
-  @override
-  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    Path _getLeftTopPath(Rect rect) {
-      return Path()
-        ..moveTo(rect.left, rect.bottom)
-        ..lineTo(rect.left, rect.top + borderRadius)
-        ..quadraticBezierTo(rect.left, rect.top, rect.left + borderRadius, rect.top)
-        ..lineTo(rect.right, rect.top);
-    }
-
-    return _getLeftTopPath(rect)
-      ..lineTo(rect.right, rect.bottom)
-      ..lineTo(rect.left, rect.bottom)
-      ..lineTo(rect.left, rect.top);
-  }
-
-  @override
-  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
-    final width = rect.width;
-    final borderWidthSize = width / 2;
-    final height = rect.height;
-    final borderHeightSize = height / 2;
-    final cutOutWidth = cutOutSize < width ? cutOutSize : width - borderWidth;
-    final cutOutHeight = cutOutSize < height ? cutOutSize : height - borderWidth;
-
-    final backgroundPaint = Paint()
+    // 1. Draw Semi-Transparent Overlay with Cutout
+    final overlayPaint = Paint()
       ..color = overlayColor
       ..style = PaintingStyle.fill;
 
-    final boxPaint = Paint()
+    canvas.drawPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addRect(rect),
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(cutoutRect, Radius.circular(borderRadius))),
+      ),
+      overlayPaint,
+    );
+
+    // 2. Draw Glowing Corner Brackets
+    final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = borderWidth;
+      ..strokeWidth = borderWidth
+      ..strokeCap = StrokeCap.round;
 
-    final cutOutRect = Rect.fromLTWH(
-      borderWidthSize - cutOutWidth / 2,
-      borderHeightSize - cutOutHeight / 2,
-      cutOutWidth,
-      cutOutHeight,
-    );
+    final glowPaint = Paint()
+      ..color = borderColor.withOpacity(0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth + 4
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
-    canvas
-      ..saveLayer(
-        rect,
-        backgroundPaint,
-      )
-      ..drawRect(rect, backgroundPaint)
-      ..drawRRect(
-        RRect.fromRectAndRadius(
-          cutOutRect,
-          Radius.circular(borderRadius),
-        ),
-        backgroundPaint..blendMode = BlendMode.clear,
-      )
-      ..restore();
+    // Draw corners (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+    final path = Path();
+    
+    // Top-Left
+    path.moveTo(cutoutRect.left, cutoutRect.top + borderLength);
+    path.lineTo(cutoutRect.left, cutoutRect.top + borderRadius);
+    path.quadraticBezierTo(cutoutRect.left, cutoutRect.top, cutoutRect.left + borderRadius, cutoutRect.top);
+    path.lineTo(cutoutRect.left + borderLength, cutoutRect.top);
 
-    // Draw corner borders
-    final borderRect = RRect.fromRectAndRadius(
-      cutOutRect,
-      Radius.circular(borderRadius),
-    );
+    // Top-Right
+    path.moveTo(cutoutRect.right - borderLength, cutoutRect.top);
+    path.lineTo(cutoutRect.right - borderRadius, cutoutRect.top);
+    path.quadraticBezierTo(cutoutRect.right, cutoutRect.top, cutoutRect.right, cutoutRect.top + borderRadius);
+    path.lineTo(cutoutRect.right, cutoutRect.top + borderLength);
 
-    _drawCornerBorders(canvas, borderRect, boxPaint);
-  }
+    // Bottom-Right
+    path.moveTo(cutoutRect.right, cutoutRect.bottom - borderLength);
+    path.lineTo(cutoutRect.right, cutoutRect.bottom - borderRadius);
+    path.quadraticBezierTo(cutoutRect.right, cutoutRect.bottom, cutoutRect.right - borderRadius, cutoutRect.bottom);
+    path.lineTo(cutoutRect.right - borderLength, cutoutRect.bottom);
 
-  void _drawCornerBorders(Canvas canvas, RRect rect, Paint paint) {
-    // Top left
-    canvas.drawPath(
-      Path()
-        ..moveTo(rect.left, rect.top + borderLength)
-        ..lineTo(rect.left, rect.top + borderRadius)
-        ..quadraticBezierTo(rect.left, rect.top, rect.left + borderRadius, rect.top)
-        ..lineTo(rect.left + borderLength, rect.top),
-      paint,
-    );
+    // Bottom-Left
+    path.moveTo(cutoutRect.left + borderLength, cutoutRect.bottom);
+    path.lineTo(cutoutRect.left + borderRadius, cutoutRect.bottom);
+    path.quadraticBezierTo(cutoutRect.left, cutoutRect.bottom, cutoutRect.left, cutoutRect.bottom - borderRadius);
+    path.lineTo(cutoutRect.left, cutoutRect.bottom - borderLength);
 
-    // Top right
-    canvas.drawPath(
-      Path()
-        ..moveTo(rect.right - borderLength, rect.top)
-        ..lineTo(rect.right - borderRadius, rect.top)
-        ..quadraticBezierTo(rect.right, rect.top, rect.right, rect.top + borderRadius)
-        ..lineTo(rect.right, rect.top + borderLength),
-      paint,
-    );
-
-    // Bottom left
-    canvas.drawPath(
-      Path()
-        ..moveTo(rect.left, rect.bottom - borderLength)
-        ..lineTo(rect.left, rect.bottom - borderRadius)
-        ..quadraticBezierTo(rect.left, rect.bottom, rect.left + borderRadius, rect.bottom)
-        ..lineTo(rect.left + borderLength, rect.bottom),
-      paint,
-    );
-
-    // Bottom right
-    canvas.drawPath(
-      Path()
-        ..moveTo(rect.right - borderLength, rect.bottom)
-        ..lineTo(rect.right - borderRadius, rect.bottom)
-        ..quadraticBezierTo(rect.right, rect.bottom, rect.right, rect.bottom - borderRadius)
-        ..lineTo(rect.right, rect.bottom - borderLength),
-      paint,
-    );
+    // Draw Glow then Border
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, borderPaint);
   }
 
   @override
-  ShapeBorder scale(double t) {
-    return QrScannerOverlayShape(
-      borderColor: borderColor,
-      borderWidth: borderWidth,
-      overlayColor: overlayColor,
-    );
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

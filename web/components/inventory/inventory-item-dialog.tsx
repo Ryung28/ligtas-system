@@ -89,11 +89,14 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
 
             if (error) throw error
 
-            const { data: { publicUrl } } = supabase.storage
+            // Generate a signed URL that works for both public and private buckets
+            const { data: { signedUrl }, error: urlError } = await supabase.storage
                 .from('item-images')
-                .getPublicUrl(filePath)
+                .createSignedUrl(filePath, 60 * 60 * 24) // 24 hours expiry
 
-            setPreviewUrl(publicUrl)
+            if (urlError) throw urlError
+
+            setPreviewUrl(signedUrl)
             toast.success('Asset visual optimized & encoded')
         } catch (error: any) {
             console.error('Upload Error:', error)

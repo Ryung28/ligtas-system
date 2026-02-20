@@ -4,6 +4,8 @@ import '../services/cdrrmo_items_service.dart';
 import '../../../core/di/app_providers.dart';
 import '../../../core/errors/app_exceptions.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/local_storage/isar_service.dart';
+import 'dart:async';
 
 /// Repository interface for borrower operations (not admin)
 abstract class LoanRepository {
@@ -17,6 +19,7 @@ abstract class LoanRepository {
   Future<void> deleteLoan(String loanId); // Not used by borrowers
   Future<LoanStatistics> getLoanStatistics(); // User's stats only
   Stream<List<LoanModel>> watchActiveLoans(); // User's items stream
+  Future<void> syncMyBorrowedItems(); // Force sync remote -> Isar
 }
 
 /// Supabase implementation for borrower operations
@@ -29,21 +32,83 @@ class SupabaseLoanRepository implements LoanRepository {
   Future<List<LoanModel>> getMyBorrowedItems() async {
     try {
       final currentUserId = _getCurrentUserId();
+      final userEmail = _client.auth.currentUser?.email;
 
-      final response = await _client
-          .from('borrow_logs')
-          .select('*')
-          .eq('borrower_user_id', currentUserId)
-          .order('created_at', ascending: false);
+      var query = _client.from('borrow_logs').select('*');
+      
+      // Senior Dev: Only use OR if email is actually present to avoid syntax errors
+      if (userEmail != null && userEmail.isNotEmpty) {
+        query = query.or('borrower_user_id.eq.$currentUserId,borrower_email.eq.$userEmail');
+      } else {
+        query = query.eq('borrower_user_id', currentUserId);
+      }
 
-      return response
-          .map((data) => LoanModel.fromSupabase(data))
-          .toList();
+      final response = await query.order('created_at', ascending: false);
+      final list = response as List;
+      
+      print('SYSTEM: DB Fetch complete. Found ${list.length} records.');
+
+      // Senior Dev: Deep Identity Resolution Logic
+      final initialLoans = list.map((data) => LoanModel.fromSupabase(data as Map<String, dynamic>)).toList();
+      final processedItems = <LoanModel>[];
+      final unknownItemIds = <String>{};
+
+      for (var loan in initialLoans) {
+        if (loan.itemName.isEmpty || loan.itemName == 'Unknown Item') {
+           // Phase 1: Rapid Static Fallback
+           final staticItem = CdrrmoItemsService.findItem(loan.inventoryItemId);
+           if (staticItem != null) {
+             loan = loan.copyWith(itemName: staticItem.name, itemCode: staticItem.code);
+           } else {
+             // Mark for Phase 2: Remote Batch Resolution
+             unknownItemIds.add(loan.inventoryItemId);
+           }
+        }
+        processedItems.add(loan);
+      }
+
+      // Phase 2: Remote Batch Resolution (The "Senior" Optimizer)
+      if (unknownItemIds.isNotEmpty) {
+        try {
+          print('SYSTEM: Resolving ${unknownItemIds.length} unknown ghosts via Batch Query...');
+          
+          // We strictly check 'id' because 'code' column does not exist in inventory table
+          final numericIds = unknownItemIds.map((id) => int.tryParse(id)).whereType<int>().toList();
+          
+          if (numericIds.isNotEmpty) {
+             print('SYSTEM: Querying inventory IDs: $numericIds');
+             
+             final inventoryData = await _client
+                 .from('inventory')
+                 .select('id, item_name')
+                 .inFilter('id', numericIds);
+
+             final nameMap = {
+               for (var item in (inventoryData as List)) 
+                 item['id'].toString(): item['item_name'] as String,
+             };
+
+             // Apply resolutions
+             for (var i = 0; i < processedItems.length; i++) {
+               final loan = processedItems[i];
+               if ((loan.itemName.isEmpty || loan.itemName == 'Unknown Item') && nameMap.containsKey(loan.inventoryItemId)) {
+                 processedItems[i] = loan.copyWith(itemName: nameMap[loan.inventoryItemId]!);
+               }
+             }
+          } else {
+             print('SYSTEM: No valid numeric IDs found to resolve.');
+          }
+        } catch (e) {
+          print('SYSTEM: Batch resolution failed (non-critical): $e');
+        }
+      }
+
+      return processedItems;
     } on PostgrestException catch (e) {
+      print('SYSTEM ERROR: Postgrest failure: ${e.message}');
       throw DataException('Failed to fetch borrowed items: ${e.message}', code: e.code);
-    } on AuthException {
-      rethrow;
     } catch (e) {
+      print('SYSTEM ERROR: Unexpected fetch error: $e');
       throw DataException('Failed to fetch your borrowed items: $e');
     }
   }
@@ -114,38 +179,44 @@ class SupabaseLoanRepository implements LoanRepository {
   Future<LoanModel> createLoan(CreateLoanRequest request) async {
     try {
       final currentUserId = _client.auth.currentUser?.id;
-      if (currentUserId == null) {
-        throw LoanException('User not authenticated');
+      if (currentUserId == null) throw LoanException('User not authenticated');
+
+      // Priority 1: Use details provided in request
+      var itemName = request.itemName;
+      var itemCode = request.itemCode ?? request.inventoryItemId;
+      
+      // Safety: If somehow "Unknown" leaked in, try one last static lookup
+      if (itemName == 'Unknown Item' || itemName.isEmpty) {
+        final staticItem = CdrrmoItemsService.findItem(request.inventoryItemId);
+        if (staticItem != null) {
+          itemName = staticItem.name;
+          itemCode = staticItem.code;
+        }
       }
 
-      // Get current user profile for borrower info
-      final userProfile = await _client.auth.getUser();
-      final userEmail = userProfile.user?.email ?? '';
-
-      // Get item details from CDRRMO items service
-      final item = CdrrmoItemsService.findItem(request.inventoryItemId);
-      final itemName = item?.name ?? 'Unknown Item';
-      final itemCode = item?.code ?? request.inventoryItemId;
-
       // Submit borrow request (admin will approve)
+      // Senior Dev: Use UTC for database inserts to ensure timezone consistency regardless of device location
+      final now = DateTime.now().toUtc().toIso8601String();
       final borrowData = {
+        'inventory_id': request.inventoryId,
         'inventory_item_id': request.inventoryItemId,
-        'item_name': itemName, // Real item name from CDRRMO service
-        'item_code': itemCode, // Real item code
-        'quantity': request.quantityBorrowed, // ADDED: Match DB not-null constraint
+        'item_name': itemName, 
+        'item_code': itemCode,
+        'quantity': request.quantityBorrowed,
         'quantity_borrowed': request.quantityBorrowed,
         'borrower_name': request.borrowerName,
         'borrower_contact': request.borrowerContact,
-        'borrower_email': request.borrowerEmail.isNotEmpty ? request.borrowerEmail : userEmail,
+        'borrower_email': request.borrowerEmail.isNotEmpty ? request.borrowerEmail : (_client.auth.currentUser?.email ?? ''),
         'borrower_organization': request.borrowerOrganization,
         'borrower_user_id': currentUserId,
         'borrowed_by': currentUserId,
         'purpose': request.purpose,
-        'borrow_date': DateTime.now().toIso8601String(),
-        'expected_return_date': request.expectedReturnDate.toIso8601String(),
+        'transaction_type': 'borrow',
+        'borrow_date': now,
+        'expected_return_date': request.expectedReturnDate.toUtc().toIso8601String(),
         'status': 'pending', // Admin needs to approve
         'notes': request.notes,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': now,
       };
 
       final response = await _client
@@ -154,8 +225,11 @@ class SupabaseLoanRepository implements LoanRepository {
           .select()
           .single();
 
+      print('SYSTEM: Insert Successful. Raw DB Entry: $response');
+
       return LoanModel.fromSupabase(response);
     } catch (e) {
+      print('SYSTEM ERROR: Submit failed: $e');
       throw LoanException('Failed to submit borrow request: $e');
     }
   }
@@ -199,19 +273,81 @@ class SupabaseLoanRepository implements LoanRepository {
 
   @override
   Stream<List<LoanModel>> watchActiveLoans() {
-    try {
-      final currentUserId = _getCurrentUserId();
+    // Senior Architect: Upgraded to StreamController for precise resource management
+    // and to enable the requested "Live Refresh" capability.
+    late StreamController<List<LoanModel>> controller;
+    Timer? periodicRefreshTimer;
+    StreamSubscription? isarSubscription;
+    StreamSubscription? supabaseSubscription;
 
-      return _client
-          .from('borrow_logs')
-          .stream(primaryKey: ['id'])
-          .eq('borrower_user_id', currentUserId)
-          .order('created_at', ascending: false)
-          .map((data) => data
-              .map((item) => LoanModel.fromSupabase(item))
-              .toList());
+    controller = StreamController<List<LoanModel>>(
+      onListen: () {
+        // 1. Local DB Listener (The Single Source of Truth)
+        // We emit local data immediately so the UI is offline-ready.
+        isarSubscription = IsarService.watchLoans().listen(
+          (data) => controller.add(data),
+          onError: (e) => controller.addError(e),
+        );
+
+        // Define the robust sync function (Deep Identity Resolution)
+        Future<void> runRobustSync() async {
+          try {
+            // This calls getMyBorrowedItems() which handles the "Unknown Item" resolution
+            // and then saves to Isar, triggering the listener above.
+            await syncMyBorrowedItems();
+          } catch (e) {
+            // Silent fail on connection errors to keep stream alive
+            print('SYSTEM: Background sync warning: $e'); 
+          }
+        }
+
+        // 2. Immediate Startup Sync
+        runRobustSync();
+
+        // 3. Periodic "Heartbeat" Refresh (The "Small Stream" Fix)
+        // Every 30 seconds, we check for updates to ensure strictly fresh data
+        // and resolve any lingering "Unknown Items".
+        periodicRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+          runRobustSync();
+        });
+
+        // 4. Real-time Remote Listener
+        // Triggers a full resolution sync on any change, rather than blindly saving raw logs.
+        try {
+          final currentUserId = _getCurrentUserId();
+          supabaseSubscription = _client
+              .from('borrow_logs')
+              .stream(primaryKey: ['id'])
+              .eq('borrower_user_id', currentUserId)
+              .listen((data) {
+                print('SYSTEM: Realtime change detected. Triggering resolution sync...');
+                runRobustSync();
+              }, onError: (e) => print('SYSTEM: Realtime subscription error: $e'));
+        } catch (e) {
+          print('SYSTEM: Failed to setup realtime listener: $e');
+        }
+      },
+      onCancel: () {
+        // Strict Resource Cleanup
+        periodicRefreshTimer?.cancel();
+        isarSubscription?.cancel();
+        supabaseSubscription?.cancel();
+        print('SYSTEM: watchActiveLoans stream disposed.');
+      },
+    );
+
+    return controller.stream;
+  }
+
+  @override
+  Future<void> syncMyBorrowedItems() async {
+    try {
+      final snapshot = await getMyBorrowedItems();
+      await IsarService.saveLoans(snapshot);
+      print('SYSTEM: Manual sync forced. Updated ${snapshot.length} items.');
     } catch (e) {
-      return Stream.error(ExceptionHandler.fromException(e as Exception));
+      print('SYSTEM ERROR: Manual sync failed: $e');
+      throw DataException('Refresh failed: $e');
     }
   }
 }

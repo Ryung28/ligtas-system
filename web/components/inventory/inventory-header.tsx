@@ -14,8 +14,12 @@ interface InventoryHeaderProps {
 export function InventoryHeader({ lastUpdated, isLoading, onRefresh }: InventoryHeaderProps) {
     return (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200/60 p-3 14in:p-4 rounded-xl shadow-sm">
-            <div>
-                <h1 className="text-xl 14in:text-2xl font-bold tracking-tight text-gray-900 font-heading">
+            <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1">
+                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Equipment Registry</span>
+                </div>
+                <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic leading-none">
                     Inventory
                 </h1>
             </div>

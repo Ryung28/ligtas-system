@@ -108,7 +108,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 {/* LOGISTICS SECTION */}
                 <div className="space-y-1.5">
                     <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Logistics & Ops</p>
-                    {navItems.filter(i => ['Inventory', 'Borrow/Return Logs', 'Print Reports'].includes(i.label)).map((item) => (
+                    {navItems.filter(i => ['Inventory', 'Pending Requests', 'Borrow/Return Logs', 'Print Reports'].includes(i.label)).map((item) => (
                         <SidebarItem
                             key={item.href}
                             item={item}
@@ -170,8 +170,12 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     )
 }
 
+import { usePendingRequests } from '@/hooks/use-pending-requests'
+
 function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: boolean, onNavigate?: () => void }) {
     const Icon = item.icon
+    const { requests } = usePendingRequests()
+    const pendingCount = item.label === 'Pending Requests' ? requests.length : 0
 
     return (
         <Link
@@ -198,7 +202,15 @@ function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: bool
         >
             <Icon className={cn('h-4 w-4 14in:h-5 14in:w-5 flex-shrink-0 transition-colors', active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600')} />
             <span className="truncate">{item.label}</span>
-            {active && (
+
+            {/* LIVE NOTIFICATION BADGE (Senior Dev UX) */}
+            {pendingCount > 0 && (
+                <span className="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg animate-bounce border-2 border-white">
+                    {pendingCount}
+                </span>
+            )}
+
+            {active && pendingCount === 0 && (
                 <div className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/40 blur-[1px]" />
             )}
         </Link>

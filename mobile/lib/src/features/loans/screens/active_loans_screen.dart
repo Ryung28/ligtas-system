@@ -1,16 +1,22 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/design_system/app_spacing.dart';
+
 import '../../../core/design_system/app_theme.dart';
-import '../../../core/design_system/components/app_card.dart';
+import '../../../core/design_system/widgets/atmospheric_background.dart';
 import '../models/loan_model.dart';
 import '../providers/loan_providers.dart';
-import '../widgets/loan_card.dart';
-import '../widgets/loan_statistics_card.dart';
-import '../widgets/loan_search_bar.dart';
+import '../widgets/loan_card_glass.dart';
+import '../widgets/loan_details_sheet.dart';
+import '../widgets/loan_empty_state.dart';
+import '../models/loan_filter.dart';
+import '../providers/loan_filter_provider.dart';
+import '../widgets/loan_list_skeleton.dart';
+import '../../navigation/providers/navigation_provider.dart';
 
 class ActiveLoansScreen extends ConsumerStatefulWidget {
   const ActiveLoansScreen({super.key});
@@ -19,16 +25,20 @@ class ActiveLoansScreen extends ConsumerStatefulWidget {
   ConsumerState<ActiveLoansScreen> createState() => _ActiveLoansScreenState();
 }
 
-class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen>
-    with TickerProviderStateMixin {
+class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
   late TabController _tabController;
+  String _searchQuery = '';
+  int _selectedTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      setState(() => _selectedTabIndex = _tabController.index);
+    });
   }
 
   @override
@@ -41,473 +51,553 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.neutralGray50,
-      appBar: AppBar(
-        title: const Text('My Borrowed Items'),
-        actions: [
-          IconButton(
-            onPressed: () => _refreshData(),
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+      backgroundColor: const Color(0xFFF5F5F7),
+      body: Stack(
+        children: [
+          const AtmosphericBackground(),
+          RefreshIndicator(
+            onRefresh: _handleRefresh,
+            displacement: 100,
+            color: AppTheme.primaryBlue,
+            backgroundColor: Colors.white,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              slivers: [
+                // 1. Header Title (Matching Inventory)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 64, 24, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'My Items',
+                          style: TextStyle(
+                            fontFamily: 'SF Pro Display',
+                            fontWeight: FontWeight.w900,
+                            fontSize: 34,
+                            color: AppTheme.neutralGray900.withValues(alpha: 0.9),
+                            letterSpacing: -1.5,
+                          ),
+                        ),
+                        _buildStatsBadge(),
+                      ],
+                    ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0),
+                  ),
+                ),
+
+                // 2. Tab Section
+                _buildTabSection(),
+
+                // 3. Filter & Sort Section
+                _buildFilterSection(),
+
+                // 4. Section Info Header
+                _buildSectionHeader(),
+
+                // 5. Dynamic List Content
+                _buildSliverLoanList(),
+              ],
+            ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Active', icon: Icon(Icons.schedule_rounded)),
-            Tab(text: 'Overdue', icon: Icon(Icons.warning_rounded)),
-            Tab(text: 'History', icon: Icon(Icons.history_rounded)),
+      ),
+    );
+  }
+
+  Widget _buildFilterSection() {
+    final filter = ref.watch(loanFilterProvider);
+    
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      sliver: SliverToBoxAdapter(
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    setState(() => _searchQuery = val);
+                    ref.read(loanFilterProvider.notifier).updateQuery(val);
+                  },
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                  decoration: InputDecoration(
+                    hintText: 'Search items...',
+                    hintStyle: TextStyle(color: const Color(0xFF64748B).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
+                    prefixIcon: Icon(Icons.search_rounded, color: const Color(0xFF64748B).withValues(alpha: 0.6), size: 18),
+                    suffixIcon: _searchController.text.isNotEmpty 
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF64748B)),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                            ref.read(loanFilterProvider.notifier).updateQuery('');
+                          },
+                        )
+                      : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ),
+            const Gap(10),
+            _buildSortPill(filter.sortBy),
+          ],
+        ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+      ),
+    );
+  }
+
+  Widget _buildSortPill(LoanSortOption currentSort) {
+    String label = 'NEWEST';
+    IconData icon = Icons.sort_rounded;
+    if (currentSort == LoanSortOption.oldest) {
+      label = 'OLDEST';
+      icon = Icons.history_rounded;
+    }
+    if (currentSort == LoanSortOption.alphabetical) {
+      label = 'A-Z';
+      icon = Icons.sort_by_alpha_rounded;
+    }
+
+    return PopupMenuButton<LoanSortOption>(
+      initialValue: currentSort,
+      onSelected: (sort) {
+        HapticFeedback.lightImpact();
+        ref.read(loanFilterProvider.notifier).updateSort(sort);
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: LoanSortOption.newest, child: Text('Newest First')),
+        const PopupMenuItem(value: LoanSortOption.oldest, child: Text('Oldest First')),
+        const PopupMenuItem(value: LoanSortOption.alphabetical, child: Text('Alphabetical')),
+      ],
+      offset: const Offset(0, 54),
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppTheme.primaryBlue),
+            const Gap(8),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppTheme.primaryBlue,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Statistics and Search Section
-          Container(
+    );
+  }
+
+
+  SliverToBoxAdapter _buildTabSection() {
+    final pendingCount = ref.watch(myPendingItemsProvider).length;
+    final activeCount = ref.watch(myActiveItemsProvider).length;
+    final overdueCount = ref.watch(myOverdueItemsProvider).length;
+    final historyCount = ref.watch(myReturnedItemsProvider).length;
+
+    final Widget tabContent = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: Container(
+        height: 54, 
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE5E5EA).withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          indicator: BoxDecoration(
             color: Colors.white,
-            padding: AppSpacing.screenPaddingAll,
-            child: Column(
-              children: [
-                // Statistics Cards
-                const LoanStatisticsCard(),
-                const Gap(AppSpacing.md),
-                
-                // Search Bar
-                LoanSearchBar(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
-                  onClear: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          labelColor: Colors.black,
+          unselectedLabelColor: Colors.grey[600],
+          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+          dividerColor: Colors.transparent,
+          indicatorSize: TabBarIndicatorSize.tab,
+          labelPadding: EdgeInsets.zero,
+          tabs: [
+            _buildTabWithBadge('Requests', pendingCount, 0, color: AppTheme.warningAmber),
+            _buildTabWithBadge('Active', activeCount, 1, color: AppTheme.primaryBlue),
+            _buildTabWithBadge('Overdue', overdueCount, 2, color: AppTheme.errorRed),
+            _buildTabWithBadge('History', historyCount, 3, color: AppTheme.neutralGray600),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 500.ms, delay: 100.ms);
+
+    return SliverToBoxAdapter(child: tabContent);
+  }
+
+  Widget _buildTabWithBadge(String label, int count, int index, {required Color color}) {
+    final isSelected = _selectedTabIndex == index;
+    
+    return Tab(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(label),
+          if (count > 0) ...[
+            const Gap(4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isSelected ? 1.0 : 0.6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
                 ),
-              ],
+              ),
             ),
-          ),
-          
-          // Loans List
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildActiveLoansTab(),
-                _buildOverdueLoansTab(),
-                _buildHistoryTab(),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildActiveLoansTab() {
-    final activeItems = ref.watch(filteredMyActiveItemsProvider(_searchQuery));
+  Widget _buildSliverLoanList() {
+    final type = ['pending', 'active', 'overdue', 'history'][_selectedTabIndex];
     final myBorrowedItemsAsync = ref.watch(myBorrowedItemsProvider);
 
     return myBorrowedItemsAsync.when(
       data: (_) {
-        if (activeItems.isEmpty) {
-          return AppEmptyState(
-            icon: _searchQuery.isEmpty 
-                ? Icons.check_circle_outline_rounded 
-                : Icons.search_off_rounded,
-            title: _searchQuery.isEmpty ? 'No active borrowed items' : 'No items found',
-            subtitle: _searchQuery.isEmpty
-                ? 'You haven\'t borrowed any items yet'
-                : 'Try a different search term',
-            action: _searchQuery.isEmpty
-                ? ElevatedButton.icon(
-                    onPressed: () => context.push('/loans/create'),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Borrow Item'),
-                  )
-                : null,
+        final List<LoanModel> items = _getFilteredItems(type);
+        if (items.isEmpty) {
+          return SliverFillRemaining(
+            hasScrollBody: false,
+            child: LoanEmptyState(statusType: type),
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () async => ref.read(myBorrowedItemsProvider.notifier).refresh(),
-          child: ListView.builder(
-            padding: AppSpacing.screenPaddingAll,
-            itemCount: activeItems.length,
-            itemBuilder: (context, index) {
-              return LoanCard(
-                loan: activeItems[index],
-                onTap: () => _showLoanDetails(activeItems[index]),
-                animationDelay: Duration(milliseconds: index * 100),
-              );
-            },
+        return SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final loan = items[index];
+                final isReturnable = type == 'active' || type == 'overdue';
+                final isCancellable = type == 'pending';
+
+                Widget card = LoanCardGlass(
+                  loan: loan,
+                  onTap: () => _showLoanDetails(context, loan),
+                ).animate().fadeIn(duration: 400.ms, delay: (50 * index).ms).scale(
+                      begin: const Offset(0.95, 0.95),
+                      duration: 400.ms,
+                      curve: Curves.easeOutBack,
+                    );
+
+                Widget content = card;
+
+                if (isReturnable || isCancellable) {
+                  content = Dismissible(
+                    key: Key('loan_${loan.id}'),
+                    direction: DismissDirection.endToStart,
+                    onUpdate: (details) {
+                      if (details.reached && !details.previousReached) {
+                        HapticFeedback.mediumImpact();
+                      }
+                    },
+                    confirmDismiss: (direction) async {
+                      return await _confirmAction(
+                          context, isReturnable ? 'Return' : 'Cancel');
+                    },
+                    onDismissed: (direction) {
+                      if (isReturnable) {
+                        // TODO: Implement return logic
+                      } else if (isCancellable) {
+                        // TODO: Implement cancel logic
+                      }
+                    },
+                    background: Container(
+                      decoration: BoxDecoration(
+                        color: isReturnable
+                            ? AppTheme.successGreen
+                            : AppTheme.errorRed,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isReturnable
+                                ? Icons.assignment_return_rounded
+                                : Icons.cancel_rounded,
+                            color: Colors.white,
+                          ),
+                          const Gap(4),
+                          Text(
+                            isReturnable ? 'Return' : 'Cancel',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: card,
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: content,
+                );
+              },
+              childCount: items.length,
+            ),
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => AppEmptyState(
-        icon: Icons.error_outline_rounded,
-        title: 'Error loading borrowed items',
-        subtitle: error.toString(),
-        action: ElevatedButton.icon(
-          onPressed: () => ref.read(myBorrowedItemsProvider.notifier).refresh(),
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Retry'),
-        ),
+      loading: () => const SliverFillRemaining(
+        child: LoanListSkeleton(),
+      ),
+      error: (err, stack) => const SliverFillRemaining(
+        child: Center(child: Text("Error loading items")),
       ),
     );
   }
 
-  Widget _buildOverdueLoansTab() {
-    final overdueItems = ref.watch(filteredMyOverdueItemsProvider(_searchQuery));
-    final myBorrowedItemsAsync = ref.watch(myBorrowedItemsProvider);
-
-    return myBorrowedItemsAsync.when(
-      data: (_) {
-        if (overdueItems.isEmpty) {
-          return AppEmptyState(
-            icon: _searchQuery.isEmpty 
-                ? Icons.check_circle_outline_rounded 
-                : Icons.search_off_rounded,
-            title: _searchQuery.isEmpty ? 'No overdue items' : 'No overdue items found',
-            subtitle: _searchQuery.isEmpty
-                ? 'All your borrowed items are on time'
-                : 'Try a different search term',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async => ref.read(myBorrowedItemsProvider.notifier).refresh(),
-          child: ListView.builder(
-            padding: AppSpacing.screenPaddingAll,
-            itemCount: overdueItems.length,
-            itemBuilder: (context, index) {
-              return LoanCard(
-                loan: overdueItems[index],
-                onTap: () => _showLoanDetails(overdueItems[index]),
-                animationDelay: Duration(milliseconds: index * 100),
-                isOverdue: true,
-              );
-            },
-          ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => AppEmptyState(
-        icon: Icons.error_outline_rounded,
-        title: 'Error loading overdue items',
-        subtitle: error.toString(),
-        action: ElevatedButton.icon(
-          onPressed: () => ref.read(myBorrowedItemsProvider.notifier).refresh(),
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Retry'),
-        ),
-      ),
-    );
+  List<LoanModel> _getFilteredItems(String type) {
+    switch (type) {
+      case 'pending':
+        return ref.watch(myPendingItemsProvider);
+      case 'active':
+        return ref.watch(myActiveItemsProvider);
+      case 'overdue':
+        return ref.watch(myOverdueItemsProvider);
+      case 'history':
+        return ref.watch(myReturnedItemsProvider);
+      default:
+        return [];
+    }
   }
 
-  Widget _buildHistoryTab() {
-    final returnedItems = ref.watch(filteredMyReturnedItemsProvider(_searchQuery));
-    final myBorrowedItemsAsync = ref.watch(myBorrowedItemsProvider);
-
-    return myBorrowedItemsAsync.when(
-      data: (_) {
-        if (returnedItems.isEmpty) {
-          return AppEmptyState(
-            icon: _searchQuery.isEmpty 
-                ? Icons.history_rounded 
-                : Icons.search_off_rounded,
-            title: _searchQuery.isEmpty ? 'No borrow history' : 'No history found',
-            subtitle: _searchQuery.isEmpty
-                ? 'Your borrow history will appear here'
-                : 'Try a different search term',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async => ref.read(myBorrowedItemsProvider.notifier).refresh(),
-          child: ListView.builder(
-            padding: AppSpacing.screenPaddingAll,
-            itemCount: returnedItems.length,
-            itemBuilder: (context, index) {
-              return LoanCard(
-                loan: returnedItems[index],
-                onTap: () => _showLoanDetails(returnedItems[index]),
-                animationDelay: Duration(milliseconds: index * 100),
-                showHistory: true,
-              );
-            },
-          ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => AppEmptyState(
-        icon: Icons.error_outline_rounded,
-        title: 'Error loading history',
-        subtitle: error.toString(),
-        action: ElevatedButton.icon(
-          onPressed: () => ref.read(myBorrowedItemsProvider.notifier).refresh(),
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Retry'),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _refreshData() async {
-    ref.read(myBorrowedItemsProvider.notifier).refresh();
-  }
-
-  void _showLoanDetails(LoanModel loan) {
-    showModalBottomSheet(
+  void _showLoanDetails(BuildContext context, LoanModel loan) async {
+    // Senior Dev: Suppress the floating dock to prevent UI overlap and focus the user on the details
+    ref.read(isDockSuppressedProvider.notifier).state = true;
+    
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => LoanDetailsBottomSheet(loan: loan),
+      builder: (context) => LoanDetailsSheet(loan: loan),
     );
-  }
-}
-
-/// Bottom sheet for loan details
-class LoanDetailsBottomSheet extends ConsumerWidget {
-  final LoanModel loan;
-
-  const LoanDetailsBottomSheet({
-    super.key,
-    required this.loan,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-      ),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => Container(
-          padding: AppSpacing.screenPaddingAll,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.neutralGray300,
-                    borderRadius: AppRadius.allSm,
-                  ),
-                ),
-              ),
-              
-              const Gap(AppSpacing.lg),
-              
-              // Header
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          loan.itemName,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const Gap(AppSpacing.xs),
-                        Text(
-                          'Code: ${loan.itemCode}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.neutralGray600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildStatusChip(loan.status, loan.daysOverdue > 0),
-                ],
-              ),
-              
-              const Gap(AppSpacing.lg),
-              
-              // Details
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailSection('Borrower Information', [
-                        _buildDetailRow(Icons.person_rounded, 'Name', loan.borrowerName),
-                        _buildDetailRow(Icons.phone_rounded, 'Contact', loan.borrowerContact),
-                        if (loan.borrowerEmail.isNotEmpty)
-                          _buildDetailRow(Icons.email_rounded, 'Email', loan.borrowerEmail),
-                      ]),
-                      
-                      const Gap(AppSpacing.lg),
-                      
-                      _buildDetailSection('Loan Information', [
-                        _buildDetailRow(Icons.inventory_rounded, 'Quantity', '${loan.quantityBorrowed}'),
-                        _buildDetailRow(Icons.description_rounded, 'Purpose', loan.purpose),
-                        _buildDetailRow(Icons.calendar_today_rounded, 'Borrow Date', 
-                          _formatDate(loan.borrowDate)),
-                        _buildDetailRow(Icons.event_rounded, 'Expected Return', 
-                          _formatDate(loan.expectedReturnDate)),
-                        if (loan.actualReturnDate != null)
-                          _buildDetailRow(Icons.check_circle_rounded, 'Actual Return', 
-                            _formatDate(loan.actualReturnDate!)),
-                      ]),
-                      
-                      if (loan.notes?.isNotEmpty == true) ...[
-                        const Gap(AppSpacing.lg),
-                        _buildDetailSection('Notes', [
-                          Text(
-                            loan.notes!,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ]),
-                      ],
-                      
-                      if (loan.returnNotes?.isNotEmpty == true) ...[
-                        const Gap(AppSpacing.lg),
-                        _buildDetailSection('Return Notes', [
-                          Text(
-                            loan.returnNotes!,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ]),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Action buttons - Remove admin features for borrowers
-              if (loan.status == LoanStatus.active) ...[
-                const Gap(AppSpacing.lg),
-                Container(
-                  padding: AppSpacing.allMd,
-                  decoration: BoxDecoration(
-                    color: AppTheme.warningAmber.withOpacity(0.1),
-                    borderRadius: AppRadius.cardRadius,
-                    border: Border.all(
-                      color: AppTheme.warningAmber.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: AppTheme.warningAmber,
-                        size: AppSizing.iconSm,
-                      ),
-                      const Gap(AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Please return this item to CDRRMO office by the expected return date.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.neutralGray700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    )
-        .animate()
-        .slideY(begin: 1, duration: const Duration(milliseconds: 300), curve: Curves.easeOut)
-        .fadeIn(duration: const Duration(milliseconds: 200));
-  }
-
-  Widget _buildStatusChip(LoanStatus status, bool isOverdue) {
-    if (isOverdue) {
-      return AppStatusChip.error('OVERDUE', icon: Icons.warning_rounded);
-    }
     
-    switch (status) {
-      case LoanStatus.active:
-        return AppStatusChip.warning('ACTIVE', icon: Icons.schedule_rounded);
-      case LoanStatus.returned:
-        return AppStatusChip.success('RETURNED', icon: Icons.check_circle_rounded);
-      case LoanStatus.overdue:
-        return AppStatusChip.error('OVERDUE', icon: Icons.warning_rounded);
-      case LoanStatus.cancelled:
-        return AppStatusChip.info('CANCELLED', icon: Icons.cancel_rounded);
-    }
+    // Restore dock behavior after the modal is dismissed
+    ref.read(isDockSuppressedProvider.notifier).state = false;
   }
 
-  Widget _buildDetailSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.neutralGray900,
+  Future<bool> _confirmAction(BuildContext context, String action) async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Confirm $action'),
+        content: Text('Are you sure you want to $action this item?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-        ),
-        const Gap(AppSpacing.sm),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: AppSizing.iconSm,
-            color: AppTheme.neutralGray600,
-          ),
-          const Gap(AppSpacing.sm),
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: AppTheme.neutralGray700,
-              ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: action == 'Return' ? AppTheme.successGreen : AppTheme.errorRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppTheme.neutralGray900,
-              ),
-            ),
+            child: Text(action),
           ),
         ],
       ),
+    ) ?? false;
+  }
+
+  Future<void> _handleRefresh() async {
+    try {
+      HapticFeedback.mediumImpact();
+      await ref.read(loanRepositoryProvider).syncMyBorrowedItems();
+      if (mounted) {
+        _showTopNotification(context, 'Borrowed items successfully updated');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refresh failed: $e'),
+            backgroundColor: AppTheme.errorRed,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showTopNotification(BuildContext context, String message) {
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 60,
+        left: 24,
+        right: 24,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                    ),
+                    const Gap(12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ).animate().slideY(begin: -1.5, end: 0, duration: 500.ms, curve: Curves.easeOutBack).fadeOut(delay: 2500.ms, duration: 400.ms),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+    Future.delayed(const Duration(milliseconds: 3500), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
+  }
+
+  Widget _buildSectionHeader() {
+    final type = ['pending', 'active', 'overdue', 'history'][_selectedTabIndex];
+    final items = _getFilteredItems(type);
+    
+    String label = 'CURRENT STATUS';
+    if (type == 'pending') label = 'PENDING APPROVAL';
+    if (type == 'active') label = 'ACTIVE DEPLOYMENTS';
+    if (type == 'overdue') label = 'URGENT ATTENTION';
+    if (type == 'history') label = 'TRANSACTION LOGS';
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      sliver: SliverToBoxAdapter(
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 16,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Gap(12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.neutralGray900.withValues(alpha: 0.6),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${items.length} ${items.length == 1 ? 'ITEM' : 'ITEMS'}',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.neutralGray900.withValues(alpha: 0.4),
+              ),
+            ),
+          ],
+        ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+      ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  void _callBorrower(String phoneNumber) {
-    // TODO: Implement phone call functionality
-    // This would typically use url_launcher to make a phone call
+  Widget _buildStatsBadge() {
+    // Badge removed - returning empty SizedBox
+    return const SizedBox.shrink();
   }
 }

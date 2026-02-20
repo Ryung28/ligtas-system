@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import '../../../core/design_system/app_spacing.dart';
 import '../../../core/design_system/app_theme.dart';
-import '../../../core/design_system/components/app_card.dart';
 import '../providers/loan_providers.dart';
 
-/// Statistics card showing loan overview
+/// Premium statistics card showing loan overview - clean design
 class LoanStatisticsCard extends ConsumerWidget {
   const LoanStatisticsCard({super.key});
 
@@ -98,7 +97,7 @@ class LoanStatisticsCard extends ConsumerWidget {
               ),
             ),
             IconButton(
-              onPressed: () => ref.read(myBorrowedItemsProvider.notifier).refresh(),
+              onPressed: () => ref.invalidate(myBorrowedItemsProvider),
               icon: Icon(
                 Icons.refresh_rounded,
                 color: AppTheme.errorRed,
@@ -121,10 +120,10 @@ class LoanStatisticsCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.08),
         borderRadius: AppRadius.cardRadius,
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withOpacity(0.15),
           width: 1,
         ),
       ),

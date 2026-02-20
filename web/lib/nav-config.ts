@@ -30,6 +30,11 @@ export const navItems: NavItem[] = [
         icon: Package,
     },
     {
+        label: 'Pending Requests',
+        href: '/dashboard/approvals',
+        icon: ClipboardList,
+    },
+    {
         label: 'Borrow/Return Logs',
         href: '/dashboard/logs',
         icon: ClipboardList,

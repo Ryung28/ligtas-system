@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:mobile/src/generated/app_localizations.dart';
 
 import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:mobile/src/features/dashboard/screens/dashboard_screen.dart';
@@ -17,7 +20,10 @@ import 'package:mobile/src/features/inventory/screens/inventory_screen.dart';
 import 'package:mobile/src/features/notifications/screens/notifications_screen.dart';
 import 'package:mobile/src/features/auth/screens/login_screen.dart';
 import 'package:mobile/src/features/auth/screens/register_screen.dart';
+import 'package:mobile/src/features/auth/screens/pending_access_screen.dart';
+import 'package:mobile/src/features/auth/screens/access_denied_screen.dart';
 import 'package:mobile/src/features/auth/providers/auth_provider.dart';
+import 'package:mobile/src/features/loans/screens/requests_screen.dart';
 import 'package:mobile/src/features/scanner/models/qr_payload.dart';
 import 'package:mobile/src/features/scanner/widgets/scan_result_sheet.dart';
 
@@ -26,6 +32,7 @@ class LigtasApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // RouterProvider now maintains stability across auth changes
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -33,24 +40,75 @@ class LigtasApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
+      localizationsDelegates: [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('tl'), // Tagalog
+      ],
     );
   }
 }
 
+// Ensure GoRouter is not rebuilt on auth state changes
+// by reading the provider inside the closure and using refreshListenable
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  // Use read to avoid unnecessary rebuilds of the router instantiation itself
+  final authNotifier = ref.read(authProvider.notifier);
 
   return GoRouter(
     initialLocation: '/splash',
+    refreshListenable: GoRouterRefreshStream(authNotifier.stream),
     redirect: (context, state) {
-      final isLoggedIn = authState.value != null;
-      final isLoggingIn = state.uri.path == '/login' || 
-                         state.uri.path == '/register' || 
-                         state.uri.path == '/splash' ||
-                         state.uri.path == '/intro';
+      // Access the value directly from the provider without watching it
+      // This allows redirect to be called by refreshListenable
+      final authState = ref.read(authProvider);
+      final user = authState.value;
+      final isLoggedIn = user != null;
+      final isPublicRoute = state.uri.path == '/login' || 
+                           state.uri.path == '/register' || 
+                           state.uri.path == '/splash' ||
+                           state.uri.path == '/intro';
 
-      if (!isLoggedIn && !isLoggingIn) return '/login';
-      if (isLoggedIn && isLoggingIn) return '/dashboard';
+      // Not logged in - redirect to login
+      if (!isLoggedIn && !isPublicRoute) {
+        return '/login';
+      }
+
+      // Logged in but on public route
+      if (isLoggedIn && isPublicRoute) {
+        // Check user status and redirect accordingly
+        if (user.isPending) {
+          return '/pending';
+        } else if (user.isSuspended) {
+          return '/denied';
+        } else if (user.isActive) {
+          return '/dashboard';
+        }
+      }
+
+      // Logged in - check status for protected routes
+      if (isLoggedIn && !isPublicRoute) {
+        final isStatusRoute = state.uri.path == '/pending' || 
+                             state.uri.path == '/denied';
+        
+        if (user.isPending && state.uri.path != '/pending') {
+          return '/pending';
+        }
+        
+        if (user.isSuspended && state.uri.path != '/denied') {
+          return '/denied';
+        }
+        
+        // User is active but on status route - redirect to dashboard
+        if (user.isActive && isStatusRoute) {
+          return '/dashboard';
+        }
+      }
       
       return null;
     },
@@ -63,10 +121,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/intro',
         builder: (context, state) => const ModernIntroCards(),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login', 
+        builder: (context, state) => const LoginScreen()
+      ),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/pending',
+        builder: (context, state) => const PendingAccessScreen(),
+      ),
+      GoRoute(
+        path: '/denied',
+        builder: (context, state) => const AccessDeniedScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainScreen(
@@ -99,6 +168,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
           ),
+          GoRoute(
+            path: '/requests',
+            builder: (context, state) => const RequestsScreen(),
+          ),
         ],
       ),
       GoRoute(
@@ -117,6 +190,22 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+// Utility to bridge Riverpod Stream to GoRouter's Listenable
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+      (dynamic _) => notifyListeners(),
+    );
+  }
+  late final StreamSubscription<dynamic> _subscription;
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
 
 // Transaction Screen - handles QR code processing
 class TransactionScreen extends StatefulWidget {

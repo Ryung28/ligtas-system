@@ -222,6 +222,8 @@ class LoanCard extends StatelessWidget {
         return AppStatusChip.error('OVERDUE', icon: Icons.warning_rounded);
       case LoanStatus.cancelled:
         return AppStatusChip.info('CANCELLED', icon: Icons.cancel_rounded);
+      case LoanStatus.pending:
+        return AppStatusChip.info('PENDING', icon: Icons.hourglass_empty_rounded);
     }
   }
 

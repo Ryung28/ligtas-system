@@ -170,6 +170,7 @@ export async function borrowItem(formData: FormData) {
         // Step 2: Insert borrow log
         // Note: The DB Trigger 'auto_update_inventory_stock' will automatically decrement 
         // the inventory stock. If stock goes < 0, the DB Check Constraint will fail this insert.
+        const now = new Date().toISOString();
         const { data: logData, error: logError } = await supabase
             .from('borrow_logs')
             .insert([
@@ -183,7 +184,9 @@ export async function borrowItem(formData: FormData) {
                     purpose: validatedData.purpose,
                     transaction_type: 'borrow',
                     status: 'borrowed',
+                    borrow_date: now,
                     expected_return_date: validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null,
+                    created_at: now,
                 },
             ])
             .select()
@@ -382,5 +385,72 @@ export async function deleteItem(id: number) {
         return { success: true, message: 'Item deleted successfully' }
     } catch (error: any) {
         return { success: false, error: error.message || 'Failed to delete item' }
+    }
+}
+
+// ============================================
+// APPROVAL ACTIONS
+// ============================================
+
+export async function approveRequest(logId: number) {
+    try {
+        const { error } = await supabase
+            .from('borrow_logs')
+            .update({ status: 'borrowed' })
+            .eq('id', logId)
+
+        if (error) throw error
+
+        revalidatePath('/dashboard/logs')
+        revalidatePath('/dashboard')
+        return { success: true, message: 'Request approved successfully' }
+    } catch (error: any) {
+        console.error('Approve error:', error)
+        return { success: false, error: error.message || 'Failed to approve request' }
+    }
+}
+
+export async function rejectRequest(logId: number) {
+    try {
+        // 1. Fetch Log to get inventory_id and quantity for restoration
+        const { data: log, error: fetchError } = await supabase
+            .from('borrow_logs')
+            .select('inventory_id, quantity, status')
+            .eq('id', logId)
+            .single()
+
+        if (fetchError || !log) throw new Error('Request not found')
+        if (log.status !== 'pending') throw new Error('Only pending requests can be rejected')
+
+        // 2. Mark as Rejected
+        const { error: updateError } = await supabase
+            .from('borrow_logs')
+            .update({ status: 'rejected' })
+            .eq('id', logId)
+
+        if (updateError) throw updateError
+
+        // 3. Restore Stock (Increment back)
+        const { data: item, error: itemError } = await supabase
+            .from('inventory')
+            .select('stock_available')
+            .eq('id', log.inventory_id)
+            .single()
+
+        if (item) {
+            await supabase
+                .from('inventory')
+                .update({
+                    stock_available: item.stock_available + log.quantity
+                })
+                .eq('id', log.inventory_id)
+        }
+
+        revalidatePath('/dashboard/logs')
+        revalidatePath('/dashboard')
+        return { success: true, message: 'Request rejected and stock restored' }
+    } catch (error: any) {
+        console.error('Reject error:', error)
+        return { success: false, error: error.message || 'Failed to reject request' }
     }
 }

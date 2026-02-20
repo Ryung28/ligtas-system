@@ -83,6 +83,18 @@ export function LogSessionTable({
                         Overdue
                     </span>
                 )
+            case 'pending':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-600/10">
+                        Pending
+                    </span>
+                )
+            case 'rejected':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-50 text-gray-700 ring-1 ring-gray-600/10">
+                        Rejected
+                    </span>
+                )
             default:
                 return (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 ring-1 ring-slate-600/10">

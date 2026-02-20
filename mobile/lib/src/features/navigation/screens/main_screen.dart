@@ -1,22 +1,64 @@
+import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gap/gap.dart';
 import '../../scanner/widgets/scanner_view.dart';
 import '../../scanner/models/qr_payload.dart';
 import '../../scanner/widgets/scan_result_sheet.dart';
 import '../../../core/design_system/app_theme.dart';
 
-class MainScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/navigation_provider.dart';
+
+class MainScreen extends ConsumerStatefulWidget {
   final Widget child;
   final String location;
 
   const MainScreen({super.key, required this.child, required this.location});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> {
   int _selectedIndex = 0;
+  bool _isDockVisible = true;
+  Timer? _hideTimer;
+  
+  @override
+  void initState() {
+    super.initState();
+    _syncIndexFromRoute();
+    _startHideTimer();
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted && _isDockVisible) {
+        setState(() => _isDockVisible = false);
+      }
+    });
+  }
+
+  void _handleActivity() {
+    // Senior Dev Logic: If navigation is suppressed (e.g. detailed view open), 
+    // we ignore activity triggers to keep the UI focused.
+    final isSuppressed = ref.read(isDockSuppressedProvider);
+    if (isSuppressed) return;
+
+    if (!_isDockVisible) {
+      setState(() => _isDockVisible = true);
+    }
+    _startHideTimer();
+  }
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
@@ -44,58 +86,58 @@ class _MainScreenState extends State<MainScreen> {
   void _openScanner() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder:
-            (context) => ScannerView(
-              onQrCodeDetected: (qrCode) {
-                Navigator.of(context).pop();
-                _handleScannedCode(qrCode);
-              },
-              overlayText: 'Scan CDRRMO equipment QR code to see details',
-            ),
+        builder: (context) => ScannerView(
+          onQrCodeDetected: (qrCode) {
+            Navigator.of(context).pop();
+            _handleScannedCode(qrCode);
+          },
+          overlayText: 'Scan CDRRMO equipment label',
+        ),
       ),
     );
   }
 
-  void _handleScannedCode(String qrCode) {
+  void _handleScannedCode(String qrCode) async {
     final payload = LigtasQrPayload.tryParse(qrCode);
     
     if (payload == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid QR Code. Please scan a LIGTAS equipment label.'),
+          content: Text('Invalid QR Code. Please scan a LIGTAS label.'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
 
-    // Show the "Senior" Review Modal
-    showModalBottomSheet(
+    // Suppress dock while showing result sheet
+    ref.read(isDockSuppressedProvider.notifier).state = true;
+    
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ScanResultSheet(payload: payload),
     );
+    
+    ref.read(isDockSuppressedProvider.notifier).state = false;
   }
 
   @override
   void didUpdateWidget(MainScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncIndexFromRoute();
+    _handleActivity(); // Reset timer on route change
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _syncIndexFromRoute();
-  }
 
   void _syncIndexFromRoute() {
     final location = widget.location;
     int index = 0;
     if (location.startsWith('/dashboard')) {
       index = 0;
-    } else if (location.startsWith('/loans')) {
+    } else if (location.startsWith('/loans') || location.startsWith('/requests')) {
       index = 1;
     } else if (location.startsWith('/inventory')) {
       index = 2;
@@ -110,147 +152,174 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final padding = MediaQuery.of(context).padding;
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final bottomOffset = padding.bottom > 0 ? padding.bottom : 24.0;
+    
+    // Watch suppression state
+    final isDockSuppressed = ref.watch(isDockSuppressedProvider);
+    
+    // Senior Dev: Force hide dock if keyboard is visible OR if suppressed by a detail view
+    final isKeyboardVisible = viewInsets.bottom > 0;
+    
+    // Auto-restore visibility when suppression is lifted
+    ref.listen(isDockSuppressedProvider, (previous, next) {
+      if (previous == true && next == false) {
+        // Force show dock when suppression ends - this fixes the issue where
+        // dock doesn't reappear after scanning on home tab
+        if (!_isDockVisible) {
+          setState(() => _isDockVisible = true);
+        }
+        _startHideTimer();
+      }
+    });
+
+    final showDock = _isDockVisible && !isKeyboardVisible && !isDockSuppressed;
+    
     return Scaffold(
       extendBody: true,
-      body: widget.child,
-      floatingActionButton: _buildProminentQRButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomAppBar(),
-    );
-  }
-
-  Widget _buildProminentQRButton() {
-    return Container(
-      height: 56,
-      width: 56,
-      margin: const EdgeInsets.only(top: 4), // Lifted higher
-      child: FloatingActionButton(
-        onPressed: _openScanner,
-        elevation: 6,
-        backgroundColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          height: 56,
-          width: 56,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppTheme.primaryBlue, AppTheme.primaryBlueDark],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryBlue.withOpacity(0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+      backgroundColor: const Color(0xFFF5F5F7), 
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          // Senior Dev: Scrolling is valid activity. Pop the dock.
+          _handleActivity();
+          return false; // Don't consume
+        },
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _handleActivity(),
+          onPointerMove: (_) => _handleActivity(),
+          child: Stack(
+            children: [
+              // 1. Content Area
+              Positioned.fill(child: widget.child),
+    
+              // 2. Floating Glass Dock (Smart Stealth)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 400), // Slightly smoother transition
+                curve: Curves.easeOutCubic, 
+                left: 20,
+                right: 20,
+                bottom: showDock ? bottomOffset : -120,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 250),
+                  opacity: showDock ? 1.0 : 0.0,
+                  child: _buildFloatingDock(),
+                ),
               ),
             ],
-          ),
-          child: const Icon(
-            Icons.qr_code_scanner_rounded,
-            color: Colors.white,
-            size: 26,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBottomAppBar() {
-    return BottomAppBar(
-      height: 58, // Slimmer height
-      padding: EdgeInsets.zero,
-      notchMargin: 4,
-      color: Colors.white,
-      shape: const CircularNotchedRectangle(),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Expanded(
-            child: _buildNavItem(
-              icon: Icons.grid_view_rounded,
-              label: 'Home',
-              index: 0,
-              isSelected: _selectedIndex == 0,
-            ),
-          ),
-          Expanded(
-            child: _buildNavItem(
-              icon: Icons.list_alt_rounded,
-              label: 'My Items',
-              index: 1,
-              isSelected: _selectedIndex == 1,
-            ),
-          ),
-          // Gap for the FAB
-          const SizedBox(width: 70),
-          Expanded(
-            child: _buildNavItem(
-              icon: Icons.search_rounded,
-              label: 'Inventory',
-              index: 2,
-              isSelected: _selectedIndex == 2,
-            ),
-          ),
-          Expanded(
-            child: _buildNavItem(
-              icon: Icons.person_outline_rounded,
-              label: 'Profile',
-              index: 3,
-              isSelected: _selectedIndex == 3,
-            ),
+  Widget _buildFloatingDock() {
+    return Container(
+      height: 72,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(100),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.6),
+            Colors.white.withOpacity(0.3),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(100),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildDockItem(index: 0, icon: Icons.home_rounded, label: 'Home'),
+                _buildDockItem(index: 1, icon: Icons.assignment_returned_rounded, label: 'Borrow'),
+                
+                // Central Scanner Button (Keep this as it's a core feature of LIGTAS)
+                _buildScannerDockAction(),
+                
+                _buildDockItem(index: 2, icon: Icons.inventory_2_rounded, label: 'Inventory'),
+                _buildDockItem(index: 3, icon: Icons.settings_rounded, label: 'Setting'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required int index,
-    required bool isSelected,
-  }) {
-    // Special handling for center tab to fit under FAB
-    bool isCenter = index == 2;
-
+  Widget _buildDockItem({required int index, required IconData icon, required String label}) {
+    final isSelected = _selectedIndex == index;
+    
     return GestureDetector(
       onTap: () => _onItemTapped(index),
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (isCenter)
-            const SizedBox(height: 20)
-          else
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? AppTheme.primaryBlue : AppTheme.neutralGray500,
-                size: 20,
-              ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppTheme.primaryBlue : AppTheme.neutralGray500,
+              size: 24,
             ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? AppTheme.primaryBlue : AppTheme.neutralGray600,
-            ),
-          ),
-        ],
+            if (isSelected)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                width: 4,
+                height: 4,
+                decoration: const BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-
+  Widget _buildScannerDockAction() {
+    return GestureDetector(
+      onTap: _openScanner,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppTheme.primaryBlue, AppTheme.primaryBlueDark],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.qr_code_scanner_rounded,
+          color: Colors.white,
+          size: 26,
+        ),
+      ),
+    );
+  }
 }

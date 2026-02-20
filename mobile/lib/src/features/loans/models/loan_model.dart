@@ -1,4 +1,10 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:isar/isar.dart';
+import 'package:json_annotation/json_annotation.dart';
 import '../../../core/errors/app_exceptions.dart';
+
+part 'loan_model.freezed.dart';
+part 'loan_model.g.dart';
 
 /// Loan status enumeration
 enum LoanStatus {
@@ -6,262 +12,237 @@ enum LoanStatus {
   overdue,
   returned,
   cancelled,
+  pending,
 }
 
-/// Comprehensive loan model with immutable data structure
-class LoanModel {
-  final String id;
-  final String inventoryItemId;
-  final String itemName;
-  final String itemCode;
-  final String borrowerName;
-  final String borrowerContact;
-  final String borrowerEmail;
-  final String purpose;
-  final int quantityBorrowed;
-  final DateTime borrowDate;
-  final DateTime expectedReturnDate;
-  final DateTime? actualReturnDate;
-  final LoanStatus status;
-  final String? notes;
-  final String? returnNotes;
-  final String borrowedBy;
-  final String? returnedBy;
-  final DateTime createdAt;
-  final DateTime? updatedAt;
-  final bool isPendingSync;
-  final int daysOverdue;
-  final int daysBorrowed;
-
-  const LoanModel({
-    required this.id,
-    required this.inventoryItemId,
-    required this.itemName,
-    required this.itemCode,
-    required this.borrowerName,
-    required this.borrowerContact,
-    required this.borrowerEmail,
-    required this.purpose,
-    required this.quantityBorrowed,
-    required this.borrowDate,
-    required this.expectedReturnDate,
-    this.actualReturnDate,
-    this.status = LoanStatus.active,
-    this.notes,
-    this.returnNotes,
-    required this.borrowedBy,
-    this.returnedBy,
-    required this.createdAt,
-    this.updatedAt,
-    this.isPendingSync = false,
-    this.daysOverdue = 0,
-    this.daysBorrowed = 0,
-  });
-
-  /// Factory for creating from Supabase data with validation
-  factory LoanModel.fromSupabase(Map<String, dynamic> data) {
-    try {
-      // Validate required fields
-      _validateRequiredField(data, 'id', 'Loan ID');
-      _validateRequiredField(data, 'inventory_item_id', 'Inventory Item ID');
-      _validateRequiredField(data, 'item_name', 'Item Name');
-      _validateRequiredField(data, 'borrower_name', 'Borrower Name');
-      _validateRequiredField(data, 'borrow_date', 'Borrow Date');
-      _validateRequiredField(data, 'expected_return_date', 'Expected Return Date');
-
-      final borrowDate = DateTime.parse(data['borrow_date'] as String);
-      final expectedReturnDate = DateTime.parse(data['expected_return_date'] as String);
-      final now = DateTime.now();
-      
-      // Calculate computed fields
-      final daysBorrowed = now.difference(borrowDate).inDays;
-      final daysOverdue = expectedReturnDate.isBefore(now) 
-          ? now.difference(expectedReturnDate).inDays 
-          : 0;
-      
-      return LoanModel(
-        id: data['id'].toString(), // Convert to string to handle both int and string IDs
-        inventoryItemId: data['inventory_item_id'] as String,
-        itemName: data['item_name'] as String,
-        itemCode: data['item_code'] as String? ?? data['inventory_item_id'] as String,
-        borrowerName: data['borrower_name'] as String,
-        borrowerContact: data['borrower_contact'] as String,
-        borrowerEmail: data['borrower_email'] as String? ?? '',
-        purpose: data['purpose'] as String,
-        quantityBorrowed: data['quantity_borrowed'] as int? ?? data['quantity'] as int? ?? 1,
-        borrowDate: borrowDate,
-        expectedReturnDate: expectedReturnDate,
-        actualReturnDate: data['actual_return_date'] != null 
-            ? DateTime.parse(data['actual_return_date'] as String) 
-            : null,
-        status: _parseStatus(data['status'] as String?),
-        notes: data['notes'] as String?,
-        returnNotes: data['return_notes'] as String?,
-        borrowedBy: data['borrowed_by'] as String,
-        returnedBy: data['returned_by'] as String?,
-        createdAt: DateTime.parse(data['created_at'] as String),
-        updatedAt: data['updated_at'] != null 
-            ? DateTime.parse(data['updated_at'] as String) 
-            : null,
-        isPendingSync: false,
-        daysBorrowed: daysBorrowed,
-        daysOverdue: daysOverdue,
-      );
-    } catch (e) {
-      throw ValidationException('Invalid loan data: $e', details: data);
-    }
-  }
-
-  /// Validate that a required field exists and is not null
-  static void _validateRequiredField(Map<String, dynamic> data, String field, String fieldName) {
-    if (!data.containsKey(field) || data[field] == null) {
-      throw ValidationException('Missing required field: $fieldName');
-    }
-  }
-
-  static LoanStatus _parseStatus(String? status) {
-    switch (status) {
-      case 'active':
-        return LoanStatus.active;
-      case 'overdue':
-        return LoanStatus.overdue;
-      case 'returned':
-        return LoanStatus.returned;
-      case 'cancelled':
-        return LoanStatus.cancelled;
-      default:
-        return LoanStatus.active;
-    }
-  }
-
-  /// Convert to Supabase format
-  Map<String, dynamic> toSupabase() {
-    return {
-      'id': id,
-      'inventory_item_id': inventoryItemId,
-      'item_name': itemName,
-      'item_code': itemCode,
-      'borrower_name': borrowerName,
-      'borrower_contact': borrowerContact,
-      'borrower_email': borrowerEmail,
-      'purpose': purpose,
-      'quantity_borrowed': quantityBorrowed,
-      'borrow_date': borrowDate.toIso8601String(),
-      'expected_return_date': expectedReturnDate.toIso8601String(),
-      'actual_return_date': actualReturnDate?.toIso8601String(),
-      'status': status.name,
-      'notes': notes,
-      'return_notes': returnNotes,
-      'borrowed_by': borrowedBy,
-      'returned_by': returnedBy,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
-    };
-  }
-
-  LoanModel copyWith({
-    String? id,
-    String? inventoryItemId,
-    String? itemName,
-    String? itemCode,
-    String? borrowerName,
-    String? borrowerContact,
-    String? borrowerEmail,
-    String? purpose,
-    int? quantityBorrowed,
-    DateTime? borrowDate,
-    DateTime? expectedReturnDate,
+@freezed
+class LoanModel with _$LoanModel {
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory LoanModel({
+    required String id,
+    required String inventoryItemId,
+    required String itemName,
+    required String itemCode,
+    required String borrowerName,
+    required String borrowerContact,
+    @Default('') String borrowerEmail,
+    required String purpose,
+    required int quantityBorrowed,
+    required DateTime borrowDate,
+    required DateTime expectedReturnDate,
     DateTime? actualReturnDate,
-    LoanStatus? status,
+    @Default(LoanStatus.active) LoanStatus status,
     String? notes,
     String? returnNotes,
-    String? borrowedBy,
+    required String borrowedBy,
     String? returnedBy,
-    DateTime? createdAt,
+    required DateTime createdAt,
     DateTime? updatedAt,
-    bool? isPendingSync,
-    int? daysOverdue,
-    int? daysBorrowed,
-  }) {
+    @Default(false) bool isPendingSync,
+    @Default(0) int daysOverdue,
+    @Default(0) int daysBorrowed,
+  }) = _LoanModel;
+
+  factory LoanModel.fromJson(Map<String, dynamic> json) => _$LoanModelFromJson(json);
+
+  factory LoanModel.fromSupabase(Map<String, dynamic> data) {
+    // 1. Convert Status (DB 'borrowed'/'Pending' -> Enum 'active'/'pending')
+    final rawStatus = (data['status'] as String? ?? 'active').toLowerCase();
+    
+    LoanStatus finalStatus;
+    if (rawStatus == 'borrowed') {
+      finalStatus = LoanStatus.active;
+    } else if (rawStatus == 'overdue') {
+      finalStatus = LoanStatus.overdue;
+    } else if (rawStatus == 'returned') {
+      finalStatus = LoanStatus.returned;
+    } else if (rawStatus == 'cancelled') {
+      finalStatus = LoanStatus.cancelled;
+    } else if (rawStatus == 'pending') {
+      finalStatus = LoanStatus.pending;
+    } else {
+      finalStatus = LoanStatus.active; // Fallback
+    }
+
+    // Senior Dev: Use server time (created_at) as fallback, NOT phone time
+    final borrowDateStr = data['borrow_date'] as String? ?? data['created_at'] as String? ?? DateTime.now().toIso8601String();
+    final expectedDateStr = data['expected_return_date'] as String? ?? DateTime.now().add(const Duration(days: 7)).toIso8601String();
+
+    // Senior Dev: Always convert to local time for consistent UI comparison and timeago calculations
+    final borrowDate = DateTime.parse(borrowDateStr).toLocal();
+    final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
+    final now = DateTime.now();
+    
+    final dbDaysBorrowed = now.difference(borrowDate).inDays;
+    final dbDaysOverdue = expectedReturnDate.isBefore(now) 
+        ? now.difference(expectedReturnDate).inDays 
+        : 0;
+
+    // 2. Manual Mapping (Senior Dev: Defensive Coding)
+    final itemName = data['item_name'] as String? ?? 
+                    data['inventory_item_name'] as String? ?? 
+                    '';
+                    
+    final itemCode = data['item_code'] as String? ?? 
+                    data['inventory_item_id'] as String? ?? 
+                    data['inventory_id']?.toString() ?? 
+                    '';
+
     return LoanModel(
-      id: id ?? this.id,
-      inventoryItemId: inventoryItemId ?? this.inventoryItemId,
-      itemName: itemName ?? this.itemName,
-      itemCode: itemCode ?? this.itemCode,
-      borrowerName: borrowerName ?? this.borrowerName,
-      borrowerContact: borrowerContact ?? this.borrowerContact,
-      borrowerEmail: borrowerEmail ?? this.borrowerEmail,
-      purpose: purpose ?? this.purpose,
-      quantityBorrowed: quantityBorrowed ?? this.quantityBorrowed,
-      borrowDate: borrowDate ?? this.borrowDate,
-      expectedReturnDate: expectedReturnDate ?? this.expectedReturnDate,
-      actualReturnDate: actualReturnDate ?? this.actualReturnDate,
-      status: status ?? this.status,
-      notes: notes ?? this.notes,
-      returnNotes: returnNotes ?? this.returnNotes,
-      borrowedBy: borrowedBy ?? this.borrowedBy,
-      returnedBy: returnedBy ?? this.returnedBy,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      isPendingSync: isPendingSync ?? this.isPendingSync,
-      daysOverdue: daysOverdue ?? this.daysOverdue,
-      daysBorrowed: daysBorrowed ?? this.daysBorrowed,
+      id: data['id'].toString(),
+      inventoryItemId: (data['inventory_item_id'] ?? data['inventory_id'] ?? '').toString(),
+      itemName: itemName,
+      itemCode: itemCode,
+      borrowerName: data['borrower_name'] as String? ?? 'Unknown',
+      borrowerContact: data['borrower_contact'] as String? ?? '',
+      borrowerEmail: data['borrower_email'] as String? ?? '',
+      purpose: data['purpose'] as String? ?? '',
+      quantityBorrowed: (data['quantity_borrowed'] ?? data['quantity'] ?? 1) as int,
+      borrowDate: borrowDate,
+      expectedReturnDate: expectedReturnDate,
+      actualReturnDate: data['actual_return_date'] != null ? DateTime.parse(data['actual_return_date'] as String).toLocal() : null,
+      status: finalStatus,
+      notes: data['notes'] as String?,
+      returnNotes: data['return_notes'] as String?,
+      borrowedBy: (data['borrowed_by'] ?? data['borrower_user_id'] ?? '').toString(),
+      returnedBy: data['returned_by']?.toString(),
+      createdAt: data['created_at'] != null ? DateTime.parse(data['created_at'] as String).toLocal() : DateTime.now(),
+      updatedAt: data['updated_at'] != null ? DateTime.parse(data['updated_at'] as String).toLocal() : null,
+      daysBorrowed: dbDaysBorrowed,
+      daysOverdue: dbDaysOverdue,
     );
   }
 }
 
-class CreateLoanRequest {
-  final String inventoryItemId;
-  final String borrowerName;
-  final String borrowerContact;
-  final String borrowerEmail;
-  final String borrowerOrganization;
-  final String purpose;
-  final int quantityBorrowed;
-  final DateTime expectedReturnDate;
-  final String? notes;
+@collection
+class LoanCollection {
+  Id id = Isar.autoIncrement;
 
-  const CreateLoanRequest({
-    required this.inventoryItemId,
-    required this.borrowerName,
-    required this.borrowerContact,
-    required this.borrowerEmail,
-    required this.borrowerOrganization,
-    required this.purpose,
-    required this.quantityBorrowed,
-    required this.expectedReturnDate,
-    this.notes,
-  });
+  @Index(unique: true)
+  late String originalId;
+
+  late String inventoryItemId;
+  late String itemName;
+  late String itemCode;
+  late String borrowerName;
+  late String borrowerContact;
+  String? borrowerEmail;
+  late String purpose;
+  late int quantityBorrowed;
+  late DateTime borrowDate;
+  late DateTime expectedReturnDate;
+  DateTime? actualReturnDate;
+  
+  @enumerated
+  late LoanStatus status;
+  
+  String? notes;
+  String? returnNotes;
+  late String borrowedBy;
+  String? returnedBy;
+  late DateTime createdAt;
+  DateTime? updatedAt;
+  late bool isPendingSync;
+  late int daysOverdue;
+  late int daysBorrowed;
+
+  static LoanCollection fromModel(LoanModel model) {
+    return LoanCollection()
+      ..originalId = model.id
+      ..inventoryItemId = model.inventoryItemId
+      ..itemName = model.itemName
+      ..itemCode = model.itemCode
+      ..borrowerName = model.borrowerName
+      ..borrowerContact = model.borrowerContact
+      ..borrowerEmail = model.borrowerEmail
+      ..purpose = model.purpose
+      ..quantityBorrowed = model.quantityBorrowed
+      ..borrowDate = model.borrowDate
+      ..expectedReturnDate = model.expectedReturnDate
+      ..actualReturnDate = model.actualReturnDate
+      ..status = model.status
+      ..notes = model.notes
+      ..returnNotes = model.returnNotes
+      ..borrowedBy = model.borrowedBy
+      ..returnedBy = model.returnedBy
+      ..createdAt = model.createdAt
+      ..updatedAt = model.updatedAt
+      ..isPendingSync = model.isPendingSync
+      ..daysOverdue = model.daysOverdue
+      ..daysBorrowed = model.daysBorrowed;
+  }
+
+  LoanModel toModel() {
+    return LoanModel(
+      id: originalId,
+      inventoryItemId: inventoryItemId,
+      itemName: itemName,
+      itemCode: itemCode,
+      borrowerName: borrowerName,
+      borrowerContact: borrowerContact,
+      borrowerEmail: borrowerEmail ?? '',
+      purpose: purpose,
+      quantityBorrowed: quantityBorrowed,
+      borrowDate: borrowDate,
+      expectedReturnDate: expectedReturnDate,
+      actualReturnDate: actualReturnDate,
+      status: status,
+      notes: notes,
+      returnNotes: returnNotes,
+      borrowedBy: borrowedBy,
+      returnedBy: returnedBy,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      isPendingSync: isPendingSync,
+      daysOverdue: daysOverdue,
+      daysBorrowed: daysBorrowed,
+    );
+  }
 }
 
-/// Loan return request model
-class ReturnLoanRequest {
-  final String loanId;
-  final int quantityReturned;
-  final String? returnNotes;
-  final String? condition;
+@freezed
+class CreateLoanRequest with _$CreateLoanRequest {
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory CreateLoanRequest({
+    required String inventoryItemId,
+    int? inventoryId,
+    required String itemName,
+    String? itemCode,
+    required String borrowerName,
+    required String borrowerContact,
+    required String borrowerEmail,
+    required String borrowerOrganization,
+    required String purpose,
+    required int quantityBorrowed,
+    required DateTime expectedReturnDate,
+    String? notes,
+  }) = _CreateLoanRequest;
 
-  const ReturnLoanRequest({
-    required this.loanId,
-    required this.quantityReturned,
-    this.returnNotes,
-    this.condition,
-  });
+  factory CreateLoanRequest.fromJson(Map<String, dynamic> json) => _$CreateLoanRequestFromJson(json);
 }
 
-/// Loan statistics model
-class LoanStatistics {
-  final int totalActiveLoans;
-  final int totalOverdueLoans;
-  final int totalReturnedToday;
-  final int totalItemsBorrowed;
-  final double averageLoanDuration;
+@freezed
+class ReturnLoanRequest with _$ReturnLoanRequest {
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory ReturnLoanRequest({
+    required String loanId,
+    required int quantityReturned,
+    String? returnNotes,
+    String? condition,
+  }) = _ReturnLoanRequest;
 
-  const LoanStatistics({
-    this.totalActiveLoans = 0,
-    this.totalOverdueLoans = 0,
-    this.totalReturnedToday = 0,
-    this.totalItemsBorrowed = 0,
-    this.averageLoanDuration = 0.0,
-  });
+  factory ReturnLoanRequest.fromJson(Map<String, dynamic> json) => _$ReturnLoanRequestFromJson(json);
+}
+
+@freezed
+class LoanStatistics with _$LoanStatistics {
+  const factory LoanStatistics({
+    @Default(0) int totalActiveLoans,
+    @Default(0) int totalOverdueLoans,
+    @Default(0) int totalReturnedToday,
+    @Default(0) int totalItemsBorrowed,
+    @Default(0.0) double averageLoanDuration,
+  }) = _LoanStatistics;
+
+  factory LoanStatistics.fromJson(Map<String, dynamic> json) => _$LoanStatisticsFromJson(json);
 }

@@ -1,31 +1,17 @@
-/// Model representing a CDRRMO inventory item
-class CdrrmoItem {
-  final String id;
-  final String name;
-  final String code;
-  final String category;
-  final String description;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  const CdrrmoItem({
-    required this.id,
-    required this.name,
-    required this.code,
-    required this.category,
-    required this.description,
-  });
+part 'cdrrmo_item_model.freezed.dart';
+part 'cdrrmo_item_model.g.dart';
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CdrrmoItem &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+@freezed
+class CdrrmoItem with _$CdrrmoItem {
+  const factory CdrrmoItem({
+    required String id,
+    required String name,
+    required String code,
+    required String category,
+    required String description,
+  }) = _CdrrmoItem;
 
-  @override
-  int get hashCode => id.hashCode;
-
-  @override
-  String toString() {
-    return 'CdrrmoItem{id: $id, name: $name, code: $code, category: $category}';
-  }
+  factory CdrrmoItem.fromJson(Map<String, dynamic> json) => _$CdrrmoItemFromJson(json);
 }

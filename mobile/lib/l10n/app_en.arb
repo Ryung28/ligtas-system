@@ -1,0 +1,34 @@
+{
+  "@@locale": "en",
+  "appTitle": "LIGTAS COMMAND",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "loginGateway": "AUTHORIZATION GATEWAY",
+  "emailLabel": "Email Address",
+  "emailHint": "your.name@cdrrmo.ph",
+  "passwordLabel": "Password",
+  "passwordHint": "Enter secure password",
+  "signInButton": "SIGN IN",
+  "googleSignInButton": "CONTINUE WITH GOOGLE",
+  "accessGranted": "Access Granted. Welcome back, {name}!",
+  "@accessGranted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "inventoryTitle": "Inventory",
+  "noInventoryFound": "No items found",
+  "noInventoryAvailable": "No inventory available",
+  "categoryAll": "All",
+  "categoryRescue": "Rescue",
+  "categoryMedical": "Medical",
+  "categoryComms": "Comms",
+  "categoryVehicles": "Vehicles",
+  "categoryTools": "Tools",
+  "categoryPPE": "PPE",
+  "categoryLogistics": "Logistics",
+  "categoryOffice": "Office"
+}

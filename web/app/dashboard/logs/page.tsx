@@ -84,11 +84,14 @@ export default function BorrowReturnLogs() {
         <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-500">
             {/* Page Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
-                <div>
-                    <h1 className="text-xl 14in:text-2xl font-bold tracking-tight text-slate-900 font-heading">Borrow/Return Logs</h1>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mt-1.5" suppressHydrationWarning>
-                        Operational Transaction Registry
-                    </p>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Transaction Registry</span>
+                    </div>
+                    <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
+                        Borrow/Return Logs
+                    </h1>
                 </div>
                 <div className="flex items-center gap-2 font-heading">
                     <BorrowItemDialog />

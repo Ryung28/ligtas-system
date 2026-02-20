@@ -1,4 +1,4 @@
-export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'mixed' | 'all';
+export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'pending' | 'rejected' | 'mixed' | 'all';
 export type TransactionType = 'borrow' | 'return';
 
 export interface BorrowLog {
@@ -14,6 +14,8 @@ export interface BorrowLog {
     expected_return_date: string | null;
     actual_return_date: string | null;
     status: TransactionStatus;
+    notes?: string;
+    purpose?: string;
     created_at: string;
 }
 
@@ -33,4 +35,5 @@ export interface LogStats {
     borrowed: number;
     returned: number;
     overdue: number;
+    pending: number;
 }

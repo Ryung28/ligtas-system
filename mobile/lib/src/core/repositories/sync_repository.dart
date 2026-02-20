@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../local_storage/hive_service.dart';
+import '../local_storage/isar_service.dart';
 import '../networking/supabase_client.dart';
 import '../../features/transactions/models/transaction_model.dart';
 import '../../features/inventory/models/inventory_model.dart';
@@ -57,7 +57,7 @@ class SyncRepository {
         // Try to send directly to Supabase
         final response = await SupabaseService.client
             .from('transactions')
-            .insert(transaction.toSupabase())
+            .insert(transaction.toJson())
             .select()
             .single();
             
@@ -78,7 +78,7 @@ class SyncRepository {
           createdAt: DateTime.now(),
         );
         
-        await HiveService.pendingTransactionsBox.add(pendingTransaction.toJson());
+        await IsarService.savePendingTransaction(pendingTransaction);
         log('Transaction saved locally for sync: ${transaction.borrowerName}');
         
         // Update local inventory cache
@@ -100,7 +100,7 @@ class SyncRepository {
           createdAt: DateTime.now(),
         );
         
-        await HiveService.pendingTransactionsBox.add(pendingTransaction.toJson());
+        await IsarService.savePendingTransaction(pendingTransaction);
         log('Transaction saved locally as fallback: ${transaction.borrowerName}');
       }
       
@@ -116,10 +116,7 @@ class SyncRepository {
     log('Starting sync of pending transactions...');
     
     try {
-      final pendingBox = HiveService.pendingTransactionsBox;
-      final pendingTransactions = pendingBox.values
-          .map((item) => TransactionModel.fromJson(Map<String, dynamic>.from(item)))
-          .toList();
+      final pendingTransactions = await IsarService.getPendingTransactions();
       
       if (pendingTransactions.isEmpty) {
         log('No pending transactions to sync');
@@ -129,19 +126,13 @@ class SyncRepository {
       
       log('Syncing ${pendingTransactions.length} pending transactions');
       
-      final keysToDelete = <dynamic>[];
-      
-      for (final entry in pendingBox.toMap().entries) {
-        final key = entry.key;
-        final transactionData = entry.value;
+      for (final transaction in pendingTransactions) {
+        if (transaction.id == null) continue;
         
         try {
-          final transaction = TransactionModel.fromJson(Map<String, dynamic>.from(transactionData));
-          
-          // Send to Supabase
           final response = await SupabaseService.client
               .from('transactions')
-              .insert(transaction.toSupabase())
+              .insert(transaction.toJson())
               .select()
               .single();
               
@@ -154,8 +145,8 @@ class SyncRepository {
             transaction.status == 'borrowed' ? -1 : 1,
           );
           
-          // Mark for deletion
-          keysToDelete.add(key);
+          // Delete synced transaction from Isar
+          await IsarService.deleteTransaction(transaction.id!);
           
         } catch (e) {
           log('Failed to sync transaction: $e');
@@ -199,14 +190,16 @@ class SyncRepository {
     int quantity,
     int multiplier,
   ) async {
+    // Note: With Isar, we should ideally fetch the object, mutate it, and save.
+    // However, since we are using Freezed + Isar, we treat it as immutable.
     try {
-      final inventoryBox = HiveService.inventoryBox;
-      final cachedItem = inventoryBox.get(inventoryId.toString());
-      
-      if (cachedItem != null) {
-        final currentAvailable = cachedItem['available'] as int;
-        cachedItem['available'] = currentAvailable + (quantity * multiplier);
-        await inventoryBox.put(inventoryId.toString(), cachedItem);
+      final isar = IsarService.instance;
+      final item = await isar.inventoryModels.get(inventoryId);
+      if (item != null) {
+        final updated = item.copyWith(
+          available: item.available + (quantity * multiplier),
+        );
+        await IsarService.saveInventoryItems([updated]);
       }
     } catch (e) {
       log('Error updating local inventory: $e');
@@ -224,24 +217,16 @@ class SyncRepository {
             .eq('status', 'active');
             
         final items = (response as List)
-            .map((item) => InventoryModel.fromSupabase(item))
+            .map((item) => InventoryModel.fromJson(item))
             .toList();
             
-        // Cache items locally
-        final inventoryBox = HiveService.inventoryBox;
-        for (final item in items) {
-          await inventoryBox.put(item.id.toString(), item.toJson());
-        }
+        // Cache items locally in Isar
+        await IsarService.saveInventoryItems(items);
         
         return items;
       } else {
-        // Return cached items
-        final inventoryBox = HiveService.inventoryBox;
-        final cachedItems = inventoryBox.values
-            .map((item) => InventoryModel.fromJson(Map<String, dynamic>.from(item)))
-            .toList();
-            
-        return cachedItems;
+        // Return cached items from Isar
+        return IsarService.instance.inventoryModels.where().findAll();
       }
     } catch (e) {
       log('Error getting inventory items: $e');
@@ -264,7 +249,7 @@ class SyncRepository {
   bool get isSyncing => _isSyncing;
   
   int get pendingTransactionsCount => 
-      HiveService.pendingTransactionsBox.length;
+      IsarService.instance.transactionModels.where().filter().isPendingSyncEqualTo(true).countSync();
 
   void dispose() {
     _connectivitySubscription.cancel();

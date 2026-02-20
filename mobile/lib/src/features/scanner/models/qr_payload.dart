@@ -1,38 +1,34 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'dart:convert';
 
-/// Represents the data structure in the LIGTAS QR Code generated from the web dashboard.
-class LigtasQrPayload {
-  final String protocol;
-  final String version;
-  final String action;
-  final int itemId;
-  final String itemName;
+part 'qr_payload.freezed.dart';
+part 'qr_payload.g.dart';
 
-  LigtasQrPayload({
-    required this.protocol,
-    required this.version,
-    required this.action,
-    required this.itemId,
-    required this.itemName,
-  });
+@freezed
+class LigtasQrPayload with _$LigtasQrPayload {
+  const LigtasQrPayload._();
 
-  /// Validates and parses a JSON string into a LigtasQrPayload.
-  /// Returns null if the format is invalid or not a Ligtas protocol QR.
+  const factory LigtasQrPayload({
+    required String protocol,
+    required String version,
+    required String action,
+    required int itemId,
+    required String itemName,
+  }) = _LigtasQrPayload;
+
+  factory LigtasQrPayload.fromJson(Map<String, dynamic> json) => _$LigtasQrPayloadFromJson(json);
+
   static LigtasQrPayload? tryParse(String rawData) {
     try {
       final Map<String, dynamic> data = jsonDecode(rawData);
-      
-      // Strict protocol check
       if (data['protocol'] != 'ligtas') return null;
       
-      return LigtasQrPayload(
-        protocol: data['protocol'] as String,
-        version: data['version'] as String,
-        action: data['action'] as String,
-        // Senior Dev Fix: Handle both int and string ID types safely
-        itemId: int.tryParse(data['itemId'].toString()) ?? 0,
-        itemName: (data['itemName'] ?? 'Unknown Item').toString(),
-      );
+      // Senior Dev Fix: Ensure itemId is treated correctly during parsing
+      final processedData = Map<String, dynamic>.from(data);
+      processedData['itemId'] = int.tryParse(data['itemId']?.toString() ?? '') ?? 0;
+      processedData['itemName'] = (data['itemName'] ?? 'Unknown Item').toString();
+
+      return LigtasQrPayload.fromJson(processedData);
     } catch (_) {
       return null;
     }

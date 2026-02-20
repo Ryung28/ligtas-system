@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:gap/gap.dart';
+import '../../../core/design_system/app_spacing.dart';
 import '../../../core/design_system/app_theme.dart';
 
-/// Professional search bar for loans
+/// Premium search bar for loans - clean design
 class LoanSearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
@@ -19,54 +21,48 @@ class LoanSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(
-          color: AppTheme.neutralGray500,
-          fontSize: 14,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppTheme.neutralGray50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.neutralGray200,
+          width: 1,
         ),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          color: AppTheme.neutralGray500,
-        ),
-        suffixIcon: controller.text.isNotEmpty
-            ? IconButton(
-                onPressed: onClear,
-                icon: Icon(
-                  Icons.clear_rounded,
-                  color: AppTheme.neutralGray500,
-                ),
-              )
-            : null,
-        filled: true,
-        fillColor: AppTheme.neutralGray50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: AppTheme.neutralGray200,
-            width: 1,
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(
+            color: AppTheme.neutralGray400,
+            fontSize: 14,
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: AppTheme.neutralGray200,
-            width: 1,
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: AppTheme.neutralGray500,
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: AppTheme.primaryBlue,
-            width: 2,
+          suffixIcon: controller.text.isNotEmpty
+              ? IconButton(
+                  onPressed: onClear,
+                  icon: Icon(
+                    Icons.clear_rounded,
+                    color: AppTheme.neutralGray500,
+                  ),
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
         ),
       ),
     )

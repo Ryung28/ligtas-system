@@ -302,7 +302,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
             )}
 
             <ShadinDialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
-                <ShadinDialogContent className="max-w-3xl border-none bg-black/95 p-0 overflow-hidden rounded-2xl shadow-2xl">
+                <ShadinDialogContent className="max-w-3xl border-none bg-black/95 p-0 overflow-hidden rounded-2xl shadow-2xl [&>button]:text-white [&>button]:opacity-100">
                     <ShadinDialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
                         <ShadinDialogTitle className="text-white text-sm font-medium bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg">
                             {expandedImage?.name}

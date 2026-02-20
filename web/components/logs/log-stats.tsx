@@ -3,11 +3,12 @@ import { LogStats } from '@/lib/types/inventory'
 
 export function LogStatsCards({ stats }: { stats: LogStats }) {
     return (
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <StatsCard title="Total Transactions" value={stats.total} color="slate" label="Logged" />
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+            <StatsCard title="Pending Approval" value={stats.pending} color="amber" label="Requests" />
             <StatsCard title="Active Borrows" value={stats.borrowed} color="blue" label="Units" />
             <StatsCard title="Returned Items" value={stats.returned} color="emerald" label="Units" />
             <StatsCard title="Overdue Items" value={stats.overdue} color="rose" label="Alert" />
+            <StatsCard title="Total Registry" value={stats.total} color="slate" label="Logged" />
         </div>
     )
 }
@@ -18,6 +19,7 @@ function StatsCard({ title, value, color = 'slate', label }: { title: string, va
         blue: 'bg-blue-50/50 text-blue-700 ring-blue-100',
         emerald: 'bg-emerald-50/50 text-emerald-700 ring-emerald-100',
         rose: 'bg-rose-50/50 text-rose-700 ring-rose-100',
+        amber: 'bg-amber-50/50 text-amber-700 ring-amber-100',
     }
 
     return (

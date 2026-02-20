@@ -15,7 +15,37 @@ export const fetchInventory = async () => {
         .order('item_name', { ascending: true })
 
     if (error) throw error
-    return (data || []) as InventoryItem[]
+    
+    // Generate signed URLs for all items with images
+    const items = (data || []) as InventoryItem[]
+    const itemsWithUrls = await Promise.all(items.map(async (item) => {
+        if (item.image_url) {
+            try {
+                // Check if image_url is already a full URL or just a path
+                if (item.image_url.startsWith('http')) {
+                    return item
+                }
+                
+                // Generate signed URL for the image
+                const { data: { signedUrl }, error } = await supabase.storage
+                    .from('item-images')
+                    .createSignedUrl(item.image_url, 60 * 60 * 24) // 24 hours
+                
+                if (error) {
+                    console.warn(`Failed to generate signed URL for ${item.image_url}:`, error)
+                    return item
+                }
+                
+                return { ...item, image_url: signedUrl }
+            } catch (err) {
+                console.warn(`Error processing image for ${item.item_name}:`, err)
+                return item
+            }
+        }
+        return item
+    }))
+    
+    return itemsWithUrls
 }
 
 export function useInventory() {

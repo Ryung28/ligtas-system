@@ -1,91 +1,107 @@
-class InventoryModel {
-  final int id;
-  final String name;
-  final String description;
-  final String category;
-  final int quantity;
-  final int available;
-  final String location;
-  final String qrCode;
-  final String status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:isar/isar.dart';
 
-  const InventoryModel({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.category,
-    required this.quantity,
-    required this.available,
-    required this.location,
-    required this.qrCode,
-    required this.status,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+part 'inventory_model.freezed.dart';
+part 'inventory_model.g.dart';
 
-  factory InventoryModel.fromJson(Map<String, dynamic> json) {
+@freezed
+class InventoryModel with _$InventoryModel {
+  const factory InventoryModel({
+    required int id,
+    @JsonKey(name: 'item_name') required String name,
+    @Default('') String description,
+    required String category,
+    @JsonKey(name: 'stock_total') required int quantity,
+    @JsonKey(name: 'stock_available') required int available,
+    @Default('') String location,
+    @Default('') String qrCode,
+    @Default('Good') String status,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    @Default('') String code,
+    @Default(10) int minStockLevel,
+    @Default('pcs') String unit,
+    String? supplier,
+    String? supplierContact,
+    String? notes,
+    @JsonKey(name: 'image_url') String? imageUrl,
+  }) = _InventoryModel;
+
+  factory InventoryModel.fromJson(Map<String, dynamic> json) => _$InventoryModelFromJson(json);
+}
+
+/// This is the clean class Isar uses to save data.
+/// No Freezed "magic" here, so no build errors!
+@collection
+class InventoryCollection {
+  Id id = Isar.autoIncrement;
+  
+  @Index(unique: true)
+  int? originalId;
+  
+  late String name;
+  String? description;
+  late String category;
+  late int quantity;
+  late int available;
+  String? location;
+  late String qrCode;
+  late String status;
+  DateTime? createdAt;
+  DateTime? updatedAt;
+  String? code;
+  int? minStockLevel;
+  String? unit;
+  String? supplier;
+  String? supplierContact;
+  String? notes;
+  String? imageUrl;
+
+  // Convert from Model to Entity
+  static InventoryCollection fromModel(InventoryModel model) {
+    return InventoryCollection()
+      ..originalId = model.id
+      ..name = model.name
+      ..description = model.description
+      ..category = model.category
+      ..quantity = model.quantity
+      ..available = model.available
+      ..location = model.location
+      ..qrCode = model.qrCode
+      ..status = model.status
+      ..createdAt = model.createdAt
+      ..updatedAt = model.updatedAt
+      ..code = model.code
+      ..minStockLevel = model.minStockLevel
+      ..unit = model.unit
+      ..supplier = model.supplier
+      ..supplierContact = model.supplierContact
+      ..notes = model.notes
+      ..imageUrl = model.imageUrl;
+  }
+
+  // Convert from Entity back to Model
+  InventoryModel toModel() {
     return InventoryModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      description: json['description'] as String? ?? '',
-      category: json['category'] as String,
-      quantity: json['quantity'] as int,
-      available: json['available'] as int,
-      location: json['location'] as String? ?? '',
-      qrCode: json['qrCode'] as String,
-      status: json['status'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      id: originalId ?? 0,
+      name: name,
+      description: description ?? '',
+      category: category,
+      quantity: quantity,
+      available: available,
+      location: location ?? '',
+      qrCode: qrCode,
+      status: status,
+      createdAt: createdAt ?? DateTime.now(),
+      updatedAt: updatedAt ?? DateTime.now(),
+      code: code ?? '',
+      minStockLevel: minStockLevel ?? 10,
+      unit: unit ?? 'pcs',
+      supplier: supplier,
+      supplierContact: supplierContact,
+      notes: notes,
+      imageUrl: imageUrl,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'category': category,
-      'quantity': quantity,
-      'available': available,
-      'location': location,
-      'qrCode': qrCode,
-      'status': status,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-    };
-  }
-      
-  factory InventoryModel.fromSupabase(Map<String, dynamic> data) {
-    return InventoryModel(
-      id: data['id'] as int,
-      name: data['name'] as String,
-      description: data['description'] as String? ?? '',
-      category: data['category'] as String,
-      quantity: data['quantity'] as int,
-      available: data['available'] as int,
-      location: data['location'] as String? ?? '',
-      qrCode: data['qr_code'] as String,
-      status: data['status'] as String,
-      createdAt: DateTime.parse(data['created_at'] as String),
-      updatedAt: DateTime.parse(data['updated_at'] as String),
-    );
-  }
-
-  Map<String, dynamic> toSupabase() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'category': category,
-      'quantity': quantity,
-      'available': available,
-      'location': location,
-      'qr_code': qrCode,
-      'status': status,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
   }
 }

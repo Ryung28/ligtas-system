@@ -26,7 +26,7 @@ export function LogFilters({
         <div className="flex flex-col xl:flex-row gap-4 justify-between xl:items-center">
             {/* Filters Left */}
             <div className="flex flex-wrap gap-2">
-                {(['all', 'borrowed', 'returned', 'overdue'] as const).map((f) => (
+                {(['all', 'pending', 'borrowed', 'returned', 'overdue', 'rejected'] as const).map((f) => (
                     <Button
                         key={f}
                         onClick={() => setFilter(f)}

@@ -1,191 +1,123 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gap/gap.dart';
 
 import '../../../core/design_system/app_theme.dart';
-import '../../../core/design_system/app_spacing.dart';
-import '../../scanner/widgets/scanner_view.dart';
 import '../providers/dashboard_provider.dart';
-import '../widgets/dashboard_welcome_card.dart';
-import '../widgets/dashboard_stats_card.dart';
-import '../widgets/dashboard_quick_actions.dart';
-import '../widgets/dashboard_feature_cards.dart';
-import '../../scanner/models/qr_payload.dart';
-import '../../scanner/widgets/scan_result_sheet.dart';
+import '../../loans/providers/loan_providers.dart';
 
-/// Dashboard home screen (reference: UserDashboard)
-class DashboardScreen extends ConsumerWidget {
+import '../widgets/dashboard_background.dart';
+import '../widgets/dashboard_header.dart';
+import '../widgets/bento_tiles.dart';
+
+import '../controllers/dashboard_controller.dart';
+
+import '../widgets/mission_control_widgets.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
-  void _openScanner(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ScannerView(
-          onQrCodeDetected: (qrCode) {
-            // First validation: Is this a LIGTAS QR?
-            final payload = LigtasQrPayload.tryParse(qrCode);
-            
-            if (payload == null) {
-              // Not our QR code
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Invalid QR Code. Please scan a LIGTAS equipment label.'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              return;
-            }
-
-            // Close the scanner camera
-            Navigator.of(context).pop();
-
-            // Show our premium confirmation sheet
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => ScanResultSheet(payload: payload),
-            );
-          },
-          overlayText: 'Scan LIGTAS Equipment Label',
-        ),
-      ),
-    );
-  }
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
     final userName = ref.watch(dashboardUserNameProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final controller = ref.watch(dashboardControllerProvider);
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        extendBody: true,
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            _DashboardBackground(),
-            SafeArea(
-              bottom: false,
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  ref.invalidate(dashboardStatsProvider);
-                },
-                color: AppTheme.primaryBlue,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      DashboardWelcomeCard(userName: userName),
-                      const Gap(12),
-                      DashboardQuickActions(
-                        onOpenScanner: () => _openScanner(context),
-                      ),
-                      const Gap(12),
-                      statsAsync.when(
-                        data: (stats) => DashboardStatsCard(stats: stats),
-                        loading: () => const _StatsCardSkeleton(),
-                        error: (_, __) => const _StatsCardSkeleton(),
-                      ),
-                      const Gap(12),
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: AppRadius.allLg,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.neutralGray900.withValues(
-                                alpha: 0.06,
-                              ),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: DashboardFeatureCards(
-                          onOpenScanner: () => _openScanner(context),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 80 + MediaQuery.of(context).padding.bottom,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardBackground extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white,
-            AppTheme.neutralGray50,
-            const Color(0xFFE3F2FD),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: Stack(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F7), // Match My Borrowed Items background
+      body: Stack(
         children: [
-          Positioned(
-            top: -120,
-            right: -180,
-            child: Container(
-              height: 400,
-              width: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppTheme.primaryBlueLight.withValues(alpha: 0.15),
-                    AppTheme.primaryBlueLight.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.75],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: MediaQuery.of(context).size.height * 0.1,
-            left: -150,
-            child: Container(
-              height: 300,
-              width: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppTheme.primaryBlue.withValues(alpha: 0.1),
-                    AppTheme.primaryBlue.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.75],
-                ),
+          // ── Layer 1: Ambient Background ──
+          const DashboardBackground(),
+
+          // ── Layer 2: Main Content (Sliver Based) ──
+          SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+              onRefresh: () async {
+                HapticFeedback.mediumImpact();
+                ref.invalidate(dashboardStatsProvider);
+                ref.invalidate(myBorrowedItemsProvider);
+                
+                // Allow some time for providers to reset and start loading
+                await Future.delayed(const Duration(milliseconds: 800));
+                
+                if (mounted) {
+                  _showTopNotification(context, 'Dashboard synced with server');
+                }
+              },
+              color: AppTheme.primaryBlue,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                  // 1. Header Section
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    sliver: SliverToBoxAdapter(
+                      child: DashboardHeader(userName: userName),
+                    ),
+                  ),
+
+                  // 2. Scan Hero
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 140,
+                        child: BentoScanTile(
+                          onTap: () => controller.openScanner(context),
+                          animationDelay: 100,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 3. Overdue Banner
+                  statsAsync.maybeWhen(
+                    data: (stats) => stats.overdueLoans > 0 
+                      ? SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                          sliver: SliverToBoxAdapter(
+                            child: OverdueAlertBanner(overdueCount: stats.overdueLoans),
+                          ),
+                        )
+                      : const SliverToBoxAdapter(child: SizedBox.shrink()),
+                    orElse: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                  ),
+
+                  // 4. Equipment Ribbon
+                  const SliverPadding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    sliver: SliverToBoxAdapter(
+                      child: EquipmentRibbon(),
+                    ),
+                  ),
+
+                  // 5. Telemetry Intelligence
+                  const SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    sliver: SliverToBoxAdapter(
+                      child: SystemTelemetryGrid(),
+                    ),
+                  ),
+
+                  // 6. Recent Borrowed Feed (uses existing OperationFeedSection)
+                  const SliverPadding(
+                    padding: EdgeInsets.only(top: 24, bottom: 24),
+                    sliver: SliverToBoxAdapter(
+                      child: OperationFeedSection(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -193,34 +125,71 @@ class _DashboardBackground extends StatelessWidget {
       ),
     );
   }
-}
 
-class _StatsCardSkeleton extends StatelessWidget {
-  const _StatsCardSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 140,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: AppRadius.allLg,
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.neutralGray900.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
+  void _showTopNotification(BuildContext context, String message) {
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 60,
+        left: 24,
+        right: 24,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                    ),
+                    const Gap(12.0),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ).animate().slideY(begin: -1.5, end: 0, duration: 500.ms, curve: Curves.easeOutBack).fadeOut(delay: 2500.ms, duration: 400.ms),
         ),
       ),
     );
+
+    Overlay.of(context).insert(overlayEntry);
+    Future.delayed(const Duration(milliseconds: 3500), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
   }
 }

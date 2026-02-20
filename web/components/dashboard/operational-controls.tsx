@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Box, ClipboardList, Activity } from 'lucide-react'
+import { Box, ClipboardList, Activity, ShieldCheck } from 'lucide-react'
 
 export function OperationalControls() {
     return (
@@ -13,11 +13,17 @@ export function OperationalControls() {
                     <Activity className="h-3 w-3 text-blue-500" /> Dashboard Links
                 </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2 p-2 relative z-10">
+            <CardContent className="grid grid-cols-3 gap-2 p-2 relative z-10">
                 <Button asChild variant="outline" className="h-[58px] rounded-xl flex flex-col gap-1 items-center justify-center bg-white border-slate-100 hover:bg-blue-50 hover:border-blue-100 transition-all group shadow-sm hover:shadow-md">
                     <a href="/dashboard/inventory" className="flex flex-col items-center gap-0.5">
                         <Box className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                         <span className="text-[9px] font-medium text-slate-600 uppercase tracking-wide">Inventory</span>
+                    </a>
+                </Button>
+                <Button asChild variant="outline" className="h-[58px] rounded-xl flex flex-col gap-1 items-center justify-center bg-white border-slate-100 hover:bg-amber-50 hover:border-amber-100 transition-all group shadow-sm hover:shadow-md">
+                    <a href="/dashboard/approvals" className="flex flex-col items-center gap-0.5">
+                        <ShieldCheck className="h-4 w-4 text-amber-600 group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-medium text-slate-600 uppercase tracking-wide">Approvals</span>
                     </a>
                 </Button>
                 <Button asChild variant="outline" className="h-[58px] rounded-xl flex flex-col gap-1 items-center justify-center bg-white border-slate-100 hover:bg-indigo-50 hover:border-indigo-100 transition-all group shadow-sm hover:shadow-md">
