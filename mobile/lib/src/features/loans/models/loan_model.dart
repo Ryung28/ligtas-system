@@ -64,12 +64,30 @@ class LoanModel with _$LoanModel {
       finalStatus = LoanStatus.active; // Fallback
     }
 
-    // Senior Dev: Use server time (created_at) as fallback, NOT phone time
-    final borrowDateStr = data['borrow_date'] as String? ?? data['created_at'] as String? ?? DateTime.now().toIso8601String();
-    final expectedDateStr = data['expected_return_date'] as String? ?? DateTime.now().add(const Duration(days: 7)).toIso8601String();
+    // DEBUG: Print the raw borrow_date from DB to diagnose timestamp issues
+    final rawBorrowDate = data['borrow_date'];
+    print('DEBUG: Raw borrow_date from DB: $rawBorrowDate');
+    
+    // Senior Dev: Robust Timestamp Parsing
+    // 1. Prefer borrow_date, fallback to created_at
+    String? borrowDateStr = data['borrow_date'] as String? ?? data['created_at'] as String?;
+    
+    DateTime borrowDate;
+    if (borrowDateStr != null && borrowDateStr.isNotEmpty) {
+      // Supabase returns ISO strings. If it ends with 'Z' or has an offset, parse handles it.
+      // If it's a raw timestamp, we treat it as UTC if it doesn't specify.
+      final parsed = DateTime.parse(borrowDateStr);
+      borrowDate = parsed.isUtc ? parsed.toLocal() : parsed;
+      
+      // Safety: If it was parsed as local but it's actually a UTC string without 'Z' (rare)
+      // we don't want to double-shift it.
+      print('DEBUG: Loan $rawStatus | Raw: $borrowDateStr | Parsed: $borrowDate');
+    } else {
+      print('WARNING: Loan record missing timestamps - using fallback');
+      borrowDate = DateTime.now().subtract(const Duration(minutes: 5));
+    }
 
-    // Senior Dev: Always convert to local time for consistent UI comparison and timeago calculations
-    final borrowDate = DateTime.parse(borrowDateStr).toLocal();
+    final expectedDateStr = data['expected_return_date'] as String? ?? DateTime.now().add(const Duration(days: 7)).toIso8601String();
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
     final now = DateTime.now();
     

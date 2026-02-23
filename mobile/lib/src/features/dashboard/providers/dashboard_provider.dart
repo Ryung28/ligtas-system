@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../loans/providers/loan_providers.dart';
 import '../../inventory/providers/inventory_providers.dart';
+import '../../loans/models/loan_model.dart';
 
 /// Dashboard stats for borrower perspective
 class DashboardStats {
@@ -70,7 +71,7 @@ final categoryStatsProvider = Provider<List<Map<String, dynamic>>>((ref) {
       return counts.entries.map((e) => {
         'name': e.key,
         'count': e.value,
-        'icon': _getIconForCategory(e.key),
+        'icon': _getIconForCategory(ref, e.key),
       }).toList();
     },
     loading: () => [],
@@ -110,13 +111,12 @@ final inventorySummaryProvider = Provider<Map<String, dynamic>>((ref) {
   );
 });
 
-IconData _getIconForCategory(String category) {
-  final c = category.toLowerCase();
-  if (c.contains('comms') || c.contains('radio')) return Icons.settings_input_antenna_rounded;
-  if (c.contains('pow') || c.contains('gen')) return Icons.bolt_rounded;
-  if (c.contains('med') || c.contains('aid')) return Icons.medical_services_rounded;
-  if (c.contains('drone') || c.contains('fly')) return Icons.flight_takeoff_rounded;
-  if (c.contains('res') || c.contains('life')) return Icons.health_and_safety_rounded;
-  if (c.contains('tools')) return Icons.construction_rounded;
-  return Icons.inventory_2_outlined;
+IconData _getIconForCategory(Ref ref, String category) {
+  return ref.watch(categoryIconProvider(category));
 }
+
+/// Senior Dev: Use FutureProvider for fresh dashboard data (Force fresh fetch from remote)
+final freshDashboardLoansProvider = FutureProvider<List<LoanModel>>((ref) async {
+  final repository = ref.read(loanRepositoryProvider);
+  return repository.getMyBorrowedItems();
+});

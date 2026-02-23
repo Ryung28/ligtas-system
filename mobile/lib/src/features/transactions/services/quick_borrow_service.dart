@@ -148,8 +148,8 @@ class QuickBorrowService {
         'purpose': 'Field Deployment (via QR Scan)',
         'transaction_type': 'borrow',
         'status': 'borrowed',
-        'borrow_date': DateTime.now().toIso8601String(),
-        'expected_return_date': DateTime.now().add(const Duration(days: 7)).toIso8601String(), // Default 1 week
+        'borrow_date': DateTime.now().toUtc().toIso8601String(),
+        'expected_return_date': DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String(), // Default 1 week
       }).select().single();
 
       return {

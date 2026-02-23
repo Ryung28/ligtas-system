@@ -67,37 +67,43 @@ export function LogSessionTable({
         switch (status) {
             case 'borrowed':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-600/10">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
                         Borrowed
                     </span>
                 )
             case 'returned':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20">
                         Returned
                     </span>
                 )
             case 'overdue':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-700 ring-1 ring-rose-600/10">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 ring-1 ring-rose-500/20 animate-pulse">
                         Overdue
                     </span>
                 )
             case 'pending':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-600/10">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-600 ring-1 ring-amber-500/20">
                         Pending
+                    </span>
+                )
+            case 'cancelled':
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-gray-100 text-gray-500 ring-1 ring-gray-400/20">
+                        Cancelled
                     </span>
                 )
             case 'rejected':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-50 text-gray-700 ring-1 ring-gray-600/10">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 ring-1 ring-slate-400/20">
                         Rejected
                     </span>
                 )
             default:
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 ring-1 ring-slate-600/10">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 ring-1 ring-slate-600/10">
                         {status}
                     </span>
                 )
@@ -336,45 +342,60 @@ function LogSessionRow({
                 </TableCell>
             </TableRow>
 
-            {isExpanded && session.items.map((item: BorrowLog) => (
-                <TableRow key={item.id} className="bg-gray-50/40 hover:bg-gray-50/40 border-b border-gray-100/80 animate-in fade-in duration-200">
-                    <TableCell className="pl-4 14in:pl-6 pr-3">
-                        <div className="flex justify-end pr-1">
-                            <div className="h-6 w-[1px] bg-gray-200 mr-2" />
-                        </div>
-                    </TableCell>
-                    <TableCell></TableCell>
-                    <TableCell colSpan={2} className="px-3 py-3">
-                        <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-                            <span className="text-sm font-medium text-gray-700 truncate">{item.item_name}</span>
-                            <span className="text-[10px] text-gray-400 font-mono">ID:{item.inventory_id}</span>
-                            <span className="text-xs text-gray-500 ml-2">Qty: <span className="font-semibold">{item.quantity}</span></span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-400 uppercase font-medium">Due Date</span>
-                            <span className={`text-[11px] ${getUrgencyColor(item.expected_return_date, item.status)}`}>
-                                {formatDate(item.expected_return_date)}
-                            </span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="px-3 py-3">
-                        {getStatusBadge(item.status)}
-                    </TableCell>
-                    <TableCell className="pl-3 pr-4 14in:pr-6 py-3 text-right">
-                        {item.status === 'borrowed' && (
-                            <ReturnDialog
-                                logId={item.id}
-                                itemName={item.item_name}
-                                borrowerName={item.borrower_name}
-                                quantity={item.quantity}
-                            />
-                        )}
-                    </TableCell>
-                </TableRow>
-            ))}
+            {isExpanded && session.items.map((item: BorrowLog) => {
+                const hasReturnRequest = item.notes?.includes('BORROWER INITIATED RETURN');
+
+                return (
+                    <TableRow key={item.id} className={`${hasReturnRequest ? 'bg-amber-50/40' : 'bg-gray-50/40'} hover:bg-gray-50/60 border-b border-gray-100/80 animate-in fade-in duration-200`}>
+                        <TableCell className="pl-4 14in:pl-6 pr-3">
+                            <div className="flex justify-end pr-1">
+                                <div className="h-6 w-[1px] bg-gray-200 mr-2" />
+                            </div>
+                        </TableCell>
+                        <TableCell></TableCell>
+                        <TableCell colSpan={2} className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                                <div className={`h-1.5 w-1.5 rounded-full ${hasReturnRequest ? 'bg-amber-500 animate-pulse' : 'bg-blue-500'} flex-shrink-0`} />
+                                <span className="text-sm font-medium text-gray-700 truncate">{item.item_name}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">ID:{item.inventory_id}</span>
+                                <span className="text-xs text-gray-500 ml-2">Qty: <span className="font-semibold">{item.quantity}</span></span>
+
+                                {hasReturnRequest && (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-tighter ring-1 ring-amber-200">
+                                        Return Requested
+                                    </span>
+                                )}
+                            </div>
+                        </TableCell>
+                        <TableCell className="px-3 py-3">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-400 uppercase font-medium">Due Date</span>
+                                <span className={`text-[11px] ${getUrgencyColor(item.expected_return_date, item.status)}`}>
+                                    {formatDate(item.expected_return_date)}
+                                </span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="px-3 py-3">
+                            {getStatusBadge(item.status)}
+                        </TableCell>
+                        <TableCell className="pl-3 pr-4 14in:pr-6 py-3 text-right">
+                            {item.status === 'borrowed' && (
+                                <div className="relative group/btn">
+                                    {hasReturnRequest && (
+                                        <div className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-ping z-10" />
+                                    )}
+                                    <ReturnDialog
+                                        logId={item.id}
+                                        itemName={item.item_name}
+                                        borrowerName={item.borrower_name}
+                                        quantity={item.quantity}
+                                    />
+                                </div>
+                            )}
+                        </TableCell>
+                    </TableRow>
+                );
+            })}
         </React.Fragment>
     )
 }

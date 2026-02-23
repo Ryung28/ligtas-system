@@ -12,6 +12,9 @@ import '../providers/inventory_providers.dart';
 import '../widgets/inventory_card.dart';
 import '../widgets/glass_search_bar.dart';
 import '../widgets/glass_filter_chip.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
+import '../../../core/design_system/widgets/ligtas_error_state.dart';
+import '../../../core/di/app_providers.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -54,7 +57,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               // Invalidate the provider to trigger a fresh watch
               ref.invalidate(inventoryItemsProvider);
               if (context.mounted) {
-                _showTopNotification(context, 'Inventory records up to date');
+                AppToast.showSuccess(context, 'Inventory records up to date');
               }
             },
             displacement: 100, // Move down so it doesn't overlap header
@@ -206,7 +209,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   child: Center(child: CircularProgressIndicator.adaptive()),
                 ),
                 error: (err, stack) => SliverFillRemaining(
-                  child: Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
+                  child: LigtasErrorState(
+                    title: 'Inventory Link Failure',
+                    message: 'Could not sync with the central equipment database.',
+                    onRetry: () => ref.invalidate(inventoryItemsProvider),
+                  ),
                 ),
               ),
             ],
@@ -218,17 +225,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 }
 
   Widget _buildFilterSection() {
-    final categories = [
-      context.l10n.categoryAll,
-      context.l10n.categoryRescue,
-      context.l10n.categoryMedical,
-      context.l10n.categoryComms,
-      context.l10n.categoryVehicles,
-      context.l10n.categoryTools,
-      context.l10n.categoryPPE,
-      context.l10n.categoryLogistics,
-      context.l10n.categoryOffice,
-    ];
+    final categories = ref.watch(inventoryCategoriesProvider);
+    
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -291,70 +289,4 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     }).toList();
   }
 
-  void _showTopNotification(BuildContext context, String message) {
-    late OverlayEntry overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 60, // Positioned below status bar area
-        left: 24,
-        right: 24,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981), // Emerald 500
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
-                    ),
-                    const Gap(12),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ).animate().slideY(begin: -1.5, end: 0, duration: 500.ms, curve: Curves.easeOutBack).fadeOut(delay: 2500.ms, duration: 400.ms),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(overlayEntry);
-    Future.delayed(const Duration(milliseconds: 3500), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
-  }
 }

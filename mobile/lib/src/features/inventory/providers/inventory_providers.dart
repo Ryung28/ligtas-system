@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthException;
@@ -195,4 +196,35 @@ final filteredInventoryItemsProvider = Provider.family<List<InventoryModel>, Str
     loading: () => [],
     error: (_, __) => [],
   );
+});
+
+/// Senior Dev: Centralized Inventory Categories
+final inventoryCategoriesProvider = Provider<List<String>>((ref) {
+  return [
+    'All',
+    'Rescue',
+    'Medical',
+    'Comms',
+    'Vehicles',
+    'Tools',
+    'PPE',
+    'Logistics',
+    'Office',
+  ];
+});
+
+/// Centralized category icon mapping
+final categoryIconProvider = Provider.family<IconData, String>((ref, category) {
+  final c = category.toLowerCase();
+  if (c.contains('comms') || c.contains('radio')) return Icons.settings_input_antenna_rounded;
+  if (c.contains('pow') || c.contains('gen')) return Icons.bolt_rounded;
+  if (c.contains('med') || c.contains('aid')) return Icons.medical_services_rounded;
+  if (c.contains('drone') || c.contains('fly')) return Icons.flight_takeoff_rounded;
+  if (c.contains('res') || c.contains('life')) return Icons.health_and_safety_rounded;
+  if (c.contains('tool')) return Icons.construction_rounded;
+  if (c.contains('vehic')) return Icons.local_shipping_rounded;
+  if (c.contains('ppe')) return Icons.masks_rounded;
+  if (c.contains('logist')) return Icons.warehouse_rounded;
+  if (c.contains('offi')) return Icons.apartment_rounded;
+  return Icons.inventory_2_outlined;
 });

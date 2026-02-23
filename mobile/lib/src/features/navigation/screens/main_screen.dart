@@ -10,6 +10,7 @@ import '../../../core/design_system/app_theme.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/navigation_provider.dart';
+import '../../../core/design_system/widgets/offline_indicator.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -189,22 +190,29 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           behavior: HitTestBehavior.translucent,
           onPointerDown: (_) => _handleActivity(),
           onPointerMove: (_) => _handleActivity(),
-          child: Stack(
+          child: Column(
             children: [
-              // 1. Content Area
-              Positioned.fill(child: widget.child),
-    
-              // 2. Floating Glass Dock (Smart Stealth)
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 400), // Slightly smoother transition
-                curve: Curves.easeOutCubic, 
-                left: 20,
-                right: 20,
-                bottom: showDock ? bottomOffset : -120,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 250),
-                  opacity: showDock ? 1.0 : 0.0,
-                  child: _buildFloatingDock(),
+              const OfflineIndicator(),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // 1. Content Area
+                    Positioned.fill(child: widget.child),
+          
+                    // 2. Floating Glass Dock (Smart Stealth)
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 400), // Slightly smoother transition
+                      curve: Curves.easeOutCubic, 
+                      left: 20,
+                      right: 20,
+                      bottom: showDock ? bottomOffset : -120,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 250),
+                        opacity: showDock ? 1.0 : 0.0,
+                        child: _buildFloatingDock(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

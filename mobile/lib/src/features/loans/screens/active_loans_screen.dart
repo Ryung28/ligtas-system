@@ -14,6 +14,8 @@ import '../widgets/loan_card_glass.dart';
 import '../widgets/loan_details_sheet.dart';
 import '../widgets/loan_empty_state.dart';
 import '../models/loan_filter.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
+import '../../../core/design_system/widgets/ligtas_error_state.dart';
 import '../providers/loan_filter_provider.dart';
 import '../widgets/loan_list_skeleton.dart';
 import '../../navigation/providers/navigation_provider.dart';
@@ -347,9 +349,9 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                     },
                     onDismissed: (direction) {
                       if (isReturnable) {
-                        // TODO: Implement return logic
+                        _onReturnValidated(loan);
                       } else if (isCancellable) {
-                        // TODO: Implement cancel logic
+                        _onCancelValidated(loan);
                       }
                     },
                     background: Container(
@@ -399,8 +401,12 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
       loading: () => const SliverFillRemaining(
         child: LoanListSkeleton(),
       ),
-      error: (err, stack) => const SliverFillRemaining(
-        child: Center(child: Text("Error loading items")),
+      error: (err, stack) => SliverFillRemaining(
+        child: LigtasErrorState(
+          title: 'Transaction Sync Error',
+          message: 'Failed to retrieve your current equipment assignments.',
+          onRetry: () => ref.invalidate(myBorrowedItemsProvider),
+        ),
       ),
     );
   }
@@ -466,7 +472,7 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
       HapticFeedback.mediumImpact();
       await ref.read(loanRepositoryProvider).syncMyBorrowedItems();
       if (mounted) {
-        _showTopNotification(context, 'Borrowed items successfully updated');
+        AppToast.showSuccess(context, 'Borrowed items successfully updated');
       }
     } catch (e) {
       if (mounted) {
@@ -480,74 +486,6 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
       }
     }
   }
-
-  void _showTopNotification(BuildContext context, String message) {
-    late OverlayEntry overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 60,
-        left: 24,
-        right: 24,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
-                    ),
-                    const Gap(12),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ).animate().slideY(begin: -1.5, end: 0, duration: 500.ms, curve: Curves.easeOutBack).fadeOut(delay: 2500.ms, duration: 400.ms),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(overlayEntry);
-    Future.delayed(const Duration(milliseconds: 3500), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
-  }
-
   Widget _buildSectionHeader() {
     final type = ['pending', 'active', 'overdue', 'history'][_selectedTabIndex];
     final items = _getFilteredItems(type);
@@ -599,5 +537,37 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
   Widget _buildStatsBadge() {
     // Badge removed - returning empty SizedBox
     return const SizedBox.shrink();
+  }
+
+  void _onReturnValidated(LoanModel loan) async {
+    try {
+      await ref.read(loanRepositoryProvider).requestReturn(loan.id);
+      if (mounted) {
+        AppToast.showSuccess(context, 'Return request initiated for ${loan.itemName}');
+        // Refresh local data
+        ref.invalidate(myBorrowedItemsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(context, 'Failed to initiate return: $e');
+        ref.invalidate(myBorrowedItemsProvider); // Restore item to list
+      }
+    }
+  }
+
+  void _onCancelValidated(LoanModel loan) async {
+    try {
+      await ref.read(loanRepositoryProvider).cancelLoanRequest(loan.id);
+      if (mounted) {
+        AppToast.showSuccess(context, 'Request cancelled for ${loan.itemName}');
+        // Refresh local data
+        ref.invalidate(myBorrowedItemsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(context, 'Failed to cancel request: $e');
+        ref.invalidate(myBorrowedItemsProvider); // Restore item to list
+      }
+    }
   }
 }

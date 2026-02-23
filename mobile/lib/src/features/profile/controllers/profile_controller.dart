@@ -1,29 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../models/profile_state.dart';
 import '../data/profile_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+
 
 class ProfileController extends StateNotifier<ProfileState> {
   final ProfileRepository _repository;
   final Ref _ref;
 
   ProfileController(this._repository, this._ref) : super(const ProfileState()) {
-    _loadSettings();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    // Initial sync with auth provider
+    final user = _ref.read(currentUserProvider);
+    state = state.copyWith(user: user, isLoading: true);
+    
+    await _loadSettings();
+    
+    // Refresh user data from Supabase to ensure we have latest profile fields
+    if (user != null) {
+      try {
+        final profile = await _repository.fetchProfile(user.id);
+        state = state.copyWith(user: profile, isLoading: false);
+      } catch (e) {
+        state = state.copyWith(isLoading: false);
+        debugPrint('Profile fetch error: $e');
+      }
+    } else {
+      state = state.copyWith(isLoading: false);
+    }
   }
 
   Future<void> _loadSettings() async {
-    state = state.copyWith(isLoading: true);
     try {
       final data = await _repository.fetchSettings();
       state = state.copyWith(
-        isLoading: false,
         pushNotificationsEnabled: data['push_notifications'] as bool,
         biometricEnabled: data['biometric_enabled'] as bool,
         isDarkMode: data['dark_mode'] as bool,
       );
     } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+    }
+  }
+
+  Future<void> updateProfile({
+    String? displayName,
+    String? phoneNumber,
+    String? organization,
+  }) async {
+    if (state.user == null) return;
+
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final currentUser = state.user!;
+      final updatedUser = currentUser.copyWith(
+        displayName: displayName ?? currentUser.displayName,
+        phoneNumber: phoneNumber ?? currentUser.phoneNumber,
+        organization: organization ?? currentUser.organization,
+      );
+
+      await _repository.updateProfile(updatedUser);
+      state = state.copyWith(user: updatedUser, isLoading: false);
+      
+      // Sync back to global auth state
+      await _ref.read(authProvider.notifier).refreshProfile();
+    } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      rethrow;
     }
   }
 
@@ -76,14 +124,21 @@ class ProfileController extends StateNotifier<ProfileState> {
   }
 
   void navigateTo(BuildContext context, String route) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Feature coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (route == 'personal-info') {
+      context.push('/profile/personal-info');
+    } else if (route == 'security') {
+      context.push('/profile/security');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Feature coming soon'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
+
 
 final profileControllerProvider = StateNotifierProvider<ProfileController, ProfileState>((ref) {
   final repo = ref.watch(profileRepositoryProvider);

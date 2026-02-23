@@ -20,6 +20,7 @@ mixin _$ProfileState {
   bool get pushNotificationsEnabled => throw _privateConstructorUsedError;
   bool get biometricEnabled => throw _privateConstructorUsedError;
   bool get isDarkMode => throw _privateConstructorUsedError;
+  UserModel? get user => throw _privateConstructorUsedError;
   String? get errorMessage => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
@@ -38,7 +39,10 @@ abstract class $ProfileStateCopyWith<$Res> {
       bool pushNotificationsEnabled,
       bool biometricEnabled,
       bool isDarkMode,
+      UserModel? user,
       String? errorMessage});
+
+  $UserModelCopyWith<$Res>? get user;
 }
 
 /// @nodoc
@@ -58,6 +62,7 @@ class _$ProfileStateCopyWithImpl<$Res, $Val extends ProfileState>
     Object? pushNotificationsEnabled = null,
     Object? biometricEnabled = null,
     Object? isDarkMode = null,
+    Object? user = freezed,
     Object? errorMessage = freezed,
   }) {
     return _then(_value.copyWith(
@@ -77,11 +82,27 @@ class _$ProfileStateCopyWithImpl<$Res, $Val extends ProfileState>
           ? _value.isDarkMode
           : isDarkMode // ignore: cast_nullable_to_non_nullable
               as bool,
+      user: freezed == user
+          ? _value.user
+          : user // ignore: cast_nullable_to_non_nullable
+              as UserModel?,
       errorMessage: freezed == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
               as String?,
     ) as $Val);
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $UserModelCopyWith<$Res>? get user {
+    if (_value.user == null) {
+      return null;
+    }
+
+    return $UserModelCopyWith<$Res>(_value.user!, (value) {
+      return _then(_value.copyWith(user: value) as $Val);
+    });
   }
 }
 
@@ -98,7 +119,11 @@ abstract class _$$ProfileStateImplCopyWith<$Res>
       bool pushNotificationsEnabled,
       bool biometricEnabled,
       bool isDarkMode,
+      UserModel? user,
       String? errorMessage});
+
+  @override
+  $UserModelCopyWith<$Res>? get user;
 }
 
 /// @nodoc
@@ -116,6 +141,7 @@ class __$$ProfileStateImplCopyWithImpl<$Res>
     Object? pushNotificationsEnabled = null,
     Object? biometricEnabled = null,
     Object? isDarkMode = null,
+    Object? user = freezed,
     Object? errorMessage = freezed,
   }) {
     return _then(_$ProfileStateImpl(
@@ -135,6 +161,10 @@ class __$$ProfileStateImplCopyWithImpl<$Res>
           ? _value.isDarkMode
           : isDarkMode // ignore: cast_nullable_to_non_nullable
               as bool,
+      user: freezed == user
+          ? _value.user
+          : user // ignore: cast_nullable_to_non_nullable
+              as UserModel?,
       errorMessage: freezed == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -151,6 +181,7 @@ class _$ProfileStateImpl implements _ProfileState {
       this.pushNotificationsEnabled = true,
       this.biometricEnabled = false,
       this.isDarkMode = false,
+      this.user,
       this.errorMessage});
 
   @override
@@ -166,11 +197,13 @@ class _$ProfileStateImpl implements _ProfileState {
   @JsonKey()
   final bool isDarkMode;
   @override
+  final UserModel? user;
+  @override
   final String? errorMessage;
 
   @override
   String toString() {
-    return 'ProfileState(isLoading: $isLoading, pushNotificationsEnabled: $pushNotificationsEnabled, biometricEnabled: $biometricEnabled, isDarkMode: $isDarkMode, errorMessage: $errorMessage)';
+    return 'ProfileState(isLoading: $isLoading, pushNotificationsEnabled: $pushNotificationsEnabled, biometricEnabled: $biometricEnabled, isDarkMode: $isDarkMode, user: $user, errorMessage: $errorMessage)';
   }
 
   @override
@@ -187,13 +220,20 @@ class _$ProfileStateImpl implements _ProfileState {
                 other.biometricEnabled == biometricEnabled) &&
             (identical(other.isDarkMode, isDarkMode) ||
                 other.isDarkMode == isDarkMode) &&
+            (identical(other.user, user) || other.user == user) &&
             (identical(other.errorMessage, errorMessage) ||
                 other.errorMessage == errorMessage));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, isLoading,
-      pushNotificationsEnabled, biometricEnabled, isDarkMode, errorMessage);
+  int get hashCode => Object.hash(
+      runtimeType,
+      isLoading,
+      pushNotificationsEnabled,
+      biometricEnabled,
+      isDarkMode,
+      user,
+      errorMessage);
 
   @JsonKey(ignore: true)
   @override
@@ -208,6 +248,7 @@ abstract class _ProfileState implements ProfileState {
       final bool pushNotificationsEnabled,
       final bool biometricEnabled,
       final bool isDarkMode,
+      final UserModel? user,
       final String? errorMessage}) = _$ProfileStateImpl;
 
   @override
@@ -218,6 +259,8 @@ abstract class _ProfileState implements ProfileState {
   bool get biometricEnabled;
   @override
   bool get isDarkMode;
+  @override
+  UserModel? get user;
   @override
   String? get errorMessage;
   @override

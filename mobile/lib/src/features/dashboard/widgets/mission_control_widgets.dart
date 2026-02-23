@@ -29,68 +29,56 @@ class EquipmentRibbon extends ConsumerWidget {
         separatorBuilder: (_, __) => const Gap(12),
         itemBuilder: (context, index) {
           final cat = categoriesAsync[index];
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(100),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.6),
-                      Colors.white.withValues(alpha: 0.35),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(cat['icon'] as IconData, size: 14, color: AppTheme.neutralGray700),
-                    const Gap(8),
-                    Text(
-                      cat['name'] as String,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.neutralGray900,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const Gap(6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        cat['count'].toString(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.primaryBlue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+          return Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.6),
+                width: 1.2,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-          ).animate().fadeIn(delay: (100 * index).ms).slideX(begin: 0.2, end: 0);
+            child: Row(
+              children: [
+                Icon(cat['icon'] as IconData, size: 14, color: AppTheme.neutralGray700),
+                const Gap(8),
+                Text(
+                  cat['name'] as String,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.neutralGray900,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const Gap(6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    cat['count'].toString(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1, end: 0); // Simplified animation
         },
       ),
     );
@@ -144,85 +132,64 @@ class SystemTelemetryGrid extends ConsumerWidget {
   }
 
   Widget _buildGlassTelemetryTile(IconData icon, String label, String value, Color color) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.55),
-                Colors.white.withValues(alpha: 0.3),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.6),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.06),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const Gap(12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.neutralGray500,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                child: Icon(icon, size: 16, color: color),
-              ),
-              const Gap(12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.neutralGray500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.neutralGray900,
-                        height: 1.1,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.neutralGray900,
+                    height: 1.1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98));
   }
 }
 
@@ -355,6 +322,9 @@ class OperationFeedSection extends ConsumerWidget {
   }
 
   Widget _buildLoanCard(LoanModel loan, Color statusColor) {
+    // DEBUG: Print timestamp for debugging
+    print('DEBUG UI: loan.id=${loan.id}, borrowDate=${loan.borrowDate}, timeago=${timeago.format(loan.borrowDate)}');
+    
     final isPending = loan.status == LoanStatus.pending;
     final isOverdue = loan.daysOverdue > 0;
     
@@ -429,6 +399,7 @@ class OperationFeedSection extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // DEBUG: Print the actual borrowDate to diagnose timestamp issues
                 Text(
                   // Use timeago package for reliable timestamp formatting (same as recent_activity_section)
                   timeago.format(loan.borrowDate),

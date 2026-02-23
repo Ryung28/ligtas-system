@@ -66,7 +66,8 @@ class ProfileScreen extends ConsumerWidget {
                       const Gap(10),
                       
                       // ── Digital ID Card ──
-                      DigitalIdCard(user: user),
+                      DigitalIdCard(user: state.user ?? user),
+
 
                       const Gap(32),
 

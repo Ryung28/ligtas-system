@@ -58,7 +58,7 @@ export default function ApprovalsPage() {
                     <ClipboardList className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-tight">Logistics Protocol</h4>
+                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Command Protocol</h4>
                     <p className="text-[10px] text-slate-600 leading-relaxed max-w-2xl mt-0.5">
                         Approval automatically converts the request into an active borrow log and confirms the stock reservation.
                         If the request is rejected, the reserved items are immediately returned to the available inventory pool.

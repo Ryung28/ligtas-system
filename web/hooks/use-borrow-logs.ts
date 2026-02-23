@@ -140,6 +140,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         returned: logs.filter(l => l.status === 'returned').length,
         overdue: logs.filter(l => l.status === 'overdue').length,
         pending: logs.filter(l => l.status === 'pending').length,
+        cancelled: logs.filter(l => l.status === 'cancelled').length,
     }), [logs])
 
     const paginatedSessions = useMemo(() => {

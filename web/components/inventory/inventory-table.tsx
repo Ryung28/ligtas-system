@@ -72,25 +72,25 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
 
     const getStockDisplay = (item: InventoryItem) => {
         if (item.stock_available === 0) return {
-            label: 'Out of Stock',
-            color: 'bg-red-50 text-red-700 ring-1 ring-red-600/10'
+            label: 'OUT OF STOCK',
+            color: 'bg-rose-50 text-rose-700 ring-1 ring-rose-500/20 font-black tracking-wider'
         }
         if (item.stock_available < 5) return {
-            label: 'Low Stock',
-            color: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10'
+            label: 'LOW STOCK',
+            color: 'bg-amber-50 text-amber-700 ring-1 ring-amber-500/20 font-black tracking-wider'
         }
         return {
-            label: 'In Stock',
-            color: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10'
+            label: 'IN STOCK',
+            color: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500/20 font-black tracking-wider'
         }
     }
 
     const getConditionDot = (status: string) => {
         const s = (status || 'Good').toLowerCase()
-        if (s.includes('damaged') || s.includes('repair')) return { color: 'bg-red-500', label: 'Needs Repair' }
-        if (s.includes('maintenance')) return { color: 'bg-amber-500', label: 'Maintenance' }
-        if (s.includes('lost')) return { color: 'bg-slate-400', label: 'Lost' }
-        return { color: 'bg-emerald-500', label: 'Operational' }
+        if (s.includes('damaged') || s.includes('repair')) return { color: 'bg-rose-500', label: 'REPAIR REQUIRED' }
+        if (s.includes('maintenance')) return { color: 'bg-amber-500', label: 'MAINTENANCE' }
+        if (s.includes('lost')) return { color: 'bg-slate-400', label: 'MISSING' }
+        return { color: 'bg-emerald-500', label: 'OPERATIONAL' }
     }
 
     return (
@@ -215,7 +215,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                             <TableCell className="px-3 py-3">
                                                 <div className="flex items-center gap-2">
                                                     <div className={`h-1.5 w-1.5 rounded-full ${condition.color}`} />
-                                                    <span className="text-[12px] text-gray-600">{condition.label}</span>
+                                                    <span className="text-[10px] font-black uppercase text-gray-500 tracking-tight">{condition.label}</span>
                                                 </div>
                                             </TableCell>
 
@@ -234,7 +234,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                             </TableCell>
 
                                             <TableCell className="px-3 py-3">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${stock.color}`}>
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] ${stock.color}`}>
                                                     {stock.label}
                                                 </span>
                                             </TableCell>

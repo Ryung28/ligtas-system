@@ -14,6 +14,9 @@ import 'package:mobile/src/features/loans/screens/create_loan_screen.dart';
 import 'package:mobile/src/features/navigation/screens/main_screen.dart';
 import 'package:mobile/src/features/scanner/widgets/scanner_view.dart';
 import 'package:mobile/src/features/profile/screens/profile_screen.dart';
+import 'package:mobile/src/features/profile/screens/personal_info_screen.dart';
+import 'package:mobile/src/features/profile/screens/security_screen.dart';
+
 import 'package:mobile/src/features/splash/screens/splash_screen_page.dart';
 import 'package:mobile/src/features/intro/screens/modern_intro_cards.dart';
 import 'package:mobile/src/features/inventory/screens/inventory_screen.dart';
@@ -167,7 +170,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+            routes: [
+              GoRoute(
+                path: 'personal-info',
+                builder: (context, state) => const PersonalInfoScreen(),
+              ),
+              GoRoute(
+                path: 'security',
+                builder: (context, state) => const SecurityScreen(),
+              ),
+            ],
           ),
+
           GoRoute(
             path: '/requests',
             builder: (context, state) => const RequestsScreen(),

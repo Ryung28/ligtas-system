@@ -17,6 +17,11 @@ import '../widgets/bento_tiles.dart';
 import '../controllers/dashboard_controller.dart';
 
 import '../widgets/mission_control_widgets.dart';
+import '../widgets/recent_activity_section.dart';
+import '../../loans/repositories/loan_repository.dart';
+import '../../../core/di/app_providers.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
+import '../../../core/design_system/widgets/ligtas_error_state.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -26,6 +31,26 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+
+  Widget _buildRecentActivity() {
+    final loansAsync = ref.watch(freshDashboardLoansProvider);
+    
+    return loansAsync.when(
+      data: (loans) => RecentActivitySection(loans: loans),
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (_, __) => LigtasErrorState(
+        title: 'Activity Error',
+        message: 'Unable to stream recent activity logs.',
+        onRetry: () => ref.invalidate(freshDashboardLoansProvider),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userName = ref.watch(dashboardUserNameProvider);
@@ -48,11 +73,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ref.invalidate(dashboardStatsProvider);
                 ref.invalidate(myBorrowedItemsProvider);
                 
-                // Allow some time for providers to reset and start loading
-                await Future.delayed(const Duration(milliseconds: 800));
-                
                 if (mounted) {
-                  _showTopNotification(context, 'Dashboard synced with server');
+                  AppToast.showSuccess(context, 'Dashboard synced with server');
                 }
               },
               color: AppTheme.primaryBlue,
@@ -110,11 +132,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
 
-                  // 6. Recent Borrowed Feed (uses existing OperationFeedSection)
-                  const SliverPadding(
-                    padding: EdgeInsets.only(top: 24, bottom: 24),
+                  // 6. Recent Borrowed Feed (replaced with RecentActivitySection for correct timestamps)
+                  SliverPadding(
+                    padding: const EdgeInsets.only(top: 24, bottom: 24),
                     sliver: SliverToBoxAdapter(
-                      child: OperationFeedSection(),
+                      child: _buildRecentActivity(),
                     ),
                   ),
                 ],
@@ -126,70 +148,4 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  void _showTopNotification(BuildContext context, String message) {
-    late OverlayEntry overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 60,
-        left: 24,
-        right: 24,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
-                    ),
-                    const Gap(12.0),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ).animate().slideY(begin: -1.5, end: 0, duration: 500.ms, curve: Curves.easeOutBack).fadeOut(delay: 2500.ms, duration: 400.ms),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(overlayEntry);
-    Future.delayed(const Duration(milliseconds: 3500), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
-  }
 }

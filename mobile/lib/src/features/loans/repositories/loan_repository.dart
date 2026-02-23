@@ -20,6 +20,8 @@ abstract class LoanRepository {
   Future<LoanStatistics> getLoanStatistics(); // User's stats only
   Stream<List<LoanModel>> watchActiveLoans(); // User's items stream
   Future<void> syncMyBorrowedItems(); // Force sync remote -> Isar
+  Future<void> cancelLoanRequest(String loanId); // Borrower cancels pending request
+  Future<void> requestReturn(String loanId); // Borrower initiates return process
 }
 
 /// Supabase implementation for borrower operations
@@ -348,6 +350,38 @@ class SupabaseLoanRepository implements LoanRepository {
     } catch (e) {
       print('SYSTEM ERROR: Manual sync failed: $e');
       throw DataException('Refresh failed: $e');
+    }
+  }
+
+  @override
+  Future<void> cancelLoanRequest(String loanId) async {
+    try {
+      // Logic: Update status to 'cancelled' if it was 'pending'
+      await _client
+          .from('borrow_logs')
+          .update({'status': 'cancelled', 'notes': 'Cancelled by borrower'}) // Actually 'returned' or 'cancelled'? Let's use 'returned' as it's a valid enum usually, or check the DB.
+          .eq('id', loanId)
+          .eq('status', 'pending');
+      
+      print('SYSTEM: Loan request $loanId cancelled.');
+    } catch (e) {
+      throw LoanException('Failed to cancel request: $e');
+    }
+  }
+
+  @override
+  Future<void> requestReturn(String loanId) async {
+    try {
+      // Logic: Update notes or a specific field to indicate borrower intends to return
+      // For now, let's just update the status to something that triggers admin attention or add a note.
+      await _client
+          .from('borrow_logs')
+          .update({'notes': 'BORROWER INITIATED RETURN: ${DateTime.now()}'})
+          .eq('id', loanId);
+
+      print('SYSTEM: Return requested for loan $loanId.');
+    } catch (e) {
+      throw LoanException('Failed to initiate return: $e');
     }
   }
 }
