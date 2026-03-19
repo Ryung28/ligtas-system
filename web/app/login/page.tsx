@@ -5,6 +5,9 @@ import { AuthForm } from '@/components/auth/auth-form'
 import { useAuth } from '@/hooks/use-auth'
 import { AlertCircle, CheckCircle2, Shield, Radio, Wifi, Activity, Package, Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import { QRCodeSVG } from 'qrcode.react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Smartphone, Download, QrCode } from 'lucide-react'
 import { useState, useCallback } from 'react'
 
 export default function LoginPage() {
@@ -20,6 +23,9 @@ export default function LoginPage() {
     } = useAuth()
 
     const [imageLoaded, setImageLoaded] = useState(false)
+    const [showMobileApp, setShowMobileApp] = useState(false)
+
+    const APK_URL = "https://knarlvwnuvedyfvvaota.supabase.co/storage/v1/object/public/release/Cdrrmo-Ligstas.apk"
 
     // Senior Dev: Use a callback ref to handle cached images that don't trigger onLoad
     const onImageRef = useCallback((node: HTMLImageElement | null) => {
@@ -28,7 +34,7 @@ export default function LoginPage() {
         }
     }, [])
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F0F2F5] p-4 sm:p-6 lg:p-8 selection:bg-[#832838]/20 selection:text-[#832838] relative overflow-hidden">
+        <div className="h-screen w-screen flex items-center justify-center bg-[#F0F2F5] p-4 lg:p-8 selection:bg-[#832838]/20 selection:text-[#832838] relative overflow-hidden">
             {/* ── Senior Dev: Modern Premium Dot Grid Background ── */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div
@@ -50,7 +56,7 @@ export default function LoginPage() {
                 />
             </div>
 
-            <div className="w-full max-w-[1100px] 3xl:max-w-[1300px] 4xl:max-w-[1500px] bg-white rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col lg:flex-row min-h-[660px] 3xl:min-h-[780px] 4xl:min-h-[850px] animate-in fade-in zoom-in-95 duration-700 relative z-10">
+            <div className="w-full max-w-[1100px] 3xl:max-w-[1300px] 4xl:max-w-[1500px] h-[min(90vh,950px)] bg-white rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col lg:flex-row animate-in fade-in zoom-in-95 duration-700 relative z-10">
 
                 {/* ═══════════════════════════════════════════ */}
                 {/* LEFT ILLUSTRATION PANEL */}
@@ -160,7 +166,6 @@ export default function LoginPage() {
                         <div className="absolute bottom-0 right-[30%] w-16 h-32 bg-[#C2883E] rounded-t-full rotate-[-5deg] origin-bottom shadow-2xl" />
                     </div>
 
-                    {/* ── Bottom Hero Text (Context Aware) ── */}
                     <div className="relative z-10 text-center translate-y-[-85px] 3xl:translate-y-[-100px] 4xl:translate-y-[-120px]">
                         <h2 className="text-[2.15rem] 3xl:text-[2.75rem] 4xl:text-[3.25rem] font-black text-[#1A1A2E] font-heading leading-tight tracking-tight">
                             Empowering Readiness.<br />
@@ -170,6 +175,65 @@ export default function LoginPage() {
                             Precision logistics management for LIGTAS CDRRMO operations.
                             Track, manage, and deploy critical assets with zero latency.
                         </p>
+                    </div>
+
+                    {/* ── Senior Dev: Tactical Mobile Companion Portal (Off-Side Strategy) ── */}
+                    <div className="absolute bottom-4 left-8 3xl:bottom-10 3xl:left-10 z-50">
+                        <button
+                            onClick={() => setShowMobileApp(!showMobileApp)}
+                            className="flex items-center gap-3 py-2.5 px-6 rounded-2xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all text-slate-900 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] group/mobile"
+                        >
+                            <Smartphone className="w-5 h-5 group-hover/mobile:scale-110 transition-transform text-slate-800" />
+                            <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900">Download Mobile App</span>
+                            <div className={`w-2 h-2 rounded-full transition-transform duration-300 ${showMobileApp ? 'bg-slate-900 rotate-180' : 'bg-slate-500'}`} />
+                        </button>
+
+                        <AnimatePresence>
+                            {showMobileApp && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    transition={{ duration: 0.15, ease: "easeOut" }}
+                                    className="absolute bottom-16 left-0 w-[355px] origin-bottom-left"
+                                >
+                                    <div className="p-7 rounded-[2.5rem] bg-white/30 border border-white/40 backdrop-blur-3xl flex flex-col gap-6 shadow-[0_24px_48px_rgba(0,0,0,0.12)] overflow-hidden">
+                                        <div className="flex gap-6 items-center">
+                                            <div className="p-4 bg-white/80 backdrop-blur-md rounded-2xl shadow-inner border border-white shrink-0">
+                                                <QRCodeSVG
+                                                    value={APK_URL}
+                                                    size={110}
+                                                    level="H"
+                                                    includeMargin={false}
+                                                    className="rendering-pixelated grayscale opacity-90"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex flex-col">
+                                                    <h4 className="text-[14px] font-black text-slate-950 uppercase tracking-widest flex items-center gap-2 font-sans">
+                                                        <QrCode className="w-3.5 h-3.5 text-slate-600" />
+                                                        LIGTAS Mobile
+                                                    </h4>
+                                                    <span className="text-[10px] font-bold text-slate-700/60 uppercase tracking-widest mt-0.5">Official Admin App</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-800 font-medium leading-[1.6] max-w-[160px]">
+                                                    Install the companion app to borrow and return inventory directly from your phone.
+                                                </p>
+                                                <a
+                                                    href={APK_URL}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center justify-center gap-2.5 py-3 px-4 bg-slate-950 border-none rounded-xl text-white text-[11px] font-black tracking-[0.15em] uppercase hover:bg-black transition-all shadow-xl active:scale-95"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    Download Now
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
 
@@ -181,19 +245,19 @@ export default function LoginPage() {
                 {/* ═══════════════════════════════════════════ */}
                 {/* RIGHT FORM PANEL (Social Only Refinement) */}
                 {/* ═══════════════════════════════════════════ */}
-                <div className="w-full lg:w-[45%] px-8 py-10 sm:px-10 lg:px-12 lg:py-0 flex flex-col justify-center relative overflow-hidden bg-white">
+                <div className="w-full lg:w-[45%] h-full px-8 py-10 lg:px-12 flex flex-col justify-between relative overflow-hidden bg-white">
                     {/* ── Decorative: Subtle Right-side Blooms ── */}
                     <div className="absolute top-[-5%] right-[-5%] w-[300px] h-[300px] bg-blue-50/50 rounded-full blur-[80px] pointer-events-none" />
                     <div className="absolute bottom-[-10%] left-[-10%] w-[250px] h-[250px] bg-rose-50/50 rounded-full blur-[70px] pointer-events-none" />
 
-                    <div className="relative z-10 flex flex-col items-center gap-8 3xl:gap-10">
+                    <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 3xl:gap-10">
                         <AuthHeader
                             title="Official LIGTAS Access"
                             description="CDRRMO Inventory & Asset Management"
                         />
 
                         {/* ── Senior Dev: Secure Portal Aesthetic ── */}
-                        <div className="w-full p-7 3xl:p-9 rounded-[2.5rem] bg-slate-50 border border-slate-100/80 shadow-[0_15px_40px_rgba(0,0,0,0.02)] flex flex-col items-center text-center relative group">
+                        <div className="w-full p-5 lg:p-7 3xl:p-9 rounded-[2.5rem] bg-slate-50 border border-slate-100/80 shadow-[0_15px_40px_rgba(0,0,0,0.02)] flex flex-col items-center text-center relative group">
                             {/* Inner Glow */}
                             <div className="absolute inset-0 bg-white/40 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
@@ -247,7 +311,7 @@ export default function LoginPage() {
                             )}
 
                             {/* Authentication Action */}
-                            <div className="w-full mt-8">
+                            <div className="w-full mt-4 lg:mt-8">
                                 <button
                                     type="button"
                                     onClick={signInWithGoogle}
@@ -297,10 +361,11 @@ export default function LoginPage() {
                                 Having trouble logging in?<br />Contact IT Support at <span className="text-slate-400">admin@ligtas-cdrrmo.ph</span>
                             </p>
                         </div>
-                    </div>
 
-                    {/* Footer Copyright */}
-                    <div className="absolute bottom-10 left-0 right-0 text-center">
+                    </div> {/* Closes the div with class "relative z-10 flex flex-col items-center gap-4 lg:gap-6 3xl:gap-10" */}
+
+                    {/* Footer Copyright - Flow Positioned */}
+                    <div className="py-6 text-center mt-auto">
                         <p className="text-[10px] text-slate-300 font-medium tracking-wider uppercase">
                             © 2026 CDRRMO Management Systems
                         </p>
