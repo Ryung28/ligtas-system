@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
@@ -103,7 +103,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
     }, [filteredItems, currentPage])
 
     // Reset page on filter change
-    useMemo(() => {
+    useEffect(() => {
         setCurrentPage(1)
     }, [searchQuery, categoryFilter, conditionFilter])
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,7 +52,7 @@ export function LogSessionTable({
     }, [filteredSessions, currentPage])
 
     // Reset page on filter change
-    useMemo(() => {
+    useEffect(() => {
         setCurrentPage(1)
     }, [searchQuery, statusFilter])
 

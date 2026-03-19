@@ -66,7 +66,7 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
         if (open && activeTab === 'history') {
             fetchHistory()
         }
-    }, [open, activeTab, userName])
+    }, [open, activeTab, fetchHistory])
 
     const handleReturn = async () => {
         if (!assessingLog) return

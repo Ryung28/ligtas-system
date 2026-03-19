@@ -15,7 +15,7 @@ interface ChatWindowProps {
 }
 
 export function ChatWindow({ roomId, title, onClose }: ChatWindowProps) {
-    const { messages, isLoading, presence, currentUserId } = useChat(roomId)
+    const { messages, isLoadingHistory: isLoading, presence, currentUserId } = useChat(roomId)
     const [input, setInput] = useState('')
     const [isSending, setIsSending] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
