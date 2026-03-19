@@ -43,6 +43,7 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
     const [isPending, startTransition] = useTransition()
     const [isUploading, setIsUploading] = useState(false)
     const [previewUrl, setPreviewUrl] = useState<string | null>(existingItem?.image_url || null)
+    const [storedPath, setStoredPath] = useState<string | null>(existingItem?.image_url || null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
 
@@ -97,6 +98,7 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
             if (urlError || !data) throw urlError || new Error('Failed to generate signed URL')
 
             setPreviewUrl(data.signedUrl)
+            setStoredPath(filePath)
             toast.success('Asset visual optimized & encoded')
         } catch (error: any) {
             console.error('Upload Error:', error)
@@ -120,8 +122,8 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
             formData.append('id', existingItem.id.toString())
         }
 
-        if (previewUrl && !previewUrl.startsWith('blob:')) {
-            formData.append('image_url', previewUrl)
+        if (storedPath) {
+            formData.append('image_url', storedPath)
         }
 
         startTransition(async () => {
@@ -224,6 +226,29 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
                                     placeholder="Model, Size, Serial..."
                                     className="h-10 rounded-lg border-slate-100 bg-slate-50/30 text-sm focus:ring-blue-500/10"
                                 />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="serial_number" className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Equipment ID</Label>
+                                    <Input
+                                        id="serial_number"
+                                        name="serial_number"
+                                        defaultValue={existingItem?.serial_number}
+                                        placeholder="e.g. LIG-2024-001"
+                                        className="h-10 rounded-lg border-slate-100 bg-slate-50/30 text-sm focus:ring-blue-500/10"
+                                    />
+                                </div>
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="equipment_type" className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Model/Type</Label>
+                                    <Input
+                                        id="equipment_type"
+                                        name="equipment_type"
+                                        defaultValue={existingItem?.equipment_type}
+                                        placeholder="e.g. Digital, Gas, etc"
+                                        className="h-10 rounded-lg border-slate-100 bg-slate-50/30 text-sm focus:ring-blue-500/10"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

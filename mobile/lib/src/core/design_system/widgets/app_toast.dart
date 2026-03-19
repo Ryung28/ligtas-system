@@ -23,12 +23,12 @@ class AppToast {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
+              color: Colors.white.withOpacity(0.85),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+              border: Border.all(color: Colors.white.withOpacity(0.5)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 24,
                   offset: const Offset(0, 12),
                 ),
@@ -86,5 +86,9 @@ class AppToast {
 
   static void showError(BuildContext context, String message) {
     show(context, message, color: AppTheme.errorRed, icon: Icons.error_outline_rounded);
+  }
+
+  static void showInfo(BuildContext context, String message) {
+    show(context, message, color: AppTheme.primaryBlue, icon: Icons.info_outline_rounded);
   }
 }

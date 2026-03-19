@@ -1,144 +1,47 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:isar/isar.dart';
 import 'package:json_annotation/json_annotation.dart';
-import '../../../core/errors/app_exceptions.dart';
+import 'package:isar/isar.dart';
+import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
+export 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 
 part 'loan_model.freezed.dart';
 part 'loan_model.g.dart';
 
-/// Loan status enumeration
-enum LoanStatus {
-  active,
-  overdue,
-  returned,
-  cancelled,
-  pending,
-}
-
 @freezed
 class LoanModel with _$LoanModel {
-  @JsonSerializable(fieldRename: FieldRename.snake)
   const factory LoanModel({
     required String id,
-    required String inventoryItemId,
-    required String itemName,
-    required String itemCode,
-    required String borrowerName,
-    required String borrowerContact,
+    @JsonKey(name: 'inventory_item_id') required String inventoryItemId,
+    @JsonKey(name: 'item_name') required String itemName,
+    @JsonKey(name: 'item_code') required String itemCode,
+    @JsonKey(name: 'borrower_name') required String borrowerName,
+    @JsonKey(name: 'borrower_contact') required String borrowerContact,
     @Default('') String borrowerEmail,
     required String purpose,
-    required int quantityBorrowed,
-    required DateTime borrowDate,
-    required DateTime expectedReturnDate,
-    DateTime? actualReturnDate,
+    @JsonKey(name: 'quantity_borrowed') required int quantityBorrowed,
+    @JsonKey(name: 'borrow_date') required DateTime borrowDate,
+    @JsonKey(name: 'expected_return_date') required DateTime expectedReturnDate,
+    @JsonKey(name: 'actual_return_date') DateTime? actualReturnDate,
     @Default(LoanStatus.active) LoanStatus status,
     String? notes,
-    String? returnNotes,
-    required String borrowedBy,
-    String? returnedBy,
-    required DateTime createdAt,
-    DateTime? updatedAt,
-    @Default(false) bool isPendingSync,
+    @JsonKey(name: 'return_notes') String? returnNotes,
+    @JsonKey(name: 'borrowed_by') required String borrowedBy,
+    @JsonKey(name: 'returned_by') String? returnedBy,
     @Default(0) int daysOverdue,
     @Default(0) int daysBorrowed,
+    @Default(false) bool isPendingSync,
   }) = _LoanModel;
 
   factory LoanModel.fromJson(Map<String, dynamic> json) => _$LoanModelFromJson(json);
-
-  factory LoanModel.fromSupabase(Map<String, dynamic> data) {
-    // 1. Convert Status (DB 'borrowed'/'Pending' -> Enum 'active'/'pending')
-    final rawStatus = (data['status'] as String? ?? 'active').toLowerCase();
-    
-    LoanStatus finalStatus;
-    if (rawStatus == 'borrowed') {
-      finalStatus = LoanStatus.active;
-    } else if (rawStatus == 'overdue') {
-      finalStatus = LoanStatus.overdue;
-    } else if (rawStatus == 'returned') {
-      finalStatus = LoanStatus.returned;
-    } else if (rawStatus == 'cancelled') {
-      finalStatus = LoanStatus.cancelled;
-    } else if (rawStatus == 'pending') {
-      finalStatus = LoanStatus.pending;
-    } else {
-      finalStatus = LoanStatus.active; // Fallback
-    }
-
-    // DEBUG: Print the raw borrow_date from DB to diagnose timestamp issues
-    final rawBorrowDate = data['borrow_date'];
-    print('DEBUG: Raw borrow_date from DB: $rawBorrowDate');
-    
-    // Senior Dev: Robust Timestamp Parsing
-    // 1. Prefer borrow_date, fallback to created_at
-    String? borrowDateStr = data['borrow_date'] as String? ?? data['created_at'] as String?;
-    
-    DateTime borrowDate;
-    if (borrowDateStr != null && borrowDateStr.isNotEmpty) {
-      // Supabase returns ISO strings. If it ends with 'Z' or has an offset, parse handles it.
-      // If it's a raw timestamp, we treat it as UTC if it doesn't specify.
-      final parsed = DateTime.parse(borrowDateStr);
-      borrowDate = parsed.isUtc ? parsed.toLocal() : parsed;
-      
-      // Safety: If it was parsed as local but it's actually a UTC string without 'Z' (rare)
-      // we don't want to double-shift it.
-      print('DEBUG: Loan $rawStatus | Raw: $borrowDateStr | Parsed: $borrowDate');
-    } else {
-      print('WARNING: Loan record missing timestamps - using fallback');
-      borrowDate = DateTime.now().subtract(const Duration(minutes: 5));
-    }
-
-    final expectedDateStr = data['expected_return_date'] as String? ?? DateTime.now().add(const Duration(days: 7)).toIso8601String();
-    final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
-    final now = DateTime.now();
-    
-    final dbDaysBorrowed = now.difference(borrowDate).inDays;
-    final dbDaysOverdue = expectedReturnDate.isBefore(now) 
-        ? now.difference(expectedReturnDate).inDays 
-        : 0;
-
-    // 2. Manual Mapping (Senior Dev: Defensive Coding)
-    final itemName = data['item_name'] as String? ?? 
-                    data['inventory_item_name'] as String? ?? 
-                    '';
-                    
-    final itemCode = data['item_code'] as String? ?? 
-                    data['inventory_item_id'] as String? ?? 
-                    data['inventory_id']?.toString() ?? 
-                    '';
-
-    return LoanModel(
-      id: data['id'].toString(),
-      inventoryItemId: (data['inventory_item_id'] ?? data['inventory_id'] ?? '').toString(),
-      itemName: itemName,
-      itemCode: itemCode,
-      borrowerName: data['borrower_name'] as String? ?? 'Unknown',
-      borrowerContact: data['borrower_contact'] as String? ?? '',
-      borrowerEmail: data['borrower_email'] as String? ?? '',
-      purpose: data['purpose'] as String? ?? '',
-      quantityBorrowed: (data['quantity_borrowed'] ?? data['quantity'] ?? 1) as int,
-      borrowDate: borrowDate,
-      expectedReturnDate: expectedReturnDate,
-      actualReturnDate: data['actual_return_date'] != null ? DateTime.parse(data['actual_return_date'] as String).toLocal() : null,
-      status: finalStatus,
-      notes: data['notes'] as String?,
-      returnNotes: data['return_notes'] as String?,
-      borrowedBy: (data['borrowed_by'] ?? data['borrower_user_id'] ?? '').toString(),
-      returnedBy: data['returned_by']?.toString(),
-      createdAt: data['created_at'] != null ? DateTime.parse(data['created_at'] as String).toLocal() : DateTime.now(),
-      updatedAt: data['updated_at'] != null ? DateTime.parse(data['updated_at'] as String).toLocal() : null,
-      daysBorrowed: dbDaysBorrowed,
-      daysOverdue: dbDaysOverdue,
-    );
-  }
 }
 
 @collection
 class LoanCollection {
   Id id = Isar.autoIncrement;
-
+  
   @Index(unique: true)
   late String originalId;
-
+  
   late String inventoryItemId;
   late String itemName;
   late String itemCode;
@@ -158,11 +61,9 @@ class LoanCollection {
   String? returnNotes;
   late String borrowedBy;
   String? returnedBy;
-  late DateTime createdAt;
-  DateTime? updatedAt;
-  late bool isPendingSync;
   late int daysOverdue;
   late int daysBorrowed;
+  late bool isPendingSync;
 
   static LoanCollection fromModel(LoanModel model) {
     return LoanCollection()
@@ -183,11 +84,9 @@ class LoanCollection {
       ..returnNotes = model.returnNotes
       ..borrowedBy = model.borrowedBy
       ..returnedBy = model.returnedBy
-      ..createdAt = model.createdAt
-      ..updatedAt = model.updatedAt
-      ..isPendingSync = model.isPendingSync
       ..daysOverdue = model.daysOverdue
-      ..daysBorrowed = model.daysBorrowed;
+      ..daysBorrowed = model.daysBorrowed
+      ..isPendingSync = model.isPendingSync;
   }
 
   LoanModel toModel() {
@@ -209,58 +108,9 @@ class LoanCollection {
       returnNotes: returnNotes,
       borrowedBy: borrowedBy,
       returnedBy: returnedBy,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      isPendingSync: isPendingSync,
       daysOverdue: daysOverdue,
       daysBorrowed: daysBorrowed,
+      isPendingSync: isPendingSync,
     );
   }
-}
-
-@freezed
-class CreateLoanRequest with _$CreateLoanRequest {
-  @JsonSerializable(fieldRename: FieldRename.snake)
-  const factory CreateLoanRequest({
-    required String inventoryItemId,
-    int? inventoryId,
-    required String itemName,
-    String? itemCode,
-    required String borrowerName,
-    required String borrowerContact,
-    required String borrowerEmail,
-    required String borrowerOrganization,
-    required String purpose,
-    required int quantityBorrowed,
-    required DateTime expectedReturnDate,
-    String? notes,
-  }) = _CreateLoanRequest;
-
-  factory CreateLoanRequest.fromJson(Map<String, dynamic> json) => _$CreateLoanRequestFromJson(json);
-}
-
-@freezed
-class ReturnLoanRequest with _$ReturnLoanRequest {
-  @JsonSerializable(fieldRename: FieldRename.snake)
-  const factory ReturnLoanRequest({
-    required String loanId,
-    required int quantityReturned,
-    String? returnNotes,
-    String? condition,
-  }) = _ReturnLoanRequest;
-
-  factory ReturnLoanRequest.fromJson(Map<String, dynamic> json) => _$ReturnLoanRequestFromJson(json);
-}
-
-@freezed
-class LoanStatistics with _$LoanStatistics {
-  const factory LoanStatistics({
-    @Default(0) int totalActiveLoans,
-    @Default(0) int totalOverdueLoans,
-    @Default(0) int totalReturnedToday,
-    @Default(0) int totalItemsBorrowed,
-    @Default(0.0) double averageLoanDuration,
-  }) = _LoanStatistics;
-
-  factory LoanStatistics.fromJson(Map<String, dynamic> json) => _$LoanStatisticsFromJson(json);
 }

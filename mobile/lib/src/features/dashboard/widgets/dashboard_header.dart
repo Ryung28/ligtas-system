@@ -2,9 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
-import '../../../core/design_system/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../weather/presentation/providers/weather_provider.dart';
 
-class DashboardHeader extends StatelessWidget {
+class DashboardHeader extends ConsumerWidget {
   final String userName;
 
   const DashboardHeader({super.key, required this.userName});
@@ -24,7 +25,9 @@ class DashboardHeader extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherAsync = ref.watch(weatherControllerProvider);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -77,26 +80,31 @@ class DashboardHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.cloud_rounded, color: Color(0xFF0EA5E9), size: 22),
+                  Icon(
+                    weatherAsync.when(
+                      data: (w) => _getWeatherIcon(w.weatherCode),
+                      loading: () => Icons.cloud_rounded,
+                      error: (_, __) => Icons.cloud_off_rounded,
+                    ),
+                    color: const Color(0xFF0EA5E9), 
+                    size: 22
+                  ),
                   const Gap(10),
                   Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '24°C',
-                        style: TextStyle(
-                          fontSize: 15,
+                      Text(
+                        weatherAsync.when(
+                          data: (w) => '${w.temperature.toStringAsFixed(0)}°C',
+                          loading: () => '--°C',
+                          error: (_, __) => '!!°C',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFF0F172A),
-                          height: 1.1,
-                        ),
-                      ),
-                      Text(
-                        'Cloudy',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF64748B),
+                          height: 1,
                         ),
                       ),
                     ],
@@ -108,5 +116,16 @@ class DashboardHeader extends StatelessWidget {
         ).animate().fadeIn(duration: 500.ms, delay: 200.ms).scale(begin: const Offset(0.9, 0.9)),
       ],
     );
+  }
+
+  IconData _getWeatherIcon(int code) {
+    if (code == 0) return Icons.wb_sunny_rounded;
+    if (code >= 1 && code <= 3) return Icons.wb_cloudy_rounded;
+    if (code >= 45 && code <= 48) return Icons.filter_drama_rounded;
+    if (code >= 51 && code <= 67) return Icons.beach_access_rounded;
+    if (code >= 71 && code <= 77) return Icons.ac_unit_rounded;
+    if (code >= 80 && code <= 82) return Icons.umbrella_rounded;
+    if (code >= 95) return Icons.thunderstorm_rounded;
+    return Icons.cloud_queue_rounded;
   }
 }

@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import '../../../core/design_system/app_theme.dart';
-import '../../loans/models/loan_model.dart';
+import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/features/loans/models/loan_model.dart';
+import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 
 class RecentActivitySection extends StatelessWidget {
   final List<LoanModel> loans;
@@ -43,7 +44,7 @@ class RecentActivitySection extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                    color: AppTheme.primaryBlue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -73,18 +74,18 @@ class RecentActivitySection extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.white.withValues(alpha: 0.6),
-                      Colors.white.withValues(alpha: 0.35),
+                      Colors.white.withOpacity(0.6),
+                      Colors.white.withOpacity(0.35),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: Colors.white.withOpacity(0.6),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
+                      color: Colors.black.withOpacity(0.03),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -99,7 +100,7 @@ class RecentActivitySection extends StatelessWidget {
                     height: 1,
                     indent: 58,
                     endIndent: 16,
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withOpacity(0.04),
                   ),
                   itemBuilder: (context, index) {
                     return _ActivityListTile(
@@ -170,9 +171,9 @@ class _ActivityListTile extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
+              color: statusColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: statusColor.withValues(alpha: 0.05)),
+              border: Border.all(color: statusColor.withOpacity(0.05)),
             ),
             child: Icon(icon, color: statusColor, size: 18),
           ),
@@ -219,7 +220,7 @@ class _ActivityListTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
+                  color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

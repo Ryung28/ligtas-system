@@ -29,10 +29,10 @@ class LigtasErrorState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.errorRed.withValues(alpha: 0.05),
+                color: AppTheme.errorRed.withOpacity(0.05),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppTheme.errorRed.withValues(alpha: 0.1),
+                  color: AppTheme.errorRed.withOpacity(0.1),
                   width: 2,
                 ),
               ),
@@ -67,7 +67,7 @@ class LigtasErrorState extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.neutralGray900.withValues(alpha: 0.6),
+                color: AppTheme.neutralGray900.withOpacity(0.6),
                 height: 1.4,
               ),
             ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
@@ -85,7 +85,7 @@ class LigtasErrorState extends StatelessWidget {
                     backgroundColor: Colors.white,
                     foregroundColor: AppTheme.neutralGray900,
                     elevation: 4,
-                    shadowColor: Colors.black.withValues(alpha: 0.1),
+                    shadowColor: Colors.black.withOpacity(0.1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                       side: const BorderSide(color: AppTheme.neutralGray200),

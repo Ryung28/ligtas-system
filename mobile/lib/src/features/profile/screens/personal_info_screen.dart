@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/errors/app_exceptions.dart';
 
 import '../../../core/design_system/app_theme.dart';
 import '../../dashboard/widgets/dashboard_background.dart';
@@ -65,8 +67,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('Update failed: ${e.toString()}', AppTheme.errorRed);
+        _showSnackBar(ExceptionHandler.getDisplayMessage(e), AppTheme.errorRed);
       }
+    } finally {
+      // Any cleanup or final actions can go here
     }
   }
 

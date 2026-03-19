@@ -11,6 +11,8 @@ import '../../../core/design_system/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/navigation_provider.dart';
 import '../../../core/design_system/widgets/offline_indicator.dart';
+import '../../notifications/data/services/user_notification_service.dart';
+import '../widgets/global_draggable_fab.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -26,17 +28,27 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   int _selectedIndex = 0;
   bool _isDockVisible = true;
   Timer? _hideTimer;
+  StreamSubscription? _notifSubscription;
   
   @override
   void initState() {
     super.initState();
     _syncIndexFromRoute();
     _startHideTimer();
+    
+    // 📡 Navigation Bridge: Listen for tactical notification deep-links
+    _notifSubscription = UserNotificationService.navigationStream.listen((path) {
+      if (mounted) {
+        debugPrint('🧭 Navigation Bridge: Jumping to $path');
+        context.go(path);
+      }
+    });
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _notifSubscription?.cancel();
     super.dispose();
   }
 
@@ -206,12 +218,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       left: 20,
                       right: 20,
                       bottom: showDock ? bottomOffset : -120,
-                      child: AnimatedOpacity(
+                        child: AnimatedOpacity(
                         duration: const Duration(milliseconds: 250),
                         opacity: showDock ? 1.0 : 0.0,
                         child: _buildFloatingDock(),
                       ),
                     ),
+
+                    // 3. Global Draggable Messenger FAB
+                    if (!isKeyboardVisible && !isDockSuppressed)
+                      const GlobalDraggableFab(),
                   ],
                 ),
               ),

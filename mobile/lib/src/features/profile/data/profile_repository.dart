@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/di/app_providers.dart';
-import '../../auth/models/user_model.dart';
+import '../../auth/domain/models/user_model.dart';
 
 class ProfileRepository {
   final SupabaseClient _client;

@@ -47,86 +47,76 @@ const LoanCollectionSchema = CollectionSchema(
       name: r'borrowerName',
       type: IsarType.string,
     ),
-    r'createdAt': PropertySchema(
-      id: 6,
-      name: r'createdAt',
-      type: IsarType.dateTime,
-    ),
     r'daysBorrowed': PropertySchema(
-      id: 7,
+      id: 6,
       name: r'daysBorrowed',
       type: IsarType.long,
     ),
     r'daysOverdue': PropertySchema(
-      id: 8,
+      id: 7,
       name: r'daysOverdue',
       type: IsarType.long,
     ),
     r'expectedReturnDate': PropertySchema(
-      id: 9,
+      id: 8,
       name: r'expectedReturnDate',
       type: IsarType.dateTime,
     ),
     r'inventoryItemId': PropertySchema(
-      id: 10,
+      id: 9,
       name: r'inventoryItemId',
       type: IsarType.string,
     ),
     r'isPendingSync': PropertySchema(
-      id: 11,
+      id: 10,
       name: r'isPendingSync',
       type: IsarType.bool,
     ),
     r'itemCode': PropertySchema(
-      id: 12,
+      id: 11,
       name: r'itemCode',
       type: IsarType.string,
     ),
     r'itemName': PropertySchema(
-      id: 13,
+      id: 12,
       name: r'itemName',
       type: IsarType.string,
     ),
     r'notes': PropertySchema(
-      id: 14,
+      id: 13,
       name: r'notes',
       type: IsarType.string,
     ),
     r'originalId': PropertySchema(
-      id: 15,
+      id: 14,
       name: r'originalId',
       type: IsarType.string,
     ),
     r'purpose': PropertySchema(
-      id: 16,
+      id: 15,
       name: r'purpose',
       type: IsarType.string,
     ),
     r'quantityBorrowed': PropertySchema(
-      id: 17,
+      id: 16,
       name: r'quantityBorrowed',
       type: IsarType.long,
     ),
     r'returnNotes': PropertySchema(
-      id: 18,
+      id: 17,
       name: r'returnNotes',
       type: IsarType.string,
     ),
     r'returnedBy': PropertySchema(
-      id: 19,
+      id: 18,
       name: r'returnedBy',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 20,
+      id: 19,
       name: r'status',
       type: IsarType.byte,
       enumMap: _LoanCollectionstatusEnumValueMap,
-    ),
-    r'updatedAt': PropertySchema(
-      id: 21,
-      name: r'updatedAt',
-      type: IsarType.dateTime,
     )
   },
   estimateSize: _loanCollectionEstimateSize,
@@ -210,22 +200,20 @@ void _loanCollectionSerialize(
   writer.writeString(offsets[3], object.borrowerContact);
   writer.writeString(offsets[4], object.borrowerEmail);
   writer.writeString(offsets[5], object.borrowerName);
-  writer.writeDateTime(offsets[6], object.createdAt);
-  writer.writeLong(offsets[7], object.daysBorrowed);
-  writer.writeLong(offsets[8], object.daysOverdue);
-  writer.writeDateTime(offsets[9], object.expectedReturnDate);
-  writer.writeString(offsets[10], object.inventoryItemId);
-  writer.writeBool(offsets[11], object.isPendingSync);
-  writer.writeString(offsets[12], object.itemCode);
-  writer.writeString(offsets[13], object.itemName);
-  writer.writeString(offsets[14], object.notes);
-  writer.writeString(offsets[15], object.originalId);
-  writer.writeString(offsets[16], object.purpose);
-  writer.writeLong(offsets[17], object.quantityBorrowed);
-  writer.writeString(offsets[18], object.returnNotes);
-  writer.writeString(offsets[19], object.returnedBy);
-  writer.writeByte(offsets[20], object.status.index);
-  writer.writeDateTime(offsets[21], object.updatedAt);
+  writer.writeLong(offsets[6], object.daysBorrowed);
+  writer.writeLong(offsets[7], object.daysOverdue);
+  writer.writeDateTime(offsets[8], object.expectedReturnDate);
+  writer.writeString(offsets[9], object.inventoryItemId);
+  writer.writeBool(offsets[10], object.isPendingSync);
+  writer.writeString(offsets[11], object.itemCode);
+  writer.writeString(offsets[12], object.itemName);
+  writer.writeString(offsets[13], object.notes);
+  writer.writeString(offsets[14], object.originalId);
+  writer.writeString(offsets[15], object.purpose);
+  writer.writeLong(offsets[16], object.quantityBorrowed);
+  writer.writeString(offsets[17], object.returnNotes);
+  writer.writeString(offsets[18], object.returnedBy);
+  writer.writeByte(offsets[19], object.status.index);
 }
 
 LoanCollection _loanCollectionDeserialize(
@@ -241,25 +229,23 @@ LoanCollection _loanCollectionDeserialize(
   object.borrowerContact = reader.readString(offsets[3]);
   object.borrowerEmail = reader.readStringOrNull(offsets[4]);
   object.borrowerName = reader.readString(offsets[5]);
-  object.createdAt = reader.readDateTime(offsets[6]);
-  object.daysBorrowed = reader.readLong(offsets[7]);
-  object.daysOverdue = reader.readLong(offsets[8]);
-  object.expectedReturnDate = reader.readDateTime(offsets[9]);
+  object.daysBorrowed = reader.readLong(offsets[6]);
+  object.daysOverdue = reader.readLong(offsets[7]);
+  object.expectedReturnDate = reader.readDateTime(offsets[8]);
   object.id = id;
-  object.inventoryItemId = reader.readString(offsets[10]);
-  object.isPendingSync = reader.readBool(offsets[11]);
-  object.itemCode = reader.readString(offsets[12]);
-  object.itemName = reader.readString(offsets[13]);
-  object.notes = reader.readStringOrNull(offsets[14]);
-  object.originalId = reader.readString(offsets[15]);
-  object.purpose = reader.readString(offsets[16]);
-  object.quantityBorrowed = reader.readLong(offsets[17]);
-  object.returnNotes = reader.readStringOrNull(offsets[18]);
-  object.returnedBy = reader.readStringOrNull(offsets[19]);
+  object.inventoryItemId = reader.readString(offsets[9]);
+  object.isPendingSync = reader.readBool(offsets[10]);
+  object.itemCode = reader.readString(offsets[11]);
+  object.itemName = reader.readString(offsets[12]);
+  object.notes = reader.readStringOrNull(offsets[13]);
+  object.originalId = reader.readString(offsets[14]);
+  object.purpose = reader.readString(offsets[15]);
+  object.quantityBorrowed = reader.readLong(offsets[16]);
+  object.returnNotes = reader.readStringOrNull(offsets[17]);
+  object.returnedBy = reader.readStringOrNull(offsets[18]);
   object.status =
-      _LoanCollectionstatusValueEnumMap[reader.readByteOrNull(offsets[20])] ??
+      _LoanCollectionstatusValueEnumMap[reader.readByteOrNull(offsets[19])] ??
           LoanStatus.active;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[21]);
   return object;
 }
 
@@ -283,39 +269,35 @@ P _loanCollectionDeserializeProp<P>(
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 7:
       return (reader.readLong(offset)) as P;
     case 8:
-      return (reader.readLong(offset)) as P;
-    case 9:
       return (reader.readDateTime(offset)) as P;
-    case 10:
+    case 9:
       return (reader.readString(offset)) as P;
-    case 11:
+    case 10:
       return (reader.readBool(offset)) as P;
+    case 11:
+      return (reader.readString(offset)) as P;
     case 12:
       return (reader.readString(offset)) as P;
     case 13:
-      return (reader.readString(offset)) as P;
-    case 14:
       return (reader.readStringOrNull(offset)) as P;
+    case 14:
+      return (reader.readString(offset)) as P;
     case 15:
       return (reader.readString(offset)) as P;
     case 16:
-      return (reader.readString(offset)) as P;
-    case 17:
       return (reader.readLong(offset)) as P;
+    case 17:
+      return (reader.readStringOrNull(offset)) as P;
     case 18:
       return (reader.readStringOrNull(offset)) as P;
     case 19:
-      return (reader.readStringOrNull(offset)) as P;
-    case 20:
       return (_LoanCollectionstatusValueEnumMap[
               reader.readByteOrNull(offset)] ??
           LoanStatus.active) as P;
-    case 21:
-      return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1221,62 +1203,6 @@ extension LoanCollectionQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'borrowerName',
         value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      createdAtEqualTo(DateTime value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'createdAt',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      createdAtGreaterThan(
-    DateTime value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'createdAt',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      createdAtLessThan(
-    DateTime value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'createdAt',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      createdAtBetween(
-    DateTime lower,
-    DateTime upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'createdAt',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
       ));
     });
   }
@@ -2767,80 +2693,6 @@ extension LoanCollectionQueryFilter
       ));
     });
   }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      updatedAtIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'updatedAt',
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      updatedAtIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'updatedAt',
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      updatedAtEqualTo(DateTime? value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'updatedAt',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      updatedAtGreaterThan(
-    DateTime? value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'updatedAt',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      updatedAtLessThan(
-    DateTime? value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'updatedAt',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
-      updatedAtBetween(
-    DateTime? lower,
-    DateTime? upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'updatedAt',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
-    });
-  }
 }
 
 extension LoanCollectionQueryObject
@@ -2932,19 +2784,6 @@ extension LoanCollectionQuerySortBy
       sortByBorrowerNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'borrowerName', Sort.desc);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> sortByCreatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.asc);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-      sortByCreatedAtDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
@@ -3137,19 +2976,6 @@ extension LoanCollectionQuerySortBy
       return query.addSortBy(r'status', Sort.desc);
     });
   }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> sortByUpdatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'updatedAt', Sort.asc);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-      sortByUpdatedAtDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'updatedAt', Sort.desc);
-    });
-  }
 }
 
 extension LoanCollectionQuerySortThenBy
@@ -3235,19 +3061,6 @@ extension LoanCollectionQuerySortThenBy
       thenByBorrowerNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'borrowerName', Sort.desc);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByCreatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.asc);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-      thenByCreatedAtDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
@@ -3452,19 +3265,6 @@ extension LoanCollectionQuerySortThenBy
       return query.addSortBy(r'status', Sort.desc);
     });
   }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByUpdatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'updatedAt', Sort.asc);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
-      thenByUpdatedAtDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'updatedAt', Sort.desc);
-    });
-  }
 }
 
 extension LoanCollectionQueryWhereDistinct
@@ -3510,13 +3310,6 @@ extension LoanCollectionQueryWhereDistinct
       distinctByBorrowerName({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'borrowerName', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
-      distinctByCreatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'createdAt');
     });
   }
 
@@ -3617,13 +3410,6 @@ extension LoanCollectionQueryWhereDistinct
       return query.addDistinctBy(r'status');
     });
   }
-
-  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
-      distinctByUpdatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'updatedAt');
-    });
-  }
 }
 
 extension LoanCollectionQueryProperty
@@ -3672,12 +3458,6 @@ extension LoanCollectionQueryProperty
       borrowerNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'borrowerName');
-    });
-  }
-
-  QueryBuilder<LoanCollection, DateTime, QQueryOperations> createdAtProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'createdAt');
     });
   }
 
@@ -3768,13 +3548,6 @@ extension LoanCollectionQueryProperty
       return query.addPropertyName(r'status');
     });
   }
-
-  QueryBuilder<LoanCollection, DateTime?, QQueryOperations>
-      updatedAtProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'updatedAt');
-    });
-  }
 }
 
 // **************************************************************************
@@ -3789,7 +3562,7 @@ _$LoanModelImpl _$$LoanModelImplFromJson(Map<String, dynamic> json) =>
       itemCode: json['item_code'] as String,
       borrowerName: json['borrower_name'] as String,
       borrowerContact: json['borrower_contact'] as String,
-      borrowerEmail: json['borrower_email'] as String? ?? '',
+      borrowerEmail: json['borrowerEmail'] as String? ?? '',
       purpose: json['purpose'] as String,
       quantityBorrowed: (json['quantity_borrowed'] as num).toInt(),
       borrowDate: DateTime.parse(json['borrow_date'] as String),
@@ -3804,13 +3577,9 @@ _$LoanModelImpl _$$LoanModelImplFromJson(Map<String, dynamic> json) =>
       returnNotes: json['return_notes'] as String?,
       borrowedBy: json['borrowed_by'] as String,
       returnedBy: json['returned_by'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      isPendingSync: json['is_pending_sync'] as bool? ?? false,
-      daysOverdue: (json['days_overdue'] as num?)?.toInt() ?? 0,
-      daysBorrowed: (json['days_borrowed'] as num?)?.toInt() ?? 0,
+      daysOverdue: (json['daysOverdue'] as num?)?.toInt() ?? 0,
+      daysBorrowed: (json['daysBorrowed'] as num?)?.toInt() ?? 0,
+      isPendingSync: json['isPendingSync'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$LoanModelImplToJson(_$LoanModelImpl instance) =>
@@ -3821,7 +3590,7 @@ Map<String, dynamic> _$$LoanModelImplToJson(_$LoanModelImpl instance) =>
       'item_code': instance.itemCode,
       'borrower_name': instance.borrowerName,
       'borrower_contact': instance.borrowerContact,
-      'borrower_email': instance.borrowerEmail,
+      'borrowerEmail': instance.borrowerEmail,
       'purpose': instance.purpose,
       'quantity_borrowed': instance.quantityBorrowed,
       'borrow_date': instance.borrowDate.toIso8601String(),
@@ -3832,11 +3601,9 @@ Map<String, dynamic> _$$LoanModelImplToJson(_$LoanModelImpl instance) =>
       'return_notes': instance.returnNotes,
       'borrowed_by': instance.borrowedBy,
       'returned_by': instance.returnedBy,
-      'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
-      'is_pending_sync': instance.isPendingSync,
-      'days_overdue': instance.daysOverdue,
-      'days_borrowed': instance.daysBorrowed,
+      'daysOverdue': instance.daysOverdue,
+      'daysBorrowed': instance.daysBorrowed,
+      'isPendingSync': instance.isPendingSync,
     };
 
 const _$LoanStatusEnumMap = {
@@ -3846,76 +3613,3 @@ const _$LoanStatusEnumMap = {
   LoanStatus.cancelled: 'cancelled',
   LoanStatus.pending: 'pending',
 };
-
-_$CreateLoanRequestImpl _$$CreateLoanRequestImplFromJson(
-        Map<String, dynamic> json) =>
-    _$CreateLoanRequestImpl(
-      inventoryItemId: json['inventory_item_id'] as String,
-      inventoryId: (json['inventory_id'] as num?)?.toInt(),
-      itemName: json['item_name'] as String,
-      itemCode: json['item_code'] as String?,
-      borrowerName: json['borrower_name'] as String,
-      borrowerContact: json['borrower_contact'] as String,
-      borrowerEmail: json['borrower_email'] as String,
-      borrowerOrganization: json['borrower_organization'] as String,
-      purpose: json['purpose'] as String,
-      quantityBorrowed: (json['quantity_borrowed'] as num).toInt(),
-      expectedReturnDate:
-          DateTime.parse(json['expected_return_date'] as String),
-      notes: json['notes'] as String?,
-    );
-
-Map<String, dynamic> _$$CreateLoanRequestImplToJson(
-        _$CreateLoanRequestImpl instance) =>
-    <String, dynamic>{
-      'inventory_item_id': instance.inventoryItemId,
-      'inventory_id': instance.inventoryId,
-      'item_name': instance.itemName,
-      'item_code': instance.itemCode,
-      'borrower_name': instance.borrowerName,
-      'borrower_contact': instance.borrowerContact,
-      'borrower_email': instance.borrowerEmail,
-      'borrower_organization': instance.borrowerOrganization,
-      'purpose': instance.purpose,
-      'quantity_borrowed': instance.quantityBorrowed,
-      'expected_return_date': instance.expectedReturnDate.toIso8601String(),
-      'notes': instance.notes,
-    };
-
-_$ReturnLoanRequestImpl _$$ReturnLoanRequestImplFromJson(
-        Map<String, dynamic> json) =>
-    _$ReturnLoanRequestImpl(
-      loanId: json['loan_id'] as String,
-      quantityReturned: (json['quantity_returned'] as num).toInt(),
-      returnNotes: json['return_notes'] as String?,
-      condition: json['condition'] as String?,
-    );
-
-Map<String, dynamic> _$$ReturnLoanRequestImplToJson(
-        _$ReturnLoanRequestImpl instance) =>
-    <String, dynamic>{
-      'loan_id': instance.loanId,
-      'quantity_returned': instance.quantityReturned,
-      'return_notes': instance.returnNotes,
-      'condition': instance.condition,
-    };
-
-_$LoanStatisticsImpl _$$LoanStatisticsImplFromJson(Map<String, dynamic> json) =>
-    _$LoanStatisticsImpl(
-      totalActiveLoans: (json['totalActiveLoans'] as num?)?.toInt() ?? 0,
-      totalOverdueLoans: (json['totalOverdueLoans'] as num?)?.toInt() ?? 0,
-      totalReturnedToday: (json['totalReturnedToday'] as num?)?.toInt() ?? 0,
-      totalItemsBorrowed: (json['totalItemsBorrowed'] as num?)?.toInt() ?? 0,
-      averageLoanDuration:
-          (json['averageLoanDuration'] as num?)?.toDouble() ?? 0.0,
-    );
-
-Map<String, dynamic> _$$LoanStatisticsImplToJson(
-        _$LoanStatisticsImpl instance) =>
-    <String, dynamic>{
-      'totalActiveLoans': instance.totalActiveLoans,
-      'totalOverdueLoans': instance.totalOverdueLoans,
-      'totalReturnedToday': instance.totalReturnedToday,
-      'totalItemsBorrowed': instance.totalItemsBorrowed,
-      'averageLoanDuration': instance.averageLoanDuration,
-    };

@@ -7,7 +7,7 @@ import { RefreshCw, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
-import { returnItem } from '@/app/actions/inventory'
+import { returnItem, bulkReturnItems } from '@/app/actions/inventory'
 
 import { LogStatsCards } from '@/components/logs/log-stats'
 import { LogFilters } from '@/components/logs/log-filters'
@@ -30,55 +30,12 @@ export default function BorrowReturnLogs() {
         currentPage,
         setCurrentPage,
         totalPages,
-        selectedIds,
-        setSelectedIds,
         toggleSessionExpansion,
         expandedSessions,
         refresh
     } = useBorrowLogs()
 
-    const [isBulkReturning, setIsBulkReturning] = useState(false)
 
-    const handleBulkReturn = async () => {
-        if (selectedIds.size === 0) return
-        setIsBulkReturning(true)
-        let successCount = 0
-        let failCount = 0
-
-        try {
-            for (const id of Array.from(selectedIds)) {
-                const result = await returnItem(id)
-                if (result.success) successCount++
-                else failCount++
-            }
-
-            if (successCount > 0) {
-                toast.success(`Successfully returned ${successCount} item(s)`)
-                setSelectedIds(new Set())
-                refresh()
-            }
-            if (failCount > 0) {
-                toast.error(`Failed to return ${failCount} item(s)`)
-            }
-        } catch (err) {
-            toast.error('An error occurred during bulk return')
-        } finally {
-            setIsBulkReturning(false)
-        }
-    }
-
-    const toggleAllOnPage = () => {
-        const allItemIds = sessions.flatMap(s => s.items.filter(l => l.status === 'borrowed').map(l => l.id))
-        const allSelected = allItemIds.length > 0 && allItemIds.every(id => selectedIds.has(id))
-
-        const newSelected = new Set(selectedIds)
-        if (allSelected) {
-            allItemIds.forEach(id => newSelected.delete(id))
-        } else {
-            allItemIds.forEach(id => newSelected.add(id))
-        }
-        setSelectedIds(newSelected)
-    }
 
     return (
         <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-500">
@@ -134,11 +91,8 @@ export default function BorrowReturnLogs() {
                     ) : (
                         <LogSessionTable
                             sessions={sessions}
-                            selectedIds={selectedIds}
-                            setSelectedIds={setSelectedIds}
                             expandedSessions={expandedSessions}
                             toggleSessionExpansion={toggleSessionExpansion}
-                            onBatchSelectToggle={toggleAllOnPage}
                         />
                     )}
                 </CardContent>
@@ -173,13 +127,7 @@ export default function BorrowReturnLogs() {
                 )}
             </Card>
 
-            {/* Bulk Actions */}
-            <LogBulkActionBar
-                selectedCount={selectedIds.size}
-                isLoading={isBulkReturning}
-                onDeselect={() => setSelectedIds(new Set())}
-                onConfirm={handleBulkReturn}
-            />
+
         </div>
     )
 }

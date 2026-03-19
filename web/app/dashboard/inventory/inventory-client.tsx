@@ -13,7 +13,7 @@ export function InventoryClient() {
     const [isDeleting, startDeleteTransition] = useTransition()
 
     const handleDelete = async (id: number, name: string) => {
-        if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return
+        if (!confirm(`Are you sure you want to archive "${name}"? It will be removed from active service but kept in historical records.`)) return
 
         startDeleteTransition(async () => {
             try {
@@ -22,10 +22,14 @@ export function InventoryClient() {
                     toast.success(result.message)
                     refresh()
                 } else {
-                    toast.error(result.error)
+                    toast.error(result.error, {
+                        className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                    })
                 }
             } catch (error) {
-                toast.error('An unexpected error occurred while removing the item.')
+                toast.error('An unexpected error occurred while removing the item.', {
+                    className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                })
             }
         })
     }
@@ -36,6 +40,7 @@ export function InventoryClient() {
                 lastUpdated={lastUpdated}
                 isLoading={isLoading}
                 onRefresh={refresh}
+                items={inventory}
             />
 
             <InventoryStats items={inventory} />

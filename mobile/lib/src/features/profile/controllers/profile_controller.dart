@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/profile_state.dart';
 import '../data/profile_repository.dart';
-import '../../auth/providers/auth_provider.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
+import '../../../core/errors/app_exceptions.dart';
 
 
 class ProfileController extends StateNotifier<ProfileState> {
@@ -28,7 +30,7 @@ class ProfileController extends StateNotifier<ProfileState> {
         state = state.copyWith(user: profile, isLoading: false);
       } catch (e) {
         state = state.copyWith(isLoading: false);
-        debugPrint('Profile fetch error: $e');
+        debugPrint('Profile fetch error: ${ExceptionHandler.getDisplayMessage(e)}');
       }
     } else {
       state = state.copyWith(isLoading: false);
@@ -44,7 +46,7 @@ class ProfileController extends StateNotifier<ProfileState> {
         isDarkMode: data['dark_mode'] as bool,
       );
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
+      state = state.copyWith(errorMessage: ExceptionHandler.getDisplayMessage(e));
     }
   }
 
@@ -68,9 +70,9 @@ class ProfileController extends StateNotifier<ProfileState> {
       state = state.copyWith(user: updatedUser, isLoading: false);
       
       // Sync back to global auth state
-      await _ref.read(authProvider.notifier).refreshProfile();
+      await _ref.read(authControllerProvider.notifier).refreshProfile();
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: ExceptionHandler.getDisplayMessage(e));
       rethrow;
     }
   }
@@ -110,7 +112,7 @@ class ProfileController extends StateNotifier<ProfileState> {
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              _ref.read(authProvider.notifier).signOut();
+              _ref.read(authControllerProvider.notifier).logout();
             },
             style: FilledButton.styleFrom(
               backgroundColor: Colors.redAccent,

@@ -3,11 +3,13 @@
 import React, { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Check, X, Clock, User, Building, Package, ExternalLink } from 'lucide-react'
+import { Check, X, Clock, User, Building, Package, ExternalLink, MessageSquare } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
 import { approveRequest, rejectRequest } from '@/app/actions/inventory'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface PendingRequestsTableProps {
     requests: BorrowLog[]
@@ -83,9 +85,7 @@ export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTab
                             <TableRow key={request.id} className="hover:bg-blue-50/30 transition-colors border-b border-slate-50/80 group">
                                 <TableCell className="px-4 py-2.5">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center shadow-sm">
-                                            <User className="h-4 w-4 text-blue-600" />
-                                        </div>
+                                        <UserAvatar fullName={request.borrower_name} />
                                         <div className="flex flex-col min-w-0">
                                             <span className="text-sm font-bold text-slate-900 truncate font-heading uppercase tracking-wide">{request.borrower_name}</span>
                                             <div className="flex items-center gap-1.5 mt-0.5">
@@ -125,9 +125,9 @@ export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTab
                                     <div className="flex items-center gap-2">
                                         <div className="flex flex-col">
                                             <span className="text-xs font-semibold text-slate-600">
-                                                {new Date(request.created_at).toLocaleString('en-US', { 
-                                                    month: 'short', 
-                                                    day: 'numeric', 
+                                                {new Date(request.created_at).toLocaleString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
                                                     year: 'numeric',
                                                     hour: 'numeric',
                                                     minute: '2-digit',
@@ -142,6 +142,20 @@ export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTab
                                 </TableCell>
                                 <TableCell className="px-4 py-2.5 text-right">
                                     <div className="flex items-center justify-end gap-2">
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={() => {
+                                                const event = new CustomEvent('ligtas:open_chat', {
+                                                    detail: { id: request.id, name: request.borrower_name }
+                                                });
+                                                window.dispatchEvent(event);
+                                            }}
+                                            className="h-8 w-8 rounded-lg hover:bg-blue-50 text-blue-600 transition-all opacity-0 group-hover:opacity-100"
+                                            title="Open Coordination Chat"
+                                        >
+                                            <MessageSquare className="h-4 w-4" />
+                                        </Button>
                                         <Button
                                             size="sm"
                                             variant="outline"

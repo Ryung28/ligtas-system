@@ -6,7 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../../../core/design_system/app_spacing.dart';
-import '../controllers/auth_controller.dart';
+import '../../../core/errors/app_exceptions.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -47,9 +48,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: ${e.toString()}'),
+              content: Text(ExceptionHandler.getDisplayMessage(e)),
               backgroundColor: AppTheme.errorRed,
-              behavior: SnackBarBehavior.floating,
             ),
           );
         }

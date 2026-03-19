@@ -8,8 +8,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/design_system/app_spacing.dart';
 import '../../../core/design_system/app_theme.dart';
-import '../controllers/auth_controller.dart';
-import '../models/auth_state.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
 import '../widgets/login_background_pattern.dart';
 import '../../../core/design_system/widgets/atmospheric_background.dart';
 
@@ -91,10 +91,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           authenticated: (state) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(context.l10n.accessGranted(state.user.displayName ?? 'Personnel')),
-                behavior: SnackBarBehavior.floating,
+                content: Text('Access Granted: Welcome, ${state.user.displayName ?? 'Personnel'}'),
                 backgroundColor: AppTheme.successGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          },
+          pendingApproval: (state) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('PENDING APPROVAL: Welcome, ${state.user.displayName ?? 'Personnel'}. Deployment access restricted.', 
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                backgroundColor: AppTheme.warningOrange,
+                duration: const Duration(seconds: 5),
               ),
             );
           },
@@ -103,8 +111,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: AppTheme.errorRed,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             );
           },
@@ -382,7 +388,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 const Gap(4),
                                 GestureDetector(
                                   onTap: () {},
-                                  child: Text('CONTACT IT SUPPORT', style: GoogleFonts.outfit(color: AppTheme.primaryBlue, fontSize: 13, fontWeight: FontWeight.bold)),
+                                  child: Text('CONTACT IT CHATS', style: GoogleFonts.outfit(color: AppTheme.primaryBlue, fontSize: 13, fontWeight: FontWeight.bold)),
                                 ),
                                 const Gap(24),
                                 Wrap(

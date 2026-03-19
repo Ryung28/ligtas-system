@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../core/design_system/app_theme.dart';
-import '../../auth/models/user_model.dart';
+import '../../auth/domain/models/user_model.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:gap/gap.dart';
 

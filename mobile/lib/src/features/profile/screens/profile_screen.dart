@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 
 import '../../../core/design_system/app_theme.dart';
-import '../../auth/providers/auth_provider.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 import '../../dashboard/widgets/dashboard_background.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/digital_id_card.dart';
 import '../widgets/profile_menu_items.dart'; // Contains ProfileSection, ProfileActionTile, ProfileSwitchTile
 import '../widgets/logout_button.dart';
+import '../../notifications/widgets/sync_error_banner.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -63,6 +64,7 @@ class ProfileScreen extends ConsumerWidget {
                   padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(context).padding.bottom + 160),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
+                      const SyncErrorBanner(),
                       const Gap(10),
                       
                       // ── Digital ID Card ──
@@ -116,9 +118,9 @@ class ProfileScreen extends ConsumerWidget {
 
                       const Gap(24),
 
-                      // ── Support ──
+                      // ── Chat Support ──
                       ProfileSection(
-                        title: 'Support',
+                        title: 'Chats',
                         children: [
                           ProfileActionTile(
                             icon: Icons.help_outline_rounded,

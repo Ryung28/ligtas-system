@@ -1,4 +1,13 @@
-export function InitialsAvatar({ name }: { name: string }) {
+'use client'
+
+import React from 'react'
+
+interface LogAvatarProps {
+    name: string
+    lastSeen?: string | null
+}
+
+export function InitialsAvatar({ name, lastSeen }: LogAvatarProps) {
     const initials = name
         .split(' ')
         .map(n => n[0])
@@ -18,9 +27,16 @@ export function InitialsAvatar({ name }: { name: string }) {
     const charCode = name.charCodeAt(0) || 0
     const colorClass = colors[charCode % colors.length]
 
+    const isOnline = lastSeen && (new Date().getTime() - new Date(lastSeen).getTime() < 1000 * 60 * 5)
+
     return (
-        <div className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white ${colorClass}`}>
-            {initials}
+        <div className="relative shrink-0">
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white ${colorClass}`}>
+                {initials}
+            </div>
+            {isOnline && (
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 border-2 border-white rounded-full shadow-sm animate-in fade-in zoom-in duration-300" />
+            )}
         </div>
     )
 }

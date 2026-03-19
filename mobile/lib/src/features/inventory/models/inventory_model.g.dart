@@ -3630,10 +3630,10 @@ _$InventoryModelImpl _$$InventoryModelImplFromJson(Map<String, dynamic> json) =>
       code: json['code'] as String? ?? '',
       minStockLevel: (json['minStockLevel'] as num?)?.toInt() ?? 10,
       unit: json['unit'] as String? ?? 'pcs',
-      supplier: json['supplier'] as String?,
-      supplierContact: json['supplierContact'] as String?,
-      notes: json['notes'] as String?,
-      imageUrl: json['image_url'] as String?,
+      supplier: json['supplier'] as String? ?? '',
+      supplierContact: json['supplierContact'] as String? ?? '',
+      notes: json['notes'] as String? ?? '',
+      imageUrl: json['image_url'] as String? ?? '',
     );
 
 Map<String, dynamic> _$$InventoryModelImplToJson(

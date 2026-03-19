@@ -4,11 +4,11 @@ import { Menu, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from './sidebar'
-import { NotificationBell } from './notification-bell'
+import { NotificationBellV2 } from './notification-bell-v2'
 import { SmartScanner } from './smart-scanner'
 import { useState } from 'react'
 
-export function Header() {
+export function Header({ user }: { user: any }) {
     const [open, setOpen] = useState(false)
 
     return (
@@ -22,7 +22,7 @@ export function Header() {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-64">
-                    <Sidebar onNavigate={() => setOpen(false)} />
+                    <Sidebar user={user} onNavigate={() => setOpen(false)} />
                 </SheetContent>
             </Sheet>
 
@@ -39,7 +39,7 @@ export function Header() {
             {/* Right Actions */}
             <div className="flex items-center gap-3">
                 <SmartScanner />
-                <NotificationBell />
+                <NotificationBellV2 />
             </div>
         </header>
     )

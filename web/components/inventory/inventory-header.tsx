@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button'
 import { Plus, ListPlus } from 'lucide-react'
 import { BulkAddDialog } from './bulk-add-dialog'
 import { InventoryItemDialog } from './inventory-item-dialog'
+import { InventoryPrintCatalog } from './inventory-print-catalog'
+import { InventoryItem } from '@/lib/supabase'
 
 interface InventoryHeaderProps {
     lastUpdated: Date
     isLoading: boolean
     onRefresh: () => void
+    items?: InventoryItem[]
 }
 
-export function InventoryHeader({ lastUpdated, isLoading, onRefresh }: InventoryHeaderProps) {
+export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [] }: InventoryHeaderProps) {
     return (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200/60 p-3 14in:p-4 rounded-xl shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white/95 backdrop-blur-xl border border-zinc-200/60 p-3 14in:p-4 rounded-2xl shadow-[0_8px_40px_rgb(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.8)]">
             <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-1">
                     <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
@@ -24,11 +27,12 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh }: Inventory
                 </h1>
             </div>
             <div className="flex items-center gap-2">
+                <InventoryPrintCatalog items={items} />
                 <BulkAddDialog
                     onSuccess={onRefresh}
                     trigger={
-                        <Button variant="outline" size="sm" className="h-9 border-gray-200 text-gray-700 hover:bg-gray-50 text-[13px] font-medium transition-colors rounded-lg px-3">
-                            <ListPlus className="h-3.5 w-3.5 mr-1.5" />
+                        <Button variant="ghost" size="sm" className="h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 text-[13px] font-medium transition-colors rounded-lg px-3">
+                            <ListPlus className="h-4 w-4 mr-1.5" />
                             Bulk Add
                         </Button>
                     }
@@ -36,8 +40,8 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh }: Inventory
                 <InventoryItemDialog
                     onSuccess={onRefresh}
                     trigger={
-                        <Button size="sm" className="h-9 bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-medium transition-colors rounded-lg px-3.5">
-                            <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        <Button size="sm" className="h-9 bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-semibold transition-all rounded-lg px-4 shadow-sm hover:shadow-md">
+                            <Plus className="h-4 w-4 mr-1.5" />
                             Add Item
                         </Button>
                     }

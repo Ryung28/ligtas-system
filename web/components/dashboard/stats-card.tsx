@@ -7,7 +7,7 @@ interface StatsCardProps {
     title: string
     value: string | number
     icon: LucideIcon
-    color: 'blue' | 'indigo' | 'purple' | 'emerald'
+    color: 'blue' | 'indigo' | 'purple' | 'emerald' | 'amber' | 'rose'
     description: string
 }
 
@@ -17,6 +17,8 @@ export function StatsCard({ title, value, icon: Icon, color, description }: Stat
         indigo: { bg: 'bg-indigo-50', icon: 'text-indigo-600', shadow: 'shadow-indigo-100' },
         purple: { bg: 'bg-purple-50', icon: 'text-purple-600', shadow: 'shadow-purple-100' },
         emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-600', shadow: 'shadow-emerald-100' },
+        amber: { bg: 'bg-amber-50', icon: 'text-amber-600', shadow: 'shadow-amber-100' },
+        rose: { bg: 'bg-rose-50', icon: 'text-rose-600', shadow: 'shadow-rose-100' },
     }
 
     const theme = colorVariants[color] || colorVariants.blue

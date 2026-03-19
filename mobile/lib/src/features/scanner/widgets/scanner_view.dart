@@ -44,6 +44,9 @@ class _ScannerViewState extends State<ScannerView> {
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
     
+    // PRECISION TACTICAL CONTAINMENT: Verify if the barcode is within the central scan window
+    // Note: MobileScanner 4.0+ handles scanWindow natively if provided to the controller,
+    // but we add a secondary check here for maximum reliability.
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
       if (barcode.rawValue != null) {
@@ -76,10 +79,18 @@ class _ScannerViewState extends State<ScannerView> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. Camera Feed
+          // 1. Camera Feed with Precision Tactical Window
           MobileScanner(
             controller: controller,
             onDetect: _onDetect,
+            scanWindow: Rect.fromCenter(
+              center: Offset(
+                MediaQuery.of(context).size.width / 2,
+                MediaQuery.of(context).size.height / 2,
+              ),
+              width: 280,
+              height: 280,
+            ),
           ),
           
           // 2. Dark Overlay with Cutout

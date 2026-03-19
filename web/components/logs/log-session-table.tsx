@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -14,22 +13,16 @@ import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 
 interface LogSessionTableProps {
     sessions: BorrowSession[]
-    selectedIds: Set<number>
-    setSelectedIds: (ids: Set<number>) => void
     expandedSessions: Set<string>
     toggleSessionExpansion: (key: string) => void
-    onBatchSelectToggle: () => void
 }
 
 const ITEMS_PER_PAGE = 10
 
 export function LogSessionTable({
     sessions,
-    selectedIds,
-    setSelectedIds,
     expandedSessions,
-    toggleSessionExpansion,
-    onBatchSelectToggle
+    toggleSessionExpansion
 }: LogSessionTableProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'overdue' | 'mixed'>('all')
@@ -64,47 +57,49 @@ export function LogSessionTable({
     }, [searchQuery, statusFilter])
 
     const getStatusBadge = (status: string) => {
+        const baseClass = "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-zinc-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] whitespace-nowrap";
+        
         switch (status) {
             case 'borrowed':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
-                        Borrowed
+                    <span className={baseClass}>
+                        <span className="text-blue-600">Borrowed</span>
                     </span>
                 )
             case 'returned':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20">
-                        Returned
+                    <span className={baseClass}>
+                        <span className="text-emerald-600">Returned</span>
                     </span>
                 )
             case 'overdue':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 ring-1 ring-rose-500/20 animate-pulse">
-                        Overdue
+                    <span className={`${baseClass} border-rose-100`}>
+                        <span className="text-rose-600">Overdue</span>
                     </span>
                 )
             case 'pending':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-600 ring-1 ring-amber-500/20">
-                        Pending
+                    <span className={baseClass}>
+                        <span className="text-amber-600">Pending</span>
                     </span>
                 )
             case 'cancelled':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-gray-100 text-gray-500 ring-1 ring-gray-400/20">
-                        Cancelled
+                    <span className={baseClass}>
+                        <span className="text-slate-500">Cancelled</span>
                     </span>
                 )
             case 'rejected':
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-slate-100 text-slate-500 ring-1 ring-slate-400/20">
-                        Rejected
+                    <span className={baseClass}>
+                        <span className="text-slate-500">Rejected</span>
                     </span>
                 )
             default:
                 return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 ring-1 ring-slate-600/10">
-                        {status}
+                    <span className={baseClass}>
+                        <span className="text-zinc-600">{status}</span>
                     </span>
                 )
         }
@@ -129,27 +124,9 @@ export function LogSessionTable({
         })
     }
 
-    const isSessionFullySelected = (session: BorrowSession) => {
-        const borrowable = session.items.filter(i => i.status === 'borrowed')
-        return borrowable.length > 0 && borrowable.every(i => selectedIds.has(i.id))
-    }
-
-    const toggleSessionSelection = (session: BorrowSession) => {
-        const newSelected = new Set(selectedIds)
-        const borrowableItems = session.items.filter(i => i.status === 'borrowed')
-        const alreadyFull = isSessionFullySelected(session)
-
-        if (alreadyFull) {
-            borrowableItems.forEach(i => newSelected.delete(i.id))
-        } else {
-            borrowableItems.forEach(i => newSelected.add(i.id))
-        }
-        setSelectedIds(newSelected)
-    }
-
     return (
-        <Card className="bg-white border border-gray-200/60 rounded-xl overflow-hidden flex flex-col shadow-sm">
-            <CardHeader className="border-b border-gray-100 p-3 14in:p-4">
+        <Card className="bg-white/95 backdrop-blur-xl border border-zinc-200/60 rounded-2xl overflow-hidden flex flex-col shadow-[0_8px_40px_rgb(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.8)]">
+            <CardHeader className="border-b border-zinc-100/80 p-3 14in:p-4 bg-white/50">
                 <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <h2 className="text-[13px] font-semibold text-gray-900">Borrow & Return Logs</h2>
@@ -187,18 +164,13 @@ export function LogSessionTable({
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
-                            <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-100">
-                                <TableHead className="w-[40px] pl-4 14in:pl-6 pr-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">
-                                    <Checkbox
-                                        checked={filteredSessions.length > 0 && filteredSessions.every(s => isSessionFullySelected(s))}
-                                        onCheckedChange={onBatchSelectToggle}
-                                    />
-                                </TableHead>
-                                <TableHead className="w-[30px] px-3 py-3"></TableHead>
+                            <TableRow className="bg-zinc-50/50 hover:bg-zinc-50/50 border-b border-zinc-100/80">
+                                <TableHead className="w-[40px] pl-4 14in:pl-6 pr-3 py-3"></TableHead>
                                 <TableHead className="w-[200px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Borrower</TableHead>
-                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Session Summary</TableHead>
-                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Timestamp</TableHead>
-                                <TableHead className="px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Status</TableHead>
+                                <TableHead className="w-[160px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Session Summary</TableHead>
+                                <TableHead className="w-[120px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Date Borrowed</TableHead>
+                                <TableHead className="w-[120px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Date Returned</TableHead>
+                                <TableHead className="w-[100px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Status</TableHead>
                                 <TableHead className="pl-3 pr-4 14in:pr-6 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -223,9 +195,7 @@ export function LogSessionTable({
                                         key={session.key}
                                         session={session}
                                         isExpanded={expandedSessions.has(session.key)}
-                                        isSelected={isSessionFullySelected(session)}
                                         onToggleExpand={() => toggleSessionExpansion(session.key)}
-                                        onToggleSelect={() => toggleSessionSelection(session)}
                                         formatDate={formatDate}
                                         getUrgencyColor={getUrgencyColor}
                                         getStatusBadge={getStatusBadge}
@@ -238,7 +208,7 @@ export function LogSessionTable({
             </CardContent>
 
             {totalPages > 1 && (
-                <CardFooter className="border-t border-gray-100 bg-white px-4 14in:px-6 py-3 flex items-center justify-between">
+                <CardFooter className="border-t border-zinc-100/80 bg-white/50 px-4 14in:px-6 py-3 flex items-center justify-between">
                     <p className="text-[12px] text-gray-500">
                         Page <span className="font-semibold text-gray-900">{currentPage}</span> of <span className="font-semibold text-gray-900">{totalPages}</span>
                         <span className="text-gray-400 ml-2">·</span>
@@ -273,9 +243,7 @@ export function LogSessionTable({
 function LogSessionRow({
     session,
     isExpanded,
-    isSelected,
     onToggleExpand,
-    onToggleSelect,
     formatDate,
     getUrgencyColor,
     getStatusBadge
@@ -283,14 +251,11 @@ function LogSessionRow({
     return (
         <React.Fragment>
             <TableRow
-                className={`hover:bg-gray-50/60 group border-b border-gray-100/80 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/30' : ''}`}
+                className="hover:bg-zinc-50/40 group border-b border-zinc-100/60 cursor-pointer select-none transition-colors"
                 onClick={onToggleExpand}
             >
-                <TableCell className="pl-4 14in:pl-6 pr-3" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
-                </TableCell>
-                <TableCell className="px-3 text-center">
-                    {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRightIcon className="h-4 w-4 text-gray-400" />}
+                <TableCell className="pl-4 14in:pl-6 pr-3 w-[40px] text-center">
+                    {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400 mx-auto" /> : <ChevronRightIcon className="h-4 w-4 text-gray-400 mx-auto" />}
                 </TableCell>
                 <TableCell className="px-3 py-3">
                     <div className="flex items-center gap-3">
@@ -313,15 +278,47 @@ function LogSessionRow({
                     </div>
                 </TableCell>
                 <TableCell className="px-3 py-3">
-                    <div className="flex flex-col">
-                        <span className="text-xs 14in:text-sm font-semibold text-gray-900">{formatDate(session.created_at)}</span>
-                        <span className="text-[10px] text-gray-500 font-medium">{new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <div className="flex flex-col text-left">
+                        <span className="text-sm font-medium text-zinc-950 font-sans tracking-tight leading-none mb-1">
+                            {new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-[11px] font-mono text-zinc-500 uppercase leading-none">
+                            {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </span>
                     </div>
                 </TableCell>
                 <TableCell className="px-3 py-3">
+                    {session.status === 'returned' || session.status === 'mixed' ? (() => {
+                        const returnDates = session.items
+                            .map((i: any) => i.actual_return_date)
+                            .filter(Boolean)
+                            .map((d: any) => new Date(d));
+                        const lastReturnDate = returnDates.length > 0 ? new Date(Math.max(...returnDates.map((d: Date) => d.getTime()))) : null;
+
+                        if (!lastReturnDate) {
+                            return <span className="text-zinc-400 text-[10px] uppercase tracking-wider font-bold">Pending</span>;
+                        }
+
+                        return (
+                            <div className="flex flex-col text-left">
+                                <span className="text-sm font-medium text-zinc-950 font-sans tracking-tight leading-none mb-1">
+                                    {lastReturnDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                                <span className="text-[11px] font-mono text-zinc-500 uppercase leading-none">
+                                    {lastReturnDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </span>
+                            </div>
+                        );
+                    })() : (
+                        <div className="text-left py-1">
+                            <span className="text-zinc-400 text-[10px] uppercase tracking-wider font-bold">Pending</span>
+                        </div>
+                    )}
+                </TableCell>
+                <TableCell className="px-3 py-3">
                     {session.status === 'mixed' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-600/10">
-                            PARTIAL RETURN
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-amber-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] whitespace-nowrap">
+                            <span className="text-amber-700">PARTIAL RETURN</span>
                         </span>
                     ) : (
                         getStatusBadge(session.status)
@@ -331,7 +328,7 @@ function LogSessionRow({
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium text-[11px] transition-colors"
+                        className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium text-[11px] transition-colors cursor-pointer"
                         onClick={(e) => {
                             e.stopPropagation()
                             onToggleExpand()
@@ -346,16 +343,14 @@ function LogSessionRow({
                 const hasReturnRequest = item.notes?.includes('BORROWER INITIATED RETURN');
 
                 return (
-                    <TableRow key={item.id} className={`${hasReturnRequest ? 'bg-amber-50/40' : 'bg-gray-50/40'} hover:bg-gray-50/60 border-b border-gray-100/80 animate-in fade-in duration-200`}>
+                    <TableRow key={item.id} className={`${hasReturnRequest ? 'bg-amber-50/20' : 'bg-zinc-50/20'} hover:bg-zinc-50/40 border-b border-zinc-100/40 animate-in fade-in duration-200 select-none cursor-default`}>
                         <TableCell className="pl-4 14in:pl-6 pr-3">
-                            <div className="flex justify-end pr-1">
-                                <div className="h-6 w-[1px] bg-gray-200 mr-2" />
+                            <div className="flex justify-center">
+                                <div className="h-6 w-[2px] bg-slate-200 rounded-full" />
                             </div>
                         </TableCell>
-                        <TableCell></TableCell>
                         <TableCell colSpan={2} className="px-3 py-3">
                             <div className="flex items-center gap-2">
-                                <div className={`h-1.5 w-1.5 rounded-full ${hasReturnRequest ? 'bg-amber-500 animate-pulse' : 'bg-blue-500'} flex-shrink-0`} />
                                 <span className="text-sm font-medium text-gray-700 truncate">{item.item_name}</span>
                                 <span className="text-[10px] text-gray-400 font-mono">ID:{item.inventory_id}</span>
                                 <span className="text-xs text-gray-500 ml-2">Qty: <span className="font-semibold">{item.quantity}</span></span>
@@ -369,18 +364,32 @@ function LogSessionRow({
                         </TableCell>
                         <TableCell className="px-3 py-3">
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-400 uppercase font-medium">Due Date</span>
-                                <span className={`text-[11px] ${getUrgencyColor(item.expected_return_date, item.status)}`}>
+                                <span className="text-[10px] text-gray-400 uppercase font-medium leading-none mb-1">Due Date</span>
+                                <span className={`text-[11px] font-medium ${getUrgencyColor(item.expected_return_date, item.status)}`}>
                                     {formatDate(item.expected_return_date)}
                                 </span>
                             </div>
+                        </TableCell>
+                        <TableCell className="px-3 py-3">
+                            {item.actual_return_date ? (
+                                <div className="flex flex-col text-left">
+                                    <span className="text-[10px] text-zinc-950 font-medium font-sans leading-none mb-1">
+                                        {new Date(item.actual_return_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
+                                    <span className="text-[9px] font-mono text-zinc-500 uppercase leading-none">
+                                        {new Date(item.actual_return_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-zinc-300 font-mono">—</span>
+                            )}
                         </TableCell>
                         <TableCell className="px-3 py-3">
                             {getStatusBadge(item.status)}
                         </TableCell>
                         <TableCell className="pl-3 pr-4 14in:pr-6 py-3 text-right">
                             {item.status === 'borrowed' && (
-                                <div className="relative group/btn">
+                                <div className="relative group/btn cursor-pointer">
                                     {hasReturnRequest && (
                                         <div className="absolute -top-1 -right-1 h-2 w-2 bg-amber-500 rounded-full animate-ping z-10" />
                                     )}

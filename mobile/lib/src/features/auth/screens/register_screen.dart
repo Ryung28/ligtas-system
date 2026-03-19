@@ -1,11 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/design_system/app_theme.dart';
-import '../controllers/auth_controller.dart';
-import '../models/auth_state.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
 import '../widgets/login_background_pattern.dart';
 import '../../../core/design_system/widgets/atmospheric_background.dart';
 
@@ -57,20 +58,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           authenticated: (user) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Account Provisioned Successfully'),
-                behavior: SnackBarBehavior.floating,
+                content: Text('DEPLOYMENT AUTHORIZED', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
                 backgroundColor: AppTheme.successGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          },
+          pendingApproval: (user) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('CREDENTIALS LOGGED: AWAITING COMMAND APPROVAL', 
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                backgroundColor: AppTheme.warningOrange,
+                duration: const Duration(seconds: 5),
               ),
             );
           },
           error: (state) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
                 backgroundColor: AppTheme.errorRed,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             );
           },

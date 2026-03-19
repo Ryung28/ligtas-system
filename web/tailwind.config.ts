@@ -29,27 +29,26 @@ const config = {
                 '3xl': '1920px',
             },
         },
-        // Custom breakpoints for precise responsive control
         screens: {
-            'xs': '475px',     // Small phones
-            'sm': '640px',     // Large phones
-            'md': '768px',     // Tablets
-            'lg': '1024px',    // 13" laptops (MacBook Air)
-            '14in': '1366px',  // 14" laptops (MOST COMMON - 1366x768)
-            'xl': '1440px',    // 15" laptops (1440x900)
-            '2xl': '1680px',   // Large laptops / Small monitors
-            '3xl': '1920px',   // Full HD monitors (24"+)
-            '4xl': '2560px',   // 2K/QHD monitors (27"+)
+            'xs': '475px',
+            'sm': '640px',
+            'md': '768px',
+            'lg': '1024px',
+            '14in': '1366px',
+            'xl': '1440px',
+            '2xl': '1680px',
+            '3xl': '1920px',
+            '4xl': '2560px',
         },
         extend: {
             fontFamily: {
-                sans: ['var(--font-inter)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                sans: ['var(--font-dm-sans)', 'var(--font-inter)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
                 heading: ['var(--font-outfit)', 'sans-serif'],
+                tight: ['var(--font-inter-tight)', 'sans-serif'],
+                mono: ['var(--font-jetbrains-mono)', 'monospace'],
+                display: ['var(--font-syne)', 'sans-serif'], // Added Syne
             },
-            // Fluid typography that scales with viewport
             fontSize: {
-                // Format: [fontSize, { lineHeight, letterSpacing }]
-                // Using clamp for fluid scaling between breakpoints
                 'xs': ['clamp(0.625rem, 0.6rem + 0.125vw, 0.75rem)', { lineHeight: '1rem' }],
                 'sm': ['clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem)', { lineHeight: '1.25rem' }],
                 'base': ['clamp(0.875rem, 0.8rem + 0.375vw, 1rem)', { lineHeight: '1.5rem' }],
@@ -59,7 +58,6 @@ const config = {
                 '3xl': ['clamp(1.5rem, 1.3rem + 1vw, 1.875rem)', { lineHeight: '2.25rem' }],
                 '4xl': ['clamp(1.875rem, 1.6rem + 1.375vw, 2.25rem)', { lineHeight: '2.5rem' }],
             },
-            // Responsive spacing scale
             spacing: {
                 'safe-top': 'env(safe-area-inset-top)',
                 'safe-bottom': 'env(safe-area-inset-bottom)',

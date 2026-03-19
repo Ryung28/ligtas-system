@@ -15,13 +15,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   void _init() async {
     final session = _supabase.auth.currentSession;
     if (session != null && session.user != null) {
-      // Fetch user profile from database to get role and status
-      try {
-        await _loadUserProfile(session.user!.id);
-      } catch (e) {
-        // If profile fetch fails, just use the auth user data
-        state = AsyncValue.data(_mapSupabaseUser(session.user!));
-      }
+      // 🛡️ TACTICAL BOOT: Immediately verify profile status on launch
+      await _loadUserProfile(session.user!.id);
     }
 
     // Listen to auth changes
@@ -44,29 +39,34 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
           .eq('id', userId)
           .maybeSingle();
 
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) {
+        state = const AsyncValue.data(null);
+        return;
+      }
+
+      final List<String> providers = (authUser.appMetadata['providers'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+
       if (response != null) {
-        final userModel = UserModel.fromSupabase(response);
+        final userModel = UserModel.fromSupabase(response, providers);
         state = AsyncValue.data(userModel);
       } else {
-        // Profile doesn't exist yet - use auth user data
-        final authUser = _supabase.auth.currentUser;
-        if (authUser != null) {
-          state = AsyncValue.data(_mapSupabaseUser(authUser));
-        }
+        // profile doesn't exist yet, return a pending model based on metadata
+        state = AsyncValue.data(_mapSupabaseUser(authUser));
       }
     } catch (e) {
-      // Fallback to auth user if profile fetch fails (table doesn't exist, etc.)
-      final authUser = _supabase.auth.currentUser;
-      if (authUser != null) {
-        state = AsyncValue.data(_mapSupabaseUser(authUser));
-      } else {
-        state = const AsyncValue.data(null);
-      }
+      state = AsyncValue.error(e, StackTrace.current);
     }
   }
 
   /// Fallback: Map Supabase auth user to UserModel
   UserModel _mapSupabaseUser(User user) {
+    final List<String> providers = (user.appMetadata['providers'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ?? [];
+
     return UserModel(
       id: user.id,
       email: user.email,
@@ -75,6 +75,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       organization: user.userMetadata?['organization'] as String?,
       role: 'viewer', // Default role
       status: 'pending', // Default status for new users
+      providers: providers,
     );
   }
 

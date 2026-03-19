@@ -1,9 +1,13 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import * as React from 'react'
 import { Input } from '@/components/ui/input'
-import { Calendar, Search, X } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { TransactionStatus } from '@/lib/types/inventory'
+import { DatePicker } from '@/components/ui/date-picker'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface LogFiltersProps {
     filter: TransactionStatus
@@ -14,6 +18,37 @@ interface LogFiltersProps {
     setSearchQuery: (s: string) => void
 }
 
+function LogFilterButton({ children, onClick, isActive }: { children: React.ReactNode, onClick: () => void, isActive: boolean }) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "px-5 h-9 rounded-lg text-[10px] font-black uppercase tracking-[0.12em] transition-colors duration-200 relative group",
+                isActive ? "text-white" : "text-zinc-500 hover:text-zinc-950"
+            )}
+        >
+            <span className="relative z-20 block">
+                {children}
+            </span>
+
+            {isActive && (
+                <motion.div
+                    layoutId="active-filter-segment"
+                    className="absolute inset-0 bg-zinc-950 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.12)] z-10"
+                    transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 30
+                    }}
+                />
+            )}
+
+            {/* Hover Indicator */}
+            <div className="absolute inset-0 bg-zinc-100/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-0" />
+        </button>
+    );
+}
+
 export function LogFilters({
     filter,
     setFilter,
@@ -22,57 +57,43 @@ export function LogFilters({
     searchQuery,
     setSearchQuery
 }: LogFiltersProps) {
+    const activeDate = dateFilter ? new Date(dateFilter) : undefined
+
     return (
         <div className="flex flex-col xl:flex-row gap-4 justify-between xl:items-center">
-            {/* Filters Left */}
-            <div className="flex flex-wrap gap-2">
+            {/* Filters Left - Achromatic Glass Segmented Control with Liquid Slider & Magnetic Pull */}
+            <div className="flex flex-wrap gap-1 p-1.5 bg-white/80 backdrop-blur-md rounded-xl border border-zinc-200/50 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
                 {(['all', 'pending', 'borrowed', 'returned', 'overdue', 'rejected'] as const).map((f) => (
-                    <Button
+                    <LogFilterButton
                         key={f}
                         onClick={() => setFilter(f)}
-                        variant={filter === f ? 'default' : 'outline'}
-                        size="sm"
-                        className={`rounded-xl px-4 h-9 text-[10px] font-bold uppercase tracking-[0.15em] transition-all duration-200 ${filter === f
-                            ? 'bg-slate-900 text-white shadow-md shadow-slate-200 hover:bg-slate-800'
-                            : 'text-slate-500 border-slate-100 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
+                        isActive={filter === f}
                     >
                         {f}
-                    </Button>
+                    </LogFilterButton>
                 ))}
             </div>
 
-            {/* Search & Date Right */}
+            {/* Search & Date Right - Command Bar (Compact) */}
             <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
-                <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <Calendar className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <Input
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        onClick={(e) => e.currentTarget.showPicker?.()}
-                        className="pl-10 pr-10 h-10 w-full sm:w-48 border-slate-200 rounded-xl text-xs font-medium cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden transition-all focus:ring-2 focus:ring-slate-900/5 hover:border-slate-300"
-                    />
-                    {dateFilter && (
-                        <button
-                            onClick={() => setDateFilter('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                        </button>
-                    )}
-                </div>
+                <DatePicker
+                    date={activeDate}
+                    setDate={(date: Date | undefined) => setDateFilter(date ? format(date, "yyyy-MM-dd") : '')}
+                    className="w-full sm:w-44"
+                    placeholder="Filter by date"
+                />
 
                 <div className="relative flex-1 sm:w-64">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                     <Input
                         type="text"
                         placeholder="Search logs..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-10 border-gray-200 rounded-lg"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                        className={cn(
+                            "pl-10 h-10 border-zinc-200 rounded-lg text-xs font-medium shadow-sm bg-white",
+                            "focus-visible:ring-2 focus-visible:ring-zinc-900/10 focus-visible:border-zinc-900 focus-visible:ring-offset-0 transition-all"
+                        )}
                     />
                 </div>
             </div>

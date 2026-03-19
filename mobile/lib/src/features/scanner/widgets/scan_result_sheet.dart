@@ -52,14 +52,16 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     super.dispose();
   }
 
+  String? _itemName;
+
   Future<void> _fetchStatus() async {
     try {
       final supabase = SupabaseService.client;
       final service = QuickBorrowService();
 
-      // Parallel fetch for efficiency
+      // Parallel fetch for efficiency - Fetch item_name from DB to ensure accuracy
       final results = await Future.wait<dynamic>([
-        supabase.from('inventory').select('stock_available').eq('id', widget.payload.itemId).single(),
+        supabase.from('inventory').select('item_name, stock_available').eq('id', widget.payload.itemId).single(),
         service.getActiveBorrows(widget.payload.itemId),
       ]);
       
@@ -68,6 +70,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
 
       if (mounted) {
         setState(() {
+          _itemName = inventoryResponse['item_name'];
           _availableStock = inventoryResponse['stock_available'] ?? 0;
           _allActiveBorrows = borrows;
           _isFetchingStock = false;
@@ -124,7 +127,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     } else {
       result = await service.executeQuickBorrow(
         itemId: widget.payload.itemId,
-        itemName: widget.payload.itemName,
+        itemName: _itemName ?? widget.payload.itemName,
         quantity: _requestedQuantity,
       );
     }
@@ -293,7 +296,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
                       children: [
                         Text('ITEM NAME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.neutralGray500)),
                         Text(
-                          widget.payload.itemName,
+                          _itemName ?? widget.payload.itemName,
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.neutralGray900),
                         ),
                       ],

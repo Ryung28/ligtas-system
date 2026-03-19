@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/auth_state.dart';
 import '../data/auth_repository.dart';
+import '../../../core/errors/app_exceptions.dart';
 import '../models/user_model.dart'; // Ensure this model exists
+import '../../../core/local_storage/isar_service.dart';
 
 class AuthController extends AsyncNotifier<AuthState> {
   @override
@@ -12,7 +14,11 @@ class AuthController extends AsyncNotifier<AuthState> {
     final user = await repo.getCurrentUser();
     
     if (user != null) {
-      return AuthState.authenticated(user);
+      if (user.status == 'active') {
+        return AuthState.authenticated(user);
+      } else if (user.status == 'pending') {
+        return AuthState.pendingApproval(user);
+      }
     }
     return const AuthState.initial();
   }
@@ -28,15 +34,19 @@ class AuthController extends AsyncNotifier<AuthState> {
       // Fetch user after successful login
       final user = await repo.getCurrentUser();
       if (user != null) {
-        state = AsyncValue.data(AuthState.authenticated(user));
+        if (user.status == 'active') {
+          state = AsyncValue.data(AuthState.authenticated(user));
+        } else if (user.status == 'pending') {
+          state = AsyncValue.data(AuthState.pendingApproval(user));
+        } else {
+          state = const AsyncValue.data(AuthState.error("Account access restricted. Please contact Admin."));
+        }
       } else {
-        state = const AsyncValue.data(AuthState.error("User not found after login"));
+        state = const AsyncValue.data(AuthState.error("User profile not found after login"));
       }
-    } catch (e, st) {
+    } catch (e) {
       // Set custom Error state explicitly
-      state = AsyncValue.data(AuthState.error(e.toString()));
-      // Also utilize Riverpod's error handling if needed, but we rely on our state class here
-      // state = AsyncValue.error(e, st); 
+      state = AsyncValue.data(AuthState.error(ExceptionHandler.getDisplayMessage(e)));
     }
   }
 
@@ -49,12 +59,18 @@ class AuthController extends AsyncNotifier<AuthState> {
       
       final user = await repo.getCurrentUser();
       if (user != null) {
-        state = AsyncValue.data(AuthState.authenticated(user));
+        if (user.status == 'active') {
+          state = AsyncValue.data(AuthState.authenticated(user));
+        } else if (user.status == 'pending') {
+          state = AsyncValue.data(AuthState.pendingApproval(user));
+        } else {
+          state = const AsyncValue.data(AuthState.error("Account Access Denied. Contact HQ."));
+        }
       } else {
         state = const AsyncValue.data(AuthState.error("User profile not found"));
       }
     } catch (e) {
-      state = AsyncValue.data(AuthState.error(e.toString()));
+      state = AsyncValue.data(AuthState.error(ExceptionHandler.getDisplayMessage(e)));
     }
   }
 
@@ -63,19 +79,25 @@ class AuthController extends AsyncNotifier<AuthState> {
 
     try {
       final repo = ref.read(authRepositoryProvider);
-      await repo.signUp(email: email, password: password, name: name);
+      final isAutoLogin = await repo.signUp(email: email, password: password, name: name);
       
-      // After signup, user might need to verify email or is auto-logged in
-      final user = await repo.getCurrentUser();
-      
-      if (user != null) {
-        state = AsyncValue.data(AuthState.authenticated(user));
-      } else {
-        // Assume email verification needed
-        state = const AsyncValue.data(AuthState.initial()); 
+      if (isAutoLogin) {
+        final user = await repo.getCurrentUser();
+        if (user != null) {
+           // 🛡️ TACTICAL SHIFT: Newly registered users land in Pending Approval
+           if (user.status == 'pending') {
+             state = AsyncValue.data(AuthState.pendingApproval(user));
+           } else if (user.status == 'active') {
+             state = AsyncValue.data(AuthState.authenticated(user));
+           } else {
+             state = const AsyncValue.data(AuthState.initial());
+           }
+        } else {
+           state = const AsyncValue.data(AuthState.initial());
+        }
       }
     } catch (e) {
-      state = AsyncValue.data(AuthState.error(e.toString()));
+      state = AsyncValue.data(AuthState.error(ExceptionHandler.getDisplayMessage(e)));
     }
   }
 
@@ -83,9 +105,16 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = const AsyncValue.data(AuthState.loading());
     try {
       await ref.read(authRepositoryProvider).signOut();
+      
+      // 🚀 State Cleansing: Invalidate all data-sensitive providers to prevent ghost data
+      ref.invalidate(authRepositoryProvider);
+      
+      // Wipe the local encrypted cache
+      await IsarService.clearAll();
+      
       state = const AsyncValue.data(AuthState.initial());
     } catch (e) {
-      state = AsyncValue.data(AuthState.error(e.toString()));
+      state = AsyncValue.data(AuthState.error(ExceptionHandler.getDisplayMessage(e)));
     }
   }
 }

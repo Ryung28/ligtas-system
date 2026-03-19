@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { resolveUserStatus } from '@/lib/auth-utils'
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,7 +8,6 @@ const supabase = createBrowserClient(
 
 /**
  * Check if user is authenticated
- * @returns Promise<boolean>
  */
 export async function isAuthenticated(): Promise<boolean> {
     try {
@@ -48,45 +48,24 @@ export async function signOut() {
 }
 
 /**
- * Get current user with profile data
+ * Get current user with profile data.
+ * 🛡️ DRY: Delegates identity resolution to resolveUserStatus (auth-utils.ts).
  */
 export async function getCurrentUser() {
     try {
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error || !user) return null
 
-        // Fetch custom profile data (role, status, etc.)
         const { data: profile } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', user.id)
             .maybeSingle()
 
-        // ── Senior Dev: Runtime Authorization Fallback ──
-        // If the profile is pending or not found, check the whitelist directly
-        let role = profile?.role || 'viewer'
-        let status = profile?.status || 'pending'
+        // 🛡️ Unified resolution — no duplicated whitelist logic here
+        const { role, status } = await resolveUserStatus(supabase, user, profile)
 
-        if (status !== 'active') {
-            const { data: whitelist } = await supabase
-                .from('authorized_emails')
-                .select('role')
-                .eq('email', user.email?.toLowerCase())
-                .maybeSingle()
-
-            if (whitelist) {
-                role = whitelist.role
-                status = 'active' // Force active for whitelisted staff
-                console.log(`[Auth] Manual runtime promotion for ${user.email}`)
-            }
-        }
-
-        return {
-            ...user,
-            ...profile,
-            role,
-            status
-        }
+        return { ...user, ...profile, role, status }
     } catch (error) {
         console.error('Get user error:', error)
         return null

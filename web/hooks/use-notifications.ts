@@ -1,136 +1,162 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { supabase } from '@/lib/supabase'
-import { BorrowLog } from '@/lib/types/inventory'
+// 🛰️ TACTICAL BROWSER CLIENT: Used exclusively for Realtime sync
+import { createClient } from '@/lib/supabase-browser'
+import { type NotificationItem } from '@/lib/validations/notifications'
+// 🛰️ SERVER ACTIONS: Strict architectural boundary between client and server
+import { 
+    getInboxAction, 
+    markAsReadAction, 
+    markAllReadAction,
+    deleteNotificationAction
+} from '@/actions/notification-actions'
+import { toast } from 'sonner'
 
-export interface NotificationItem {
-    id: string
-    title: string
-    message: string
-    time: string
-    type: 'return' | 'stock' | 'overdue'
-    isRead: boolean
-}
+/**
+ * 🛰️ ENTERPRISE NOTIFICATION HOOK
+ * Leverages the 'Sink' architecture for high-performance real-time sync.
+ * Severed from direct repository imports to prevent boundary leaks.
+ */
+export function useNotifications() {
+    const [limit, setLimit] = useState(20)
+    
+    // 🛡️ TACTICAL FETCHER: Uses Server Actions instead of Direct Repository calls
+    const fetcher = async ([, limit]: [string, number]) => {
+        const result = await getInboxAction(limit, Date.now()) // 🛡️ CACHE NUKE: Dynamic timestamp forces unique action signature
+        
+        console.log('[Hook] Action Response:', result)
+        
+        if (!result.success) {
+            console.error('[Inbox Hook] Action Failed:', result.message, result.error)
+            throw new Error(result.error || result.message || 'Intel sync failure.')
+        }
+        
+        return result.data || []
+    }
 
-const fetchNotificationData = async () => {
-    // Fetch latest returns
-    const { data: recentLogs, error: logsError } = await supabase
-        .from('borrow_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-    if (logsError) throw logsError
-
-    // Fetch low stock items
-    const { data: lowStock, error: stockError } = await supabase
-        .from('inventory')
-        .select('item_name, stock_available')
-        .lt('stock_available', 5)
-        .gt('stock_available', 0)
-
-    if (stockError) throw stockError
-
-    const notifications: NotificationItem[] = []
-    const TIME_GAP_MS = 15 * 60 * 1000 // 15 mins
-
-    // Group returns by borrower and time
-    const returnGroups: Record<string, BorrowLog[]> = {}
-    recentLogs?.filter(l => l.status === 'returned').forEach((log: BorrowLog) => {
-        const timeKey = Math.floor(new Date(log.created_at).getTime() / TIME_GAP_MS)
-        const key = `${log.borrower_name}-${timeKey}`
-        if (!returnGroups[key]) returnGroups[key] = []
-        returnGroups[key].push(log)
+    const { data: notifications = [], mutate, isLoading, error } = useSWR(['notifications', limit], fetcher, {
+        revalidateOnFocus: true,
+        refreshInterval: 120000, // 2m safety net (we rely on Realtime)
+        keepPreviousData: true, // 🛡️ ELIMINATES PAGINATION FLASH
     })
 
-    // Map aggregated returns to notifications
-    Object.values(returnGroups).forEach(group => {
-        const first = group[0]
-        const totalQty = group.reduce((sum, item) => sum + item.quantity, 0)
-        notifications.push({
-            id: `ret-${first.id}`,
-            title: 'Items Returned',
-            message: `${first.borrower_name} returned ${totalQty} units (${group.length} unique items)`,
-            time: first.created_at,
-            type: 'return',
-            isRead: false
-        })
-    })
+    useEffect(() => {
+        // 🛡️ BROWSER-SIDE INTEL: Instantiate client only for Realtime stream
+        const supabase = createClient()
 
-    // Handle stock alerts (one summary if many)
-    if (lowStock && lowStock.length > 0) {
-        if (lowStock.length > 3) {
-            notifications.push({
-                id: 'stock-bulk',
-                title: 'Critical Stock Alert',
-                message: `${lowStock.length} items are running low on stock`,
-                time: new Date().toISOString(),
-                type: 'stock',
-                isRead: false
+        const channel = supabase
+            .channel('system_notifications_sync')
+            // 📡 STREAM A: Full-spectrum intel sync (Catches INSERT + DELETE from Restock purge)
+            .on('postgres_changes', { 
+                event: '*', // 🛡️ CRITICAL FIX: Watches all mutations, including backend DELETES
+                schema: 'public', 
+                table: 'system_notifications' 
+            }, () => {
+                console.log('[Sink] Intel table mutation detected. Resyncing.')
+                mutate()
             })
-        } else {
-            lowStock.forEach((item, index) => {
-                notifications.push({
-                    id: `stock-${index}`,
-                    title: 'Low Stock Alert',
-                    message: `${item.item_name} is running low (${item.stock_available} left)`,
-                    time: new Date().toISOString(),
-                    type: 'stock',
-                    isRead: false
-                })
+            // 📡 STREAM B: Read-receipt synchronization (Junction table)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'notification_reads'
+            }, () => {
+                console.log('[Sink] Junction sync: Intel marked as read.')
+                mutate()
             })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [mutate])
+
+    const loadMore = () => setLimit(prev => prev + 20)
+
+    /**
+     * Marks a specific intel packet as read (Vercel Optimistic Pattern).
+     * The card dims instantly on click before the server responds.
+     */
+    const markAsRead = async (notificationId: string) => {
+        if (!notificationId) return;
+
+        // 🛡️ THE VERCEL WAY: Instant in-place optimistic mutation — no waiting for network
+        mutate(
+            (currentData: any) => {
+                if (!currentData) return currentData;
+                return currentData.map((n: any) =>
+                    n.id === notificationId ? { ...n, isRead: true } : n
+                );
+            },
+            { revalidate: false } // Don't re-fetch yet — let the DB action confirm it
+        );
+
+        try {
+            const result = await markAsReadAction(notificationId);
+            if (!result.success) throw new Error(result.message);
+            await mutate(); // 🔄 Background confirmation sync with DB
+        } catch (error: any) {
+            console.error('[Sync Failure]', error);
+            toast.error('Mission control sync error: ' + error.message);
+            await mutate(); // 🔙 Rollback UI to true DB state on failure
         }
     }
 
-    return notifications.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-}
+    /**
+     * Bulk-marks all visible intel as read (Optimistic UI update).
+     */
+    const markAllRead = async () => {
+        const optimisticData = notifications.map((n: NotificationItem) => ({ ...n, isRead: true }));
+        mutate(optimisticData, false);
 
-export function useNotifications() {
-    // Senior Dev: Use localStorage to persist "Read" status since we don't have a DB table for notifs
-    const [readIds, setReadIds] = useState<string[]>([])
+        try {
+            const result = await markAllReadAction();
+            if (!result.success) throw new Error(result.message);
+            mutate(); // 🔄 Forced SWR re-fetch for database consistency
+        } catch (error: any) {
+            toast.error('Sync failed: ' + error.message);
+            mutate(); // Revert on failure
+        }
+    }
 
-    useEffect(() => {
-        const saved = localStorage.getItem('ligtas-read-notifications')
-        if (saved) setReadIds(JSON.parse(saved))
-    }, [])
+    /**
+     * Hard deletes a specific intel packet.
+     */
+    const deleteNotification = async (notificationId: string) => {
+        if (!notificationId) return;
 
-    const { data: rawNotifications = [], mutate, isLoading } = useSWR('notifications', fetchNotificationData, {
-        revalidateOnFocus: true,
-        refreshInterval: 30000, // 30s
-    })
+        // 🛡️ THE VERCEL WAY: Instant in-place optimistic removal
+        mutate(
+            (currentData: any) => {
+                if (!currentData) return currentData;
+                return currentData.filter((n: any) => n.id !== notificationId);
+            },
+            { revalidate: false }
+        );
 
-    // Merge raw data with read status from localStorage
-    const notifications = useMemo(() => {
-        return rawNotifications.map(n => ({
-            ...n,
-            isRead: readIds.includes(n.id)
-        }))
-    }, [rawNotifications, readIds])
-
-    useEffect(() => {
-        const channel = supabase
-            .channel('notifications-realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => mutate())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => mutate())
-            .subscribe()
-
-        return () => { supabase.removeChannel(channel) }
-    }, [mutate])
-
-    const markAsRead = () => {
-        const allIds = notifications.map(n => n.id)
-        const newReadIds = Array.from(new Set([...readIds, ...allIds]))
-        setReadIds(newReadIds)
-        localStorage.setItem('ligtas-read-notifications', JSON.stringify(newReadIds))
+        try {
+            const result = await deleteNotificationAction(notificationId);
+            if (!result.success) throw new Error(result.message);
+            await mutate(); // 🔄 Background confirmation
+        } catch (error: any) {
+            console.error('[Sync Deletion Failure]', error);
+            toast.error('Mission control sync error: ' + error.message);
+            await mutate(); // 🔙 Rollback
+        }
     }
 
     return {
         notifications,
-        unreadCount: notifications.filter(n => !n.isRead).length,
+        unreadCount: notifications.filter((n: NotificationItem) => !n.isRead).length,
         markAsRead,
+        markAllRead,
+        deleteNotification,
         isLoading,
-        refresh: mutate
+        error,
+        refresh: mutate,
+        limit,
+        loadMore
     }
 }

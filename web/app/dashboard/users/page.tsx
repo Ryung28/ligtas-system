@@ -22,7 +22,9 @@ export default function AccessControlPage() {
         suspendUser,
         reactivateUser,
         authorizeUser,
-        unauthorizeUser
+        unauthorizeUser,
+        authorizedEmails,
+        updateUserRole
     } = useUserManagement()
 
     useEffect(() => {
@@ -33,11 +35,24 @@ export default function AccessControlPage() {
 
     // Filter staff members (admins and editors only)
     const staffMembers = useMemo(() => {
-        return users.filter(user =>
-            user.status === 'active' &&
+        const activeStaff = users.filter(user =>
             (user.role === 'admin' || user.role === 'editor')
         )
-    }, [users])
+
+        // Add authorized emails that haven't signed up yet
+        const pendingInvites = authorizedEmails
+            .filter((auth: any) => !activeStaff.some(s => s.email.toLowerCase() === auth.email.toLowerCase()))
+            .map((auth: any) => ({
+                id: `pending-${auth.email}`,
+                email: auth.email,
+                role: auth.role,
+                status: 'pending' as const,
+                isPending: true,
+                created_at: new Date().toISOString()
+            }))
+
+        return [...activeStaff, ...pendingInvites] as any[]
+    }, [users, authorizedEmails])
 
     // Filter pending borrowers (requests)
     const pendingBorrowers = useMemo(() => {
@@ -101,6 +116,7 @@ export default function AccessControlPage() {
                     isLoading={isLoading}
                     onRemove={suspendUser}
                     onInvite={authorizeUser}
+                    onRoleUpdate={updateUserRole}
                 />
 
                 {/* Right Column: Borrower Management (Tabs: Pending & Active) */}

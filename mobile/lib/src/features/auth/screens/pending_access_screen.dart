@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/src/features/auth/providers/auth_provider.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:go_router/go_router.dart';
 
 /// Screen shown when user's access is pending admin approval
@@ -16,7 +17,7 @@ class PendingAccessScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           // Refresh user profile to check if status changed
-          await ref.read(authProvider.notifier).refreshProfile();
+          await ref.read(authControllerProvider.notifier).refreshProfile();
         },
         color: Colors.orange.shade600,
         child: SingleChildScrollView(
@@ -179,7 +180,7 @@ class PendingAccessScreen extends ConsumerWidget {
               // Logout button
               OutlinedButton.icon(
                 onPressed: () async {
-                  await ref.read(authProvider.notifier).signOut();
+                  await ref.read(authControllerProvider.notifier).logout();
                   // Forcing explicit navigation to Login is the senior approach 
                   // to avoid unneeded splash re-runs on user action.
                   if (context.mounted) {

@@ -1,6 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/src/features/auth/providers/auth_provider.dart';
+import 'package:gap/gap.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 
 /// Screen shown when user's access has been denied/suspended
 class AccessDeniedScreen extends ConsumerWidget {
@@ -11,200 +17,204 @@ class AccessDeniedScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Error icon
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 600),
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Container(
-                      width: 120,
-                      height: 120,
+      body: Stack(
+        children: [
+          // 1. ATMOSPHERIC BACKGROUND
+          Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A), // Slate 900
+            ),
+          ),
+          
+          // Tactical Red Glow
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.errorRed.withOpacity(0.15),
+              ),
+            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 5.seconds, curve: Curves.easeInOut),
+          ),
+
+          // 2. GLASSMORPHIC LAYER
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
+          // 3. CONTENT
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // TACTICAL ERROR ICON
+                    Container(
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
+                        color: Colors.white.withOpacity(0.05),
                         shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.errorRed.withOpacity(0.3)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.red.shade100,
+                            color: AppTheme.errorRed.withOpacity(0.05),
                             blurRadius: 30,
-                            spreadRadius: 5,
+                            spreadRadius: 2,
                           ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.block_rounded,
-                        size: 60,
-                        color: Colors.red.shade600,
+                      child: const Icon(
+                        Icons.gpp_bad_rounded,
+                        color: AppTheme.errorRed,
+                        size: 64,
                       ),
-                    ),
-                  );
-                },
-              ),
+                    ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
 
-              const SizedBox(height: 32),
+                    const Gap(40),
 
-              // Title
-              Text(
-                'Access Denied',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // User email
-              if (user?.email != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.email_outlined,
-                        size: 16,
-                        color: Colors.grey.shade600,
+                    // HEADER CARD (ASSEMYTRICAL)
+                    Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(40),
+                          bottomLeft: Radius.circular(40),
+                          topLeft: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
+                        ),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user!.email!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
+                      child: Column(
+                        children: [
+                          Text(
+                            'ACCESS RESTRICTED',
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.0,
+                              color: AppTheme.errorRed,
+                            ),
+                          ),
+                          const Gap(16),
+                          Text(
+                            'Authentication Terminated',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                          const Gap(16),
+                          Text(
+                            'Your access to the LIGTAS network has been denied or suspended by the network administrator. Your identity has been flagged for review.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.white60,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1, end: 0),
+
+                    const Gap(32),
+
+                    // IDENTITY CARD
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.fingerprint_rounded, color: Colors.white38, size: 20),
+                          const Gap(12),
+                          Expanded(
+                            child: Text(
+                              'Flagged Identity: ${user?.email ?? "Unknown"}',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white38,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 400.ms),
+
+                    const Gap(48),
+
+                    // RE-AUTH / SIGN OUT
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          ref.read(authControllerProvider.notifier).logout();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.errorRed.withOpacity(0.2),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: AppTheme.errorRed.withOpacity(0.3)),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.logout_rounded, size: 20),
+                            const Gap(12),
+                            Text(
+                              'CLOSE SECURE LINK',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 24),
-
-              // Description
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Your access request has been declined by the LIGTAS administrator.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey.shade600,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Info card
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.shade100,
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'What to do next:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade900,
+                    ).animate().fadeIn(delay: 600.ms),
+                    
+                    const Gap(24),
+                    
+                    TextButton(
+                      onPressed: () {}, // Link to support or contact
+                      child: Text(
+                        'CONTACT SYSTEMS ADMIN',
+                        style: GoogleFonts.outfit(
+                          color: Colors.white38,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.contact_support_outlined,
-                      'Contact your LIGTAS administrator for clarification',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(
-                      Icons.info_outline,
-                      'Provide necessary credentials if requested',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInfoRow(
-                      Icons.support_agent_outlined,
-                      'Request assistance from your organization',
-                    ),
                   ],
                 ),
               ),
-
-              const Spacer(),
-
-              // Sign out button
-              ElevatedButton.icon(
-                onPressed: () {
-                  ref.read(authProvider.notifier).signOut();
-                },
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Sign Out'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade900,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Colors.grey.shade500,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-              height: 1.4,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

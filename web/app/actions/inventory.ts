@@ -17,6 +17,8 @@ const addItemSchema = z.object({
     stock_total: z.coerce.number().min(1, 'Stock must be at least 1'),
     status: z.string().default('Good'),
     image_url: z.string().optional().nullable(),
+    serial_number: z.string().optional().nullable(),
+    equipment_type: z.string().optional().nullable(),
 })
 
 const borrowItemSchema = z.object({
@@ -45,6 +47,8 @@ export async function addItem(formData: FormData) {
             stock_total: formData.get('stock_total'),
             status: 'Good',
             image_url: formData.get('image_url'),
+            serial_number: formData.get('serial_number'),
+            equipment_type: formData.get('equipment_type'),
         }
 
         const validatedData = addItemSchema.parse(rawData)
@@ -59,6 +63,8 @@ export async function addItem(formData: FormData) {
                 stock_available: validatedData.stock_total, // Initially all stock is available
                 status: validatedData.status,
                 image_url: validatedData.image_url,
+                serial_number: validatedData.serial_number,
+                equipment_type: validatedData.equipment_type,
             },
         ]).select()
 
@@ -149,7 +155,7 @@ export async function borrowItem(formData: FormData) {
         // Step 1: Check if enough stock is available
         const { data: inventoryItem, error: checkError } = await supabase
             .from('inventory')
-            .select('id, item_name, stock_available')
+            .select('id, item_name, stock_available, status')
             .eq('id', validatedData.item_id)
             .single()
 
@@ -157,6 +163,14 @@ export async function borrowItem(formData: FormData) {
             return {
                 success: false,
                 error: 'Item not found',
+            }
+        }
+
+        // TACTICAL SAFEGUARD: No borrowing decommissioned items
+        if (inventoryItem.status === 'archived') {
+            return {
+                success: false,
+                error: 'TACTICAL ERROR: Resource is archived and decommissioned from service.',
             }
         }
 
@@ -291,7 +305,9 @@ export async function getAvailableItems() {
     try {
         const { data, error } = await supabase
             .from('inventory')
-            .select('id, item_name, stock_available, category')
+            .select('id, item_name, stock_available, category, status')
+            .neq('status', 'archived')
+            .gt('stock_available', 0)
             .order('item_name')
 
         if (error) throw error
@@ -332,6 +348,8 @@ export async function updateItem(formData: FormData) {
             // For this MVP, let's assume we just update the basic info.
             status: formData.get('status') || 'Good',
             image_url: formData.get('image_url'),
+            serial_number: formData.get('serial_number'),
+            equipment_type: formData.get('equipment_type'),
         }
 
         const validatedData = addItemSchema.parse(rawData)
@@ -358,7 +376,9 @@ export async function updateItem(formData: FormData) {
                 stock_total: validatedData.stock_total,
                 stock_available: newStockAvailable < 0 ? 0 : newStockAvailable,
                 status: validatedData.status,
-                image_url: validatedData.image_url
+                image_url: validatedData.image_url,
+                serial_number: validatedData.serial_number,
+                equipment_type: validatedData.equipment_type
             })
             .eq('id', id)
             .select()
@@ -374,17 +394,40 @@ export async function updateItem(formData: FormData) {
 
 export async function deleteItem(id: number) {
     try {
+        // 🚨 STRICT PROTOCOL: Check for active borrows before archiving
+        const { data: activeBorrows, error: checkError } = await supabase
+            .from('borrow_logs')
+            .select('id')
+            .eq('inventory_id', id)
+            .eq('status', 'borrowed')
+
+        if (checkError) throw checkError
+
+        if (activeBorrows && activeBorrows.length > 0) {
+            return { 
+                success: false, 
+                error: `⚠️ STRATEGIC BLOCK: Cannot archive resource. Resolve active borrows (Mark as Returned or Lost) first.` 
+            }
+        }
+
+        // 🛡️ STEEL CAGE: Logic Redirection
+        // Instead of hard delete, we perform a soft-delete (Archive).
+        // This hides the item from the active_inventory view but preserves the audit trail.
         const { error } = await supabase
             .from('inventory')
-            .delete()
+            .update({ 
+                deleted_at: new Date().toISOString(),
+                status: 'archived'
+            })
             .eq('id', id)
 
         if (error) throw error
 
         revalidatePath('/dashboard/inventory')
-        return { success: true, message: 'Item deleted successfully' }
+        return { success: true, message: 'Item archived successfully' }
     } catch (error: any) {
-        return { success: false, error: error.message || 'Failed to delete item' }
+        console.error('Archive Error:', error)
+        return { success: false, error: error.message || 'Failed to archive item' }
     }
 }
 
@@ -452,5 +495,31 @@ export async function rejectRequest(logId: number) {
     } catch (error: any) {
         console.error('Reject error:', error)
         return { success: false, error: error.message || 'Failed to reject request' }
+    }
+}
+export async function bulkReturnItems(logIds: number[]) {
+    try {
+        let successCount = 0
+        let failCount = 0
+
+        for (const logId of logIds) {
+            const result = await returnItem(logId)
+            if (result.success) successCount++
+            else failCount++
+        }
+
+        revalidatePath('/dashboard/logs')
+        revalidatePath('/dashboard/inventory')
+        revalidatePath('/dashboard')
+
+        return {
+            success: true,
+            message: `Successfully processed ${successCount} returns. ${failCount > 0 ? `${failCount} failed.` : ''}`,
+            successCount,
+            failCount
+        }
+    } catch (error: any) {
+        console.error('Bulk return error:', error)
+        return { success: false, error: 'Tactical Error: Bulk return protocol interrupted' }
     }
 }

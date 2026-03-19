@@ -12,6 +12,7 @@ export const fetchInventory = async () => {
     const { data, error } = await supabase
         .from('inventory')
         .select('*')
+        .is('deleted_at', null)
         .order('item_name', { ascending: true })
 
     if (error) throw error
@@ -21,24 +22,32 @@ export const fetchInventory = async () => {
     const itemsWithUrls = await Promise.all(items.map(async (item) => {
         if (item.image_url) {
             try {
-                // Check if image_url is already a full URL or just a path
-                if (item.image_url.startsWith('http')) {
+                // Extract path if it's a full URL from our bucket
+                let path = item.image_url
+                if (path.includes('/storage/v1/object/')) {
+                    // Extract the path after 'item-images/'
+                    const parts = path.split('item-images/')
+                    if (parts.length > 1) {
+                        path = parts[1].split('?')[0] // Get path before query params
+                    }
+                }
+
+                // If it's still a full URL from elsewhere, keep it
+                if (path.startsWith('http')) {
                     return item
                 }
 
-                // Generate signed URL for the image
+                // Generate fresh signed URL for the image path
                 const { data, error: storageError } = await supabase.storage
                     .from('item-images')
-                    .createSignedUrl(item.image_url, 60 * 60 * 24) // 24 hours
+                    .createSignedUrl(path, 60 * 60 * 24) // 24 hours
 
                 if (storageError || !data || !data.signedUrl) {
-                    console.warn(`Failed to generate signed URL for ${item.image_url}:`, storageError)
                     return item
                 }
 
                 return { ...item, image_url: data.signedUrl }
             } catch (err) {
-                console.warn(`Error processing image for ${item.item_name}:`, err)
                 return item
             }
         }

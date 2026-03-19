@@ -13,8 +13,11 @@ class AppTheme {
 
   static const Color successGreen = Color(0xFF4CAF50);
   static const Color successGreenLight = Color(0xFF81C784);
+  static const Color emeraldGreen = Color(0xFF10B981);
+  static const Color emeraldGreenDark = Color(0xFF059669);
   static const Color warningAmber = Color(0xFFFF9800);
   static const Color warningAmberLight = Color(0xFFFFCC80);
+  static const Color warningOrange = Color(0xFFF97316);
   static const Color errorRed = Color(0xFFE53935);
 
   static const Color neutralGray50 = Color(0xFFFAFAFA);
@@ -293,6 +296,24 @@ class AppTheme {
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: neutralGray300),
       ),
+    ),
+
+    // SnackBar Theme
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: neutralGray900,
+      contentTextStyle: GoogleFonts.roboto(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: Colors.white,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      elevation: 8,
     ),
 
     // Divider Theme

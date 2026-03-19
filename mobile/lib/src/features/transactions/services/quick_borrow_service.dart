@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/networking/supabase_client.dart';
+import '../../../core/errors/app_exceptions.dart';
 
 class QuickBorrowService {
   final _supabase = SupabaseService.client;
@@ -26,7 +27,7 @@ class QuickBorrowService {
       final response = await query.or(orFilter);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('SYSTEM: Error detecting active borrows: $e');
+      print('SYSTEM: Error detecting active borrows: ${ExceptionHandler.getDisplayMessage(e)}');
       return [];
     }
   }
@@ -97,7 +98,7 @@ class QuickBorrowService {
     } catch (e) {
       return {
         'success': false,
-        'error': 'Return failed: ${e.toString()}',
+        'error': 'Return failed: ${ExceptionHandler.getDisplayMessage(e)}',
       };
     }
   }
@@ -160,7 +161,7 @@ class QuickBorrowService {
     } catch (e) {
       return {
         'success': false,
-        'error': 'Connection failed: ${e.toString()}',
+        'error': 'Connection failed: ${ExceptionHandler.getDisplayMessage(e)}',
       };
     }
   }

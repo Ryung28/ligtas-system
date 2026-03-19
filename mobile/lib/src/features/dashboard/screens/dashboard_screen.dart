@@ -22,6 +22,8 @@ import '../../loans/repositories/loan_repository.dart';
 import '../../../core/di/app_providers.dart';
 import '../../../core/design_system/widgets/app_toast.dart';
 import '../../../core/design_system/widgets/ligtas_error_state.dart';
+import '../../notifications/widgets/sync_error_banner.dart';
+import 'package:mobile/src/features/presence/presentation/providers/presence_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -56,6 +58,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final userName = ref.watch(dashboardUserNameProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final controller = ref.watch(dashboardControllerProvider);
+    
+    // Initialize presence heartbeat / controller
+    ref.watch(presenceControllerProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7), // Match My Borrowed Items background
@@ -81,6 +86,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                 slivers: [
+                  // 0. Notification Sync Status (Scenario B Repair)
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    sliver: SliverToBoxAdapter(child: SyncErrorBanner()),
+                  ),
+
                   // 1. Header Section
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),

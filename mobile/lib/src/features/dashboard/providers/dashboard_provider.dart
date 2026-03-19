@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../loans/providers/loan_providers.dart';
-import '../../inventory/providers/inventory_providers.dart';
-import '../../loans/models/loan_model.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:mobile/src/features/loans/providers/loan_providers.dart';
+import 'package:mobile/src/features/inventory/providers/inventory_providers.dart';
+import 'package:mobile/src/features/loans/models/loan_model.dart';
 
 /// Dashboard stats for borrower perspective
 class DashboardStats {
@@ -30,26 +30,33 @@ class DashboardStats {
   }
 }
 
-/// Provides borrower dashboard stats from real data
-final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
-  try {
-    // Get real stats from loan repository
-    final repository = ref.read(loanRepositoryProvider);
-    final stats = await repository.getLoanStatistics();
-    
-    return DashboardStats(
-      activeLoans: stats.totalActiveLoans,
-      overdueLoans: stats.totalOverdueLoans,
-      totalReturnedItems: stats.totalReturnedToday,
-    );
-  } catch (e) {
-    // Fallback to empty stats if there's an error
-    return const DashboardStats(
-      activeLoans: 0,
-      overdueLoans: 0,
-      totalReturnedItems: 0,
-    );
-  }
+/// Provides borrower dashboard stats from real data - TRANSFORMED TO STREAM for REALTIME
+final dashboardStatsProvider = StreamProvider<DashboardStats>((ref) {
+  final loansAsync = ref.watch(myBorrowedItemsProvider);
+
+  return loansAsync.when(
+    data: (loans) {
+      final active = loans.where((l) => l.status == LoanStatus.active).length;
+      final overdue = loans.where((l) => l.status == LoanStatus.overdue).length;
+      // Returned today check
+      final now = DateTime.now();
+      final returnedToday = loans.where((l) => 
+        l.status == LoanStatus.returned && 
+        l.actualReturnDate != null &&
+        l.actualReturnDate!.day == now.day &&
+        l.actualReturnDate!.month == now.month &&
+        l.actualReturnDate!.year == now.year
+      ).length;
+
+      return Stream.value(DashboardStats(
+        activeLoans: active,
+        overdueLoans: overdue,
+        totalReturnedItems: returnedToday,
+      ));
+    },
+    loading: () => Stream.value(const DashboardStats()),
+    error: (e, st) => Stream.error(e, st),
+  );
 });
 
 /// User display name for dashboard greeting
@@ -87,13 +94,12 @@ final inventorySummaryProvider = Provider<Map<String, dynamic>>((ref) {
     data: (items) {
       final total = items.length;
       final lowStock = items.where((i) => i.available < 5).length;
-      final totalValue = items.fold<int>(0, (sum, i) => sum + (i.available * 100)); // Mocking value or using quantity
       
       return {
         'total_assets': total,
         'low_stock_count': lowStock,
-        'warehouse_status': 'ALIVE',
-        'last_sync': 'JUST NOW',
+        'warehouse_status': 'REALTIME',
+        'last_sync': 'ACTIVE',
       };
     },
     loading: () => {

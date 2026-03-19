@@ -1,3 +1,13 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.google.gms:google-services:4.4.2")
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -15,17 +25,10 @@ subprojects {
 
 subprojects {
     project.configurations.all {
-        resolutionStrategy.eachDependency {
-            if (requested.group == "androidx.browser" && requested.name == "browser") {
-                useVersion("1.8.0")
-                because("Higher versions require AGP 8.9.1+")
-            }
-            if (requested.group == "androidx.core" && (requested.name == "core" || requested.name == "core-ktx")) {
-                if (requested.version?.startsWith("1.15") == false && requested.version?.startsWith("1.14") == false && requested.version?.startsWith("1.13") == false) {
-                    useVersion("1.13.1")
-                    because("Higher versions require AGP 8.9.1+")
-                }
-            }
+        resolutionStrategy {
+            force("androidx.core:core:1.13.1")
+            force("androidx.core:core-ktx:1.13.1")
+            force("androidx.browser:browser:1.8.0")
         }
     }
 }
@@ -40,6 +43,8 @@ subprojects {
                     if (namespace == null) {
                         namespace = "dev.isar.${project.name.replace("-", "_")}"
                     }
+                    // 🛡️ RECURSIVE SDK ALIGNMENT: Forces every dependent plugin to 36
+                    compileSdkVersion(36)
                 }
             }
         }

@@ -1,0 +1,282 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: var(--color-background-tertiary); }
+  .panel { width: 400px; height: 680px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-header { padding: 20px 20px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .bell-btn { width: 36px; height: 36px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+  .bell-btn svg { width: 16px; height: 16px; color: var(--color-text-primary); }
+  .badge { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; border-radius: 50%; background: #1D4ED8; color: #fff; font-size: 10px; font-weight: 500; display: flex; align-items: center; justify-content: center; border: 2px solid var(--color-background-primary); }
+  .header-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); }
+  .header-actions { display: flex; gap: 6px; }
+  .icon-btn { width: 28px; height: 28px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-secondary); }
+  .icon-btn:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+  .icon-btn svg { width: 13px; height: 13px; }
+  .filter-tabs { display: flex; gap: 0; padding-bottom: 0; }
+  .tab { padding: 8px 14px; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; user-select: none; transition: color 0.15s; }
+  .tab:hover { color: var(--color-text-primary); }
+  .tab.active { color: #1D4ED8; border-bottom-color: #1D4ED8; }
+  .tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; border-radius: 8px; background: var(--color-background-secondary); color: var(--color-text-secondary); font-size: 10px; margin-left: 5px; padding: 0 4px; }
+  .tab.active .tab-count { background: #EFF6FF; color: #1D4ED8; }
+
+  .notif-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .notif-list::-webkit-scrollbar { width: 3px; }
+  .notif-list::-webkit-scrollbar-track { background: transparent; }
+  .notif-list::-webkit-scrollbar-thumb { background: var(--color-border-tertiary); border-radius: 4px; }
+
+  .section-label { padding: 10px 20px 4px; font-size: 11px; font-weight: 500; color: var(--color-text-secondary); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .notif-item { display: flex; gap: 12px; padding: 12px 20px; cursor: pointer; transition: background 0.1s; position: relative; }
+  .notif-item:hover { background: var(--color-background-secondary); }
+  .notif-item.unread { background: var(--color-background-secondary); }
+  .notif-item.unread:hover { background: var(--color-background-tertiary); }
+
+  .unread-dot { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 5px; height: 5px; border-radius: 50%; background: #1D4ED8; }
+
+  .icon-wrap { width: 32px; height: 32px; border-radius: var(--border-radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .icon-wrap svg { width: 14px; height: 14px; }
+  .icon-wrap.blue { background: #EFF6FF; color: #1D4ED8; }
+  .icon-wrap.amber { background: #FFFBEB; color: #92400E; }
+  .icon-wrap.red { background: #FEF2F2; color: #991B1B; }
+  .icon-wrap.green { background: #F0FDF4; color: #166534; }
+  .icon-wrap.gray { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .icon-wrap.violet { background: #F5F3FF; color: #5B21B6; }
+
+  .notif-body { flex: 1; min-width: 0; }
+  .notif-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+  .notif-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
+  .notif-time { font-size: 11px; color: var(--color-text-secondary); white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+  .notif-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 6px; }
+  .notif-action { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: #1D4ED8; padding: 3px 8px; border-radius: var(--border-radius-md); border: 0.5px solid #BFDBFE; background: #EFF6FF; cursor: pointer; }
+  .notif-action:hover { background: #DBEAFE; }
+  .notif-action svg { width: 10px; height: 10px; }
+  .notif-action.danger { color: #991B1B; border-color: #FECACA; background: #FEF2F2; }
+  .notif-action.danger:hover { background: #FEE2E2; }
+
+  .divider { height: 0.5px; background: var(--color-border-tertiary); margin: 4px 0; }
+
+  .panel-footer { padding: 12px 20px; border-top: 0.5px solid var(--color-border-tertiary); display: flex; justify-content: space-between; align-items: center; }
+  .footer-link { font-size: 12px; color: var(--color-text-secondary); cursor: pointer; }
+  .footer-link:hover { color: var(--color-text-primary); }
+  .mark-all-btn { font-size: 12px; font-weight: 500; color: #1D4ED8; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .mark-all-btn svg { width: 12px; height: 12px; }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 48px 24px; text-align: center; }
+  .empty-icon { width: 40px; height: 40px; border-radius: var(--border-radius-lg); background: var(--color-background-secondary); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .empty-icon svg { width: 18px; height: 18px; color: var(--color-text-secondary); }
+  .empty-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+  .empty-desc { font-size: 12px; color: var(--color-text-secondary); }
+
+  .wrapper { display: flex; justify-content: center; align-items: flex-start; padding: 24px; gap: 32px; flex-wrap: wrap; }
+  .trigger-area { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .trigger-label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+</style>
+
+<div class="wrapper">
+  <div class="trigger-area">
+    <span class="trigger-label">Trigger button</span>
+    <div class="bell-btn" style="position:relative; width:40px; height:40px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="badge">4</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="panel-header">
+      <div class="header-top">
+        <div class="header-left">
+          <span class="header-title">Notifications</span>
+          <span style="font-size:12px; color:var(--color-text-secondary);">4 unread</span>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" title="Refresh" onclick="refreshAnim(this)">
+            <svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+          <button class="icon-btn" title="Mark all read" onclick="markAllRead()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/><polyline points="20 12 9 23 4 18"/></svg>
+          </button>
+          <button class="icon-btn" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="filter-tabs" id="filter-tabs">
+        <div class="tab active" data-filter="all" onclick="setFilter('all', this)">All <span class="tab-count">4</span></div>
+        <div class="tab" data-filter="logistics" onclick="setFilter('logistics', this)">Logistics <span class="tab-count">2</span></div>
+        <div class="tab" data-filter="access" onclick="setFilter('access', this)">Access <span class="tab-count">1</span></div>
+        <div class="tab" data-filter="alerts" onclick="setFilter('alerts', this)">Alerts <span class="tab-count">1</span></div>
+      </div>
+    </div>
+
+    <div class="notif-list" id="notif-list"></div>
+
+    <div class="panel-footer">
+      <span class="footer-link">View all activity</span>
+      <span class="mark-all-btn" onclick="markAllRead()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/><polyline points="20 12 9 23 4 18"/></svg>
+        Mark all as read
+      </span>
+    </div>
+  </div>
+</div>
+
+<script>
+const notifications = [
+  {
+    id: 1, type: 'logistics', unread: true,
+    icon: 'shield', color: 'blue',
+    title: 'Borrow request pending review',
+    desc: 'John Reyes submitted a request for 3 items — Lab Kit A, Multimeter, and Soldering Station.',
+    time: '2 min ago',
+    action: { label: 'Review request', style: '' }
+  },
+  {
+    id: 2, type: 'alerts', unread: true,
+    icon: 'alert', color: 'amber',
+    title: 'Low stock warning: Lab Kit B',
+    desc: 'Current stock is at 2 units — below the minimum threshold of 5. Consider restocking soon.',
+    time: '18 min ago',
+    action: { label: 'Restock', style: '' }
+  },
+  {
+    id: 3, type: 'access', unread: true,
+    icon: 'user', color: 'violet',
+    title: 'New user access request',
+    desc: 'Maria Santos is requesting access to the Equipment Management dashboard.',
+    time: '1 hr ago',
+    action: { label: 'Approve or deny', style: '' }
+  },
+  {
+    id: 4, type: 'logistics', unread: true,
+    icon: 'clock', color: 'red',
+    title: 'Overdue return: Oscilloscope #04',
+    desc: 'This item was due back on March 15. Borrower: Carlos Mendoza. Please follow up.',
+    time: '2 hr ago',
+    action: { label: 'View record', style: 'danger' }
+  },
+  {
+    id: 5, type: 'logistics', unread: false,
+    icon: 'check', color: 'green',
+    title: 'Return confirmed: Drill Press #02',
+    desc: 'Anna Lim returned this item. It has been marked available in inventory.',
+    time: 'Yesterday',
+    action: null
+  },
+  {
+    id: 6, type: 'alerts', unread: false,
+    icon: 'alert', color: 'gray',
+    title: 'Stock replenished: Multimeters',
+    desc: 'Inventory updated — 12 units added by admin. Current stock: 14.',
+    time: 'Mar 16',
+    action: null
+  }
+];
+
+const icons = {
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'
+};
+
+let currentFilter = 'all';
+let readSet = new Set();
+
+function renderList() {
+  const list = document.getElementById('notif-list');
+  const filtered = notifications.filter(n => {
+    if (currentFilter === 'all') return true;
+    return n.type === currentFilter;
+  });
+
+  const unread = filtered.filter(n => n.unread && !readSet.has(n.id));
+  const read = filtered.filter(n => !n.unread || readSet.has(n.id));
+
+  let html = '';
+
+  if (unread.length) {
+    html += '<div class="section-label">New</div>';
+    unread.forEach(n => html += renderItem(n, true));
+  }
+  if (read.length) {
+    if (unread.length) html += '<div class="divider"></div>';
+    html += '<div class="section-label">Earlier</div>';
+    read.forEach(n => html += renderItem(n, false));
+  }
+  if (!filtered.length) {
+    html = `<div class="empty-state">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+      <div class="empty-title">No notifications</div>
+      <div class="empty-desc">Nothing here for this filter.</div>
+    </div>`;
+  }
+
+  list.innerHTML = html;
+}
+
+function renderItem(n, isUnread) {
+  const svgPath = icons[n.icon] || icons.bell;
+  const actionHtml = n.action ? `
+    <div class="notif-action ${n.action.style}" onclick="event.stopPropagation(); handleAction(${n.id})">
+      ${n.action.label}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>` : '';
+
+  return `
+    <div class="notif-item ${isUnread ? 'unread' : ''}" onclick="markRead(${n.id})">
+      ${isUnread ? '<div class="unread-dot"></div>' : ''}
+      <div class="icon-wrap ${n.color}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svgPath}</svg>
+      </div>
+      <div class="notif-body">
+        <div class="notif-top">
+          <div class="notif-title">${n.title}</div>
+          <div class="notif-time">${n.time}</div>
+        </div>
+        <div class="notif-desc">${n.desc}</div>
+        ${actionHtml}
+      </div>
+    </div>`;
+}
+
+function markRead(id) {
+  readSet.add(id);
+  updateCounts();
+  renderList();
+}
+
+function markAllRead() {
+  notifications.forEach(n => readSet.add(n.id));
+  updateCounts();
+  renderList();
+}
+
+function handleAction(id) {
+  markRead(id);
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function updateCounts() {
+  const unreadTotal = notifications.filter(n => n.unread && !readSet.has(n.id)).length;
+  document.querySelector('.bell-btn .badge') && (document.querySelector('.bell-btn .badge').textContent = unreadTotal || '');
+  document.querySelector('.header-top .header-left span').textContent = unreadTotal ? `${unreadTotal} unread` : 'All read';
+}
+
+function refreshAnim(btn) {
+  const icon = btn.querySelector('svg');
+  icon.style.transition = 'transform 0.5s';
+  icon.style.transform = 'rotate(360deg)';
+  setTimeout(() => { icon.style.transition = ''; icon.style.transform = ''; }, 500);
+}
+
+renderList();
+</script>

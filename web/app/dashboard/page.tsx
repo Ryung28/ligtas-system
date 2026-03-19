@@ -64,13 +64,23 @@ export default function DashboardOverview() {
                 <StatsCard title="Total Items" value={stats.totalItems} icon={Package} color="blue" description="Types of Items" />
                 <StatsCard title="Total Stock" value={stats.totalStock} icon={Box} color="indigo" description="All Units on Hand" />
                 <StatsCard title="Items Lent" value={stats.activeBorrows} icon={ClipboardList} color="purple" description="Currently Borrowed" />
-                <StatsCard
-                    title="Inventory Readiness"
-                    value={`${((((stats.totalItems ?? 0) - ((stats.lowStockCount ?? 0) + (stats.outOfStockCount ?? 0) + (stats.damagedCount ?? 0))) / (stats.totalItems || 1)) * 100).toFixed(0)}%`}
-                    icon={Activity}
-                    color="emerald"
-                    description="Fully Ready for Duty"
-                />
+
+                {(() => {
+                    const readiness = ((stats.totalItems - (stats.outOfStockCount + stats.damagedCount)) / (stats.totalItems || 1)) * 100;
+                    let color: 'emerald' | 'amber' | 'rose' = 'emerald';
+                    if (readiness < 50) color = 'rose';
+                    else if (readiness < 85) color = 'amber';
+
+                    return (
+                        <StatsCard
+                            title="Inventory Readiness"
+                            value={`${readiness.toFixed(0)}%`}
+                            icon={Activity}
+                            color={color}
+                            description={readiness < 100 ? `${stats.damagedCount + stats.outOfStockCount} UNITS OFF-LINE` : "FULLY READY FOR DUTY"}
+                        />
+                    );
+                })()}
             </section>
 
             {/* Logistics Alert */}

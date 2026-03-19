@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+
 /// Base application exception
 abstract class AppException implements Exception {
   const AppException(this.message, {this.code, this.details});
@@ -37,36 +39,60 @@ class ValidationException extends AppException {
 
 /// Exception handler utility
 class ExceptionHandler {
-  static String getDisplayMessage(Exception exception) {
+  static String getDisplayMessage(Object exception) {
     if (exception is AppException) {
+      return exception.message;
+    }
+
+    if (exception is sb.PostgrestException) {
+      if (exception.message.contains('null value in column "quantity"')) {
+        return 'The quantity field is required by the server.';
+      }
+      if (exception.message.contains('stock_available_check')) {
+        return 'Insufficient stock available for this item.';
+      }
+      return exception.message;
+    }
+
+    if (exception is sb.AuthException) {
+      final msg = exception.message.toLowerCase();
+      if (msg.contains('user already registered')) return 'REGISTRATION CONFLICT: This email is already bound to a LIGTAS profile.';
+      if (msg.contains('invalid login credentials')) return 'CREDENTIAL MISMATCH: Access denied to the internal network.';
+      if (msg.contains('email not confirmed')) return 'PENDING AUTHORIZATION: Please verify your secure link.';
+      if (msg.contains('weak password')) return 'SECURITY ALERT: Password strength does not meet Command standards.';
       return exception.message;
     }
     
     // Handle common Supabase exceptions
-    final message = exception.toString();
-    if (message.contains('JWT')) {
+    final message = exception.toString().toLowerCase();
+    if (message.contains('jwt')) {
       return 'Session expired. Please log in again.';
     }
-    if (message.contains('network')) {
-      return 'Network error. Please check your connection.';
+    if (message.contains('network') || message.contains('socket_exception')) {
+      return 'Network error. Check your internet connection.';
+    }
+    if (message.contains('timeout')) {
+      return 'Connection timed out. Please try again.';
     }
     
     return 'An unexpected error occurred. Please try again.';
   }
   
-  static AppException fromException(Exception exception) {
+  static AppException fromException(Object exception) {
     if (exception is AppException) {
       return exception;
     }
     
-    final message = exception.toString();
-    if (message.contains('JWT') || message.contains('auth')) {
-      return AuthException(ExceptionHandler.getDisplayMessage(exception));
+    final display = getDisplayMessage(exception);
+    final str = exception.toString().toLowerCase();
+
+    if (str.contains('jwt') || str.contains('auth') || exception is sb.AuthException) {
+      return AuthException(display);
     }
-    if (message.contains('network') || message.contains('connection')) {
-      return NetworkException(ExceptionHandler.getDisplayMessage(exception));
+    if (str.contains('network') || str.contains('connection') || str.contains('socket')) {
+      return NetworkException(display);
     }
     
-    return DataException(ExceptionHandler.getDisplayMessage(exception));
+    return DataException(display);
   }
 }

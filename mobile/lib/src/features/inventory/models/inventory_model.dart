@@ -22,10 +22,10 @@ class InventoryModel with _$InventoryModel {
     @Default('') String code,
     @Default(10) int minStockLevel,
     @Default('pcs') String unit,
-    String? supplier,
-    String? supplierContact,
-    String? notes,
-    @JsonKey(name: 'image_url') String? imageUrl,
+    @Default('') String supplier,
+    @Default('') String supplierContact,
+    @Default('') String notes,
+    @JsonKey(name: 'image_url') @Default('') String imageUrl,
   }) = _InventoryModel;
 
   factory InventoryModel.fromJson(Map<String, dynamic> json) => _$InventoryModelFromJson(json);
@@ -98,10 +98,10 @@ class InventoryCollection {
       code: code ?? '',
       minStockLevel: minStockLevel ?? 10,
       unit: unit ?? 'pcs',
-      supplier: supplier,
-      supplierContact: supplierContact,
-      notes: notes,
-      imageUrl: imageUrl,
+      supplier: supplier ?? '',
+      supplierContact: supplierContact ?? '',
+      notes: notes ?? '',
+      imageUrl: imageUrl ?? '',
     );
   }
 }

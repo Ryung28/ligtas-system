@@ -75,14 +75,18 @@ export function BorrowItemDialog() {
                     if (result.success && result.data) {
                         setAvailableItems(result.data)
                     } else {
-                        toast.error(result.error || 'Failed to load available items')
+                        toast.error(result.error || 'Failed to load available items', {
+                            className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)]'
+                        })
                         setAvailableItems([])
                     }
                 }
             } catch (error) {
                 if (mounted) {
                     console.error('Failed to load items:', error)
-                    toast.error('Could not load inventory items.')
+                    toast.error('Could not load inventory items.', {
+                        className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)]'
+                    })
                     setAvailableItems([])
                 }
             } finally {
@@ -123,7 +127,9 @@ export function BorrowItemDialog() {
                 setSelectedItem(null)
                 setBorrowerName('')
             } else {
-                toast.error(result.error || 'Failed to log transaction')
+                toast.error(result.error || 'Failed to log transaction', {
+                    className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                })
             }
         })
     }

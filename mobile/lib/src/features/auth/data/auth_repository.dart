@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/networking/supabase_client.dart';
+import '../../../core/errors/app_exceptions.dart';
 import '../models/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -14,23 +15,35 @@ class AuthRepository {
   
   // Get current user data mapped to UserModel
   Future<UserModel?> getCurrentUser() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return null;
+    final authUser = _supabase.auth.currentUser;
+    if (authUser == null) return null;
     
-    return UserModel(
-      id: user.id,
-      email: user.email,
-      displayName: user.userMetadata?['full_name'] as String? ?? user.userMetadata?['name'] as String?,
-      phoneNumber: user.userMetadata?['phone_number'] as String?,
-      organization: user.userMetadata?['organization'] as String?,
-    );
+    // Fetch profile data from user_profiles
+    final profileData = await _supabase
+        .from('user_profiles')
+        .select()
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+    if (profileData == null) {
+      // Fallback to basic metadata if profile doesn't exist yet
+      return UserModel(
+        id: authUser.id,
+        email: authUser.email,
+        displayName: authUser.userMetadata?['full_name'] as String? ?? authUser.userMetadata?['name'] as String?,
+        phoneNumber: authUser.userMetadata?['phone_number'] as String?,
+        organization: authUser.userMetadata?['organization'] as String?,
+      );
+    }
+
+    return UserModel.fromSupabase(profileData);
   }
 
   // Google Sign In
   Future<void> signInWithGoogle({bool rememberMe = false}) async {
     // 🛡️ CRITICAL: Use the WEB CLIENT ID here, even for Android!
     // This allows Supabase to receive the 'idToken' for verification.
-    const webClientId = '60786143704-9lhl4pt1ojr9q5t06494dbhs7ccv8d62.apps.googleusercontent.com';
+    const webClientId = '135620164017-ql5vhj0rmgqrpaqffavphqr6heodeu9u.apps.googleusercontent.com';
 
     // Set this to null if not using iOS yet to prevent initialization errors
     const String? iosClientId = null; 
@@ -71,35 +84,52 @@ class AuthRepository {
 
   // Standard Sign In
   Future<void> signIn({required String email, required String password}) async {
-    await _supabase.auth.signInWithPassword(email: email, password: password);
+    try {
+      await _supabase.auth.signInWithPassword(email: email, password: password);
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
+    }
   }
 
   // Standard Sign Up
-  Future<void> signUp({
+  /// Returns [true] if user is auto-logged in, [false] if email verification is needed.
+  Future<bool> signUp({
     required String email, 
     required String password, 
     required String name,
     String? phone,
     String? organization
   }) async {
-    await _supabase.auth.signUp(
-      email: email,
-      password: password,
-      data: {
-        'full_name': name,
-        'phone_number': phone,
-        'organization': organization,
-      },
-    );
+    try {
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'full_name': name,
+          'phone_number': phone,
+          'organization': organization,
+        },
+      );
+      
+      // 🛡️ TACTICAL SHIFT: Email Confirmation is handle manually via Admin Approval
+      // We always return true if the user record was successfully provisioned.
+      return response.user != null;
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
+    }
   }
 
   // Sign Out (Handles both Supabase and Google)
   Future<void> signOut() async {
-    final googleSignIn = GoogleSignIn();
-    if (await googleSignIn.isSignedIn()) {
-      await googleSignIn.signOut();
+    try {
+      final googleSignIn = GoogleSignIn();
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+      }
+      await _supabase.auth.signOut();
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
     }
-    await _supabase.auth.signOut();
   }
 }
 

@@ -4,10 +4,13 @@ import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/errors/app_exceptions.dart';
 
 import '../../../core/design_system/app_theme.dart';
 import '../../dashboard/widgets/dashboard_background.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../../auth/presentation/providers/auth_providers.dart';
+import '../../auth/presentation/controllers/auth_controller.dart';
+import '../../auth/domain/models/user_model.dart';
 
 class SecurityScreen extends ConsumerStatefulWidget {
   const SecurityScreen({super.key});
@@ -76,10 +79,8 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
         _clearForm();
         setState(() => _isChangingPassword = false);
       }
-    } on AuthException catch (e) {
-      _showSnackBar(e.message, AppTheme.errorRed);
     } catch (e) {
-      _showSnackBar('Failed to change password: ${e.toString()}', AppTheme.errorRed);
+      _showSnackBar(ExceptionHandler.getDisplayMessage(e), AppTheme.errorRed);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -123,12 +124,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Security Status Card
-                  _buildSecurityStatusCard(user?.email ?? '').animate().fadeIn(duration: 400.ms).slideY(begin: 0.08),
+                  _buildSecurityStatusCard(user).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08),
                   
                   const Gap(28),
 
                   // Password Section
-                  _buildPasswordSection().animate().fadeIn(delay: 150.ms, duration: 400.ms),
+                  _buildPasswordSection(user).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                   
                   const Gap(28),
 
@@ -159,7 +160,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     );
   }
 
-  Widget _buildSecurityStatusCard(String email) {
+  Widget _buildSecurityStatusCard(UserModel? user) {
+    final isSocial = !(user?.canChangePassword ?? true);
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -167,14 +170,14 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.primaryBlue,
-            AppTheme.primaryBlueDark,
+            isSocial ? AppTheme.emeraldGreen : AppTheme.primaryBlue,
+            isSocial ? AppTheme.emeraldGreenDark : AppTheme.primaryBlueDark,
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.3),
+            color: (isSocial ? AppTheme.emeraldGreen : AppTheme.primaryBlue).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -188,8 +191,8 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
-              Icons.shield_rounded,
+            child: Icon(
+              isSocial ? Icons.verified_user_rounded : Icons.shield_rounded,
               color: Colors.white,
               size: 28,
             ),
@@ -199,9 +202,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Account Protected',
-                  style: TextStyle(
+                Text(
+                  isSocial ? 'Google Protected' : 'Account Protected',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -210,7 +213,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 ),
                 const Gap(4),
                 Text(
-                  'Your account is secured with email authentication',
+                  isSocial 
+                    ? 'Security is managed by your Google Account'
+                    : 'Your account is secured with email authentication',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.85),
                     fontSize: 13,
@@ -225,7 +230,10 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     );
   }
 
-  Widget _buildPasswordSection() {
+  Widget _buildPasswordSection(UserModel? user) {
+    if (!(user?.canChangePassword ?? true)) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -633,7 +641,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              ref.read(authProvider.notifier).signOut();
+              ref.read(authControllerProvider.notifier).logout();
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.errorRed,

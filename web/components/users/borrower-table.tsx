@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Package, ArrowRightCircle } from 'lucide-react'
+import { Package, ArrowRightCircle, MessageSquare } from 'lucide-react'
 
 interface BorrowerTableProps {
     borrowers: any[]
@@ -101,10 +101,37 @@ export function BorrowerTable({ borrowers, isLoading, onSelectBorrower }: Borrow
                                             </div>
                                         </TableCell>
                                         <TableCell className="pl-3 pr-4 14in:pr-6 py-3 text-right">
-                                            <Button variant="ghost" size="sm" className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium text-[11px] transition-colors">
-                                                Audit Log <ArrowRightCircle className="h-3.5 w-3.5 ml-1 opacity-50" />
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold text-[10px] uppercase tracking-wider transition-all"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        // Find first active item if any
+                                                        const activeItem = borrower.items?.[0];
+                                                        if (activeItem) {
+                                                            // We'll use a specific event or just push to router
+                                                            window.location.href = `/dashboard/chat?borrowId=${activeItem.id}`;
+                                                        } else {
+                                                            alert('No active borrowings to coordinate.');
+                                                        }
+                                                    }}
+                                                >
+                                                    <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                                                    Chat
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 px-3 text-slate-500 hover:text-slate-700 hover:bg-slate-100 font-medium text-[11px] transition-colors"
+                                                    onClick={() => onSelectBorrower(borrower)}
+                                                >
+                                                    Audit Log <ArrowRightCircle className="h-3.5 w-3.5 ml-1 opacity-50" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
+
                                     </TableRow>
                                 ))
                             )}

@@ -15,6 +15,9 @@ export interface InventoryItem {
     stock_available: number
     status: string // 'Good', 'Damaged', or calculated status
     image_url?: string
+    location?: string
+    serial_number?: string
+    equipment_type?: string
     created_at?: string
     updated_at?: string
 }

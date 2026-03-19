@@ -150,4 +150,23 @@ DROP POLICY IF EXISTS "Allow public full access" ON borrow_logs;
 -- Allow FULL ACCESS to logs for this demo
 CREATE POLICY "Allow public full access" ON borrow_logs FOR ALL USING (true) WITH CHECK (true);
 
+-- 11. NOTIFICATION READS SECURITY (Idempotent Junction)
+ALTER TABLE IF EXISTS "public"."notification_reads" ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "notification_reads_select_own" ON "public"."notification_reads";
+CREATE POLICY "notification_reads_select_own" ON "public"."notification_reads"
+FOR SELECT TO authenticated USING (auth.uid() = "user_id");
+
+DROP POLICY IF EXISTS "notification_reads_insert_own" ON "public"."notification_reads";
+CREATE POLICY "notification_reads_insert_own" ON "public"."notification_reads"
+FOR INSERT TO authenticated WITH CHECK (auth.uid() = "user_id");
+
+DROP POLICY IF EXISTS "notification_reads_update_own" ON "public"."notification_reads";
+CREATE POLICY "notification_reads_update_own" ON "public"."notification_reads"
+FOR UPDATE TO authenticated USING (auth.uid() = "user_id") WITH CHECK (auth.uid() = "user_id");
+
+DROP POLICY IF EXISTS "notification_reads_delete_own" ON "public"."notification_reads";
+CREATE POLICY "notification_reads_delete_own" ON "public"."notification_reads"
+FOR DELETE TO authenticated USING (auth.uid() = "user_id");
+
 SELECT 'Database Permissions Updated: Write Access Enabled' as status;

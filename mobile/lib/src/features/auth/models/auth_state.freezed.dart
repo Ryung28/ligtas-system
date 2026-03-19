@@ -21,6 +21,7 @@ mixin _$AuthState {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function(UserModel user) authenticated,
+    required TResult Function(UserModel user) pendingApproval,
     required TResult Function(String message) error,
   }) =>
       throw _privateConstructorUsedError;
@@ -29,6 +30,7 @@ mixin _$AuthState {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function(UserModel user)? authenticated,
+    TResult? Function(UserModel user)? pendingApproval,
     TResult? Function(String message)? error,
   }) =>
       throw _privateConstructorUsedError;
@@ -37,6 +39,7 @@ mixin _$AuthState {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function(UserModel user)? authenticated,
+    TResult Function(UserModel user)? pendingApproval,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) =>
@@ -46,6 +49,7 @@ mixin _$AuthState {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_PendingApproval value) pendingApproval,
     required TResult Function(_Error value) error,
   }) =>
       throw _privateConstructorUsedError;
@@ -54,6 +58,7 @@ mixin _$AuthState {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_PendingApproval value)? pendingApproval,
     TResult? Function(_Error value)? error,
   }) =>
       throw _privateConstructorUsedError;
@@ -62,6 +67,7 @@ mixin _$AuthState {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_PendingApproval value)? pendingApproval,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) =>
@@ -126,6 +132,7 @@ class _$InitialImpl implements _Initial {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function(UserModel user) authenticated,
+    required TResult Function(UserModel user) pendingApproval,
     required TResult Function(String message) error,
   }) {
     return initial();
@@ -137,6 +144,7 @@ class _$InitialImpl implements _Initial {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function(UserModel user)? authenticated,
+    TResult? Function(UserModel user)? pendingApproval,
     TResult? Function(String message)? error,
   }) {
     return initial?.call();
@@ -148,6 +156,7 @@ class _$InitialImpl implements _Initial {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function(UserModel user)? authenticated,
+    TResult Function(UserModel user)? pendingApproval,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -163,6 +172,7 @@ class _$InitialImpl implements _Initial {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_PendingApproval value) pendingApproval,
     required TResult Function(_Error value) error,
   }) {
     return initial(this);
@@ -174,6 +184,7 @@ class _$InitialImpl implements _Initial {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_PendingApproval value)? pendingApproval,
     TResult? Function(_Error value)? error,
   }) {
     return initial?.call(this);
@@ -185,6 +196,7 @@ class _$InitialImpl implements _Initial {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_PendingApproval value)? pendingApproval,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
@@ -240,6 +252,7 @@ class _$LoadingImpl implements _Loading {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function(UserModel user) authenticated,
+    required TResult Function(UserModel user) pendingApproval,
     required TResult Function(String message) error,
   }) {
     return loading();
@@ -251,6 +264,7 @@ class _$LoadingImpl implements _Loading {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function(UserModel user)? authenticated,
+    TResult? Function(UserModel user)? pendingApproval,
     TResult? Function(String message)? error,
   }) {
     return loading?.call();
@@ -262,6 +276,7 @@ class _$LoadingImpl implements _Loading {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function(UserModel user)? authenticated,
+    TResult Function(UserModel user)? pendingApproval,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -277,6 +292,7 @@ class _$LoadingImpl implements _Loading {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_PendingApproval value) pendingApproval,
     required TResult Function(_Error value) error,
   }) {
     return loading(this);
@@ -288,6 +304,7 @@ class _$LoadingImpl implements _Loading {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_PendingApproval value)? pendingApproval,
     TResult? Function(_Error value)? error,
   }) {
     return loading?.call(this);
@@ -299,6 +316,7 @@ class _$LoadingImpl implements _Loading {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_PendingApproval value)? pendingApproval,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
@@ -320,8 +338,6 @@ abstract class _$$AuthenticatedImplCopyWith<$Res> {
       __$$AuthenticatedImplCopyWithImpl<$Res>;
   @useResult
   $Res call({UserModel user});
-
-  $UserModelCopyWith<$Res> get user;
 }
 
 /// @nodoc
@@ -335,22 +351,14 @@ class __$$AuthenticatedImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? user = null,
+    Object? user = freezed,
   }) {
     return _then(_$AuthenticatedImpl(
-      null == user
+      freezed == user
           ? _value.user
           : user // ignore: cast_nullable_to_non_nullable
               as UserModel,
     ));
-  }
-
-  @override
-  @pragma('vm:prefer-inline')
-  $UserModelCopyWith<$Res> get user {
-    return $UserModelCopyWith<$Res>(_value.user, (value) {
-      return _then(_value.copyWith(user: value));
-    });
   }
 }
 
@@ -372,11 +380,12 @@ class _$AuthenticatedImpl implements _Authenticated {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$AuthenticatedImpl &&
-            (identical(other.user, user) || other.user == user));
+            const DeepCollectionEquality().equals(other.user, user));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, user);
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(user));
 
   @JsonKey(ignore: true)
   @override
@@ -390,6 +399,7 @@ class _$AuthenticatedImpl implements _Authenticated {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function(UserModel user) authenticated,
+    required TResult Function(UserModel user) pendingApproval,
     required TResult Function(String message) error,
   }) {
     return authenticated(user);
@@ -401,6 +411,7 @@ class _$AuthenticatedImpl implements _Authenticated {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function(UserModel user)? authenticated,
+    TResult? Function(UserModel user)? pendingApproval,
     TResult? Function(String message)? error,
   }) {
     return authenticated?.call(user);
@@ -412,6 +423,7 @@ class _$AuthenticatedImpl implements _Authenticated {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function(UserModel user)? authenticated,
+    TResult Function(UserModel user)? pendingApproval,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -427,6 +439,7 @@ class _$AuthenticatedImpl implements _Authenticated {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_PendingApproval value) pendingApproval,
     required TResult Function(_Error value) error,
   }) {
     return authenticated(this);
@@ -438,6 +451,7 @@ class _$AuthenticatedImpl implements _Authenticated {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_PendingApproval value)? pendingApproval,
     TResult? Function(_Error value)? error,
   }) {
     return authenticated?.call(this);
@@ -449,6 +463,7 @@ class _$AuthenticatedImpl implements _Authenticated {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_PendingApproval value)? pendingApproval,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {
@@ -465,6 +480,159 @@ abstract class _Authenticated implements AuthState {
   UserModel get user;
   @JsonKey(ignore: true)
   _$$AuthenticatedImplCopyWith<_$AuthenticatedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$PendingApprovalImplCopyWith<$Res> {
+  factory _$$PendingApprovalImplCopyWith(_$PendingApprovalImpl value,
+          $Res Function(_$PendingApprovalImpl) then) =
+      __$$PendingApprovalImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({UserModel user});
+}
+
+/// @nodoc
+class __$$PendingApprovalImplCopyWithImpl<$Res>
+    extends _$AuthStateCopyWithImpl<$Res, _$PendingApprovalImpl>
+    implements _$$PendingApprovalImplCopyWith<$Res> {
+  __$$PendingApprovalImplCopyWithImpl(
+      _$PendingApprovalImpl _value, $Res Function(_$PendingApprovalImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? user = freezed,
+  }) {
+    return _then(_$PendingApprovalImpl(
+      freezed == user
+          ? _value.user
+          : user // ignore: cast_nullable_to_non_nullable
+              as UserModel,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$PendingApprovalImpl implements _PendingApproval {
+  const _$PendingApprovalImpl(this.user);
+
+  @override
+  final UserModel user;
+
+  @override
+  String toString() {
+    return 'AuthState.pendingApproval(user: $user)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$PendingApprovalImpl &&
+            const DeepCollectionEquality().equals(other.user, user));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(user));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$PendingApprovalImplCopyWith<_$PendingApprovalImpl> get copyWith =>
+      __$$PendingApprovalImplCopyWithImpl<_$PendingApprovalImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(UserModel user) authenticated,
+    required TResult Function(UserModel user) pendingApproval,
+    required TResult Function(String message) error,
+  }) {
+    return pendingApproval(user);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(UserModel user)? authenticated,
+    TResult? Function(UserModel user)? pendingApproval,
+    TResult? Function(String message)? error,
+  }) {
+    return pendingApproval?.call(user);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(UserModel user)? authenticated,
+    TResult Function(UserModel user)? pendingApproval,
+    TResult Function(String message)? error,
+    required TResult orElse(),
+  }) {
+    if (pendingApproval != null) {
+      return pendingApproval(user);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_PendingApproval value) pendingApproval,
+    required TResult Function(_Error value) error,
+  }) {
+    return pendingApproval(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_PendingApproval value)? pendingApproval,
+    TResult? Function(_Error value)? error,
+  }) {
+    return pendingApproval?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_PendingApproval value)? pendingApproval,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (pendingApproval != null) {
+      return pendingApproval(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _PendingApproval implements AuthState {
+  const factory _PendingApproval(final UserModel user) = _$PendingApprovalImpl;
+
+  UserModel get user;
+  @JsonKey(ignore: true)
+  _$$PendingApprovalImplCopyWith<_$PendingApprovalImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -535,6 +703,7 @@ class _$ErrorImpl implements _Error {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function(UserModel user) authenticated,
+    required TResult Function(UserModel user) pendingApproval,
     required TResult Function(String message) error,
   }) {
     return error(message);
@@ -546,6 +715,7 @@ class _$ErrorImpl implements _Error {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function(UserModel user)? authenticated,
+    TResult? Function(UserModel user)? pendingApproval,
     TResult? Function(String message)? error,
   }) {
     return error?.call(message);
@@ -557,6 +727,7 @@ class _$ErrorImpl implements _Error {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function(UserModel user)? authenticated,
+    TResult Function(UserModel user)? pendingApproval,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -572,6 +743,7 @@ class _$ErrorImpl implements _Error {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_PendingApproval value) pendingApproval,
     required TResult Function(_Error value) error,
   }) {
     return error(this);
@@ -583,6 +755,7 @@ class _$ErrorImpl implements _Error {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_PendingApproval value)? pendingApproval,
     TResult? Function(_Error value)? error,
   }) {
     return error?.call(this);
@@ -594,6 +767,7 @@ class _$ErrorImpl implements _Error {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_PendingApproval value)? pendingApproval,
     TResult Function(_Error value)? error,
     required TResult orElse(),
   }) {

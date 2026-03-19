@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Shield, LogOut } from 'lucide-react'
+import { LogOut, ChevronRight } from 'lucide-react' // Modified: Shield removed, ChevronRight added
 import { navItems, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -11,25 +11,22 @@ import { useRouter } from 'next/navigation'
 import { signOut, getCurrentUser } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { NotificationBell } from './notification-bell'
+import { NotificationBellV2 } from './notification-bell-v2'
+import { TACTICAL_THEME } from '@/lib/theme-config'
 import { preload } from 'swr'
 
 interface SidebarProps {
     className?: string
     onNavigate?: () => void
+    user: any // 🛡️ Senior Dev: Typed from RSC Handshake
 }
 
-export function Sidebar({ className, onNavigate }: SidebarProps) {
+export function Sidebar({ className, onNavigate, user }: SidebarProps) {
     const pathname = usePathname()
     const router = useRouter()
-    const [user, setUser] = useState<any>(null)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
 
     useEffect(() => {
-        getCurrentUser().then(u => {
-            if (u) setUser(u)
-        })
-
         // TIER-1 OPTIMIZATION: Background Hydration
         // Quietly fetch data for other pages while the user is looking at the current one
         const hydrateCache = async () => {
@@ -95,7 +92,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 {/* CORE SECTION */}
                 <div className="space-y-1.5">
                     <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Main Command</p>
-                    {navItems.filter(i => ['Overview'].includes(i.label)).map((item) => (
+                    {navItems.filter(i => i.category === 'main').map((item) => (
                         <SidebarItem
                             key={item.href}
                             item={item}
@@ -108,7 +105,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 {/* LOGISTICS SECTION */}
                 <div className="space-y-1.5">
                     <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Logistics & Ops</p>
-                    {navItems.filter(i => ['Inventory', 'Pending Requests', 'Borrow/Return Logs', 'Print Reports'].includes(i.label)).map((item) => (
+                    {navItems.filter(i => i.category === 'logistics').map((item) => (
                         <SidebarItem
                             key={item.href}
                             item={item}
@@ -118,18 +115,24 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                     ))}
                 </div>
 
-                {/* ADMIN SECTION */}
-                {user?.role === 'admin' && (
+                {/* PERSONNEL SECTION (Admin & Managers) */}
+                {(user?.role === 'admin' || user?.role === 'editor') && (
                     <div className="space-y-1.5">
-                        <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Personnel</p>
-                        {navItems.filter(i => ['Borrower Registry', 'System Users'].includes(i.label)).map((item) => (
-                            <SidebarItem
-                                key={item.href}
-                                item={item}
-                                active={isActive(item.href)}
-                                onNavigate={onNavigate}
-                            />
-                        ))}
+                        <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Personnel Control</p>
+
+                        {navItems.filter(i => i.category === 'personnel').map((item) => {
+                            // 🔒 ROLE GUARD: System Users is Admin-only
+                            if (item.label === 'System Users' && user?.role !== 'admin') return null;
+
+                            return (
+                                <SidebarItem
+                                    key={item.href}
+                                    item={item}
+                                    active={isActive(item.href)}
+                                    onNavigate={onNavigate}
+                                />
+                            );
+                        })}
                     </div>
                 )}
             </nav>
@@ -171,11 +174,15 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
 }
 
 import { usePendingRequests } from '@/hooks/use-pending-requests'
+import { useUnreadChat } from '@/hooks/use-unread-chat'
 
 function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: boolean, onNavigate?: () => void }) {
     const Icon = item.icon
     const { requests } = usePendingRequests()
+    const { unreadCount } = useUnreadChat()
+    
     const pendingCount = item.label === 'Pending Requests' ? requests.length : 0
+    const isMessages = item.label === 'Messages'
 
     return (
         <Link
@@ -193,24 +200,43 @@ function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: bool
                     })
                 }
             }}
+            style={active ? { borderRadius: TACTICAL_THEME.borderRadius.asymmetric } : {}}
             className={cn(
-                'flex items-center gap-3 px-3 py-2 14in:py-2.5 rounded-xl text-xs 14in:text-sm transition-all duration-300 group relative',
+                'flex items-center gap-3 px-3 py-2 14in:py-2.5 text-xs 14in:text-sm transition-all duration-300 group relative',
                 active
-                    ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-200/50'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium'
+                    ? 'bg-blue-600 text-white font-semibold shadow-lg'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium rounded-xl'
             )}
         >
             <Icon className={cn('h-4 w-4 14in:h-5 14in:w-5 flex-shrink-0 transition-colors', active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600')} />
             <span className="truncate">{item.label}</span>
 
-            {/* LIVE NOTIFICATION BADGE (Senior Dev UX) */}
-            {pendingCount > 0 && (
-                <span className="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg animate-bounce border-2 border-white">
-                    {pendingCount}
+            {/* LIVE NOTIFICATION BADGE (Pending Requests) - Ops Domain (Indigo) */}
+            {/* Active Concealment: Hides the big pill when already on the page, replacing with an ambient glow */}
+            {pendingCount > 0 && !active && (
+                <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(79,70,229,0.4)] border-2 border-white/95 ring-1 ring-slate-900/5 transition-all duration-300 hover:scale-110 hover:shadow-[0_6px_16px_rgba(79,70,229,0.6)] animate-in zoom-in-75 fade-in duration-500">
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                </span>
+            )}
+            
+            {/* Active Radiant Glow for Ops Domain when hiding the pill */}
+            {item.label === 'Pending Requests' && pendingCount > 0 && active && (
+                <div className="absolute right-3 h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_12px_4px_rgba(99,102,241,0.5)] animate-pulse" />
+            )}
+
+            {/* LIVE NOTIFICATION BADGE (Unread Chat) - Comms Domain (Rose) */}
+            {isMessages && unreadCount > 0 && !active && (
+                <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(244,63,94,0.4)] border-2 border-white/95 ring-1 ring-slate-900/5 transition-all duration-300 hover:scale-110 hover:shadow-[0_6px_16px_rgba(244,63,94,0.6)] animate-in zoom-in-75 fade-in duration-500">
+                    {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
             )}
 
-            {active && pendingCount === 0 && (
+            {isMessages && unreadCount > 0 && active && (
+                <div className="absolute right-3 h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_12px_4px_rgba(244,63,94,0.5)] animate-pulse" />
+            )}
+
+            {/* Subtle Active Indicator when no notifications exist */}
+            {active && (!isMessages || unreadCount === 0) && pendingCount === 0 && (
                 <div className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/40 blur-[1px]" />
             )}
         </Link>

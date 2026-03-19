@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'dart:async';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:mobile/src/generated/app_localizations.dart';
 
 import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:mobile/src/features/dashboard/screens/dashboard_screen.dart';
-import 'package:mobile/src/features/loans/screens/active_loans_screen.dart';
-import 'package:mobile/src/features/loans/screens/create_loan_screen.dart';
+import 'package:mobile/src/features_v2/loans/presentation/screens/active_loans_screen.dart';
+// import 'package:mobile/src/features/loans/screens/create_loan_screen.dart'; // Missing
 import 'package:mobile/src/features/navigation/screens/main_screen.dart';
 import 'package:mobile/src/features/scanner/widgets/scanner_view.dart';
 import 'package:mobile/src/features/profile/screens/profile_screen.dart';
@@ -19,16 +19,21 @@ import 'package:mobile/src/features/profile/screens/security_screen.dart';
 
 import 'package:mobile/src/features/splash/screens/splash_screen_page.dart';
 import 'package:mobile/src/features/intro/screens/modern_intro_cards.dart';
-import 'package:mobile/src/features/inventory/screens/inventory_screen.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/screens/inventory_screen.dart';
 import 'package:mobile/src/features/notifications/screens/notifications_screen.dart';
+import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
+import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 import 'package:mobile/src/features/auth/screens/login_screen.dart';
 import 'package:mobile/src/features/auth/screens/register_screen.dart';
-import 'package:mobile/src/features/auth/screens/pending_access_screen.dart';
+import 'package:mobile/src/features/auth/screens/pending_approval_screen.dart';
 import 'package:mobile/src/features/auth/screens/access_denied_screen.dart';
-import 'package:mobile/src/features/auth/providers/auth_provider.dart';
-import 'package:mobile/src/features/loans/screens/requests_screen.dart';
-import 'package:mobile/src/features/scanner/models/qr_payload.dart';
-import 'package:mobile/src/features/scanner/widgets/scan_result_sheet.dart';
+import 'package:mobile/src/features/notifications/data/services/user_notification_service.dart';
+// import 'package:mobile/src/features/loans/screens/requests_screen.dart'; // Missing
+import 'package:mobile/src/features_v2/chat/presentation/screens/chat_screen.dart';
+import 'package:mobile/src/features/scanner/presentation/screens/transaction_screen.dart';
+import 'package:mobile/src/core/navigation/navigator_key.dart';
 
 class LigtasApp extends ConsumerWidget {
   const LigtasApp({super.key});
@@ -37,6 +42,19 @@ class LigtasApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // RouterProvider now maintains stability across auth changes
     final router = ref.watch(routerProvider);
+
+    // 🛡️ GLOBAL NOTIFICATION ORCHESTRATOR
+    // Listen to Auth State changes globally to trigger device registration.
+    ref.listen(authControllerProvider, (previous, next) {
+      if (next.hasValue) {
+        final AuthState authState = next.value!;
+        authState.whenOrNull(
+          authenticated: (user) => UserNotificationService().handleAuthStateChange(user.id),
+          pendingApproval: (user) => UserNotificationService().handleAuthStateChange(user.id),
+        );
+      }
+    });
+
 
     return MaterialApp.router(
       title: 'LIGTAS Mobile',
@@ -60,17 +78,18 @@ class LigtasApp extends ConsumerWidget {
 // Ensure GoRouter is not rebuilt on auth state changes
 // by reading the provider inside the closure and using refreshListenable
 final routerProvider = Provider<GoRouter>((ref) {
-  // Use read to avoid unnecessary rebuilds of the router instantiation itself
-  final authNotifier = ref.read(authProvider.notifier);
-
+  final listenable = RiverpodRouterRefreshListenable(ref);
+  
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
-    refreshListenable: GoRouterRefreshStream(authNotifier.stream),
+    refreshListenable: listenable,
     redirect: (context, state) {
-      // Access the value directly from the provider without watching it
-      // This allows redirect to be called by refreshListenable
-      final authState = ref.read(authProvider);
-      final user = authState.value;
+      // 🛡️ TACTICAL SHIELD: Prevent loops while auth is initializing
+      final authState = ref.read(authControllerProvider);
+      if (authState.isLoading && !authState.hasValue) return null;
+
+      final user = ref.read(currentUserProvider);
       final isLoggedIn = user != null;
       final isPublicRoute = state.uri.path == '/login' || 
                            state.uri.path == '/register' || 
@@ -117,6 +136,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
+        path: '/',
+        redirect: (context, state) => '/splash',
+      ),
+      GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreenPage(),
       ),
@@ -134,7 +157,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/pending',
-        builder: (context, state) => const PendingAccessScreen(),
+        builder: (context, state) => const PendingApprovalScreen(),
       ),
       GoRoute(
         path: '/denied',
@@ -158,7 +181,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'create',
                 builder: (context, state) {
                   final scannedItemId = state.uri.queryParameters['scannedItemId'];
-                  return CreateLoanScreen(scannedItemId: scannedItemId);
+                  // return CreateLoanScreen(scannedItemId: scannedItemId);
+                  return const ActiveLoansScreen(); // Redirect to v2 ActiveLoans
                 },
               ),
             ],
@@ -184,7 +208,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
           GoRoute(
             path: '/requests',
-            builder: (context, state) => const RequestsScreen(),
+            // builder: (context, state) => const RequestsScreen(),
+            builder: (context, state) => const ActiveLoansScreen(), // Requests are now a tab in v2
           ),
         ],
       ),
@@ -201,95 +226,55 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/transaction',
         builder: (context, state) => const TransactionScreen(),
       ),
+      GoRoute(
+        path: '/chat/:roomId',
+        pageBuilder: (context, state) {
+          final roomId = state.pathParameters['roomId']!;
+          final title = state.uri.queryParameters['title'] ?? 'Chat';
+          
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: ChatScreen(
+              roomId: roomId, 
+              title: title,
+            ),
+            transitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutQuint,
+                    ),
+                  ),
+                  child: child,
+                ),
+              );
+            },
+          );
+        },
+      ),
     ],
   );
 });
 
-// Utility to bridge Riverpod Stream to GoRouter's Listenable
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _subscription = stream.asBroadcastStream().listen(
-      (dynamic _) => notifyListeners(),
+/// 🛡️ TACTICAL BRIDGE: Connects Riverpod Auth State to GoRouter's Refresh Logic
+class RiverpodRouterRefreshListenable extends ChangeNotifier {
+  RiverpodRouterRefreshListenable(Ref ref) {
+    _subscription = ref.listen(
+      authControllerProvider,
+      (_, __) => notifyListeners(),
     );
   }
-  late final StreamSubscription<dynamic> _subscription;
+
+  late final ProviderSubscription<AsyncValue<AuthState>> _subscription;
+
   @override
   void dispose() {
-    _subscription.cancel();
+    _subscription.close();
     super.dispose();
   }
 }
 
-// Transaction Screen - handles QR code processing
-class TransactionScreen extends StatefulWidget {
-  const TransactionScreen({super.key});
-
-  @override
-  State<TransactionScreen> createState() => _TransactionScreenState();
-}
-
-class _TransactionScreenState extends State<TransactionScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Process QR code immediately on screen load
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _processQrCode();
-    });
-  }
-
-  void _processQrCode() {
-    final qrCode = GoRouterState.of(context).uri.queryParameters['qrCode'];
-    
-    if (qrCode == null || qrCode.isEmpty) {
-      _showError('No QR code data received');
-      return;
-    }
-
-    // Use the robust parser from models
-    final payload = LigtasQrPayload.tryParse(qrCode);
-    
-    if (payload == null) {
-      _showError('Invalid QR Code. Please scan a LIGTAS equipment label.');
-      return;
-    }
-
-    // Show the actual premium confirmation sheet
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) => ScanResultSheet(payload: payload),
-    ).then((success) {
-      // After sheet closes, go back to dashboard
-      if (mounted) {
-        context.go('/dashboard');
-      }
-    });
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    // Navigate back after showing error
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) context.go('/dashboard');
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-  }
-}

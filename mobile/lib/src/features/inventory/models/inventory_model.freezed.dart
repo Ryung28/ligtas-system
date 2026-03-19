@@ -39,11 +39,11 @@ mixin _$InventoryModel {
   String get code => throw _privateConstructorUsedError;
   int get minStockLevel => throw _privateConstructorUsedError;
   String get unit => throw _privateConstructorUsedError;
-  String? get supplier => throw _privateConstructorUsedError;
-  String? get supplierContact => throw _privateConstructorUsedError;
-  String? get notes => throw _privateConstructorUsedError;
+  String get supplier => throw _privateConstructorUsedError;
+  String get supplierContact => throw _privateConstructorUsedError;
+  String get notes => throw _privateConstructorUsedError;
   @JsonKey(name: 'image_url')
-  String? get imageUrl => throw _privateConstructorUsedError;
+  String get imageUrl => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -72,10 +72,10 @@ abstract class $InventoryModelCopyWith<$Res> {
       String code,
       int minStockLevel,
       String unit,
-      String? supplier,
-      String? supplierContact,
-      String? notes,
-      @JsonKey(name: 'image_url') String? imageUrl});
+      String supplier,
+      String supplierContact,
+      String notes,
+      @JsonKey(name: 'image_url') String imageUrl});
 }
 
 /// @nodoc
@@ -105,10 +105,10 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
     Object? code = null,
     Object? minStockLevel = null,
     Object? unit = null,
-    Object? supplier = freezed,
-    Object? supplierContact = freezed,
-    Object? notes = freezed,
-    Object? imageUrl = freezed,
+    Object? supplier = null,
+    Object? supplierContact = null,
+    Object? notes = null,
+    Object? imageUrl = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -167,22 +167,22 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
           ? _value.unit
           : unit // ignore: cast_nullable_to_non_nullable
               as String,
-      supplier: freezed == supplier
+      supplier: null == supplier
           ? _value.supplier
           : supplier // ignore: cast_nullable_to_non_nullable
-              as String?,
-      supplierContact: freezed == supplierContact
+              as String,
+      supplierContact: null == supplierContact
           ? _value.supplierContact
           : supplierContact // ignore: cast_nullable_to_non_nullable
-              as String?,
-      notes: freezed == notes
+              as String,
+      notes: null == notes
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-      imageUrl: freezed == imageUrl
+              as String,
+      imageUrl: null == imageUrl
           ? _value.imageUrl
           : imageUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as String,
     ) as $Val);
   }
 }
@@ -210,10 +210,10 @@ abstract class _$$InventoryModelImplCopyWith<$Res>
       String code,
       int minStockLevel,
       String unit,
-      String? supplier,
-      String? supplierContact,
-      String? notes,
-      @JsonKey(name: 'image_url') String? imageUrl});
+      String supplier,
+      String supplierContact,
+      String notes,
+      @JsonKey(name: 'image_url') String imageUrl});
 }
 
 /// @nodoc
@@ -241,10 +241,10 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
     Object? code = null,
     Object? minStockLevel = null,
     Object? unit = null,
-    Object? supplier = freezed,
-    Object? supplierContact = freezed,
-    Object? notes = freezed,
-    Object? imageUrl = freezed,
+    Object? supplier = null,
+    Object? supplierContact = null,
+    Object? notes = null,
+    Object? imageUrl = null,
   }) {
     return _then(_$InventoryModelImpl(
       id: null == id
@@ -303,22 +303,22 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
           ? _value.unit
           : unit // ignore: cast_nullable_to_non_nullable
               as String,
-      supplier: freezed == supplier
+      supplier: null == supplier
           ? _value.supplier
           : supplier // ignore: cast_nullable_to_non_nullable
-              as String?,
-      supplierContact: freezed == supplierContact
+              as String,
+      supplierContact: null == supplierContact
           ? _value.supplierContact
           : supplierContact // ignore: cast_nullable_to_non_nullable
-              as String?,
-      notes: freezed == notes
+              as String,
+      notes: null == notes
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-      imageUrl: freezed == imageUrl
+              as String,
+      imageUrl: null == imageUrl
           ? _value.imageUrl
           : imageUrl // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as String,
     ));
   }
 }
@@ -341,10 +341,10 @@ class _$InventoryModelImpl implements _InventoryModel {
       this.code = '',
       this.minStockLevel = 10,
       this.unit = 'pcs',
-      this.supplier,
-      this.supplierContact,
-      this.notes,
-      @JsonKey(name: 'image_url') this.imageUrl});
+      this.supplier = '',
+      this.supplierContact = '',
+      this.notes = '',
+      @JsonKey(name: 'image_url') this.imageUrl = ''});
 
   factory _$InventoryModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$InventoryModelImplFromJson(json);
@@ -390,14 +390,17 @@ class _$InventoryModelImpl implements _InventoryModel {
   @JsonKey()
   final String unit;
   @override
-  final String? supplier;
+  @JsonKey()
+  final String supplier;
   @override
-  final String? supplierContact;
+  @JsonKey()
+  final String supplierContact;
   @override
-  final String? notes;
+  @JsonKey()
+  final String notes;
   @override
   @JsonKey(name: 'image_url')
-  final String? imageUrl;
+  final String imageUrl;
 
   @override
   String toString() {
@@ -494,10 +497,10 @@ abstract class _InventoryModel implements InventoryModel {
           final String code,
           final int minStockLevel,
           final String unit,
-          final String? supplier,
-          final String? supplierContact,
-          final String? notes,
-          @JsonKey(name: 'image_url') final String? imageUrl}) =
+          final String supplier,
+          final String supplierContact,
+          final String notes,
+          @JsonKey(name: 'image_url') final String imageUrl}) =
       _$InventoryModelImpl;
 
   factory _InventoryModel.fromJson(Map<String, dynamic> json) =
@@ -537,14 +540,14 @@ abstract class _InventoryModel implements InventoryModel {
   @override
   String get unit;
   @override
-  String? get supplier;
+  String get supplier;
   @override
-  String? get supplierContact;
+  String get supplierContact;
   @override
-  String? get notes;
+  String get notes;
   @override
   @JsonKey(name: 'image_url')
-  String? get imageUrl;
+  String get imageUrl;
   @override
   @JsonKey(ignore: true)
   _$$InventoryModelImplCopyWith<_$InventoryModelImpl> get copyWith =>

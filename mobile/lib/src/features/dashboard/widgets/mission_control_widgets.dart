@@ -5,10 +5,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../../../core/design_system/app_theme.dart';
-import '../providers/dashboard_provider.dart';
-import '../../loans/providers/loan_providers.dart';
-import '../../loans/models/loan_model.dart';
+import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/features/dashboard/providers/dashboard_provider.dart';
+import 'package:mobile/src/features/loans/providers/loan_providers.dart';
+import 'package:mobile/src/features/loans/models/loan_model.dart';
 
 /// Small horizontal ribbon for equipment categories - iOS Glass Style
 class EquipmentRibbon extends ConsumerWidget {
@@ -33,15 +33,15 @@ class EquipmentRibbon extends ConsumerWidget {
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: Colors.white.withOpacity(0.9),
               borderRadius: BorderRadius.circular(100),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.6),
+                color: Colors.white.withOpacity(0.6),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Colors.black.withOpacity(0.04),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -64,7 +64,7 @@ class EquipmentRibbon extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                    color: AppTheme.primaryBlue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -135,15 +135,15 @@ class SystemTelemetryGrid extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.6),
+          color: Colors.white.withOpacity(0.6),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.06),
+            color: color.withOpacity(0.06),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -154,7 +154,7 @@ class SystemTelemetryGrid extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 16, color: color),
@@ -228,7 +228,7 @@ class OperationFeedSection extends ConsumerWidget {
           ),
         ),
         activityAsync.when(
-          data: (loans) {
+          data: (List<LoanModel> loans) {
             // Separate pending and active/overdue
             final pendingLoans = loans.where((l) => l.status == LoanStatus.pending).toList();
             final activeLoans = loans.where((l) => 
@@ -305,7 +305,7 @@ class OperationFeedSection extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
+            color: color.withOpacity(0.15),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -350,13 +350,13 @@ class OperationFeedSection extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withValues(alpha: 0.55),
-                  Colors.white.withValues(alpha: 0.3),
+                  Colors.white.withOpacity(0.55),
+                  Colors.white.withOpacity(0.3),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: statusColor.withValues(alpha: 0.25),
+                color: statusColor.withOpacity(0.25),
                 width: 1.2,
               ),
             ),
@@ -364,7 +364,7 @@ class OperationFeedSection extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 14,
-                  backgroundColor: statusColor.withValues(alpha: 0.1),
+                  backgroundColor: statusColor.withOpacity(0.1),
                   child: Icon(
                     isPending ? Icons.hourglass_empty_rounded : 
                     isOverdue ? Icons.warning_rounded : Icons.check_circle_rounded,
