@@ -3,11 +3,10 @@
 import { AuthHeader } from '@/components/auth/auth-header'
 import { AuthForm } from '@/components/auth/auth-form'
 import { useAuth } from '@/hooks/use-auth'
-import { AlertCircle, CheckCircle2, Shield, Radio, Wifi, Activity, Package, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Shield, Radio, Wifi, Activity, Package, Loader2, Smartphone, Download, QrCode } from 'lucide-react'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Smartphone, Download, QrCode } from 'lucide-react'
 import { useState, useCallback } from 'react'
 
 export default function LoginPage() {
@@ -56,7 +55,8 @@ export default function LoginPage() {
                 />
             </div>
 
-            <div className="w-full max-w-[1100px] 3xl:max-w-[1300px] 4xl:max-w-[1500px] h-[min(90vh,950px)] bg-white rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col lg:flex-row animate-in fade-in zoom-in-95 duration-700 relative z-10">
+            <div className="w-full max-w-[1100px] 3xl:max-w-[1300px] 4xl:max-w-[1500px] h-auto lg:h-[min(90vh,950px)] bg-white rounded-[2rem] shadow-[0_25px_60px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col lg:flex-row animate-in fade-in zoom-in-95 duration-700 relative z-10">
+
 
                 {/* ═══════════════════════════════════════════ */}
                 {/* LEFT ILLUSTRATION PANEL */}
@@ -78,8 +78,7 @@ export default function LoginPage() {
                     <div className="absolute bottom-[18%] left-[8%] w-3 h-3 bg-[#832838]/30 rounded-full animate-float-fast" />
 
                     {/* Center Illustration Area */}
-                    {/* Center Illustration Area */}
-                    <div className="relative z-10 flex flex-col items-center translate-y-[-45px]">
+                    <div className="relative z-10 flex flex-col items-center translate-y-[-25px] 3xl:translate-y-[-35px]">
                         {/* Layered Circles (Background) */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[480px] bg-white/10 backdrop-blur-[4px] rounded-full border border-white/20 shadow-[inset_0_0_100px_rgba(255,255,255,0.1)] z-0" />
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-white/20 backdrop-blur-[8px] rounded-full border border-white/30 shadow-2xl z-0" />
@@ -166,8 +165,10 @@ export default function LoginPage() {
                         <div className="absolute bottom-0 right-[30%] w-16 h-32 bg-[#C2883E] rounded-t-full rotate-[-5deg] origin-bottom shadow-2xl" />
                     </div>
 
-                    <div className="relative z-10 text-center translate-y-[-85px] 3xl:translate-y-[-100px] 4xl:translate-y-[-120px]">
+                    {/* ── Bottom Hero Text ── */}
+                    <div className="relative z-10 text-center translate-y-[-75px] 3xl:translate-y-[-90px] 4xl:translate-y-[-110px] mt-4">
                         <h2 className="text-[2.15rem] 3xl:text-[2.75rem] 4xl:text-[3.25rem] font-black text-[#1A1A2E] font-heading leading-tight tracking-tight">
+
                             Empowering Readiness.<br />
                             <span className="bg-gradient-to-r from-blue-700 via-[#832838] to-[#D4723C] bg-clip-text text-transparent">Securing Every Resource.</span>
                         </h2>
@@ -176,70 +177,9 @@ export default function LoginPage() {
                             Track, manage, and deploy critical assets with zero latency.
                         </p>
                     </div>
-
-                    {/* ── Senior Dev: Tactical Mobile Companion Portal (Off-Side Strategy) ── */}
-                    <div className="absolute bottom-4 left-8 3xl:bottom-10 3xl:left-10 z-50">
-                        <button
-                            onClick={() => setShowMobileApp(!showMobileApp)}
-                            className="flex items-center gap-3 py-2.5 px-6 rounded-2xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all text-slate-900 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.1)] group/mobile"
-                        >
-                            <Smartphone className="w-5 h-5 group-hover/mobile:scale-110 transition-transform text-slate-800" />
-                            <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900">Download Mobile App</span>
-                            <div className={`w-2 h-2 rounded-full transition-transform duration-300 ${showMobileApp ? 'bg-slate-900 rotate-180' : 'bg-slate-500'}`} />
-                        </button>
-
-                        <AnimatePresence>
-                            {showMobileApp && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                    transition={{ duration: 0.15, ease: "easeOut" }}
-                                    className="absolute bottom-16 left-0 w-[355px] origin-bottom-left"
-                                >
-                                    <div className="p-7 rounded-[2.5rem] bg-white/30 border border-white/40 backdrop-blur-3xl flex flex-col gap-6 shadow-[0_24px_48px_rgba(0,0,0,0.12)] overflow-hidden">
-                                        <div className="flex gap-6 items-center">
-                                            <div className="p-4 bg-white/80 backdrop-blur-md rounded-2xl shadow-inner border border-white shrink-0">
-                                                <QRCodeSVG
-                                                    value={APK_URL}
-                                                    size={110}
-                                                    level="H"
-                                                    includeMargin={false}
-                                                    className="rendering-pixelated grayscale opacity-90"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-3">
-                                                <div className="flex flex-col">
-                                                    <h4 className="text-[14px] font-black text-slate-950 uppercase tracking-widest flex items-center gap-2 font-sans">
-                                                        <QrCode className="w-3.5 h-3.5 text-slate-600" />
-                                                        LIGTAS Mobile
-                                                    </h4>
-                                                    <span className="text-[10px] font-bold text-slate-700/60 uppercase tracking-widest mt-0.5">Official Admin App</span>
-                                                </div>
-                                                <p className="text-[11px] text-slate-800 font-medium leading-[1.6] max-w-[160px]">
-                                                    Install the companion app to borrow and return inventory directly from your phone.
-                                                </p>
-                                                <a
-                                                    href={APK_URL}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center justify-center gap-2.5 py-3 px-4 bg-slate-950 border-none rounded-xl text-white text-[11px] font-black tracking-[0.15em] uppercase hover:bg-black transition-all shadow-xl active:scale-95"
-                                                >
-                                                    <Download className="w-4 h-4" />
-                                                    Download Now
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
                 </div>
 
-                {/* ═══════════════════════════════════════════ */}
-                {/* VERTICAL DIVIDER */}
-                {/* ═══════════════════════════════════════════ */}
+                {/* ── Vertical Divider ── */}
                 <div className="hidden lg:block w-[2px] bg-gradient-to-b from-transparent via-sky-400 to-transparent" />
 
                 {/* ═══════════════════════════════════════════ */}
@@ -256,10 +196,12 @@ export default function LoginPage() {
                             description="CDRRMO Inventory & Asset Management"
                         />
 
-                        {/* ── Senior Dev: Secure Portal Aesthetic ── */}
-                        <div className="w-full p-5 lg:p-7 3xl:p-9 rounded-[2.5rem] bg-slate-50 border border-slate-100/80 shadow-[0_15px_40px_rgba(0,0,0,0.02)] flex flex-col items-center text-center relative group">
+                        {/* ── Senior Dev: Secure Portal Aesthetic (Debossed Glass) ── */}
+                        <div className="w-full p-5 lg:p-7 3xl:p-9 rounded-[3rem] bg-white/20 backdrop-blur-xl border border-white/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.04),_0_25px_50px_-12px_rgba(0,0,0,0.06)] flex flex-col items-center text-center relative group overflow-hidden">
+
                             {/* Inner Glow */}
-                            <div className="absolute inset-0 bg-white/40 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                            <div className="absolute inset-0 bg-white/40 rounded-[3rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
 
                             {/* Technical Badge */}
                             <div className="w-14 h-14 rounded-2xl bg-[#832838]/5 flex items-center justify-center mb-5 relative">
@@ -361,40 +303,93 @@ export default function LoginPage() {
                                 Having trouble logging in?<br />Contact IT Support at <span className="text-slate-400">admin@ligtas-cdrrmo.ph</span>
                             </p>
                         </div>
+                    </div>
 
-                        {/* ── Senior Dev: Mobile-Only App Portal (Mobile Responsive) ── */}
-                        <div className="lg:hidden w-full flex flex-col items-center gap-4 mt-6">
-                            <div className="w-full p-6 rounded-[2rem] bg-slate-900 border border-slate-800 shadow-2xl flex flex-col items-center gap-4">
-                                <div className="flex items-center gap-3">
-                                    <Smartphone className="w-5 h-5 text-blue-400" />
-                                    <h4 className="text-[14px] font-black text-white uppercase tracking-widest">
-                                        LIGTAS Mobile App
-                                    </h4>
-                                </div>
-                                <p className="text-[11px] text-slate-400 font-medium text-center max-w-[240px]">
-                                    Install the companion app to borrow and return inventory directly from your phone.
-                                </p>
-                                <a 
-                                    href={APK_URL}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full flex items-center justify-center gap-2.5 py-4 px-6 bg-white border-none rounded-2xl text-slate-950 text-[12px] font-black tracking-widest uppercase hover:bg-slate-100 transition-all shadow-xl active:scale-95"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    Download APK (Android)
-                                </a>
-                            </div>
-                        </div>
-
-                    </div> {/* Closes the div with class "relative z-10 flex flex-col items-center gap-4 lg:gap-6 3xl:gap-10" */}
-
-                    {/* Footer Copyright - Flow Positioned */}
                     <div className="py-6 text-center mt-auto">
-                        <p className="text-[10px] text-slate-300 font-medium tracking-wider uppercase">
-                            © 2026 CDRRMO Management Systems
-                        </p>
+                        <p className="text-[10px] text-slate-300 font-medium tracking-wider uppercase">© 2026 CDRRMO Management Systems</p>
                     </div>
                 </div>
+            </div>
+
+            {/* ── Global Tactical Hub: Desktop (Left) & Mobile (Fixed Bottom) ── */}
+            <div className="fixed lg:absolute bottom-4 left-4 lg:bottom-4 lg:left-8 z-[100]">
+                <button
+                    onClick={() => setShowMobileApp(!showMobileApp)}
+                    className="flex items-center gap-3 py-2.5 px-6 rounded-full bg-slate-900 lg:bg-white/10 border border-white/20 hover:bg-slate-800 lg:hover:bg-white/20 transition-all text-white lg:text-slate-900 backdrop-blur-xl shadow-2xl group/mobile scale-90 lg:scale-100"
+                >
+                    <Smartphone className="w-5 h-5 group-hover/mobile:scale-110 transition-transform text-blue-400 lg:text-slate-800" />
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em]">LIGTAS App</span>
+                    <div className={`w-2 h-2 rounded-full transition-transform duration-300 ${showMobileApp ? 'bg-white lg:bg-slate-900 rotate-180' : 'bg-slate-500'}`} />
+                </button>
+
+                <AnimatePresence>
+                    {showMobileApp && (
+                        <>
+                            {/* Mobile Scrim */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowMobileApp(false)}
+                                className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[-1] lg:hidden"
+                            />
+
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 100 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 100, transition: { duration: 0.2 } }}
+                                transition={{ duration: 0.3, type: "spring", damping: 25 }}
+                                className="fixed inset-x-4 bottom-20 lg:absolute lg:inset-auto lg:bottom-16 lg:left-0 w-auto lg:w-[355px] origin-bottom lg:origin-bottom-left"
+                            >
+                                <div className="p-7 rounded-[2.5rem] bg-white border border-white/40 lg:bg-white/30 backdrop-blur-3xl flex flex-col gap-6 shadow-[0_24px_48px_rgba(0,0,0,0.3)] overflow-hidden">
+                                    <div className="flex gap-6 items-center">
+                                        <div className="p-4 bg-white/80 backdrop-blur-md rounded-2xl shadow-inner border border-white shrink-0">
+                                            <QRCodeSVG
+                                                value={APK_URL}
+                                                size={110}
+                                                level="H"
+                                                includeMargin={false}
+                                                className="rendering-pixelated grayscale opacity-90 hidden lg:block"
+                                            />
+                                            <div className="w-[110px] h-[110px] flex items-center justify-center lg:hidden">
+                                                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
+                                                    <Smartphone className="w-8 h-8 text-blue-600" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col">
+                                                <h4 className="text-[14px] font-black text-slate-950 uppercase tracking-widest flex items-center gap-2 font-sans">
+                                                    <QrCode className="w-3.5 h-3.5 text-slate-600 hidden lg:block" />
+                                                    LIGTAS Mobile
+                                                </h4>
+                                                <span className="text-[10px] font-bold text-slate-700/60 uppercase tracking-widest mt-0.5">Official Admin App</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-800 font-medium leading-[1.6] max-w-[160px]">
+                                                Install the companion app to borrow and return inventory directly from your phone.
+                                            </p>
+                                            <a
+                                                href={APK_URL}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center gap-2.5 py-4 px-6 bg-slate-950 border-none rounded-xl text-white text-[11px] font-black tracking-[0.15em] uppercase hover:bg-black transition-all shadow-xl active:scale-95"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Download Now (Android)
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowMobileApp(false)}
+                                        className="w-full py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-100 mt-2 lg:hidden"
+                                    >
+                                        Close Portal
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     )
