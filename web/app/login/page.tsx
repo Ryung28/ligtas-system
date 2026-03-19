@@ -362,6 +362,30 @@ export default function LoginPage() {
                             </p>
                         </div>
 
+                        {/* ── Senior Dev: Mobile-Only App Portal (Mobile Responsive) ── */}
+                        <div className="lg:hidden w-full flex flex-col items-center gap-4 mt-6">
+                            <div className="w-full p-6 rounded-[2rem] bg-slate-900 border border-slate-800 shadow-2xl flex flex-col items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <Smartphone className="w-5 h-5 text-blue-400" />
+                                    <h4 className="text-[14px] font-black text-white uppercase tracking-widest">
+                                        LIGTAS Mobile App
+                                    </h4>
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-medium text-center max-w-[240px]">
+                                    Install the companion app to borrow and return inventory directly from your phone.
+                                </p>
+                                <a 
+                                    href={APK_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2.5 py-4 px-6 bg-white border-none rounded-2xl text-slate-950 text-[12px] font-black tracking-widest uppercase hover:bg-slate-100 transition-all shadow-xl active:scale-95"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Download APK (Android)
+                                </a>
+                            </div>
+                        </div>
+
                     </div> {/* Closes the div with class "relative z-10 flex flex-col items-center gap-4 lg:gap-6 3xl:gap-10" */}
 
                     {/* Footer Copyright - Flow Positioned */}
