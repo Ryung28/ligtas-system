@@ -90,8 +90,7 @@ export function Sidebar({ className, onNavigate, user }: SidebarProps) {
             {/* Navigation Links */}
             <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto custom-scrollbar">
                 {/* CORE SECTION */}
-                <div className="space-y-1.5">
-                    <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Main Command</p>
+                <div className="space-y-1.5 pt-2">
                     {navItems.filter(i => i.category === 'main').map((item) => (
                         <SidebarItem
                             key={item.href}
@@ -104,7 +103,6 @@ export function Sidebar({ className, onNavigate, user }: SidebarProps) {
 
                 {/* LOGISTICS SECTION */}
                 <div className="space-y-1.5">
-                    <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Logistics & Ops</p>
                     {navItems.filter(i => i.category === 'logistics').map((item) => (
                         <SidebarItem
                             key={item.href}
@@ -118,7 +116,6 @@ export function Sidebar({ className, onNavigate, user }: SidebarProps) {
                 {/* PERSONNEL SECTION (Admin & Managers) */}
                 {(user?.role === 'admin' || user?.role === 'editor') && (
                     <div className="space-y-1.5">
-                        <p className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-70">Personnel Control</p>
 
                         {navItems.filter(i => i.category === 'personnel').map((item) => {
                             // 🔒 ROLE GUARD: System Users is Admin-only
@@ -188,6 +185,7 @@ function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: bool
         <Link
             href={item.href}
             onClick={onNavigate}
+            prefetch={true}
             onMouseEnter={() => {
                 if (item.href === '/dashboard/logs') {
                     import('@/hooks/use-borrow-logs').then((mod) => {

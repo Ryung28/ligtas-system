@@ -1,4 +1,4 @@
-export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'pending' | 'rejected' | 'cancelled' | 'mixed' | 'all';
+export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'pending' | 'rejected' | 'cancelled' | 'mixed' | 'all' | 'staged';
 export type TransactionType = 'borrow' | 'return';
 
 export interface BorrowLog {

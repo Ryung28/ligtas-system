@@ -1,8 +1,8 @@
 -- ============================================================================
--- LIGTAS CDRRMO SYSTEM - EVENT-DRIVEN NOTIFICATION SINK (V3.1 - REFINED)
+-- LIGTAS CDRRMO SYSTEM - EVENT-DRIVEN NOTIFICATION SINK (V3.2 - FIXED RLS)
 -- ============================================================================
--- REFINEMENT: Removed CCTV incident reporting from the global inbox to reduce
--- noise. Added targeted Chat Notifications into the Sink.
+-- FIX: Added INSERT policy for system_notifications to allow triggers to work
+-- FIX: Moved trigger condition inside function to prevent RLS violations
 -- ============================================================================
 
 -- 1. Cleanup
@@ -32,6 +32,11 @@ CREATE POLICY "user_update_read_state" ON system_notifications
 FOR UPDATE TO authenticated
 USING (auth.uid() = user_id OR user_id IS NULL)
 WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+-- Allow triggers to insert notifications (triggers run with elevated privileges)
+CREATE POLICY "service_role_insert_notifications" ON system_notifications
+FOR INSERT TO authenticated
+WITH CHECK (true);
 
 -- 🏗️ TRIGGER ENGINES: The Automated Dispatcher
 
@@ -93,8 +98,12 @@ EXECUTE FUNCTION trg_handle_user_alerts();
 CREATE OR REPLACE FUNCTION trg_handle_borrow_alerts()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO system_notifications (type, title, message, reference_id)
-    VALUES ('borrow_request', 'LOGISTICS ALERT', 'New borrow request from ' || NEW.borrower_name || ' (Qty: ' || NEW.quantity || ')', NEW.id::TEXT);
+    -- Only create notification for pending requests (approval workflow)
+    -- Skip notifications for direct borrows (status = 'borrowed')
+    IF NEW.status = 'pending' THEN
+        INSERT INTO system_notifications (type, title, message, reference_id)
+        VALUES ('borrow_request', 'LOGISTICS ALERT', 'New borrow request from ' || NEW.borrower_name || ' (Qty: ' || NEW.quantity || ')', NEW.id::TEXT);
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -103,7 +112,6 @@ DROP TRIGGER IF EXISTS trg_borrow_intel ON borrow_logs;
 CREATE TRIGGER trg_borrow_intel
 AFTER INSERT ON borrow_logs
 FOR EACH ROW
-WHEN (NEW.status = 'pending')
 EXECUTE FUNCTION trg_handle_borrow_alerts();
 
 

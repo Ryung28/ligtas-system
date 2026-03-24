@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Check, X, Clock, User, Building, Package, ExternalLink, MessageSquare } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
-import { approveRequest, rejectRequest } from '@/app/actions/inventory'
+import { approveRequest, rejectRequest, completeHandoff } from '@/app/actions/inventory'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -24,10 +24,27 @@ export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTab
         try {
             const result = await approveRequest(id)
             if (result.success) {
-                toast.success('Request approved')
+                toast.success('Approved! Item moved to Dispatch Queue.')
                 onRefresh()
             } else {
                 toast.error(result.error || 'Failed to approve')
+            }
+        } catch (err) {
+            toast.error('An unexpected error occurred')
+        } finally {
+            setProcessingId(null)
+        }
+    }
+
+    const handleHandoff = async (id: number) => {
+        setProcessingId(id)
+        try {
+            const result = await completeHandoff(id)
+            if (result.success) {
+                toast.success('Handoff Complete. Transaction moved to history.')
+                onRefresh()
+            } else {
+                toast.error(result.error || 'Failed to complete handoff')
             }
         } catch (err) {
             toast.error('An unexpected error occurred')
@@ -163,16 +180,28 @@ export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTab
                                             onClick={() => handleReject(request.id)}
                                             className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all font-bold text-[10px] uppercase tracking-wider"
                                         >
-                                            <X className="h-3 w-3 mr-1" /> Reject
+                                            <X className="h-3 w-3 mr-1" /> {request.status === 'staged' ? 'Cancel' : 'Reject'}
                                         </Button>
-                                        <Button
-                                            size="sm"
-                                            disabled={processingId !== null}
-                                            onClick={() => handleApprove(request.id)}
-                                            className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-blue-200/50 transition-all font-bold text-[10px] uppercase tracking-wider"
-                                        >
-                                            <Check className="h-3 w-3 mr-1" /> Approve
-                                        </Button>
+                                        
+                                        {request.status === 'staged' ? (
+                                            <Button
+                                                size="sm"
+                                                disabled={processingId !== null}
+                                                onClick={() => handleHandoff(request.id)}
+                                                className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-emerald-200/50 transition-all font-bold text-[10px] uppercase tracking-wider"
+                                            >
+                                                <Check className="h-3 w-3 mr-1" /> Complete Dispatch
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                disabled={processingId !== null}
+                                                onClick={() => handleApprove(request.id)}
+                                                className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-blue-200/50 transition-all font-bold text-[10px] uppercase tracking-wider"
+                                            >
+                                                <Check className="h-3 w-3 mr-1" /> Approve
+                                            </Button>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>

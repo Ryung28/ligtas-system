@@ -1,23 +1,29 @@
 'use client'
 
-import dynamic from 'next/dynamic'
+import { useState, useEffect } from 'react'
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
-const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false })
-const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
-const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false })
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
-const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
 
 interface ResourcePulseChartProps {
     data: any[]
 }
 
 export function ResourcePulseChart({ data }: ResourcePulseChartProps) {
+    const [mounted, setMounted] = useState(false)
+
+    // Senior Dev: Use a mounting guard to ensure Recharts only renders on the client
+    // This resolves ChunkLoadErrors and SSR mismatch issues in Next.js 14
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return (
+            <Card className="lg:col-span-8 h-[385px] bg-white/80 backdrop-blur-md border-none rounded-[1.5rem] animate-pulse" />
+        )
+    }
+
     return (
         <Card className="lg:col-span-8 bg-white/80 backdrop-blur-md shadow-xl shadow-slate-200/40 border-none rounded-[1.5rem] ring-1 ring-slate-100 overflow-hidden">
             <CardHeader className="p-6 pb-2">

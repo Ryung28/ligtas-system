@@ -226,7 +226,6 @@ export default function PrintReports() {
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
                         <div className="h-2 w-2 rounded-full bg-slate-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Document Generation</span>
                     </div>
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic leading-none">
                         Print Reports

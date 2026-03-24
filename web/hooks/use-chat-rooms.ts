@@ -22,6 +22,12 @@ export interface ChatRoom {
     unread_count: number
 }
 
+// Exported fetch function for cache warming
+export const fetchChatRooms = async () => {
+    const result = await getChatRooms()
+    return result.success && result.data ? result.data : []
+}
+
 export function useChatRooms() {
     const [rooms, setRooms] = useState<ChatRoom[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -30,10 +36,8 @@ export function useChatRooms() {
     // Resolves instantly because all aggregation happens inside Supabase Postgres Engine
     const fetchRooms = useCallback(async () => {
         setIsLoading(true)
-        const result = await getChatRooms()
-        if (result.success && result.data) {
-            setRooms(result.data as ChatRoom[])
-        }
+        const data = await fetchChatRooms()
+        setRooms(data as ChatRoom[])
         setIsLoading(false)
     }, [])
 

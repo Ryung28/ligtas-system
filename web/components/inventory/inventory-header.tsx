@@ -20,7 +20,6 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [] 
             <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-1">
                     <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Equipment Registry</span>
                 </div>
                 <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic leading-none">
                     Inventory
@@ -40,7 +39,7 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [] 
                 <InventoryItemDialog
                     onSuccess={onRefresh}
                     trigger={
-                        <Button size="sm" className="h-9 bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-semibold transition-all rounded-lg px-4 shadow-sm hover:shadow-md">
+                        <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-semibold transition-all rounded-xl px-4 shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-0.5 active:scale-95">
                             <Plus className="h-4 w-4 mr-1.5" />
                             Add Item
                         </Button>

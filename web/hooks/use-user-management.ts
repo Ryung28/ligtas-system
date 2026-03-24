@@ -39,6 +39,25 @@ export interface AccessRequest {
     status: 'pending' | 'approved' | 'rejected'
 }
 
+// Exported fetch functions for cache warming
+export const fetchUsers = async () => {
+    const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    const { data } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false })
+    return data || []
+}
+
+export const fetchAuthorizedEmails = async () => {
+    const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    const { data } = await supabase.from('authorized_emails').select('*')
+    return data || []
+}
+
 export function useUserManagement() {
     const [users, setUsers] = useState<UserProfile[]>([])
     const [pendingRequests, setPendingRequests] = useState<AccessRequest[]>([])

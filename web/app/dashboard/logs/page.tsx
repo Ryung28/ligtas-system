@@ -1,133 +1,16 @@
-'use client'
+import { Suspense } from 'react'
+import { getInitialLogs } from '@/lib/queries/logs'
+import { LogsClient } from './logs-client'
+import LogsLoading from './loading'
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { RefreshCw, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
-import { toast } from 'sonner'
+export const dynamic = 'force-dynamic'
 
-import { useBorrowLogs } from '@/hooks/use-borrow-logs'
-import { returnItem, bulkReturnItems } from '@/app/actions/inventory'
-
-import { LogStatsCards } from '@/components/logs/log-stats'
-import { LogFilters } from '@/components/logs/log-filters'
-import { LogSessionTable } from '@/components/logs/log-session-table'
-import { LogBulkActionBar } from '@/components/logs/log-bulk-bar'
-import { BorrowItemDialog } from '@/components/transactions/borrow-item-dialog'
-
-export default function BorrowReturnLogs() {
-    const {
-        sessions,
-        stats,
-        isLoading,
-        error,
-        searchQuery,
-        setSearchQuery,
-        statusFilter,
-        setStatusFilter,
-        dateFilter,
-        setDateFilter,
-        currentPage,
-        setCurrentPage,
-        totalPages,
-        toggleSessionExpansion,
-        expandedSessions,
-        refresh
-    } = useBorrowLogs()
-
-
+export default async function BorrowReturnLogs() {
+    const initialLogs = await getInitialLogs()
 
     return (
-        <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-500">
-            {/* Page Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
-                <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Transaction Registry</span>
-                    </div>
-                    <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
-                        Borrow/Return Logs
-                    </h1>
-                </div>
-                <div className="flex items-center gap-2 font-heading">
-                    <BorrowItemDialog />
-                </div>
-            </div>
-
-            {/* Stats Section */}
-            <LogStatsCards stats={stats} />
-
-            {/* Main Log Section */}
-            <Card className="bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-200/50 border-none rounded-[2.5rem] ring-1 ring-slate-100 overflow-hidden flex flex-col">
-                <CardHeader className="bg-white/50 border-b border-slate-50 p-4 14in:p-5">
-                    <LogFilters
-                        filter={statusFilter}
-                        setFilter={setStatusFilter}
-                        dateFilter={dateFilter}
-                        setDateFilter={setDateFilter}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                    />
-                </CardHeader>
-
-                <CardContent className="p-0 flex-1">
-                    {error ? (
-                        <div className="p-8 text-center text-red-600 font-medium">{error}</div>
-                    ) : isLoading && sessions.length === 0 ? (
-                        <div className="flex items-center justify-center py-24">
-                            <RefreshCw className="h-8 w-8 animate-spin text-gray-300" />
-                        </div>
-                    ) : sessions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-center">
-                            <div className="bg-gray-50 p-4 rounded-full mb-3">
-                                <Filter className="h-8 w-8 text-gray-300" />
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900">No transactions found</h3>
-                            <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
-                                Adjust your filters to find what you&apos;re looking for.
-                            </p>
-                        </div>
-                    ) : (
-                        <LogSessionTable
-                            sessions={sessions}
-                            expandedSessions={expandedSessions}
-                            toggleSessionExpansion={toggleSessionExpansion}
-                        />
-                    )}
-                </CardContent>
-
-                {/* Pagination Footer */}
-                {totalPages > 1 && (
-                    <CardFooter className="bg-gray-50/50 border-t border-gray-100 p-4 flex items-center justify-between">
-                        <div className="text-sm text-gray-500">
-                            Page <span className="font-medium text-gray-900">{currentPage}</span> of <span className="font-medium text-gray-900">{totalPages}</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="bg-white border-gray-200 h-8 w-8 p-0"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className="bg-white border-gray-200 h-8 w-8 p-0"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardFooter>
-                )}
-            </Card>
-
-
-        </div>
+        <Suspense fallback={<LogsLoading />}>
+            <LogsClient initialLogs={initialLogs} />
+        </Suspense>
     )
 }

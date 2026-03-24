@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Loader2, RotateCcw, Package } from 'lucide-react'
+import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -25,14 +25,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { borrowItem, returnItem, getAvailableItems } from '@/app/actions/inventory'
+import { borrowItem, returnItem, getAvailableItems, batchBorrowItems } from '@/app/actions/inventory'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
 
 interface AvailableItem {
     id: number
     item_name: string
     stock_available: number
+    stock_truly_available: number
+    stock_pending: number
     category: string
+    item_type?: 'equipment' | 'consumable'
+}
+
+interface CartItem {
+    item: AvailableItem
+    quantity: number
 }
 
 export function BorrowItemDialog() {
@@ -41,15 +49,22 @@ export function BorrowItemDialog() {
     const [availableItems, setAvailableItems] = useState<AvailableItem[]>([])
     const [isLoadingItems, setIsLoadingItems] = useState(false)
     const [selectedItem, setSelectedItem] = useState<AvailableItem | null>(null)
+    const [selectedQuantity, setSelectedQuantity] = useState(1)
     const [borrowerName, setBorrowerName] = useState('')
     const [returnType, setReturnType] = useState<'anytime' | 'date'>('anytime')
     const { logs, refresh: refreshLogs } = useBorrowLogs()
+
+    // Cart state for multi-item borrowing
+    const [cart, setCart] = useState<CartItem[]>([])
 
     // Condition assessment for smart-return
     const [returnCondition, setReturnCondition] = useState('Good')
     const [returnNotes, setReturnNotes] = useState('')
 
     const router = useRouter()
+
+    // Check if selected item is consumable
+    const isConsumable = selectedItem?.item_type === 'consumable'
 
     // DETECT: Is this actually a return?
     const existingBorrow = logs.find(l =>
@@ -106,16 +121,77 @@ export function BorrowItemDialog() {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
+        // If cart has items, use batch borrow
+        if (cart.length > 0) {
+            const formData = new FormData(event.currentTarget)
+            const borrowerName = formData.get('borrower_name') as string
+            const contactNumber = formData.get('contact_number') as string
+            const officeDepartment = formData.get('office_department') as string
+            const purpose = formData.get('purpose') as string
+            const expectedReturnDate = formData.get('expected_return_date') as string
+
+            if (!borrowerName.trim()) {
+                toast.error('Please enter borrower name', {
+                    className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                })
+                return
+            }
+
+            startTransition(async () => {
+                const result = await batchBorrowItems({
+                    borrower_name: borrowerName,
+                    contact_number: contactNumber,
+                    office_department: officeDepartment,
+                    purpose: purpose,
+                    expected_return_date: expectedReturnDate || null,
+                    items: cart.map(c => ({
+                        item_id: c.item.id,
+                        quantity: c.quantity,
+                        item_type: c.item.item_type || 'equipment'
+                    }))
+                })
+
+                if (result.success) {
+                    toast.success(result.message || 'Items borrowed successfully!')
+                    setOpen(false)
+                    refreshLogs()
+                    router.refresh()
+                    setCart([])
+                    setSelectedItem(null)
+                    setBorrowerName('')
+                } else {
+                    console.error('Batch borrow error:', result.error)
+                    toast.error(result.error || 'Failed to borrow items', {
+                        className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                    })
+                }
+            })
+            return
+        }
+
+        // Original single-item logic
+        if (!selectedItem) {
+            toast.error('Please select an item', {
+                className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+            })
+            return
+        }
+
+        if (!borrowerName.trim()) {
+            toast.error('Please enter borrower name', {
+                className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+            })
+            return
+        }
+
         const formData = new FormData(event.currentTarget)
 
         startTransition(async () => {
             let result;
 
             if (isSmartReturn) {
-                // If the system detected this as a return, use returnItem action
                 result = await returnItem(existingBorrow.id, returnCondition, returnNotes)
             } else {
-                // Otherwise process as normal borrow
                 result = await borrowItem(formData)
             }
 
@@ -127,11 +203,45 @@ export function BorrowItemDialog() {
                 setSelectedItem(null)
                 setBorrowerName('')
             } else {
+                console.error('Transaction error:', result.error)
                 toast.error(result.error || 'Failed to log transaction', {
                     className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
                 })
             }
         })
+    }
+
+    const handleAddToCart = () => {
+        if (!selectedItem) {
+            toast.error('Please select an item first')
+            return
+        }
+
+        if (selectedQuantity < 1) {
+            toast.error('Quantity must be at least 1')
+            return
+        }
+
+        if (selectedQuantity > selectedItem.stock_truly_available) {
+            toast.error(`Only ${selectedItem.stock_truly_available} units available`)
+            return
+        }
+
+        // Check if item already in cart
+        const existingIndex = cart.findIndex(c => c.item.id === selectedItem.id)
+        if (existingIndex >= 0) {
+            toast.error('Item already in cart. Remove it first to change quantity.')
+            return
+        }
+
+        setCart([...cart, { item: selectedItem, quantity: selectedQuantity }])
+        setSelectedItem(null)
+        setSelectedQuantity(1)
+        toast.success(`Added ${selectedItem.item_name} to cart`)
+    }
+
+    const handleRemoveFromCart = (itemId: number) => {
+        setCart(cart.filter(c => c.item.id !== itemId))
     }
 
     const handleItemSelect = (itemId: string) => {
@@ -151,11 +261,13 @@ export function BorrowItemDialog() {
                 <form onSubmit={handleSubmit}>
                     <DialogHeader className={isSmartReturn ? "bg-orange-50 -mx-6 -mt-6 p-6 border-b border-orange-100 rounded-t-lg" : ""}>
                         <DialogTitle className="text-xl font-heading font-bold text-gray-900 tracking-tight">
-                            {isSmartReturn ? "🔄 Process Item Return" : "📦 Dispatch Item"}
+                            {isSmartReturn ? "🔄 Process Item Return" : isConsumable ? "💊 Dispense Consumable" : "📦 Dispatch Item"}
                         </DialogTitle>
                         <DialogDescription className={isSmartReturn ? "text-orange-700 font-medium" : "text-slate-500 font-medium"}>
                             {isSmartReturn
                                 ? `System detected that ${borrowerName} already has this item. Switching to Return Assessment.`
+                                : isConsumable
+                                ? "Dispense one-time use items. No return required."
                                 : "Assign inventory items to operational personnel and update registry levels."}
                         </DialogDescription>
                     </DialogHeader>
@@ -200,10 +312,11 @@ export function BorrowItemDialog() {
                             </div>
                         </div>
 
-                        {/* Item Selection & Quantity Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label className="text-sm font-semibold text-gray-700">
+                        {/* Item Selection & Quantity Row - Symmetric Grid */}
+                        <div className="grid grid-cols-12 gap-4 items-start">
+                            {/* Select Item - 8 columns */}
+                            <div className="col-span-12 md:col-span-8 space-y-2">
+                                <Label className="text-sm font-semibold text-slate-700">
                                     Select Item <span className="text-red-500">*</span>
                                 </Label>
 
@@ -214,7 +327,9 @@ export function BorrowItemDialog() {
                                     options={availableItems.map(item => ({
                                         value: item.id.toString(),
                                         label: item.item_name,
-                                        description: `${item.stock_available} available • ${item.category}`,
+                                        description: `${item.stock_truly_available} available${
+                                            item.stock_pending > 0 ? ` • ⏳ ${item.stock_pending} pending` : ''
+                                        } • ${item.category}`,
                                     }))}
                                     value={selectedItem?.id.toString()}
                                     onValueChange={handleItemSelect}
@@ -222,53 +337,23 @@ export function BorrowItemDialog() {
                                     searchPlaceholder="Search by name or scan QR..."
                                     emptyText="No items found."
                                     disabled={isPending || isLoadingItems}
-                                    // ADDED: Handle raw QR scans into the search box
                                     onSearchChange={(query) => {
                                         try {
                                             if (query.startsWith('{')) {
                                                 const data = JSON.parse(query)
                                                 if (data.itemId) handleItemSelect(data.itemId.toString())
                                             } else if (/^\d+$/.test(query)) {
-                                                // If it's a raw numeric ID, try to find and select it
                                                 const exists = availableItems.some(i => i.id.toString() === query)
                                                 if (exists) handleItemSelect(query)
                                             }
                                         } catch (e) { }
                                     }}
                                 />
-
-                                {selectedItem && (
-                                    <div className="space-y-2 mt-2">
-                                        <p className="text-xs text-blue-600 font-bold uppercase tracking-widest flex items-center gap-1">
-                                            <Package className="h-3 w-3" />
-                                            Active Holders
-                                        </p>
-                                        <div className="flex flex-wrap gap-1">
-                                            {logs.filter(l => l.inventory_id === selectedItem.id && l.status === 'borrowed').length === 0 ? (
-                                                <p className="text-[10px] text-gray-400 italic">No active borrows for this item.</p>
-                                            ) : (
-                                                logs.filter(l => l.inventory_id === selectedItem.id && l.status === 'borrowed').map((log, i) => (
-                                                    <button
-                                                        key={i}
-                                                        type="button"
-                                                        onClick={() => setBorrowerName(log.borrower_name)}
-                                                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${borrowerName.toLowerCase().trim() === log.borrower_name.toLowerCase().trim()
-                                                            ? 'bg-orange-500 border-orange-600 text-white font-bold'
-                                                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-400'
-                                                            }`}
-                                                    >
-                                                        {log.borrower_name}
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Quantity */}
-                            <div className="grid gap-2">
-                                <Label htmlFor="quantity" className="text-sm font-semibold text-gray-700">
+                            {/* Quantity - 2 columns */}
+                            <div className="col-span-6 md:col-span-2 space-y-2">
+                                <Label htmlFor="quantity" className="text-sm font-semibold text-slate-700">
                                     Quantity <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
@@ -276,21 +361,179 @@ export function BorrowItemDialog() {
                                     name="quantity"
                                     type="number"
                                     placeholder="Qty"
-                                    value={isSmartReturn ? existingBorrow.quantity : undefined}
+                                    value={isSmartReturn ? existingBorrow.quantity : selectedQuantity}
+                                    onChange={(e) => setSelectedQuantity(parseInt(e.target.value) || 1)}
                                     readOnly={isSmartReturn}
                                     required
                                     min={1}
-                                    max={selectedItem?.stock_available || 999}
+                                    max={selectedItem?.stock_truly_available || 999}
                                     disabled={isPending || !selectedItem}
-                                    className={`rounded-lg border-gray-300 ${isSmartReturn ? 'bg-orange-50 font-bold border-orange-200' : ''}`}
+                                    className={`h-11 rounded-lg border-slate-300 shadow-inner ${
+                                        isSmartReturn 
+                                            ? 'bg-orange-50 font-bold border-orange-200' 
+                                            : (selectedItem?.stock_pending ?? 0) > 0 
+                                            ? 'border-amber-300 bg-amber-50/30' 
+                                            : ''
+                                    }`}
                                 />
+                            </div>
+
+                            {/* Add Button - 2 columns */}
+                            {!isSmartReturn && (
+                                <div className="col-span-6 md:col-span-2 space-y-2">
+                                    <Label className="text-sm font-semibold text-slate-700 opacity-0 pointer-events-none">
+                                        Add
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        onClick={handleAddToCart}
+                                        disabled={!selectedItem || isPending}
+                                        className="h-11 w-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg gap-2 font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Add to Cart
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Metadata Row - Below inputs to prevent layout shift */}
+                        <div className="grid grid-cols-12 gap-4">
+                            {/* Combined Status Section - Aligned with Select Item column */}
+                            <div className="col-span-12 md:col-span-8">
+                                {selectedItem && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        
+                                        {/* Pending Approvals Warning (if any) */}
+                                        {selectedItem.stock_pending > 0 && (
+                                            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                                                <Clock className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <p className="text-xs font-bold text-amber-900">
+                                                        {selectedItem.stock_pending} unit{selectedItem.stock_pending > 1 ? 's' : ''} pending approval
+                                                    </p>
+                                                    <p className="text-[10px] text-amber-700 mt-0.5">
+                                                        Reserved by pending requests. Available stock already accounts for this.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Active Holders */}
+                                        <div>
+                                            <p className="text-xs text-blue-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                                                <Package className="h-3 w-3" />
+                                                Active Holders
+                                            </p>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {logs.filter(l => l.inventory_id === selectedItem.id && l.status === 'borrowed').length === 0 ? (
+                                                    <p className="text-[10px] text-gray-400 italic">No active borrows for this item.</p>
+                                                ) : (
+                                                    logs.filter(l => l.inventory_id === selectedItem.id && l.status === 'borrowed').map((log, i) => (
+                                                        <button
+                                                            key={i}
+                                                            type="button"
+                                                            onClick={() => setBorrowerName(log.borrower_name)}
+                                                            className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                                                                borrowerName.toLowerCase().trim() === log.borrower_name.toLowerCase().trim()
+                                                                    ? 'bg-orange-500 border-orange-600 text-white font-bold'
+                                                                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-400'
+                                                            }`}
+                                                        >
+                                                            {log.borrower_name}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Maximum units helper - Aligned with Quantity column */}
+                            <div className="col-span-6 md:col-span-2">
                                 {selectedItem && !isSmartReturn && (
-                                    <p className="text-xs text-gray-500">
-                                        Maximum: {selectedItem.stock_available} unit(s)
+                                    <p className="text-xs text-gray-500 animate-in fade-in duration-200">
+                                        Maximum: {selectedItem.stock_truly_available} unit(s)
                                     </p>
                                 )}
                             </div>
                         </div>
+
+                        {/* Cart Display */}
+                        {cart.length > 0 && (
+                            <div className="relative overflow-hidden rounded-2xl border border-blue-200/60 bg-gradient-to-br from-blue-50 via-white to-blue-50/30 p-5 shadow-lg shadow-blue-500/5 animate-in fade-in slide-in-from-top-2 duration-300">
+                                {/* Subtle background pattern */}
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.03),transparent_50%)]" />
+                                
+                                <div className="relative space-y-4">
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
+                                                <ShoppingCart className="h-4.5 w-4.5 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-slate-800">Dispatch Cart</h3>
+                                                <p className="text-xs text-slate-500">
+                                                    {cart.length} {cart.length === 1 ? 'item' : 'items'} ready
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                                            <span>{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                                            <span className="text-blue-500">units</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Cart Items */}
+                                    <div className="space-y-2">
+                                        {cart.map((cartItem, index) => (
+                                            <div
+                                                key={cartItem.item.id}
+                                                className="group relative flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-3.5 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md"
+                                                style={{
+                                                    animationDelay: `${index * 50}ms`,
+                                                }}
+                                            >
+                                                {/* Item Info */}
+                                                <div className="flex-1 min-w-0 pr-3">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h4 className="font-semibold text-slate-900 text-sm truncate">
+                                                            {cartItem.item.item_name}
+                                                        </h4>
+                                                        {cartItem.item.item_type === 'consumable' && (
+                                                            <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 ring-1 ring-inset ring-purple-600/20">
+                                                                CONSUMABLE
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                        <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                                                            <Package className="h-3 w-3" />
+                                                            {cartItem.quantity}x
+                                                        </span>
+                                                        <span className="text-slate-400">•</span>
+                                                        <span>{cartItem.item.category}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Remove Button */}
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleRemoveFromCart(cartItem.item.id)}
+                                                    className="h-8 w-8 shrink-0 rounded-lg p-0 text-slate-400 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 md:opacity-0"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* SMART SWITCH: RETURN ASSESSMENT OR BORROW SCHEDULE */}
                         {isSmartReturn ? (
@@ -328,60 +571,64 @@ export function BorrowItemDialog() {
                         ) : (
                             <>
                                 {/* Office/Department (Only for Borrowing) */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="office_department" className="text-sm font-semibold text-gray-700">
-                                        Office/Department <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        id="office_department"
-                                        name="office_department"
-                                        placeholder="E.g., CDRRMO Team Alpha, Barangay San Jose"
-                                        required
-                                        disabled={isPending}
-                                        className="rounded-lg border-gray-300"
-                                    />
-                                </div>
-
-                                {/* Return Schedule Section */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                {!isConsumable && (
                                     <div className="grid gap-2">
-                                        <Label className="text-sm font-semibold text-gray-700">
-                                            Return Schedule <span className="text-red-500">*</span>
+                                        <Label htmlFor="office_department" className="text-sm font-semibold text-gray-700">
+                                            Office/Department <span className="text-red-500">*</span>
                                         </Label>
-                                        <Select
-                                            value={returnType}
-                                            onValueChange={(val: 'anytime' | 'date') => setReturnType(val)}
+                                        <Input
+                                            id="office_department"
+                                            name="office_department"
+                                            placeholder="E.g., CDRRMO Team Alpha, Barangay San Jose"
+                                            required={!isConsumable}
                                             disabled={isPending}
-                                        >
-                                            <SelectTrigger className="bg-white border-gray-300">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="anytime">Return Anytime / Open-ended</SelectItem>
-                                                <SelectItem value="date">Specific Return Date</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                            className="rounded-lg border-gray-300"
+                                        />
                                     </div>
+                                )}
 
-                                    {returnType === 'date' && (
-                                        <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                                            <Label htmlFor="expected_return_date" className="text-sm font-semibold text-gray-700">
-                                                Expected Return Date <span className="text-red-500">*</span>
+                                {/* Return Schedule Section - Hide for consumables */}
+                                {!isConsumable && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div className="grid gap-2">
+                                            <Label className="text-sm font-semibold text-gray-700">
+                                                Return Schedule <span className="text-red-500">*</span>
                                             </Label>
-                                            <Input
-                                                id="expected_return_date"
-                                                name="expected_return_date"
-                                                type="date"
-                                                required={returnType === 'date'}
+                                            <Select
+                                                value={returnType}
+                                                onValueChange={(val: 'anytime' | 'date') => setReturnType(val)}
                                                 disabled={isPending}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                className="bg-white border-gray-300"
-                                            />
+                                            >
+                                                <SelectTrigger className="bg-white border-gray-300">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="anytime">Return Anytime / Open-ended</SelectItem>
+                                                    <SelectItem value="date">Specific Return Date</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Purpose (Optional) */}
+                                        {returnType === 'date' && (
+                                            <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <Label htmlFor="expected_return_date" className="text-sm font-semibold text-gray-700">
+                                                    Expected Return Date <span className="text-red-500">*</span>
+                                                </Label>
+                                                <Input
+                                                    id="expected_return_date"
+                                                    name="expected_return_date"
+                                                    type="date"
+                                                    required={returnType === 'date'}
+                                                    disabled={isPending}
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                    className="bg-white border-gray-300"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Purpose */}
                                 <div className="grid gap-2">
                                     <Label htmlFor="purpose" className="text-sm font-semibold text-gray-700">
                                         Purpose <span className="text-gray-400">(Optional)</span>
@@ -389,11 +636,20 @@ export function BorrowItemDialog() {
                                     <Input
                                         id="purpose"
                                         name="purpose"
-                                        placeholder="E.g., Emergency Response Training, Community Event"
+                                        placeholder={isConsumable ? "E.g., Emergency Response, Medical Aid" : "E.g., Emergency Response Training, Community Event"}
                                         disabled={isPending}
                                         className="rounded-lg border-gray-300"
                                     />
                                 </div>
+
+                                {/* Consumable Notice */}
+                                {isConsumable && (
+                                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                        <p className="text-sm text-purple-800 font-medium">
+                                            ℹ️ This is a consumable item. It will be marked as dispensed and no return is required.
+                                        </p>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -409,8 +665,16 @@ export function BorrowItemDialog() {
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isPending || !selectedItem}
-                            className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all ${isSmartReturn ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                            disabled={isPending || (cart.length === 0 && !selectedItem)}
+                            className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all ${
+                                isSmartReturn 
+                                    ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                                    : cart.length > 0
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : isConsumable
+                                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            }`}
                         >
                             {isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -418,6 +682,16 @@ export function BorrowItemDialog() {
                                 <>
                                     <RotateCcw className="h-4 w-4" />
                                     Confirm Return
+                                </>
+                            ) : cart.length > 0 ? (
+                                <>
+                                    <ShoppingCart className="h-4 w-4" />
+                                    Borrow {cart.length} Item{cart.length > 1 ? 's' : ''}
+                                </>
+                            ) : isConsumable ? (
+                                <>
+                                    <Package className="h-4 w-4" />
+                                    Dispense Item
                                 </>
                             ) : (
                                 <>

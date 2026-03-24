@@ -7,7 +7,7 @@ import { useEffect } from 'react'
 
 export const PENDING_REQUESTS_KEY = 'pending_requests'
 
-const fetchPendingRequests = async () => {
+export const fetchPendingRequests = async () => {
     // Senior Dev: Use identity resolution via join to fix "Unknown Item" issues from mobile
     const { data, error } = await supabase
         .from('borrow_logs')
@@ -17,7 +17,7 @@ const fetchPendingRequests = async () => {
                 item_name
             )
         `)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'staged'])
         .order('created_at', { ascending: false })
 
     if (error) throw error

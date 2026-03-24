@@ -168,13 +168,12 @@ export default function LoginPage() {
                     {/* ── Bottom Hero Text ── */}
                     <div className="relative z-10 text-center translate-y-[-75px] 3xl:translate-y-[-90px] 4xl:translate-y-[-110px] mt-4">
                         <h2 className="text-[2.15rem] 3xl:text-[2.75rem] 4xl:text-[3.25rem] font-black text-[#1A1A2E] font-heading leading-tight tracking-tight">
-
-                            Empowering Readiness.<br />
-                            <span className="bg-gradient-to-r from-blue-700 via-[#832838] to-[#D4723C] bg-clip-text text-transparent">Securing Every Resource.</span>
+                            Ready. Reliable.<br />
+                            <span className="bg-gradient-to-r from-blue-700 via-[#832838] to-[#D4723C] bg-clip-text text-transparent">Equipment Tracking.</span>
                         </h2>
                         <p className="text-[14px] 3xl:text-[16px] 4xl:text-[18px] text-slate-600 font-semibold mt-3 max-w-[440px] 3xl:max-w-[550px] 4xl:max-w-[650px] leading-relaxed mx-auto">
-                            Precision logistics management for LIGTAS CDRRMO operations.
-                            Track, manage, and deploy critical assets with zero latency.
+                            Manage and track team equipment with ease.
+                            Simple inventory management for the whole team.
                         </p>
                     </div>
                 </div>
@@ -192,9 +191,10 @@ export default function LoginPage() {
 
                     <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 3xl:gap-10">
                         <AuthHeader
-                            title="Official LIGTAS Access"
-                            description="CDRRMO Inventory & Asset Management"
+                            title="LIGTAS Login"
+                            description="Inventory & Equipment Management"
                         />
+
 
                         {/* ── Senior Dev: Secure Portal Aesthetic (Debossed Glass) ── */}
                         <div className="w-full p-5 lg:p-7 3xl:p-9 rounded-[3rem] bg-white/20 backdrop-blur-xl border border-white/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.04),_0_25px_50px_-12px_rgba(0,0,0,0.06)] flex flex-col items-center text-center relative group overflow-hidden">
@@ -209,10 +209,11 @@ export default function LoginPage() {
                                 <div className="absolute inset-x-[-8px] inset-y-[-8px] border border-[#832838]/10 rounded-2xl animate-pulse-slow" />
                             </div>
 
-                            <h3 className="text-lg font-bold text-slate-800 mb-1.5">Secure Authentication Required</h3>
+                            <h3 className="text-lg font-bold text-slate-800 mb-1.5">Please Sign In</h3>
                             <p className="text-[13px] text-slate-500 max-w-[280px] leading-relaxed">
-                                Personnel are required to sign in using their official government-affiliated Google account for accountability.
+                                Use your official Google account to access the system.
                             </p>
+
 
                             {/* ── Senior Dev: Dynamic Feedback Alerts ── */}
                             {(error || success) && (
@@ -228,16 +229,17 @@ export default function LoginPage() {
 
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[13px] font-bold text-rose-950 flex items-center gap-2">
-                                                    Security Alert
+                                                    Login Notice
                                                     <span className="w-1 h-1 bg-rose-500 rounded-full" />
                                                 </span>
                                                 <p className="text-[12px] text-rose-900/80 leading-relaxed font-medium">
                                                     {error.includes('SECURITY ALERT')
-                                                        ? error // This is our diagnostic message
+                                                        ? "Your account is not recognized."
                                                         : (error.includes('UNAUTHORIZED') || error.includes('Database error saving new user'))
-                                                            ? "This system is restricted to authorized CDRRMO personnel only. If you are an official staff member, please contact the administrator to whitelist your account."
+                                                            ? "This system is for authorized staff only. Please contact support to allow access for your account."
                                                             : error}
                                                 </p>
+
                                             </div>
                                         </div>
                                     )}
@@ -296,7 +298,8 @@ export default function LoginPage() {
                         <div className="flex flex-col items-center gap-3">
                             <div className="flex items-center gap-2.5 py-1.5 px-4 rounded-full bg-slate-50 border border-slate-100">
                                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Status: Operational</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System is Online</span>
+
                             </div>
 
                             <p className="text-[11px] text-slate-300 font-medium text-center max-w-[240px] leading-relaxed">

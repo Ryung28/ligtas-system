@@ -1,12 +1,15 @@
 import { InventoryClient } from './inventory-client'
+import { getInitialInventory } from '@/lib/queries/inventory'
 import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
 
-export default function InventoryDashboardPage() {
+export default async function InventoryDashboardPage() {
+    const initialInventory = await getInitialInventory()
+
     return (
         <Suspense fallback={<InventorySkeleton />}>
-            <InventoryClient />
+            <InventoryClient initialInventory={initialInventory} />
         </Suspense>
     )
 }

@@ -4,9 +4,14 @@ import { usePendingRequests } from '@/hooks/use-pending-requests'
 import { PendingRequestsTable } from '@/components/approvals/pending-requests-table'
 import { RefreshCw, ClipboardList, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function ApprovalsPage() {
     const { requests, isLoading, error, refresh } = usePendingRequests()
+
+    // TACTICAL FILTERING: Separate Authorization and Fulfillment Phases
+    const pendingRequests = requests.filter(r => r.status === 'pending')
+    const stagedRequests = requests.filter(r => r.status === 'staged')
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -19,17 +24,27 @@ export default function ApprovalsPage() {
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
                         <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Live Approval Command</span>
                     </div>
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
-                        Pending Requests
+                        Command Queue
                     </h1>
                     <p className="text-slate-500 text-xs 14in:text-sm mt-1 max-w-md">
-                        Review and authorize equipment issuance requests submitted from the field mobile app.
+                        Review equipment requests and finalize logistics dispatch.
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 relative z-10">
+                <div className="flex items-center gap-4 relative z-10">
+                    <div className="flex gap-4 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">In Review</p>
+                            <p className="text-sm font-black text-blue-600">{pendingRequests.length}</p>
+                        </div>
+                        <div className="w-px h-8 bg-slate-200" />
+                        <div className="text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">To Dispatch</p>
+                            <p className="text-sm font-black text-emerald-600">{stagedRequests.length}</p>
+                        </div>
+                    </div>
                     <Button
                         variant="outline"
                         size="sm"
@@ -43,13 +58,35 @@ export default function ApprovalsPage() {
                 </div>
             </header>
 
-            {/* Main Content */}
+            {/* Main Content Interface (Dual-Phase View) */}
             {error ? (
                 <div className="p-8 text-center bg-red-50 text-red-600 rounded-3xl border border-red-100 font-bold uppercase tracking-wide text-xs">
                     Command Failure: {error}
                 </div>
             ) : (
-                <PendingRequestsTable requests={requests} onRefresh={refresh} />
+                <Tabs defaultValue="requests" className="w-full">
+                    <TabsList className="bg-slate-100/50 p-1 rounded-2xl mb-6">
+                        <TabsTrigger 
+                            value="requests" 
+                            className="rounded-xl px-8 font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
+                        >
+                            1. Authorization Queue ({pendingRequests.length})
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="dispatch" 
+                            className="rounded-xl px-8 font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm"
+                        >
+                            2. Fulfillment Queue ({stagedRequests.length})
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="requests" className="mt-0 outline-none">
+                        <PendingRequestsTable requests={pendingRequests} onRefresh={refresh} />
+                    </TabsContent>
+                    <TabsContent value="dispatch" className="mt-0 outline-none">
+                        <PendingRequestsTable requests={stagedRequests} onRefresh={refresh} />
+                    </TabsContent>
+                </Tabs>
             )}
 
             {/* Quick Advisory */}

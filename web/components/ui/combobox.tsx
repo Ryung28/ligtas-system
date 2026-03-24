@@ -75,7 +75,7 @@ export function Combobox({
                     aria-expanded={open}
                     disabled={disabled}
                     className={cn(
-                        'w-full justify-between rounded-lg border-gray-300',
+                        'w-full h-11 justify-between rounded-lg border-slate-300 shadow-inner',
                         !selectedOption && 'text-gray-500',
                         className
                     )}

@@ -78,10 +78,16 @@ export function LogSessionTable({
                         <span className="text-rose-600">Overdue</span>
                     </span>
                 )
+            case 'staged':
+                return (
+                    <span className={`${baseClass} border-blue-100 bg-blue-50/30`}>
+                        <span className="text-blue-600">Reserved (Pickup)</span>
+                    </span>
+                )
             case 'pending':
                 return (
                     <span className={baseClass}>
-                        <span className="text-amber-600">Pending</span>
+                        <span className="text-amber-600">Review Pending</span>
                     </span>
                 )
             case 'cancelled':

@@ -122,7 +122,8 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
 
     const getStockDisplay = (item: InventoryItem) => {
         if (item.stock_available === 0) return { label: 'OUT OF STOCK' }
-        if (item.stock_available < 5) return { label: 'LOW STOCK' }
+        const lowStockThreshold = item.stock_total * 0.5
+        if (item.stock_available < lowStockThreshold) return { label: 'LOW STOCK' }
         return { label: 'IN STOCK' }
     }
 
@@ -285,15 +286,17 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                             </TableCell>
 
                                             <TableCell className="px-3 py-5">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap bg-white/80 backdrop-blur-sm shadow-sm ${
-                                                    stock.label === 'OUT OF STOCK' 
-                                                        ? 'border border-rose-200/60 text-rose-700' 
-                                                        : stock.label === 'LOW STOCK'
-                                                        ? 'border border-amber-200/60 text-amber-700'
-                                                        : 'border border-emerald-200/60 text-emerald-700'
-                                                }`}>
-                                                    {stock.label}
-                                                </span>
+                                                {stock.label !== 'IN STOCK' ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap bg-white/80 backdrop-blur-sm shadow-sm ${
+                                                        stock.label === 'OUT OF STOCK' 
+                                                            ? 'border border-rose-200/60 text-rose-700' 
+                                                            : 'border border-amber-200/60 text-amber-700'
+                                                    }`}>
+                                                        {stock.label}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[13px] text-gray-400">—</span>
+                                                )}
                                             </TableCell>
 
                                             <TableCell className="px-3 py-5 text-right">

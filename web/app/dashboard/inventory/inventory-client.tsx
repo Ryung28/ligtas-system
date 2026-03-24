@@ -7,9 +7,18 @@ import { InventoryHeader } from '@/components/inventory/inventory-header'
 import { InventoryStats } from '@/components/inventory/inventory-stats'
 import { InventoryTable } from '@/components/inventory/inventory-table'
 import { useInventory } from '@/hooks/use-inventory'
+import { InventoryItem } from '@/lib/supabase'
 
-export function InventoryClient() {
+interface InventoryClientProps {
+    initialInventory: InventoryItem[]
+}
+
+export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const { inventory, refresh, isLoading, lastUpdated } = useInventory()
+    
+    // Use server data initially, then switch to live data
+    const displayInventory = inventory.length > 0 ? inventory : initialInventory
+    
     const [isDeleting, startDeleteTransition] = useTransition()
 
     const handleDelete = async (id: number, name: string) => {
@@ -40,13 +49,13 @@ export function InventoryClient() {
                 lastUpdated={lastUpdated}
                 isLoading={isLoading}
                 onRefresh={refresh}
-                items={inventory}
+                items={displayInventory}
             />
 
-            <InventoryStats items={inventory} />
+            <InventoryStats items={displayInventory} />
 
             <InventoryTable
-                items={inventory}
+                items={displayInventory}
                 onDelete={handleDelete}
                 isDeleting={isDeleting}
                 onRefresh={refresh}
