@@ -9,21 +9,34 @@ import { BorrowLog } from '@/lib/types/inventory'
 export const INVENTORY_CACHE_KEY = 'inventory_data'
 
 export const fetchInventory = async () => {
-    const { data, error } = await supabase
+    // Fetch inventory with stock_pending from availability view
+    const { data: inventoryData, error: invError } = await supabase
         .from('inventory')
         .select('*')
         .is('deleted_at', null)
         .order('item_name', { ascending: true })
 
-    if (error) throw error
+    if (invError) throw invError
+
+    // Fetch pending counts from availability view
+    const { data: availabilityData } = await supabase
+        .from('inventory_availability')
+        .select('id, stock_pending')
+
+    // Create a map for quick lookup
+    const pendingMap = new Map(
+        (availabilityData || []).map(item => [item.id, item.stock_pending])
+    )
 
     // Generate signed URLs for all items with images
-    const items = (data || []) as InventoryItem[]
+    const items = (inventoryData || []) as InventoryItem[]
     const itemsWithUrls = await Promise.all(items.map(async (item) => {
-        if (item.image_url) {
+        let imageUrl = item.image_url
+
+        if (imageUrl) {
             try {
                 // Extract path if it's a full URL from our bucket
-                let path = item.image_url
+                let path = imageUrl
                 if (path.includes('/storage/v1/object/')) {
                     // Extract the path after 'item-images/'
                     const parts = path.split('item-images/')
@@ -34,24 +47,27 @@ export const fetchInventory = async () => {
 
                 // If it's still a full URL from elsewhere, keep it
                 if (path.startsWith('http')) {
-                    return item
+                    imageUrl = path
+                } else {
+                    // Generate fresh signed URL for the image path
+                    const { data, error: storageError } = await supabase.storage
+                        .from('item-images')
+                        .createSignedUrl(path, 60 * 60 * 24) // 24 hours
+
+                    if (!storageError && data?.signedUrl) {
+                        imageUrl = data.signedUrl
+                    }
                 }
-
-                // Generate fresh signed URL for the image path
-                const { data, error: storageError } = await supabase.storage
-                    .from('item-images')
-                    .createSignedUrl(path, 60 * 60 * 24) // 24 hours
-
-                if (storageError || !data || !data.signedUrl) {
-                    return item
-                }
-
-                return { ...item, image_url: data.signedUrl }
             } catch (err) {
-                return item
+                // Keep original URL on error
             }
         }
-        return item
+
+        return {
+            ...item,
+            image_url: imageUrl,
+            stock_pending: pendingMap.get(item.id) || 0
+        }
     }))
 
     return itemsWithUrls

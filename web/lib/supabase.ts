@@ -6,6 +6,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Type definitions for inventory
+export type StorageLocation = 'lower_warehouse' | '2nd_floor_warehouse' | 'office' | 'field'
+
+export const STORAGE_LOCATION_LABELS: Record<StorageLocation, string> = {
+    lower_warehouse: 'Lower Warehouse',
+    '2nd_floor_warehouse': '2nd Floor Warehouse',
+    office: 'Office',
+    field: 'Field'
+}
+
 export interface InventoryItem {
     id: number
     item_name: string
@@ -18,6 +27,7 @@ export interface InventoryItem {
     location?: string
     serial_number?: string
     equipment_type?: string
+    storage_location?: StorageLocation
     created_at?: string
     updated_at?: string
 }

@@ -10,7 +10,11 @@
 --        to get accurate availability for borrow operations
 -- ============================================
 
-CREATE OR REPLACE VIEW inventory_availability AS
+-- Drop existing view first to allow column reordering
+DROP VIEW IF EXISTS inventory_availability;
+
+-- Recreate view with storage_location column
+CREATE VIEW inventory_availability AS
 SELECT 
   i.id,
   i.item_name,
@@ -23,6 +27,7 @@ SELECT
   i.serial_number,
   i.equipment_type,
   i.item_type,
+  i.storage_location,
   i.created_at,
   i.updated_at,
   i.deleted_at,

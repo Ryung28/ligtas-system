@@ -294,6 +294,21 @@ export function InventoryItemDialog({ existingItem, trigger, open: controlledOpe
                             </div>
 
                             <div className="grid gap-2">
+                                <Label className="text-xs font-semibold text-gray-700">Storage Location</Label>
+                                <Select name="storage_location" defaultValue={(existingItem as any)?.storage_location || 'lower_warehouse'}>
+                                    <SelectTrigger className="h-11 rounded-lg border-gray-300 bg-white text-sm transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                                        <SelectValue placeholder="Select location" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-gray-200 shadow-xl">
+                                        <SelectItem value="lower_warehouse" className="text-sm">Lower Warehouse</SelectItem>
+                                        <SelectItem value="2nd_floor_warehouse" className="text-sm">2nd Floor Warehouse</SelectItem>
+                                        <SelectItem value="office" className="text-sm">Office</SelectItem>
+                                        <SelectItem value="field" className="text-sm">Field</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label className="text-xs font-semibold text-gray-700">Status</Label>
                                 <Select name="status" defaultValue={existingItem?.status || 'Good'}>
                                     <SelectTrigger className="h-11 rounded-lg border-gray-300 bg-white text-sm transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">

@@ -18,6 +18,7 @@ const addItemSchema = z.object({
     serial_number: z.string().optional().nullable(),
     equipment_type: z.string().optional().nullable(),
     item_type: z.enum(['equipment', 'consumable']).default('equipment'),
+    storage_location: z.enum(['lower_warehouse', '2nd_floor_warehouse', 'office', 'field']).default('lower_warehouse'),
 })
 
 const borrowItemSchema = z.object({
@@ -64,6 +65,7 @@ export async function addItem(formData: FormData) {
             serial_number: formData.get('serial_number'),
             equipment_type: formData.get('equipment_type'),
             item_type: formData.get('item_type') || 'equipment',
+            storage_location: formData.get('storage_location') || 'lower_warehouse',
         }
 
         const validatedData = addItemSchema.parse(rawData)
@@ -81,6 +83,7 @@ export async function addItem(formData: FormData) {
                 serial_number: validatedData.serial_number,
                 equipment_type: validatedData.equipment_type,
                 item_type: validatedData.item_type,
+                storage_location: validatedData.storage_location,
             },
         ]).select()
 
@@ -447,6 +450,58 @@ export async function returnItem(logId: number, status: string = 'Good', notes: 
     }
 }
 
+// ============================================
+// INVENTORY QUERY ACTIONS
+// ============================================
+
+export async function getInventoryItems(options: { 
+    category?: string, 
+    status?: 'all' | 'pending',
+    search?: string
+} = {}) {
+    try {
+        let query = supabase
+            .from('inventory_availability')
+            .select('*')
+            .neq('status', 'archived')
+
+        // Apply Category Filter
+        if (options.category && options.category !== 'All') {
+            query = query.eq('category', options.category)
+        }
+
+        // Apply Status Filter (THE PENDING INBOX)
+        if (options.status === 'pending') {
+            // When in triage mode, only show items with active requests
+            query = query.gt('stock_pending', 0)
+        } else {
+            // Default view usually shows items with actual stock, 
+            // but for Admin Dashboard 'all' should show everything not archived.
+        }
+
+        // Apply Search
+        if (options.search) {
+            query = query.ilike('item_name', `%${options.search}%`)
+        }
+
+        const { data, error } = await query.order('item_name')
+
+        if (error) throw error
+
+        return {
+            success: true,
+            data: data || [],
+        }
+    } catch (error: any) {
+        console.error('Error fetching inventory:', error)
+        return {
+            success: false,
+            data: [],
+            error: error.message || 'Failed to fetch inventory'
+        }
+    }
+}
+
 // Helper function to get available items for dropdown with pending awareness
 export async function getAvailableItems() {
     try {
@@ -533,6 +588,7 @@ export async function updateItem(formData: FormData) {
             image_url: formData.get('image_url'),
             serial_number: formData.get('serial_number'),
             equipment_type: formData.get('equipment_type'),
+            storage_location: formData.get('storage_location'),
         }
 
         const validatedData = addItemSchema.parse(rawData)
@@ -561,7 +617,8 @@ export async function updateItem(formData: FormData) {
                 status: validatedData.status,
                 image_url: validatedData.image_url,
                 serial_number: validatedData.serial_number,
-                equipment_type: validatedData.equipment_type
+                equipment_type: validatedData.equipment_type,
+                storage_location: validatedData.storage_location
             })
             .eq('id', id)
             .select()
@@ -725,5 +782,43 @@ export async function bulkReturnItems(logIds: number[]) {
     } catch (error: any) {
         console.error('Bulk return error:', error)
         return { success: false, error: 'Tactical Error: Bulk return protocol interrupted' }
+    }
+}
+
+// ============================================
+// PENDING REQUESTS QUERY
+// ============================================
+
+export interface PendingRequest {
+    id: number
+    borrower_name: string
+    quantity: number
+    created_at: string
+}
+
+export async function getPendingRequestsByItemId(itemId: number): Promise<{ success: boolean; data?: PendingRequest[]; error?: string }> {
+    try {
+        const { data, error } = await supabase
+            .from('borrow_logs')
+            .select('id, borrower_name, quantity, created_at')
+            .eq('inventory_id', itemId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true })
+
+        if (error) {
+            console.error('Supabase error fetching pending requests:', error)
+            throw error
+        }
+
+        return {
+            success: true,
+            data: data || [],
+        }
+    } catch (error: any) {
+        console.error('Error in getPendingRequestsByItemId:', error)
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch pending requests',
+        }
     }
 }

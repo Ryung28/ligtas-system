@@ -1,13 +1,13 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useTransition, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteItem } from '@/app/actions/inventory'
 import { InventoryHeader } from '@/components/inventory/inventory-header'
 import { InventoryStats } from '@/components/inventory/inventory-stats'
 import { InventoryTable } from '@/components/inventory/inventory-table'
 import { useInventory } from '@/hooks/use-inventory'
-import { InventoryItem } from '@/lib/supabase'
+import { InventoryItem, StorageLocation } from '@/lib/supabase'
 
 interface InventoryClientProps {
     initialInventory: InventoryItem[]
@@ -15,9 +15,15 @@ interface InventoryClientProps {
 
 export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const { inventory, refresh, isLoading, lastUpdated } = useInventory()
+    const [activeLocationFilter, setActiveLocationFilter] = useState<StorageLocation | null>(null)
     
     // Use server data initially, then switch to live data
     const displayInventory = inventory.length > 0 ? inventory : initialInventory
+    
+    // Apply location filter
+    const filteredInventory = activeLocationFilter
+        ? displayInventory.filter(item => item.storage_location === activeLocationFilter)
+        : displayInventory
     
     const [isDeleting, startDeleteTransition] = useTransition()
 
@@ -52,10 +58,14 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                 items={displayInventory}
             />
 
-            <InventoryStats items={displayInventory} />
+            <InventoryStats 
+                items={displayInventory} 
+                onLocationFilter={setActiveLocationFilter}
+                activeLocation={activeLocationFilter}
+            />
 
             <InventoryTable
-                items={displayInventory}
+                items={filteredInventory}
                 onDelete={handleDelete}
                 isDeleting={isDeleting}
                 onRefresh={refresh}

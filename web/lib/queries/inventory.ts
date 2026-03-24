@@ -18,6 +18,16 @@ export async function getInitialInventory() {
 
         if (invError) throw invError
 
+        // Fetch pending counts from availability view separately
+        const { data: availabilityData } = await supabase
+            .from('inventory_availability')
+            .select('id, stock_pending')
+
+        // Create a map for quick lookup
+        const pendingMap = new Map(
+            (availabilityData || []).map(item => [item.id, item.stock_pending])
+        )
+
         // Fetch active borrows
         const { data: logs } = await supabase
             .from('borrow_logs')
@@ -65,7 +75,8 @@ export async function getInitialInventory() {
             return {
                 ...item,
                 image_url: imageUrl,
-                active_borrows: activeBorrows
+                active_borrows: activeBorrows,
+                stock_pending: pendingMap.get(item.id) || 0
             }
         }))
 

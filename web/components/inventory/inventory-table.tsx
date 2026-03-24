@@ -11,17 +11,18 @@ import { Badge } from '@/components/ui/badge'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
-import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2, Wrench, Cross, Shield, Box } from 'lucide-react'
+import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2, Wrench, Cross, Shield, Box, Warehouse } from 'lucide-react'
 import {
     Dialog as ShadinDialog,
     DialogContent as ShadinDialogContent,
     DialogHeader as ShadinDialogHeader,
     DialogTitle as ShadinDialogTitle
 } from '@/components/ui/dialog'
-import { InventoryItem } from '@/lib/supabase'
+import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
 import { InventoryItemDialog } from './inventory-item-dialog'
 import { QRDialog } from './qr-dialog'
 import { FilterTabs } from '@/components/ui/filter-tabs'
+import { ExpandableInventoryRow } from './expandable-inventory-row'
 
 interface InventoryTableProps {
     items: InventoryItem[]
@@ -36,12 +37,17 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending'>('all')
+    const [locationFilter, setLocationFilter] = useState<string>('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
 
-    // Calculate counts for category filter tabs
-    const categoryCounts = useMemo(() => {
-        const counts: Record<string, number> = { all: items.length }
+    // Calculate counts for filters
+    const filterCounts = useMemo(() => {
+        const counts: Record<string, number> = { 
+            all: items.length,
+            pending: items.filter(i => ((i as any).stock_pending || 0) > 0).length
+        }
         
         items.forEach(item => {
             const category = item.category || 'Uncategorized'
@@ -51,28 +57,33 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
         return counts
     }, [items])
 
+    const filterTabs = useMemo(() => {
+        const tabs = [
+            { value: 'all', label: 'All Items', count: filterCounts.all },
+            { value: 'pending', label: 'Needs Action', count: filterCounts.pending, color: 'amber' }
+        ]
+        
+        return tabs
+    }, [filterCounts])
+
     const categoryFilterTabs = useMemo(() => {
-        const tabs = [{ value: 'all', label: 'All', count: categoryCounts.all }]
+        const tabs = [{ value: 'all', label: 'All Categories', count: filterCounts.all }]
         
-        // Predefined categories to always show
+        // Predefined categories
         const predefinedCategories = ['Medical', 'Tools', 'Rescue', 'PPE', 'Logistics', 'Goods']
-        
-        // Get unique categories from items
         const uniqueCategories = Array.from(new Set(items.map(i => i.category || 'Uncategorized')))
-        
-        // Merge predefined with existing categories
         const allCategories = Array.from(new Set([...predefinedCategories, ...uniqueCategories]))
         
         allCategories.sort().forEach(category => {
             tabs.push({
                 value: category,
                 label: category,
-                count: categoryCounts[category] || 0
+                count: filterCounts[category] || 0
             })
         })
         
         return tabs
-    }, [items, categoryCounts])
+    }, [items, filterCounts])
 
     // Filter Items
     const filteredItems = useMemo(() => {
@@ -91,9 +102,19 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                 matchesCondition = item.status === conditionFilter
             }
 
-            return matchesSearch && matchesCategory && matchesCondition
+            let matchesStatus = true
+            if (statusFilter === 'pending') {
+                matchesStatus = ((item as any).stock_pending || 0) > 0
+            }
+
+            let matchesLocation = true
+            if (locationFilter !== 'all') {
+                matchesLocation = item.storage_location === locationFilter
+            }
+
+            return matchesSearch && matchesCategory && matchesCondition && matchesStatus && matchesLocation
         })
-    }, [items, searchQuery, categoryFilter, conditionFilter])
+    }, [items, searchQuery, categoryFilter, conditionFilter, statusFilter, locationFilter])
 
     // Paginate Items
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
@@ -105,7 +126,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
     // Reset page on filter change
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchQuery, categoryFilter, conditionFilter])
+    }, [searchQuery, categoryFilter, conditionFilter, locationFilter])
 
     const getCategoryIcon = (category: string) => {
         const cat = category.toLowerCase()
@@ -141,13 +162,13 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                 <div className="flex flex-col gap-4">
                     {/* Top Row: Title + Search + Condition Filter */}
                     <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-base font-semibold text-gray-900">All Items</h2>
-                            <span className="text-[12px] text-gray-500 font-medium">{filteredItems.length} results</span>
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-base font-semibold text-gray-900">Inventory</h2>
+                            <span className="text-[12px] text-gray-500 font-medium">{filteredItems.length} results found</span>
                         </div>
 
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                            <div className="relative flex-1 md:w-72">
+                            <div className="relative flex-1 md:w-64">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                                 <Input
                                     placeholder="Search items..."
@@ -157,8 +178,21 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                 />
                             </div>
 
+                            <Select value={locationFilter} onValueChange={setLocationFilter}>
+                                <SelectTrigger className="w-[180px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <SelectValue placeholder="Location" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
+                                    <SelectItem value="all" className="text-[14px] rounded-md">All Locations</SelectItem>
+                                    <SelectItem value="lower_warehouse" className="text-[14px] rounded-md">Lower Warehouse</SelectItem>
+                                    <SelectItem value="2nd_floor_warehouse" className="text-[14px] rounded-md">2nd Floor Warehouse</SelectItem>
+                                    <SelectItem value="office" className="text-[14px] rounded-md">Office</SelectItem>
+                                    <SelectItem value="field" className="text-[14px] rounded-md">Field</SelectItem>
+                                </SelectContent>
+                            </Select>
+
                             <Select value={conditionFilter} onValueChange={setConditionFilter}>
-                                <SelectTrigger className="w-[160px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                <SelectTrigger className="w-[150px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                                     <SelectValue placeholder="Condition" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
@@ -170,6 +204,15 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+
+                    {/* Middle Row: View Filter (All vs Needs Action) */}
+                    <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                        <FilterTabs 
+                            tabs={filterTabs}
+                            activeTab={statusFilter}
+                            onTabChange={(val) => setStatusFilter(val as any)}
+                        />
                     </div>
                     
                     {/* Bottom Row: Category Filter Tabs */}
@@ -188,6 +231,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                             <TableRow className="border-b border-gray-200 hover:bg-transparent">
                                 <TableHead className="pl-4 14in:pl-6 pr-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Item</TableHead>
                                 <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Category</TableHead>
+                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Location</TableHead>
                                 <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Condition</TableHead>
                                 <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Status</TableHead>
                                 <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide text-right">Stock</TableHead>
@@ -197,7 +241,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                         <TableBody>
                             {paginatedItems.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-96 text-center">
+                                    <TableCell colSpan={7} className="h-96 text-center">
                                         <div className="flex flex-col items-center justify-center p-12 animate-in fade-in duration-500">
                                             <div className="relative mb-6">
                                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full blur-2xl opacity-50" />
@@ -223,141 +267,21 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                paginatedItems.map((item, index) => {
-                                    const stock = getStockDisplay(item)
-                                    const condition = getConditionDot(item.status)
-                                    const CategoryIcon = getCategoryIcon(item.category)
-                                    const stockPercentage = getStockPercentage(item.stock_available, item.stock_total)
-                                    
-                                    return (
-                                        <TableRow 
-                                            key={item.id} 
-                                            className="hover:bg-gray-50/50 group transition-all duration-200 border-b border-gray-100 odd:bg-gray-50/20 animate-in fade-in slide-in-from-bottom-2"
-                                            style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'backwards' }}
-                                        >
-                                            <TableCell className="pl-4 14in:pl-6 pr-3 py-5">
-                                                <div className="flex items-center gap-3">
-                                                    <div
-                                                        className="h-14 w-14 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-pointer transition-all hover:border-gray-300 hover:shadow-sm"
-                                                        onClick={() => item.image_url && setExpandedImage({ url: item.image_url, name: item.item_name })}
-                                                    >
-                                                        {item.image_url ? (
-                                                            <>
-                                                                <img src={item.image_url} alt={item.item_name} className="w-full h-full object-contain p-2" />
-                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                                                    <Maximize2 className="h-4 w-4 text-white" />
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <Package className="h-6 w-6 text-gray-300" />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-[15px] font-semibold text-gray-900 truncate leading-tight tracking-tight">{item.item_name}</span>
-                                                        {item.description && (
-                                                            <span className="text-[13px] text-gray-500 truncate max-w-[200px] mt-1 leading-tight">
-                                                                {item.description}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="px-3 py-5">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-7 w-7 rounded-md bg-gray-50 flex items-center justify-center flex-shrink-0">
-                                                        <CategoryIcon className="h-3.5 w-3.5 text-gray-500" />
-                                                    </div>
-                                                    <span className="text-[13px] font-medium text-gray-700">
-                                                        {item.category}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="px-3 py-5">
-                                                {item.status !== 'Good' ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`h-1.5 w-1.5 rounded-full ${condition.color}`} />
-                                                        <span className="text-[13px] text-gray-600">{condition.label}</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[13px] text-gray-400">—</span>
-                                                )}
-                                            </TableCell>
-
-                                            <TableCell className="px-3 py-5">
-                                                {stock.label !== 'IN STOCK' ? (
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap bg-white/80 backdrop-blur-sm shadow-sm ${
-                                                        stock.label === 'OUT OF STOCK' 
-                                                            ? 'border border-rose-200/60 text-rose-700' 
-                                                            : 'border border-amber-200/60 text-amber-700'
-                                                    }`}>
-                                                        {stock.label}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-[13px] text-gray-400">—</span>
-                                                )}
-                                            </TableCell>
-
-                                            <TableCell className="px-3 py-5 text-right">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <span className="text-[16px] font-semibold text-gray-900 tabular-nums leading-none tracking-tight">
-                                                        {item.stock_available}
-                                                    </span>
-                                                    <span className="text-[12px] text-gray-500 leading-none">
-                                                        of {item.stock_total} total
-                                                    </span>
-                                                    {/* Progress bar */}
-                                                    <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden mt-0.5">
-                                                        <div 
-                                                            className={`h-full transition-all duration-500 ${
-                                                                stockPercentage === 0 ? 'bg-rose-500' :
-                                                                stockPercentage < 50 ? 'bg-amber-500' :
-                                                                'bg-emerald-500'
-                                                            }`}
-                                                            style={{ width: `${stockPercentage}%` }}
-                                                        />
-                                                    </div>
-                                                    {(item as any).active_borrows?.length > 0 && (
-                                                        <span className="text-[11px] text-blue-600 font-medium mt-0.5 cursor-pointer hover:underline leading-none">
-                                                            {(item as any).active_borrows.length} borrowed
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="pl-3 pr-4 14in:pr-6 py-5 text-right">
-                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                                    <div className="animate-in fade-in slide-in-from-right-2 duration-200" style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}>
-                                                        <QRDialog item={item} />
-                                                    </div>
-                                                    <div className="animate-in fade-in slide-in-from-right-2 duration-200" style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}>
-                                                        <InventoryItemDialog
-                                                            existingItem={item}
-                                                            onSuccess={onRefresh}
-                                                            trigger={
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors">
-                                                                    <Edit2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div className="animate-in fade-in slide-in-from-right-2 duration-200" style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                                                            onClick={() => onDelete(item.id, item.item_name)}
-                                                            disabled={isDeleting}
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })
+                                paginatedItems.map((item, index) => (
+                                    <ExpandableInventoryRow
+                                        key={item.id}
+                                        item={item}
+                                        index={index}
+                                        onDelete={onDelete}
+                                        isDeleting={isDeleting}
+                                        onRefresh={onRefresh}
+                                        onImageClick={(url, name) => setExpandedImage({ url, name })}
+                                        getCategoryIcon={getCategoryIcon}
+                                        getStockDisplay={getStockDisplay}
+                                        getConditionDot={getConditionDot}
+                                        getStockPercentage={getStockPercentage}
+                                    />
+                                ))
                             )}
                         </TableBody>
                     </Table>
