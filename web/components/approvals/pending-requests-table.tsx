@@ -1,14 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Check, X, Clock, User, Building, Package, ExternalLink, MessageSquare } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
-import { approveRequest, rejectRequest, completeHandoff } from '@/app/actions/inventory'
+import { approveRequest, rejectRequest, completeHandoff } from '@/src/features/approvals'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
-
+import { createBrowserClient } from '@supabase/ssr'
 import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface PendingRequestsTableProps {
@@ -18,11 +18,38 @@ interface PendingRequestsTableProps {
 
 export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTableProps) {
     const [processingId, setProcessingId] = useState<number | null>(null)
+    const [staffName, setStaffName] = useState('')
+
+    useEffect(() => {
+        async function loadStaffName() {
+            const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            )
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .single()
+                
+                if (profile?.full_name) {
+                    setStaffName(profile.full_name)
+                }
+            }
+        }
+        loadStaffName()
+    }, [])
 
     const handleApprove = async (id: number) => {
+        if (!staffName) {
+            toast.error('Unable to identify staff member')
+            return
+        }
         setProcessingId(id)
         try {
-            const result = await approveRequest(id)
+            const result = await approveRequest(id, staffName)
             if (result.success) {
                 toast.success('Approved! Item moved to Dispatch Queue.')
                 onRefresh()
@@ -37,9 +64,13 @@ export function PendingRequestsTable({ requests, onRefresh }: PendingRequestsTab
     }
 
     const handleHandoff = async (id: number) => {
+        if (!staffName) {
+            toast.error('Unable to identify staff member')
+            return
+        }
         setProcessingId(id)
         try {
-            const result = await completeHandoff(id)
+            const result = await completeHandoff(id, staffName)
             if (result.success) {
                 toast.success('Handoff Complete. Transaction moved to history.')
                 onRefresh()

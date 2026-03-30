@@ -28,6 +28,9 @@ export interface InventoryItem {
     serial_number?: string
     equipment_type?: string
     storage_location?: StorageLocation
+    brand?: string
+    expiry_date?: string
+    expiry_alert_days?: number
     created_at?: string
     updated_at?: string
 }

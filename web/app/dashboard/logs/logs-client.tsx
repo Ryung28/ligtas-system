@@ -25,7 +25,7 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
         if (initialLogs.length > 0 && logsHook.logs.length === 0) {
             // SWR will use initialLogs until it fetches fresh data
         }
-    }, [])
+    }, [initialLogs, logsHook.logs])
 
     const {
         sessions,
@@ -51,7 +51,6 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
-                        <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
                     </div>
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
                         Borrow/Return Logs
@@ -63,14 +62,16 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
             </div>
 
             {/* Stats Section */}
-            <LogStatsCards stats={stats} />
+            <LogStatsCards 
+                stats={stats} 
+                currentFilter={statusFilter}
+                onFilterChange={setStatusFilter}
+            />
 
             {/* Main Log Section */}
             <Card className="bg-white/90 backdrop-blur-xl shadow-2xl shadow-slate-200/50 border-none rounded-[2.5rem] ring-1 ring-slate-100 overflow-hidden flex flex-col">
                 <CardHeader className="bg-white/50 border-b border-slate-50 p-4 14in:p-5">
                     <LogFilters
-                        filter={statusFilter}
-                        setFilter={setStatusFilter}
                         dateFilter={dateFilter}
                         setDateFilter={setDateFilter}
                         searchQuery={searchQuery}

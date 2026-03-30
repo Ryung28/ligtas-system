@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { LogStats } from '@/lib/types/inventory'
+import { TransactionStatus } from '@/lib/types/inventory'
 import { 
     Clock, 
     Package, 
@@ -8,14 +9,60 @@ import {
     ClipboardList 
 } from 'lucide-react'
 
-export function LogStatsCards({ stats }: { stats: LogStats }) {
+interface LogStatsCardsProps {
+    stats: LogStats
+    currentFilter: TransactionStatus
+    onFilterChange: (filter: TransactionStatus) => void
+}
+
+export function LogStatsCards({ stats, currentFilter, onFilterChange }: LogStatsCardsProps) {
     return (
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-            <StatsCard title="Pending Requests" value={stats.pending} color="amber" label="Requests" icon={Clock} />
-            <StatsCard title="Active Borrows" value={stats.borrowed} color="blue" label="Units" icon={Package} />
-            <StatsCard title="Returned Items" value={stats.returned} color="emerald" label="Units" icon={RefreshCcw} />
-            <StatsCard title="Overdue Items" value={stats.overdue} color="rose" label="Alert" icon={AlertCircle} />
-            <StatsCard title="Total Registry" value={stats.total} color="slate" label="Logged" icon={ClipboardList} />
+            <StatsCard 
+                title="Total Registry" 
+                value={stats.total} 
+                color="slate" 
+                label="Logged" 
+                icon={ClipboardList}
+                isActive={currentFilter === 'all'}
+                onClick={() => onFilterChange('all')}
+            />
+            <StatsCard 
+                title="Pending Requests" 
+                value={stats.pending} 
+                color="amber" 
+                label="Requests" 
+                icon={Clock}
+                isActive={currentFilter === 'pending'}
+                onClick={() => onFilterChange('pending')}
+            />
+            <StatsCard 
+                title="Active Borrows" 
+                value={stats.borrowed} 
+                color="blue" 
+                label="Units" 
+                icon={Package}
+                isActive={currentFilter === 'borrowed'}
+                onClick={() => onFilterChange('borrowed')}
+            />
+            <StatsCard 
+                title="Returned Items" 
+                value={stats.returned} 
+                color="emerald" 
+                label="Units" 
+                icon={RefreshCcw}
+                isActive={currentFilter === 'returned'}
+                onClick={() => onFilterChange('returned')}
+            />
+            <StatsCard 
+                title="Overdue Items" 
+                value={stats.overdue} 
+                color="rose" 
+                label="Alert" 
+                icon={AlertCircle}
+                isActive={currentFilter === 'overdue'}
+                onClick={() => onFilterChange('overdue')}
+            />
         </div>
     )
 }
@@ -25,26 +72,37 @@ function StatsCard({
     value, 
     color = 'slate', 
     label, 
-    icon: Icon 
+    icon: Icon,
+    isActive = false,
+    onClick
 }: { 
     title: string, 
     value: number, 
     color?: string, 
     label: string,
-    icon: any
+    icon: any,
+    isActive?: boolean,
+    onClick?: () => void
 }) {
-    const colorTheme: Record<string, { dot: string, text: string }> = {
-        slate: { dot: 'bg-slate-400', text: 'text-slate-500' },
-        blue: { dot: 'bg-blue-500', text: 'text-blue-500' },
-        emerald: { dot: 'bg-emerald-500', text: 'text-emerald-500' },
-        rose: { dot: 'bg-rose-500', text: 'text-rose-500' },
-        amber: { dot: 'bg-amber-500', text: 'text-amber-500' },
+    const colorTheme: Record<string, { dot: string, text: string, activeBg: string, activeRing: string }> = {
+        slate: { dot: 'bg-slate-400', text: 'text-slate-500', activeBg: 'bg-slate-50', activeRing: 'ring-slate-300' },
+        blue: { dot: 'bg-blue-500', text: 'text-blue-500', activeBg: 'bg-blue-50', activeRing: 'ring-blue-300' },
+        emerald: { dot: 'bg-emerald-500', text: 'text-emerald-500', activeBg: 'bg-emerald-50', activeRing: 'ring-emerald-300' },
+        rose: { dot: 'bg-rose-500', text: 'text-rose-500', activeBg: 'bg-rose-50', activeRing: 'ring-rose-300' },
+        amber: { dot: 'bg-amber-500', text: 'text-amber-500', activeBg: 'bg-amber-50', activeRing: 'ring-amber-300' },
     }
 
     const theme = colorTheme[color] || colorTheme.slate
 
     return (
-        <Card className="relative overflow-hidden bg-white border-none ring-1 ring-zinc-200/60 shadow-sm hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] hover:ring-zinc-300 transition-all duration-300 rounded-2xl group">
+        <Card 
+            onClick={onClick}
+            className={`relative overflow-hidden border-none ring-1 shadow-sm hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] transition-all duration-300 rounded-2xl group cursor-pointer ${
+                isActive 
+                    ? `${theme.activeBg} ${theme.activeRing} ring-2` 
+                    : 'bg-white ring-zinc-200/60 hover:ring-zinc-300'
+            }`}
+        >
             <CardContent className="p-3.5 14in:p-5 flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center mb-1.5">

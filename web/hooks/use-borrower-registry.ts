@@ -1,24 +1,64 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { useBorrowLogs } from '@/hooks/use-borrow-logs'
+import useSWR from 'swr'
+
+interface BorrowerStats {
+    borrower_user_id: string
+    borrower_name: string
+    borrower_email: string | null
+    total_borrows: number
+    active_borrows: number
+    returned_count: number
+    overdue_count: number
+    active_items: number
+    return_rate_percent: number
+    is_verified_user: boolean
+    user_role: string | null
+    user_status: string | null
+}
+
+const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+async function fetchBorrowers() {
+    const { data, error } = await supabase
+        .from('borrower_stats')
+        .select('*')
+        .order('total_borrows', { ascending: false })
+
+    if (error) throw error
+    return data as BorrowerStats[]
+}
 
 export function useBorrowerRegistry() {
-    const { staffTracking, refresh, isLoading, isValidating } = useBorrowLogs()
-    const [registeredStaff, setRegisteredStaff] = useState<Set<string>>(new Set())
     const [lastSync, setLastSync] = useState<Date>(new Date())
-    const [syncProgress, setSyncProgress] = useState(0)
-
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const { data: borrowers = [], error, isLoading, isValidating, mutate } = useSWR(
+        'borrower-stats',
+        fetchBorrowers,
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: true,
+        }
     )
 
-    // Real-time subscription for user_profiles to keep staff list updated
+    // Real-time subscription
     useEffect(() => {
         const channel = supabase
-            .channel('borrower-registry-profiles')
+            .channel('borrower-registry-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'borrow_logs'
+                },
+                () => mutate()
+            )
             .on(
                 'postgres_changes',
                 {
@@ -26,72 +66,56 @@ export function useBorrowerRegistry() {
                     schema: 'public',
                     table: 'user_profiles'
                 },
-                () => {
-                    // Re-fetch staff when profiles change
-                    fetchStaff()
-                    refresh() // Also refresh logs as they might be related
-                }
+                () => mutate()
             )
             .subscribe()
 
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [refresh])
+    }, [mutate])
 
-    // Update last sync time when validation completes
+    // Update last sync time
     useEffect(() => {
         if (!isValidating && !isLoading) {
             setLastSync(new Date())
         }
     }, [isValidating, isLoading])
 
-    // Fetch registered staff to cross-reference
-    async function fetchStaff() {
-        const { data } = await supabase.from('user_profiles').select('full_name, email')
-        if (data) {
-            const names = new Set(data.map(u => u.full_name?.toLowerCase() || u.email.split('@')[0].toLowerCase()))
-            setRegisteredStaff(names)
-        }
+    const stats = {
+        totalBorrowers: borrowers.length,
+        activeBorrowersCount: borrowers.filter(b => b.active_borrows > 0).length,
+        totalInField: borrowers.reduce((acc, b) => acc + b.active_items, 0),
+        staffCount: borrowers.filter(b => b.is_verified_user && b.user_role !== 'viewer').length,
+        guestCount: borrowers.filter(b => !b.is_verified_user || b.user_role === 'viewer').length,
+        verifiedCount: borrowers.filter(b => b.is_verified_user).length,
     }
 
-    useEffect(() => {
-        fetchStaff()
-    }, [])
-
-    // Convert staffTracking Object to Array - Memoized for stability
-    const allBorrowers = useMemo(() => {
-        return Object.entries(staffTracking).map(([name, data]) => {
-            const isStaff = registeredStaff.has(name.toLowerCase())
-            const typedData = data as { count: number, items: any[] }
-            return {
-                name,
-                isStaff,
-                ...typedData
-            }
-        })
-    }, [staffTracking, registeredStaff])
-
-    const stats = useMemo(() => {
-        const totalInField = allBorrowers.reduce((acc, b) => acc + b.count, 0)
-        const activeBorrowersCount = allBorrowers.filter(b => b.count > 0).length
-        const staffCount = allBorrowers.filter(b => b.isStaff).length
-        const guestCount = allBorrowers.filter(b => !b.isStaff).length
-
-        return {
-            totalInField,
-            activeBorrowersCount,
-            staffCount,
-            guestCount
-        }
-    }, [allBorrowers])
-
     return {
-        allBorrowers,
+        borrowers,
         stats,
         isLoading,
         isValidating,
         lastSync,
-        refresh
+        refresh: mutate,
+        error
     }
+}
+
+export async function getBorrowerHistory(borrowerUserId: string) {
+    const { data, error } = await supabase
+        .from('borrow_logs')
+        .select(`
+            *,
+            inventory:inventory_id (
+                item_name,
+                category,
+                image_url
+            )
+        `)
+        .eq('borrower_user_id', borrowerUserId)
+        .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
 }

@@ -24,7 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { addItem } from '@/app/actions/inventory'
+import { addItem } from '@/src/features/catalog'
 
 const CATEGORIES = ['Rescue', 'Medical', 'Comms', 'Vehicles'] as const
 

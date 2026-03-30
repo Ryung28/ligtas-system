@@ -15,9 +15,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Shield, UserCog, Trash2, Mail, Building2, UserPlus, UserMinus, ShieldAlert, ShieldOff, AlertTriangle } from 'lucide-react'
+import { Shield, UserCog, Trash2, Mail, Building2, UserPlus, UserMinus, ShieldAlert, ShieldOff, AlertTriangle, Warehouse } from 'lucide-react'
 import { UserProfile } from '@/hooks/use-user-management'
 import { InviteStaffDialog } from './invite-staff-dialog'
+import { AssignWarehouseDialog } from './assign-warehouse-dialog'
 
 interface StaffManagementCardProps {
     staff: UserProfile[]
@@ -25,9 +26,10 @@ interface StaffManagementCardProps {
     onRemove: (userId: string) => void
     onInvite: (email: string, role: string) => Promise<boolean>
     onRoleUpdate: (userId: string, newRole: 'admin' | 'editor') => void
+    onWarehouseAssign: (userId: string, warehouse: string | null) => Promise<boolean>
 }
 
-export function StaffManagementCard({ staff, isLoading, onRemove, onInvite, onRoleUpdate }: StaffManagementCardProps) {
+export function StaffManagementCard({ staff, isLoading, onRemove, onInvite, onRoleUpdate, onWarehouseAssign }: StaffManagementCardProps) {
     // ── STATE: Safety Interlock ──
     const [pendingAction, setPendingAction] = useState<{ 
         type: 'role_update' | 'remove', 
@@ -144,8 +146,26 @@ export function StaffManagementCard({ staff, isLoading, onRemove, onInvite, onRo
                                                     </span>
                                                 )}
                                             </div>
+                                            {!member.isPending && (
+                                                <div className="mt-1 text-xs">
+                                                    <span className="flex items-center gap-1 text-gray-500">
+                                                        <Warehouse className="h-3 w-3" />
+                                                        <span className="font-medium">
+                                                            {(member as any).assigned_warehouse || (isAdmin ? 'All Warehouses' : 'Not Assigned')}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1">
+                                            {!member.isPending && (
+                                                <AssignWarehouseDialog
+                                                    userId={member.id}
+                                                    currentWarehouse={(member as any).assigned_warehouse || null}
+                                                    userName={member.full_name || member.email.split('@')[0]}
+                                                    onAssign={onWarehouseAssign}
+                                                />
+                                            )}
                                             {isEditor && (
                                                 <Button
                                                     variant="ghost"

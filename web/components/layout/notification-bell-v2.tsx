@@ -43,9 +43,7 @@ export function NotificationBellV2() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  useEffect(() => {
-    if (unreadCount > 0 && !isOpen) playNotification()
-  }, [unreadCount, isOpen, playNotification])
+  // Removed: notification sound on close was annoying
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -103,15 +101,16 @@ export function NotificationBellV2() {
         className="w-full sm:max-w-[440px] p-0 flex flex-col overflow-hidden border-none shadow-none bg-transparent font-dm-sans"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, x: 80, filter: "blur(20px)" }} 
-          animate={{ opacity: 1, scale: 1, x: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="relative w-full h-full rounded-l-[28px] overflow-hidden flex flex-col transform-gpu will-change-[transform,filter]"
+          initial={{ opacity: 0, x: 20 }} 
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className="relative w-full h-full rounded-l-[28px] overflow-hidden flex flex-col"
           style={{ 
-            background: "rgba(240,242,248,0.92)", 
+            background: "rgba(240,242,248,0.95)", 
             backdropFilter: "blur(32px)", 
             border: "1px solid rgba(255,255,255,0.7)",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.8)"
+            boxShadow: "0 32px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.8)",
+            willChange: "transform, opacity"
           }}
         >
           <NotificationHeader 

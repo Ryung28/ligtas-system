@@ -22,6 +22,7 @@ export interface UserProfile {
     role: 'admin' | 'editor' | 'viewer'
     status: UserStatus
     department?: string
+    assigned_warehouse?: string | null
     created_at: string
     approved_at?: string
     approved_by?: string
@@ -203,6 +204,24 @@ export function useUserManagement() {
         return false
     }
 
+    const assignWarehouse = async (userId: string, warehouse: string | null) => {
+        try {
+            const { error } = await supabase
+                .from('user_profiles')
+                .update({ assigned_warehouse: warehouse })
+                .eq('id', userId)
+
+            if (error) throw error
+
+            toast.success(warehouse ? `Warehouse assigned: ${warehouse}` : 'Warehouse assignment removed')
+            await fetchData()
+            return true
+        } catch (err: any) {
+            toast.error('Failed to assign warehouse: ' + err.message)
+            return false
+        }
+    }
+
     // ── REALTIME SUBSCRIPTIONS & EFFECTS ─────────────────────────────────────
 
     useEffect(() => {
@@ -252,5 +271,6 @@ export function useUserManagement() {
         updateUserRole,
         authorizeUser,
         unauthorizeUser,
+        assignWarehouse,
     }
 }

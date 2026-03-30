@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Package, RotateCcw, Calendar, User, History, ArrowUpRight, ArrowDownLeft, Clock, RefreshCcw } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
-import { returnItem } from '@/app/actions/inventory'
+import { returnItem } from '@/src/features/transactions'
 import { toast } from 'sonner'
 import { useState, useEffect, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
@@ -72,7 +72,11 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
         if (!assessingLog) return
         try {
             setProcessingId(assessingLog.id)
-            const result = await returnItem(assessingLog.id, condition, notes)
+            const result = await returnItem(assessingLog.id, {
+                receivedByName: '',
+                returnCondition: condition.toLowerCase() as any,
+                returnNotes: notes
+            })
             if (result.success) {
                 toast.success('Item returned successfully')
                 setAssessingLog(null)
@@ -97,88 +101,101 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
                 setActiveTab('active')
             }
         }}>
-            <SheetContent className="w-full sm:max-w-md border-l border-gray-200 p-0 overflow-hidden flex flex-col bg-white">
-                <SheetHeader className="p-6 bg-blue-600 text-white shadow-lg relative overflow-hidden">
-                    <div className="absolute right-0 top-0 opacity-10 -mr-4 -mt-4">
-                        <History className="h-32 w-32" />
-                    </div>
-                    <div className="flex items-center gap-4 mb-2 relative z-10">
-                        <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center border border-white/30 backdrop-blur-sm shadow-inner">
-                            <User className="h-7 w-7 text-white" />
+            <SheetContent className="w-full sm:max-w-[480px] border-none p-0 overflow-hidden flex flex-col bg-transparent [&>button]:hidden">
+                {/* Floating panel with rounded edges */}
+                <div className="h-full m-4 flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+                    {/* Light header matching app theme */}
+                    <SheetHeader className="p-6 bg-white/50 backdrop-blur-sm border-b border-slate-100">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                                <User className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <SheetTitle className="text-slate-900 text-xl font-bold tracking-tight leading-none mb-1">{userName}</SheetTitle>
+                                <SheetDescription className="text-slate-500 font-medium text-[10px] uppercase tracking-[0.15em]">
+                                    Equipment Audit Profile
+                                </SheetDescription>
+                            </div>
                         </div>
-                        <div>
-                            <SheetTitle className="text-white text-2xl font-heading font-semibold tracking-tight leading-none mb-1">{userName}</SheetTitle>
-                            <SheetDescription className="text-blue-100 font-medium text-[11px] uppercase tracking-[0.15em] opacity-90">
-                                Institutional Audit Profile
-                            </SheetDescription>
+
+                        {/* Segmented Control - light theme */}
+                        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => setActiveTab('active')}
+                                className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'active' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                            >
+                                Active ({activeBorrows.length})
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                            >
+                                History
+                            </button>
                         </div>
-                    </div>
+                    </SheetHeader>
 
-                    {/* Simple Tab Switcher */}
-                    <div className="flex gap-1 bg-blue-700/50 p-1.5 rounded-2xl mt-4 relative z-10">
-                        <button
-                            onClick={() => setActiveTab('active')}
-                            className={`flex-1 py-2 text-[11px] font-semibold uppercase tracking-wider rounded-xl transition-all ${activeTab === 'active' ? 'bg-white text-blue-600 shadow-md' : 'text-blue-100 hover:bg-white/10'}`}
-                        >
-                            Active ({activeBorrows.length})
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('history')}
-                            className={`flex-1 py-2 text-[11px] font-semibold uppercase tracking-wider rounded-xl transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-md' : 'text-blue-100 hover:bg-white/10'}`}
-                        >
-                            History
-                        </button>
-                    </div>
-                </SheetHeader>
-
-                <div className="flex-1 overflow-y-auto">
+                    {/* Content area with light background */}
+                    <div className="flex-1 overflow-y-auto bg-gray-50/50">
                     {activeTab === 'active' ? (
                         <div className="p-0">
                             {!assessingLog ? (
-                                <div className="p-6 space-y-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-1">Equipment in Field</h3>
-                                        <Badge className="bg-orange-50 text-orange-600 border-none font-semibold text-[10px]">Live Audit</Badge>
+                                <div className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">Equipment in Field</h3>
                                     </div>
 
                                     {activeBorrows.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-20 text-center bg-slate-50/50 rounded-[2rem] border border-slate-100">
-                                            <Package className="h-10 w-10 text-slate-200 mb-3" />
-                                            <p className="text-sm text-slate-600 font-semibold tracking-tight">No Items Assigned</p>
-                                            <p className="text-[11px] text-slate-400 mt-1">Everything is safely in storage.</p>
+                                        <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-50/50 rounded-lg border border-slate-200">
+                                            <div className="h-12 w-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center mb-3">
+                                                <Package className="h-6 w-6 text-slate-300" />
+                                            </div>
+                                            <p className="text-sm text-slate-700 font-semibold">No Active Deployments</p>
+                                            <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-medium">All equipment secured</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             {activeBorrows.map((log) => (
-                                                <div key={log.id} className="group relative bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all duration-300 border-l-[3px] border-l-blue-500">
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div>
-                                                            <h4 className="font-semibold text-slate-900 leading-tight tracking-tight text-base mb-2">{log.item_name}</h4>
-                                                            <div className="flex items-center gap-3">
-                                                                <Badge variant="secondary" className="bg-blue-50/80 text-blue-600 hover:bg-blue-50 border-none text-[11px] font-semibold py-0.5 px-3 rounded-lg">
-                                                                    {log.quantity} Units
-                                                                </Badge>
-                                                                <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
-                                                                    <Clock className="h-3.5 w-3.5 text-slate-300" />
-                                                                    {new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                <div key={log.id} className="group relative bg-gradient-to-br from-white to-slate-50/30 rounded-lg border border-slate-200 ring-1 ring-slate-100 p-3 hover:from-slate-50 hover:to-white hover:border-blue-300 hover:shadow-sm transition-all duration-200">
+                                                    {/* Subtle left border accent - 2px */}
+                                                    <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500 rounded-l-lg" />
+                                                    
+                                                    <div className="pl-3">
+                                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                {/* Status dot - 3px for visibility */}
+                                                                <div className="h-[3px] w-[3px] rounded-full bg-orange-500 flex-shrink-0 mt-1.5" />
+                                                                <h4 className="font-semibold text-slate-900 text-sm leading-tight group-hover:text-blue-600 transition-colors">{log.item_name}</h4>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded">
+                                                                <Package className="h-3 w-3 text-slate-500" />
+                                                                <span className="text-[11px] text-slate-700 font-medium tabular-nums">{log.quantity}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded">
+                                                                <Clock className="h-3 w-3 text-slate-500" />
+                                                                <span className="text-[11px] text-slate-600 font-medium">
+                                                                    {new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="w-full h-11 rounded-xl border-slate-100 text-[11px] font-bold uppercase tracking-[0.1em] text-blue-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-100 transition-all gap-2"
-                                                        onClick={() => {
-                                                            setAssessingLog(log)
-                                                            setCondition('Good')
-                                                            setNotes('')
-                                                        }}
-                                                    >
-                                                        <RotateCcw className="h-3.5 w-3.5" />
-                                                        Verify Return
-                                                    </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="w-full h-9 rounded border-slate-300 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 hover:shadow-sm text-slate-700 text-[11px] font-semibold uppercase tracking-wide transition-all gap-2"
+                                                            onClick={() => {
+                                                                setAssessingLog(log)
+                                                                setCondition('Good')
+                                                                setNotes('')
+                                                            }}
+                                                        >
+                                                            <RotateCcw className="h-3.5 w-3.5" />
+                                                            Process Return
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -243,54 +260,63 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
                             )}
                         </div>
                     ) : (
-                        <div className="p-6 space-y-5 animate-in fade-in duration-500">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Activity Timeline</h3>
+                        <div className="p-4 space-y-3">
+                            <div className="flex items-center justify-between mb-1">
+                                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">Activity Timeline</h3>
                                 <button
                                     onClick={fetchHistory}
                                     disabled={isHistoryLoading}
-                                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                                    className="p-1.5 hover:bg-slate-100 rounded transition-colors text-slate-400 hover:text-slate-600"
                                 >
                                     <RefreshCcw className={`h-3.5 w-3.5 ${isHistoryLoading ? 'animate-spin text-blue-600' : ''}`} />
                                 </button>
                             </div>
 
                             {isHistoryLoading && historyLogs.length === 0 ? (
-                                <div className="space-y-4">
+                                <div className="space-y-2">
                                     {[1, 2, 3, 4].map(i => (
-                                        <div key={i} className="h-24 bg-slate-50 rounded-3xl animate-pulse" />
+                                        <div key={i} className="h-16 bg-slate-50 rounded-lg animate-pulse border border-slate-200" />
                                     ))}
                                 </div>
                             ) : historyLogs.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-24 text-center">
-                                    <div className="h-16 w-16 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-4">
-                                        <History className="h-8 w-8 text-slate-200" />
+                                <div className="flex flex-col items-center justify-center py-20 text-center">
+                                    <div className="h-12 w-12 bg-slate-50 rounded-lg flex items-center justify-center mb-3 border border-slate-200">
+                                        <History className="h-6 w-6 text-slate-300" />
                                     </div>
-                                    <p className="text-sm text-slate-500 font-semibold tracking-tight">Empty Registry</p>
-                                    <p className="text-[11px] text-slate-400 mt-1 uppercase tracking-wider">No history recorded yet.</p>
+                                    <p className="text-sm text-slate-700 font-semibold">Empty Registry</p>
+                                    <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-medium">No history recorded</p>
                                 </div>
                             ) : (
-                                <div className="space-y-4 relative">
+                                <div className="space-y-2">
                                     {historyLogs.map((log) => (
-                                        <div key={log.id} className="relative flex items-center justify-between bg-white border border-slate-100 p-5 rounded-[1.5rem] shadow-sm hover:shadow-md transition-all group overflow-hidden">
-                                            <div className="flex items-center gap-4 relative z-10">
-                                                <div className={`p-2.5 rounded-[1rem] border ${log.status === 'borrowed' ? 'bg-orange-50/50 border-orange-100 text-orange-500' : 'bg-emerald-50/50 border-emerald-100 text-emerald-500'}`}>
-                                                    {log.status === 'borrowed' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight text-sm mb-1">{log.item_name}</h4>
-                                                    <div className="flex items-center gap-2.5">
-                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${log.status === 'borrowed' ? 'text-orange-500' : 'text-emerald-500'}`}>
-                                                            {log.status === 'borrowed' ? 'Dispatched' : 'Accounted'}
-                                                        </span>
-                                                        <span className="h-1 w-1 bg-slate-200 rounded-full" />
-                                                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{log.quantity} Units</span>
-                                                    </div>
-                                                </div>
+                                        <div key={log.id} className="flex items-start gap-3 bg-gradient-to-br from-white to-slate-50/30 border border-slate-200 ring-1 ring-slate-100 p-3 rounded-lg hover:from-slate-50 hover:to-white hover:border-slate-300 hover:shadow-sm transition-all group">
+                                            {/* Status icon */}
+                                            <div className={`flex-shrink-0 h-8 w-8 rounded flex items-center justify-center border ${
+                                                log.status === 'borrowed' 
+                                                    ? 'bg-orange-50 border-orange-200 text-orange-600' 
+                                                    : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                                            }`}>
+                                                {log.status === 'borrowed' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
                                             </div>
-                                            <div className="text-right relative z-10">
-                                                <p className="text-[10px] text-slate-900 font-bold mb-0.5">{new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
-                                                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-tight">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                            
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-2 mb-1.5">
+                                                    <h4 className="font-semibold text-slate-900 text-sm leading-tight group-hover:text-blue-600 transition-colors">{log.item_name}</h4>
+                                                    <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">
+                                                        {new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-1.5 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wide ${
+                                                        log.status === 'borrowed' 
+                                                            ? 'bg-orange-50 border-orange-200 text-orange-700' 
+                                                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                                    }`}>
+                                                        {log.status === 'borrowed' ? 'Deployed' : 'Returned'}
+                                                    </span>
+                                                    <span className="text-[11px] text-slate-600 font-medium tabular-nums">{log.quantity} units</span>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -298,10 +324,12 @@ export function UserBorrowTracker({ userName, activeBorrows, open, onOpenChange,
                             )}
                         </div>
                     )}
-                </div>
+                    </div>
 
-                <div className="p-6 bg-slate-50 border-t border-slate-100">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] text-center">Institutional Audit Standard</p>
+                    {/* Light footer matching theme */}
+                    <div className="p-4 bg-white border-t border-slate-100">
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.15em] text-center">CDRRMO Equipment Registry</p>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>

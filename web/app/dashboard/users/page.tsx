@@ -24,7 +24,8 @@ export default function AccessControlPage() {
         authorizeUser,
         unauthorizeUser,
         authorizedEmails,
-        updateUserRole
+        updateUserRole,
+        assignWarehouse
     } = useUserManagement()
 
     useEffect(() => {
@@ -117,6 +118,7 @@ export default function AccessControlPage() {
                     onRemove={suspendUser}
                     onInvite={authorizeUser}
                     onRoleUpdate={updateUserRole}
+                    onWarehouseAssign={assignWarehouse}
                 />
 
                 {/* Right Column: Borrower Management (Tabs: Pending & Active) */}

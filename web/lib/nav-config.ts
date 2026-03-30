@@ -13,7 +13,7 @@ export interface NavItem {
     label: string
     href: string
     icon: LucideIcon
-    category: 'main' | 'logistics' | 'personnel'
+    category: 'main' | 'operations' | 'reports' | 'communication'
 }
 
 /**
@@ -28,46 +28,46 @@ export const navItems: NavItem[] = [
         category: 'main',
     },
     {
+        label: 'Messages',
+        href: '/dashboard/chat',
+        icon: MessageSquare,
+        category: 'communication',
+    },
+    {
         label: 'Inventory',
         href: '/dashboard/inventory',
         icon: Package,
-        category: 'logistics',
+        category: 'operations',
     },
     {
         label: 'Pending Requests',
         href: '/dashboard/approvals',
         icon: ClipboardList,
-        category: 'logistics',
+        category: 'operations',
     },
     {
         label: 'Borrow/Return Logs',
         href: '/dashboard/logs',
         icon: ClipboardList,
-        category: 'logistics',
+        category: 'operations',
     },
     {
         label: 'Print Reports',
         href: '/dashboard/reports',
         icon: Printer,
-        category: 'logistics',
+        category: 'reports',
     },
     {
         label: 'Borrower Registry',
         href: '/dashboard/borrowers',
         icon: Users,
-        category: 'personnel',
+        category: 'reports',
     },
     {
         label: 'System Users',
         href: '/dashboard/users',
         icon: Users,
-        category: 'personnel',
-    },
-    {
-        label: 'Messages',
-        href: '/dashboard/chat',
-        icon: MessageSquare,
-        category: 'main',
+        category: 'reports',
     },
 ] as const
 

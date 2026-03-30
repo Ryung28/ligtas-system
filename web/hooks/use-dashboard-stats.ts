@@ -2,14 +2,9 @@
 
 import useSWR from 'swr'
 import { useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, type InventoryItem } from '@/lib/supabase'
 
-export interface InventoryItem {
-    item_name: string
-    stock_available: number
-    category?: string
-    status?: string
-}
+import { getInventory } from '@/lib/queries/inventory'
 
 export interface DashboardStats {
     totalItems: number
@@ -27,24 +22,20 @@ export interface DashboardData {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-    'Rescue': '#f59e0b',    // Amber
-    'Medical': '#ef4444',   // Red
-    'Comms': '#8b5cf6',     // Violet
-    'Vehicles': '#14b8a6',  // Teal
-    'Office': '#64748b',    // Slate
-    'Tools': '#3b82f6',     // Blue
-    'PPE': '#f97316',       // Orange
-    'Logistics': '#6366f1', // Indigo
+    'Rescue': '#f59e0b',
+    'Medical': '#ef4444',
+    'Comms': '#8b5cf6',
+    'Vehicles': '#14b8a6',
+    'Office': '#64748b',
+    'Tools': '#3b82f6',
+    'PPE': '#f97316',
+    'Logistics': '#6366f1',
     'Default': '#94a3b8'
 }
 
 export const fetchDashboardData = async (): Promise<DashboardData> => {
-    // Fetch inventory
-    const { data: inventoryItems, error: inventoryError } = await supabase
-        .from('inventory')
-        .select('item_name, stock_available, category, status')
-
-    if (inventoryError) throw inventoryError
+    // Use centralized query
+    const inventoryItems = await getInventory()
 
     // Fetch borrow logs for active borrows count (Sum of quantities in field)
     const { data: logs, error: logsError } = await supabase
@@ -84,8 +75,8 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
 
 export function useDashboardStats() {
     const { data, error, isLoading, mutate: refresh } = useSWR('dashboard_stats', fetchDashboardData, {
-        revalidateOnFocus: false,
-        dedupingInterval: 30000,
+        revalidateOnFocus: true, // Emergency Duty: Always fresh on return
+        dedupingInterval: 3000, 
     })
 
     const topItemsData = useMemo(() => {
@@ -116,13 +107,16 @@ export function useDashboardStats() {
             .slice(0, 5)
     }, [data?.inventory])
 
-    // Real-time subscriptions
+    // Real-time updates subscription
     useEffect(() => {
         // Subscribe to inventory changes
         const inventoryChannel = supabase
             .channel('dashboard-inventory-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
-                refresh()
+                refresh(undefined, { revalidate: true })
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, () => {
+                refresh(undefined, { revalidate: true })
             })
             .subscribe()
 
@@ -130,7 +124,7 @@ export function useDashboardStats() {
         const logsChannel = supabase
             .channel('dashboard-logs-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
-                refresh()
+                refresh(undefined, { revalidate: true })
             })
             .subscribe()
 

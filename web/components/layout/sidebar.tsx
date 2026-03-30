@@ -3,15 +3,13 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, ChevronRight } from 'lucide-react' // Modified: Shield removed, ChevronRight added
+import { LogOut } from 'lucide-react'
 import { navItems, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
-import { signOut, getCurrentUser } from '@/lib/auth'
+import { signOut } from '@/lib/auth'
 import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { NotificationBellV2 } from './notification-bell-v2'
 import { TACTICAL_THEME } from '@/lib/theme-config'
 import { preload } from 'swr'
 
@@ -23,7 +21,6 @@ interface SidebarProps {
 
 export function Sidebar({ className, onNavigate, user }: SidebarProps) {
     const pathname = usePathname()
-    const router = useRouter()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
 
     useEffect(() => {
@@ -71,26 +68,37 @@ export function Sidebar({ className, onNavigate, user }: SidebarProps) {
 
     return (
         <div className={cn('flex h-full flex-col bg-white/95 backdrop-blur-xl border-r border-slate-100', className)}>
-            {/* Logo/Header */}
-            <div className="flex flex-col gap-2 px-6 py-8 border-b border-slate-50 items-center">
-                <div className="relative h-20 w-20 shadow-sm rounded-full bg-white p-1 border border-slate-100 mb-2">
+            {/* Logo/Header - Horizontal Tactical Layout */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
+                {/* Logo */}
+                <div className="relative h-14 w-14 flex-shrink-0 rounded-full bg-white p-0.5 border border-slate-100 shadow-sm">
                     <Image
                         src="/oro-cervo.png"
                         alt="CDRRMO Logo"
                         fill
-                        className="object-contain p-1.5"
+                        className="object-contain p-0.5"
                         priority
                     />
                 </div>
-                <div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.25em] text-center opacity-80">CDRRMO SYSTEM</p>
+                
+                {/* Vertical Accent Bar */}
+                <div className="h-12 w-0.5 bg-gradient-to-b from-red-500 via-yellow-500 to-red-500 rounded-full" />
+                
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-sm font-bold text-slate-900 tracking-tight leading-tight">
+                        CDRRMO
+                    </h2>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider leading-tight">
+                        Ligtas System
+                    </p>
                 </div>
             </div>
 
             {/* Navigation Links */}
-            <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto custom-scrollbar">
-                {/* CORE SECTION */}
-                <div className="space-y-1.5 pt-2">
+            <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+                {/* MAIN SECTION */}
+                <div className="space-y-1.5">
                     {navItems.filter(i => i.category === 'main').map((item) => (
                         <SidebarItem
                             key={item.href}
@@ -101,35 +109,61 @@ export function Sidebar({ className, onNavigate, user }: SidebarProps) {
                     ))}
                 </div>
 
-                {/* LOGISTICS SECTION */}
-                <div className="space-y-1.5">
-                    {navItems.filter(i => i.category === 'logistics').map((item) => (
-                        <SidebarItem
-                            key={item.href}
-                            item={item}
-                            active={isActive(item.href)}
-                            onNavigate={onNavigate}
-                        />
-                    ))}
+                {/* COMMUNICATION SECTION */}
+                <div className="pt-4">
+                    <div className="px-3 mb-2">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Communication</p>
+                    </div>
+                    <div className="space-y-1.5">
+                        {navItems.filter(i => i.category === 'communication').map((item) => (
+                            <SidebarItem
+                                key={item.href}
+                                item={item}
+                                active={isActive(item.href)}
+                                onNavigate={onNavigate}
+                            />
+                        ))}
+                    </div>
                 </div>
 
-                {/* PERSONNEL SECTION (Admin & Managers) */}
-                {(user?.role === 'admin' || user?.role === 'editor') && (
+                {/* OPERATIONS SECTION */}
+                <div className="pt-4">
+                    <div className="px-3 mb-2">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Operations</p>
+                    </div>
                     <div className="space-y-1.5">
+                        {navItems.filter(i => i.category === 'operations').map((item) => (
+                            <SidebarItem
+                                key={item.href}
+                                item={item}
+                                active={isActive(item.href)}
+                                onNavigate={onNavigate}
+                            />
+                        ))}
+                    </div>
+                </div>
 
-                        {navItems.filter(i => i.category === 'personnel').map((item) => {
-                            // 🔒 ROLE GUARD: System Users is Admin-only
-                            if (item.label === 'System Users' && user?.role !== 'admin') return null;
+                {/* REPORTS & ADMIN SECTION */}
+                {(user?.role === 'admin' || user?.role === 'editor') && (
+                    <div className="pt-4">
+                        <div className="px-3 mb-2">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Reports & Admin</p>
+                        </div>
+                        <div className="space-y-1.5">
+                            {navItems.filter(i => i.category === 'reports').map((item) => {
+                                // 🔒 ROLE GUARD: System Users is Admin-only
+                                if (item.label === 'System Users' && user?.role !== 'admin') return null;
 
-                            return (
-                                <SidebarItem
-                                    key={item.href}
-                                    item={item}
-                                    active={isActive(item.href)}
-                                    onNavigate={onNavigate}
-                                />
-                            );
-                        })}
+                                return (
+                                    <SidebarItem
+                                        key={item.href}
+                                        item={item}
+                                        active={isActive(item.href)}
+                                        onNavigate={onNavigate}
+                                    />
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </nav>

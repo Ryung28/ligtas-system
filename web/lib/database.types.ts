@@ -128,6 +128,8 @@ export type Database = {
       borrow_logs: {
         Row: {
           actual_return_date: string | null
+          approved_at: string | null
+          approved_by: string | null
           borrow_date: string
           borrowed_by: string | null
           borrower_contact: string | null
@@ -137,6 +139,8 @@ export type Database = {
           borrower_user_id: string | null
           created_at: string | null
           expected_return_date: string | null
+          handed_at: string | null
+          handed_by: string | null
           id: number
           inventory_id: number | null
           inventory_item_id: string | null
@@ -146,6 +150,9 @@ export type Database = {
           purpose: string | null
           quantity: number
           quantity_borrowed: number | null
+          received_by_name: string | null
+          received_by_user_id: string | null
+          return_condition: string | null
           return_notes: string | null
           returned_by: string | null
           status: string
@@ -154,6 +161,8 @@ export type Database = {
         }
         Insert: {
           actual_return_date?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           borrow_date?: string
           borrowed_by?: string | null
           borrower_contact?: string | null
@@ -163,6 +172,8 @@ export type Database = {
           borrower_user_id?: string | null
           created_at?: string | null
           expected_return_date?: string | null
+          handed_at?: string | null
+          handed_by?: string | null
           id?: number
           inventory_id?: number | null
           inventory_item_id?: string | null
@@ -172,6 +183,9 @@ export type Database = {
           purpose?: string | null
           quantity: number
           quantity_borrowed?: number | null
+          received_by_name?: string | null
+          received_by_user_id?: string | null
+          return_condition?: string | null
           return_notes?: string | null
           returned_by?: string | null
           status?: string
@@ -180,6 +194,8 @@ export type Database = {
         }
         Update: {
           actual_return_date?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           borrow_date?: string
           borrowed_by?: string | null
           borrower_contact?: string | null
@@ -189,6 +205,8 @@ export type Database = {
           borrower_user_id?: string | null
           created_at?: string | null
           expected_return_date?: string | null
+          handed_at?: string | null
+          handed_by?: string | null
           id?: number
           inventory_id?: number | null
           inventory_item_id?: string | null
@@ -198,6 +216,9 @@ export type Database = {
           purpose?: string | null
           quantity?: number
           quantity_borrowed?: number | null
+          received_by_name?: string | null
+          received_by_user_id?: string | null
+          return_condition?: string | null
           return_notes?: string | null
           returned_by?: string | null
           status?: string
@@ -224,6 +245,13 @@ export type Database = {
             columns: ["inventory_id"]
             isOneToOne: false
             referencedRelation: "inventory_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "borrow_logs_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items_with_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -375,54 +403,107 @@ export type Database = {
       }
       inventory: {
         Row: {
+          base_name: string | null
+          brand: string | null
           category: string
           created_at: string | null
           deleted_at: string | null
           description: string | null
           equipment_type: string | null
+          expiry_alert_days: number | null
+          expiry_date: string | null
           id: number
           image_url: string | null
           item_name: string
           item_type: string | null
+          low_stock_threshold: number | null
+          parent_id: number | null
           serial_number: string | null
           status: string | null
           stock_available: number
           stock_total: number
+          storage_location: string | null
           updated_at: string | null
+          variant_label: string | null
         }
         Insert: {
+          base_name?: string | null
+          brand?: string | null
           category: string
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
           equipment_type?: string | null
+          expiry_alert_days?: number | null
+          expiry_date?: string | null
           id?: number
           image_url?: string | null
           item_name: string
           item_type?: string | null
+          low_stock_threshold?: number | null
+          parent_id?: number | null
           serial_number?: string | null
           status?: string | null
           stock_available?: number
           stock_total?: number
+          storage_location?: string | null
           updated_at?: string | null
+          variant_label?: string | null
         }
         Update: {
+          base_name?: string | null
+          brand?: string | null
           category?: string
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
           equipment_type?: string | null
+          expiry_alert_days?: number | null
+          expiry_date?: string | null
           id?: number
           image_url?: string | null
           item_name?: string
           item_type?: string | null
+          low_stock_threshold?: number | null
+          parent_id?: number | null
           serial_number?: string | null
           status?: string | null
           stock_available?: number
           stock_total?: number
+          storage_location?: string | null
           updated_at?: string | null
+          variant_label?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items_with_variants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_reads: {
         Row: {
@@ -449,6 +530,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      storage_locations: {
+        Row: {
+          created_at: string | null
+          id: number
+          location_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          location_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          location_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       system_notifications: {
         Row: {
@@ -607,11 +709,14 @@ export type Database = {
       }
       inventory_availability: {
         Row: {
+          brand: string | null
           category: string | null
           created_at: string | null
           deleted_at: string | null
           description: string | null
           equipment_type: string | null
+          expiry_alert_days: number | null
+          expiry_date: string | null
           id: number | null
           image_url: string | null
           item_name: string | null
@@ -623,9 +728,120 @@ export type Database = {
           stock_pending: number | null
           stock_total: number | null
           stock_truly_available: number | null
+          storage_location: string | null
           updated_at: string | null
         }
         Relationships: []
+      }
+      inventory_items_with_variants: {
+        Row: {
+          base_name: string | null
+          brand: string | null
+          category: string | null
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          equipment_type: string | null
+          expiry_alert_days: number | null
+          expiry_date: string | null
+          full_name: string | null
+          id: number | null
+          image_url: string | null
+          item_name: string | null
+          item_type: string | null
+          parent_id: number | null
+          serial_number: string | null
+          status: string | null
+          stock_available: number | null
+          stock_total: number | null
+          storage_location: string | null
+          total_stock: number | null
+          updated_at: string | null
+          variant_count: number | null
+          variant_label: string | null
+        }
+        Insert: {
+          base_name?: string | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          equipment_type?: string | null
+          expiry_alert_days?: number | null
+          expiry_date?: string | null
+          full_name?: never
+          id?: number | null
+          image_url?: string | null
+          item_name?: string | null
+          item_type?: string | null
+          parent_id?: number | null
+          serial_number?: string | null
+          status?: string | null
+          stock_available?: number | null
+          stock_total?: number | null
+          storage_location?: string | null
+          total_stock?: never
+          updated_at?: string | null
+          variant_count?: never
+          variant_label?: string | null
+        }
+        Update: {
+          base_name?: string | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          equipment_type?: string | null
+          expiry_alert_days?: number | null
+          expiry_date?: string | null
+          full_name?: never
+          id?: number | null
+          image_url?: string | null
+          item_name?: string | null
+          item_type?: string | null
+          parent_id?: number | null
+          serial_number?: string | null
+          status?: string | null
+          stock_available?: number | null
+          stock_total?: number | null
+          storage_location?: string | null
+          total_stock?: never
+          updated_at?: string | null
+          variant_count?: never
+          variant_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_inventory_parent"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items_with_variants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -633,7 +849,7 @@ export type Database = {
         Args: { target_role?: string; target_user_id: string }
         Returns: boolean
       }
-      check_overdue_and_notify: { Args: Record<PropertyKey, never>; Returns: undefined }
+      check_overdue_and_notify: { Args: never; Returns: undefined }
       get_active_chat_inbox_v2: {
         Args: { staff_uuid: string }
         Returns: {
@@ -650,7 +866,11 @@ export type Database = {
           chat_unread_count: number
         }[]
       }
-      get_my_role: { Args: Record<PropertyKey, never>; Returns: string }
+      get_full_item_name: {
+        Args: { item_row: Database["public"]["Tables"]["inventory"]["Row"] }
+        Returns: string
+      }
+      get_my_role: { Args: never; Returns: string }
       get_user_inbox: {
         Args: { p_limit?: number }
         Returns: {
@@ -672,9 +892,9 @@ export type Database = {
         Args: { count: number; item_id: number }
         Returns: undefined
       }
-      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
-      is_admin_or_editor: { Args: Record<PropertyKey, never>; Returns: boolean }
-      is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
+      is_admin_or_editor: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
       reject_user: { Args: { target_user_id: string }; Returns: boolean }
       update_user_role: {
         Args: { new_role: string; target_user_id: string }

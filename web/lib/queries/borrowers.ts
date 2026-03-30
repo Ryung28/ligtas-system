@@ -2,76 +2,75 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 
 /**
  * Server-side borrower data fetcher
- * Fetches user profiles and active borrow logs
+ * Fetches borrower statistics from borrower_stats view
  */
 export async function getInitialBorrowers() {
     try {
         const supabase = await createSupabaseServer()
 
-        // Fetch registered staff
-        const { data: profiles } = await supabase
-            .from('user_profiles')
-            .select('full_name, email')
-
-        const registeredStaff = new Set(
-            (profiles || []).map(u => 
-                u.full_name?.toLowerCase() || u.email.split('@')[0].toLowerCase()
-            )
-        )
-
-        // Fetch active borrow logs
-        const { data: logs, error } = await supabase
-            .from('borrow_logs')
+        // Fetch borrower stats from view
+        const { data: borrowers, error } = await supabase
+            .from('borrower_stats')
             .select('*')
-            .eq('status', 'borrowed')
-            .order('created_at', { ascending: false })
+            .order('total_borrows', { ascending: false })
 
         if (error) throw error
 
-        // Group by borrower
-        const staffTracking: Record<string, { count: number, items: any[] }> = {}
-        
-        ;(logs || []).forEach(log => {
-            if (!staffTracking[log.borrower_name]) {
-                staffTracking[log.borrower_name] = { count: 0, items: [] }
-            }
-            staffTracking[log.borrower_name].count += log.quantity
-            staffTracking[log.borrower_name].items.push(log)
-        })
-
-        // Convert to array with staff flag
-        const allBorrowers = Object.entries(staffTracking).map(([name, data]) => ({
-            name,
-            isStaff: registeredStaff.has(name.toLowerCase()),
-            count: data.count,
-            items: data.items
-        }))
-
-        // Calculate stats
-        const totalInField = allBorrowers.reduce((acc, b) => acc + b.count, 0)
-        const activeBorrowersCount = allBorrowers.filter(b => b.count > 0).length
-        const staffCount = allBorrowers.filter(b => b.isStaff).length
-        const guestCount = allBorrowers.filter(b => !b.isStaff).length
+        // Calculate aggregate stats
+        const stats = {
+            totalBorrowers: borrowers?.length || 0,
+            activeBorrowersCount: borrowers?.filter(b => b.active_borrows > 0).length || 0,
+            totalInField: borrowers?.reduce((acc, b) => acc + (b.active_items || 0), 0) || 0,
+            staffCount: borrowers?.filter(b => b.is_verified_user && b.user_role !== 'viewer').length || 0,
+            guestCount: borrowers?.filter(b => !b.is_verified_user || b.user_role === 'viewer').length || 0,
+            verifiedCount: borrowers?.filter(b => b.is_verified_user).length || 0,
+        }
 
         return {
-            allBorrowers,
-            stats: {
-                totalInField,
-                activeBorrowersCount,
-                staffCount,
-                guestCount
-            }
+            borrowers: borrowers || [],
+            stats
         }
     } catch (error) {
         console.error('Failed to fetch borrowers:', error)
         return {
-            allBorrowers: [],
+            borrowers: [],
             stats: {
-                totalInField: 0,
+                totalBorrowers: 0,
                 activeBorrowersCount: 0,
+                totalInField: 0,
                 staffCount: 0,
-                guestCount: 0
+                guestCount: 0,
+                verifiedCount: 0,
             }
         }
+    }
+}
+
+/**
+ * Fetch full borrowing history for a specific borrower
+ */
+export async function getBorrowerHistory(borrowerUserId: string) {
+    try {
+        const supabase = await createSupabaseServer()
+
+        const { data: logs, error } = await supabase
+            .from('borrow_logs')
+            .select(`
+                *,
+                inventory:inventory_id (
+                    item_name,
+                    category,
+                    image_url
+                )
+            `)
+            .eq('borrower_user_id', borrowerUserId)
+            .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        return logs || []
+    } catch (error) {
+        console.error('Failed to fetch borrower history:', error)
+        return []
     }
 }

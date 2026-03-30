@@ -1,17 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import Image from 'next/image'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-    Edit2, Trash2, Maximize2, Package, Clock, ChevronDown, ChevronUp, User, Calendar, Warehouse
+    Edit2, Trash2, Maximize2, Package, Clock, ChevronDown, User, Calendar, AlertTriangle
 } from 'lucide-react'
-import { InventoryItem, STORAGE_LOCATION_LABELS } from '@/lib/supabase'
-import { InventoryItemDialog } from './inventory-item-dialog'
+import { InventoryItem } from '@/lib/supabase'
+import { InventoryItemDialog } from './inventory-dialog'
 import { QRDialog } from './qr-dialog'
-import { getPendingRequestsByItemId, PendingRequest } from '@/app/actions/inventory'
+import { EditableStorageLocation } from './editable-storage-location'
+import { getPendingRequestsByItemId, type PendingRequest } from '@/src/features/transactions'
 import { formatDistanceToNow } from 'date-fns'
+import { 
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 
 interface ExpandableInventoryRowProps {
     item: InventoryItem
@@ -24,6 +31,9 @@ interface ExpandableInventoryRowProps {
     getStockDisplay: (item: InventoryItem) => { label: string }
     getConditionDot: (status: string) => { color: string; label: string }
     getStockPercentage: (available: number, total: number) => number
+    isSelected?: boolean
+    onSelect?: () => void
+    showCheckbox?: boolean
 }
 
 export function ExpandableInventoryRow({
@@ -37,8 +47,11 @@ export function ExpandableInventoryRow({
     getStockDisplay,
     getConditionDot,
     getStockPercentage,
+    isSelected = false,
+    onSelect,
+    showCheckbox = false,
 }: ExpandableInventoryRowProps) {
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
     const [isLoadingPending, setIsLoadingPending] = useState(false)
 
@@ -51,24 +64,33 @@ export function ExpandableInventoryRow({
     const pendingCount = (item as any).stock_pending || 0
     const hasPendingRequests = pendingCount > 0
 
-    // Fetch pending requests when expanded
-    useEffect(() => {
-        if (isExpanded && hasPendingRequests && pendingRequests.length === 0) {
+    const getExpiryStatus = () => {
+        const expiryDate = (item as any).expiry_date
+        if (!expiryDate) return null
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const [year, month, day] = expiryDate.split('-').map(Number)
+        const expiry = new Date(year, month - 1, day)
+        expiry.setHours(0, 0, 0, 0)
+        const daysUntilExpiry = Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysUntilExpiry < 0) return { status: 'expired', days: Math.abs(daysUntilExpiry), color: 'bg-rose-50 border-rose-200 text-rose-700' }
+        else if (daysUntilExpiry <= 7) return { status: 'critical', days: daysUntilExpiry, color: 'bg-red-50 border-red-200 text-red-700' }
+        else if (daysUntilExpiry <= 30) return { status: 'warning', days: daysUntilExpiry, color: 'bg-amber-50 border-amber-200 text-amber-700' }
+        else return { status: 'good', days: daysUntilExpiry, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' }
+    }
+    const expiryStatus = getExpiryStatus()
+
+    const fetchPending = async () => {
+        if (hasPendingRequests && pendingRequests.length === 0) {
             setIsLoadingPending(true)
-            getPendingRequestsByItemId(item.id)
-                .then((result) => {
-                    if (result.success && result.data) {
-                        setPendingRequests(result.data)
-                    }
-                })
-                .catch((error) => {
-                    console.error('Failed to load pending requests:', error)
-                })
-                .finally(() => {
-                    setIsLoadingPending(false)
-                })
+            try {
+                const result = await getPendingRequestsByItemId(item.id)
+                if (result.success && result.data) setPendingRequests(result.data)
+            } finally {
+                setIsLoadingPending(false)
+            }
         }
-    }, [isExpanded, item.id, hasPendingRequests, pendingRequests.length])
+    }
 
     return (
         <>
@@ -76,6 +98,17 @@ export function ExpandableInventoryRow({
                 className="hover:bg-gray-50/50 group transition-all duration-200 border-b border-gray-100 odd:bg-gray-50/20 animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'backwards' }}
             >
+                {showCheckbox && (
+                    <TableCell className="pl-4 14in:pl-6 pr-3 py-5 w-12">
+                        <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={onSelect}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                    </TableCell>
+                )}
                 <TableCell className="pl-4 14in:pl-6 pr-3 py-5">
                     <div className="flex items-center gap-3">
                         <div
@@ -84,94 +117,140 @@ export function ExpandableInventoryRow({
                         >
                             {item.image_url ? (
                                 <>
-                                    <img src={item.image_url} alt={item.item_name} className="w-full h-full object-contain p-2" />
+                                    <Image
+                                        src={item.image_url}
+                                        alt={item.item_name}
+                                        fill
+                                        unoptimized
+                                        className="object-contain p-2"
+                                    />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                                         <Maximize2 className="h-4 w-4 text-white" />
                                     </div>
                                 </>
                             ) : (
-                                <Package className="h-6 w-6 text-gray-300" />
+                                <div className="absolute inset-0 bg-slate-50 flex items-center justify-center">
+                                    <Package className="h-7 w-7 text-slate-200" strokeWidth={1} />
+                                </div>
                             )}
                         </div>
                         <div className="flex flex-col min-w-0">
                             <span className="text-[15px] font-semibold text-gray-900 truncate leading-tight tracking-tight">{item.item_name}</span>
-                            {item.description && (
-                                <span className="text-[13px] text-gray-500 truncate max-w-[200px] mt-1 leading-tight">
-                                    {item.description}
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <CategoryIcon className="h-3 w-3 text-gray-400" />
+                                <span className="text-[12px] text-gray-500 truncate font-medium">
+                                    {item.category}
                                 </span>
-                            )}
+                            </div>
                         </div>
-                    </div>
-                </TableCell>
-
-                <TableCell className="px-3 py-5">
-                    <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-md bg-gray-50 flex items-center justify-center flex-shrink-0">
-                            <CategoryIcon className="h-3.5 w-3.5 text-gray-500" />
-                        </div>
-                        <span className="text-[13px] font-medium text-gray-700">
-                            {item.category}
-                        </span>
                     </div>
                 </TableCell>
 
                 <TableCell className="px-3 py-5">
                     {item.storage_location ? (
-                        <Badge 
-                            variant="outline" 
-                            className={`text-[11px] font-semibold whitespace-nowrap ${
-                                item.storage_location === 'lower_warehouse' ? 'bg-blue-50 border-blue-200 text-blue-700' :
-                                item.storage_location === '2nd_floor_warehouse' ? 'bg-purple-50 border-purple-200 text-purple-700' :
-                                item.storage_location === 'office' ? 'bg-gray-50 border-gray-200 text-gray-700' :
-                                'bg-green-50 border-green-200 text-green-700'
-                            }`}
-                        >
-                            <Warehouse className="h-3 w-3 mr-1" />
-                            {STORAGE_LOCATION_LABELS[item.storage_location]}
-                        </Badge>
+                        <EditableStorageLocation
+                            itemId={item.id}
+                            itemName={item.item_name}
+                            currentLocation={item.storage_location}
+                            onUpdate={onRefresh}
+                        />
                     ) : (
                         <span className="text-[13px] text-gray-400">—</span>
                     )}
                 </TableCell>
 
                 <TableCell className="px-3 py-5">
-                    {item.status !== 'Good' ? (
-                        <div className="flex items-center gap-2">
-                            <div className={`h-1.5 w-1.5 rounded-full ${condition.color}`} />
-                            <span className="text-[13px] text-gray-600">{condition.label}</span>
-                        </div>
-                    ) : (
-                        <span className="text-[13px] text-gray-400">—</span>
-                    )}
-                </TableCell>
-
-                <TableCell className="px-3 py-5">
-                    <div className="flex items-center gap-2">
-                        {stock.label !== 'IN STOCK' ? (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap bg-white/80 backdrop-blur-sm shadow-sm ${
-                                stock.label === 'OUT OF STOCK' 
-                                    ? 'border border-rose-200/60 text-rose-700' 
-                                    : 'border border-amber-200/60 text-amber-700'
-                            }`}>
-                                {stock.label}
-                            </span>
-                        ) : (
-                            <span className="text-[13px] text-gray-400">—</span>
-                        )}
-                        
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-[140px]">
+                        {/* PENDING REQUEST ALERT (Highest Action Priority) */}
                         {hasPendingRequests && (
-                            <button
-                                onClick={() => setIsExpanded(!isExpanded)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-50 border border-amber-200/60 text-amber-700 hover:bg-amber-100 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95"
+                            <Popover open={isOpen} onOpenChange={(open) => {
+                                setIsOpen(open)
+                                if (open) fetchPending()
+                            }}>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all duration-200 shadow-sm group/pending shrink-0"
+                                    >
+                                        <Clock className="h-3 w-3 text-amber-600" />
+                                        {pendingCount} PENDING
+                                        <ChevronDown className={`h-2.5 w-2.5 ml-0.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent 
+                                    side="bottom" 
+                                    align="start" 
+                                    className="w-[300px] p-0 rounded-xl overflow-hidden shadow-2xl border-amber-200 animate-in zoom-in-95 duration-200 z-[100]"
+                                >
+                                    <div className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50/50 border-b border-amber-100/60">
+                                        <Clock className="h-3.5 w-3.5 text-amber-600" />
+                                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">Approval Queue</h4>
+                                    </div>
+                                    <div className="max-h-[250px] overflow-y-auto p-2 space-y-1">
+                                        {isLoadingPending ? (
+                                            <div className="flex items-center justify-center py-6 text-xs text-amber-700">
+                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent mr-2" />
+                                                Loading queue...
+                                            </div>
+                                        ) : pendingRequests.map((request) => (
+                                            <div key={request.id} className="p-2.5 rounded-lg bg-white border border-amber-100/40 flex items-center justify-between">
+                                                <div className="min-w-0">
+                                                    <p className="text-[12px] font-bold text-gray-900 truncate">{request.borrower_name}</p>
+                                                    <p className="text-[11px] text-gray-500 mt-0.5">{request.quantity} Units • {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</p>
+                                                </div>
+                                                <Badge variant="outline" className="text-[9px] font-bold bg-amber-50 border-amber-200 text-amber-700">PENDING</Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+
+                        {/* PHYSICAL STATUS ALERT (Reliability Hazard) */}
+                        {item.status !== 'Good' && (
+                            <Badge 
+                                variant="outline" 
+                                className="text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow-sm bg-rose-50 border-rose-200 text-rose-700 shrink-0"
+                            >
+                                <AlertTriangle className="h-3 w-3" />
+                                {item.status.toUpperCase()}
+                            </Badge>
+                        )}
+
+                        {/* STOCK SAFETY ALERT (Supply Hazard) */}
+                        {stock.label !== 'IN STOCK' && (
+                            <Badge 
+                                variant="outline" 
+                                className={`text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 ${
+                                    stock.label === 'OUT OF STOCK' 
+                                        ? 'bg-rose-50 border-rose-200 text-rose-700' 
+                                        : 'bg-amber-50 border-amber-200 text-amber-700'
+                                }`}
+                            >
+                                <Package className="h-3 w-3" />
+                                {stock.label}
+                            </Badge>
+                        )}
+
+                        {/* EXPIRY COMPLIANCE ALERT (Compliance Risk) */}
+                        {expiryStatus && (expiryStatus.status === 'expired' || expiryStatus.status === 'critical' || expiryStatus.status === 'warning') && (
+                            <Badge 
+                                variant="outline" 
+                                className={`text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 ${expiryStatus.color}`}
                             >
                                 <Clock className="h-3 w-3" />
-                                {pendingCount} pending
-                                {isExpanded ? (
-                                    <ChevronUp className="h-3 w-3 ml-0.5" />
-                                ) : (
-                                    <ChevronDown className="h-3 w-3 ml-0.5" />
-                                )}
-                            </button>
+                                {expiryStatus.status === 'expired' ? 'EXPIRED' : `${expiryStatus.days}D REMAINING`}
+                            </Badge>
+                        )}
+
+                        {/* ALL CLEAR - OPERATIONAL (Only shown if no hazards exist) */}
+                        {!hasPendingRequests && 
+                         item.status === 'Good' && 
+                         stock.label === 'IN STOCK' && 
+                         (!expiryStatus || (expiryStatus.status !== 'expired' && expiryStatus.status !== 'critical' && expiryStatus.status !== 'warning')) && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-semibold ml-1">
+                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
+                                Operational
+                            </div>
                         )}
                     </div>
                 </TableCell>
@@ -232,85 +311,6 @@ export function ExpandableInventoryRow({
                     </div>
                 </TableCell>
             </TableRow>
-
-            {/* Expanded Row - Pending Requests Detail */}
-            {isExpanded && hasPendingRequests && (
-                <TableRow className="bg-gradient-to-br from-amber-50/40 via-orange-50/20 to-amber-50/30 border-b border-amber-100/50 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <TableCell colSpan={7} className="px-4 14in:px-6 py-4">
-                        <div className="relative overflow-hidden rounded-xl border border-amber-200/60 bg-white/80 backdrop-blur-sm shadow-[0_8px_16px_-8px_rgba(251,191,36,0.08)]">
-                            {/* Header */}
-                            <div className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50/50 border-b border-amber-100/60">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 shadow-sm">
-                                    <Clock className="h-3.5 w-3.5 text-white" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">Pending Approval Queue</h4>
-                                    <p className="text-[10px] text-amber-700 mt-0.5">
-                                        {pendingCount} {pendingCount === 1 ? 'request' : 'requests'} awaiting authorization
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="p-4">
-                                {isLoadingPending ? (
-                                    <div className="flex items-center justify-center py-6">
-                                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-                                        <span className="ml-2 text-xs text-amber-700">Loading requests...</span>
-                                    </div>
-                                ) : pendingRequests.length === 0 ? (
-                                    <div className="text-center py-6">
-                                        <p className="text-xs text-amber-600">No pending requests found</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {pendingRequests.map((request, idx) => (
-                                            <div
-                                                key={request.id}
-                                                className="flex items-center justify-between p-3 rounded-lg bg-white border border-amber-100/60 hover:border-amber-200 hover:shadow-sm transition-all duration-200 animate-in fade-in slide-in-from-left-2"
-                                                style={{
-                                                    animationDelay: `${idx * 50}ms`,
-                                                    animationFillMode: 'backwards',
-                                                    borderTopLeftRadius: idx === 0 ? '0.75rem' : '0.5rem',
-                                                    borderBottomRightRadius: idx === pendingRequests.length - 1 ? '0.75rem' : '0.5rem',
-                                                }}
-                                            >
-                                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex-shrink-0">
-                                                        <User className="h-4 w-4 text-amber-700" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">
-                                                            {request.borrower_name}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-medium">
-                                                                <Package className="h-3 w-3" />
-                                                                {request.quantity} {request.quantity === 1 ? 'unit' : 'units'}
-                                                            </span>
-                                                            <span className="text-gray-300">•</span>
-                                                            <span className="inline-flex items-center gap-1 text-[11px] text-gray-500">
-                                                                <Calendar className="h-3 w-3" />
-                                                                {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <Badge
-                                                    variant="outline"
-                                                    className="ml-2 text-[10px] font-bold bg-amber-50 border-amber-300 text-amber-800 shadow-sm"
-                                                >
-                                                    PENDING
-                                                </Badge>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </TableCell>
-                </TableRow>
-            )}
         </>
     )
 }

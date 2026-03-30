@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Image from 'next/image'
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
@@ -19,7 +20,7 @@ import {
     DialogTitle as ShadinDialogTitle
 } from '@/components/ui/dialog'
 import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
-import { InventoryItemDialog } from './inventory-item-dialog'
+import { InventoryItemDialog } from './inventory-dialog'
 import { QRDialog } from './qr-dialog'
 import { FilterTabs } from '@/components/ui/filter-tabs'
 import { ExpandableInventoryRow } from './expandable-inventory-row'
@@ -29,11 +30,13 @@ interface InventoryTableProps {
     onDelete: (id: number, name: string) => void
     isDeleting: boolean
     onRefresh?: () => void
+    selectedItems?: number[]
+    onSelectionChange?: (selected: number[]) => void
 }
 
 const ITEMS_PER_PAGE = 10
 
-export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: InventoryTableProps) {
+export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange }: InventoryTableProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
@@ -42,11 +45,38 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
     const [currentPage, setCurrentPage] = useState(1)
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
 
+    // Get unique locations from ALL items (not filtered)
+    const uniqueLocations = useMemo(() => {
+        const locations = new Set<string>()
+        items.forEach(item => {
+            if (item.storage_location) {
+                locations.add(item.storage_location)
+            }
+        })
+        return Array.from(locations).sort()
+    }, [items])
+
     // Calculate counts for filters
     const filterCounts = useMemo(() => {
         const counts: Record<string, number> = { 
             all: items.length,
-            pending: items.filter(i => ((i as any).stock_pending || 0) > 0).length
+            pending: items.filter(i => {
+                const hasPending = (i as any).stock_pending > 0
+                const threshold = (i as any).low_stock_threshold || 20
+                const percentage = i.stock_total > 0 ? (i.stock_available / i.stock_total) * 100 : 0
+                const isLowStock = percentage <= threshold
+                const isDamaged = i.status.toLowerCase() !== 'good'
+                
+                // Expiry Logic (Approaching in < 30 days)
+                let isExpiring = false
+                const expiry = (i as any).expiry_date
+                if (expiry) {
+                    const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                    isExpiring = diff <= 30
+                }
+
+                return hasPending || isLowStock || isDamaged || isExpiring
+            }).length
         }
         
         items.forEach(item => {
@@ -104,7 +134,20 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
 
             let matchesStatus = true
             if (statusFilter === 'pending') {
-                matchesStatus = ((item as any).stock_pending || 0) > 0
+                const hasPending = (item as any).stock_pending > 0
+                const threshold = (item as any).low_stock_threshold || 20
+                const percentage = (item.stock_available / item.stock_total) * 100
+                const isLowStock = percentage <= threshold
+                const isDamaged = item.status.toLowerCase() !== 'good'
+                
+                let isExpiring = false
+                const expiry = (item as any).expiry_date
+                if (expiry) {
+                    const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                    isExpiring = diff <= 30
+                }
+
+                matchesStatus = hasPending || isLowStock || isDamaged || isExpiring
             }
 
             let matchesLocation = true
@@ -128,6 +171,22 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
         setCurrentPage(1)
     }, [searchQuery, categoryFilter, conditionFilter, locationFilter])
 
+    const handleSelectAll = () => {
+        if (selectedItems.length === paginatedItems.length) {
+            onSelectionChange?.([])
+        } else {
+            onSelectionChange?.(paginatedItems.map(item => item.id))
+        }
+    }
+
+    const handleSelectItem = (id: number) => {
+        if (selectedItems.includes(id)) {
+            onSelectionChange?.(selectedItems.filter(itemId => itemId !== id))
+        } else {
+            onSelectionChange?.([...selectedItems, id])
+        }
+    }
+
     const getCategoryIcon = (category: string) => {
         const cat = category.toLowerCase()
         if (cat.includes('medical')) return Cross
@@ -142,9 +201,11 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
     }
 
     const getStockDisplay = (item: InventoryItem) => {
+        const threshold = (item as any).low_stock_threshold || 20
+        const percentage = getStockPercentage(item.stock_available, item.stock_total)
+        
         if (item.stock_available === 0) return { label: 'OUT OF STOCK' }
-        const lowStockThreshold = item.stock_total * 0.5
-        if (item.stock_available < lowStockThreshold) return { label: 'LOW STOCK' }
+        if (percentage <= threshold) return { label: 'LOW STOCK' }
         return { label: 'IN STOCK' }
     }
 
@@ -184,10 +245,11 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
                                     <SelectItem value="all" className="text-[14px] rounded-md">All Locations</SelectItem>
-                                    <SelectItem value="lower_warehouse" className="text-[14px] rounded-md">Lower Warehouse</SelectItem>
-                                    <SelectItem value="2nd_floor_warehouse" className="text-[14px] rounded-md">2nd Floor Warehouse</SelectItem>
-                                    <SelectItem value="office" className="text-[14px] rounded-md">Office</SelectItem>
-                                    <SelectItem value="field" className="text-[14px] rounded-md">Field</SelectItem>
+                                    {uniqueLocations.map(location => (
+                                        <SelectItem key={location} value={location} className="text-[14px] rounded-md">
+                                            {STORAGE_LOCATION_LABELS[location as StorageLocation] || location}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
 
@@ -229,11 +291,19 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                     <Table>
                         <TableHeader>
                             <TableRow className="border-b border-gray-200 hover:bg-transparent">
+                                {onSelectionChange && (
+                                    <TableHead className="pl-4 14in:pl-6 pr-3 py-4 w-12">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedItems.length === paginatedItems.length && paginatedItems.length > 0}
+                                            onChange={handleSelectAll}
+                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                    </TableHead>
+                                )}
                                 <TableHead className="pl-4 14in:pl-6 pr-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Item</TableHead>
-                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Category</TableHead>
                                 <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Location</TableHead>
-                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Condition</TableHead>
-                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Status</TableHead>
+                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Equipment Status</TableHead>
                                 <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide text-right">Stock</TableHead>
                                 <TableHead className="pl-3 pr-4 14in:pr-6 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide text-right">Actions</TableHead>
                             </TableRow>
@@ -241,12 +311,12 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                         <TableBody>
                             {paginatedItems.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-96 text-center">
+                                    <TableCell colSpan={5} className="h-96 text-center">
                                         <div className="flex flex-col items-center justify-center p-12 animate-in fade-in duration-500">
                                             <div className="relative mb-6">
                                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full blur-2xl opacity-50" />
-                                                <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 h-20 w-20 rounded-2xl flex items-center justify-center shadow-lg">
-                                                    <Package className="h-10 w-10 text-gray-400" />
+                                                <div className="relative bg-slate-50 h-20 w-20 rounded-2xl flex items-center justify-center border border-slate-100">
+                                                    <Package className="h-10 w-10 text-slate-200" strokeWidth={1} />
                                                 </div>
                                             </div>
                                             <p className="text-gray-900 font-semibold text-base mb-2">No items found</p>
@@ -280,6 +350,9 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                                         getStockDisplay={getStockDisplay}
                                         getConditionDot={getConditionDot}
                                         getStockPercentage={getStockPercentage}
+                                        isSelected={selectedItems.includes(item.id)}
+                                        onSelect={() => handleSelectItem(item.id)}
+                                        showCheckbox={!!onSelectionChange}
                                     />
                                 ))
                             )}
@@ -330,10 +403,12 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh }: Inven
                     </ShadinDialogHeader>
                     <div className="relative w-full aspect-square md:aspect-video flex items-center justify-center p-8">
                         {expandedImage && (
-                            <img
+                            <Image
                                 src={expandedImage.url}
                                 alt={expandedImage.name}
-                                className="max-w-full max-h-full object-contain rounded-lg animate-in zoom-in-95 duration-300"
+                                fill
+                                unoptimized
+                                className="object-contain rounded-lg animate-in zoom-in-95 duration-300"
                             />
                         )}
                     </div>

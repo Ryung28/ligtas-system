@@ -37,7 +37,6 @@ export default function DashboardClient() {
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
-                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                     </div>
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
                         Dashboard Summary

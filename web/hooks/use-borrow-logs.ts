@@ -4,32 +4,22 @@ import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate } from 'swr'
 import { supabase } from '@/lib/supabase'
 import { BorrowLog, BorrowSession, LogStats, TransactionStatus } from '@/lib/types/inventory'
+import { getBorrowLogsAction } from '@/app/actions/logs-actions'
 
 // SWR Configurations
 export const LOGS_CACHE_KEY = 'borrow_logs'
 
 export const fetchLogs = async () => {
-    // Senior Dev: Implementing full identity resolution across all logs
-    // This fixes "Unknown Item" issues caused by incomplete mobile syncs
-    const { data, error } = await supabase
-        .from('borrow_logs')
-        .select(`
-            *,
-            inventory:inventory_id (
-                item_name
-            )
-        `)
-        .order('created_at', { ascending: false })
+    // Senior Dev Strategy: Using the "Server Bridge" (getBorrowLogsAction)
+    // This solves the "Multiple GoTrueClient" identity leak and empty log issues.
+    const res = await getBorrowLogsAction()
+    
+    if (!res.success) {
+        console.error('📡 Log Fetch Error:', res.error)
+        throw new Error(res.error || 'Failed to fetch logs')
+    }
 
-    if (error) throw error
-
-    // Resolution Logic: Priority = Log Name > Inventory Name > Fallback
-    return (data as any[]).map(log => ({
-        ...log,
-        item_name: (log.item_name && log.item_name !== 'Unknown Item')
-            ? log.item_name
-            : (log.inventory?.item_name || log.item_name || 'Unknown Item')
-    })) as BorrowLog[]
+    return res.data || []
 }
 
 export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {

@@ -6,69 +6,39 @@ import { supabase } from '@/lib/supabase'
 import { InventoryItem } from '@/lib/supabase'
 import { BorrowLog } from '@/lib/types/inventory'
 
+import { getInventoryWithAvailability } from '@/lib/queries/inventory'
+
 export const INVENTORY_CACHE_KEY = 'inventory_data'
 
 export const fetchInventory = async () => {
-    // Fetch inventory with stock_pending from availability view
-    const { data: inventoryData, error: invError } = await supabase
-        .from('inventory')
-        .select('*')
-        .is('deleted_at', null)
-        .order('item_name', { ascending: true })
+    // Use centralized query
+    const items = await getInventoryWithAvailability()
+    
+    const itemsWithUrls = items.map((item) => {
+        if (!item.image_url) {
+            return item
+        }
 
-    if (invError) throw invError
+        let imagePath = item.image_url
 
-    // Fetch pending counts from availability view
-    const { data: availabilityData } = await supabase
-        .from('inventory_availability')
-        .select('id, stock_pending')
-
-    // Create a map for quick lookup
-    const pendingMap = new Map(
-        (availabilityData || []).map(item => [item.id, item.stock_pending])
-    )
-
-    // Generate signed URLs for all items with images
-    const items = (inventoryData || []) as InventoryItem[]
-    const itemsWithUrls = await Promise.all(items.map(async (item) => {
-        let imageUrl = item.image_url
-
-        if (imageUrl) {
-            try {
-                // Extract path if it's a full URL from our bucket
-                let path = imageUrl
-                if (path.includes('/storage/v1/object/')) {
-                    // Extract the path after 'item-images/'
-                    const parts = path.split('item-images/')
-                    if (parts.length > 1) {
-                        path = parts[1].split('?')[0] // Get path before query params
-                    }
-                }
-
-                // If it's still a full URL from elsewhere, keep it
-                if (path.startsWith('http')) {
-                    imageUrl = path
-                } else {
-                    // Generate fresh signed URL for the image path
-                    const { data, error: storageError } = await supabase.storage
-                        .from('item-images')
-                        .createSignedUrl(path, 60 * 60 * 24) // 24 hours
-
-                    if (!storageError && data?.signedUrl) {
-                        imageUrl = data.signedUrl
-                    }
-                }
-            } catch (err) {
-                // Keep original URL on error
+        // If it's a full URL (signed or public), extract just the path
+        if (imagePath.includes('/storage/v1/object/')) {
+            const match = imagePath.match(/item-images\/(.+?)(\?|$)/)
+            if (match) {
+                imagePath = match[1]
             }
         }
 
+        // Always generate a fresh public URL from the path
+        const { data } = supabase.storage
+            .from('item-images')
+            .getPublicUrl(imagePath)
+
         return {
             ...item,
-            image_url: imageUrl,
-            stock_pending: pendingMap.get(item.id) || 0
+            image_url: data.publicUrl
         }
-    }))
+    })
 
     return itemsWithUrls
 }
@@ -110,7 +80,11 @@ export function useInventory() {
         const inventoryChannel = supabase
             .channel('inventory-realtime-global')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
-                refresh()
+                refresh(undefined, { revalidate: true })
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, () => {
+                // Refresh if a disposal/action was logged in activity
+                refresh(undefined, { revalidate: true })
             })
             .subscribe()
 
@@ -118,7 +92,7 @@ export function useInventory() {
         const logsChannel = supabase
             .channel('inventory-logs-sync')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
-                refresh() // Refresh inventory
+                refresh(undefined, { revalidate: true }) // Refresh inventory
                 mutate('borrow_logs') // Refresh logs cache
             })
             .subscribe()
@@ -127,7 +101,7 @@ export function useInventory() {
             supabase.removeChannel(inventoryChannel)
             supabase.removeChannel(logsChannel)
         }
-    }, [refresh, mutate])
+    }, [refresh])
 
     return {
         inventory: inventoryWithBorrows,

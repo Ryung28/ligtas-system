@@ -1,13 +1,22 @@
 'use client'
 
-import { useTransition, useState } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { deleteItem } from '@/app/actions/inventory'
+import { deleteItem } from '@/src/features/catalog'
 import { InventoryHeader } from '@/components/inventory/inventory-header'
-import { InventoryStats } from '@/components/inventory/inventory-stats'
 import { InventoryTable } from '@/components/inventory/inventory-table'
 import { useInventory } from '@/hooks/use-inventory'
-import { InventoryItem, StorageLocation } from '@/lib/supabase'
+import { InventoryItem } from '@/lib/supabase'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface InventoryClientProps {
     initialInventory: InventoryItem[]
@@ -15,61 +24,127 @@ interface InventoryClientProps {
 
 export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const { inventory, refresh, isLoading, lastUpdated } = useInventory()
-    const [activeLocationFilter, setActiveLocationFilter] = useState<StorageLocation | null>(null)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<{ id: number; name: string } | null>(null)
+    const [selectedItems, setSelectedItems] = useState<number[]>([])
+    const [selectionMode, setSelectionMode] = useState(false)
     
-    // Use server data initially, then switch to live data
-    const displayInventory = inventory.length > 0 ? inventory : initialInventory
-    
-    // Apply location filter
-    const filteredInventory = activeLocationFilter
-        ? displayInventory.filter(item => item.storage_location === activeLocationFilter)
-        : displayInventory
+    // Use server data during initial load, then switch to live data
+    // Senior Dev Guard: Don't fallback to stale initialInventory if live inventory is truly empty (e.g. after deletion)
+    const displayInventory = (isLoading && inventory.length === 0) ? initialInventory : inventory
     
     const [isDeleting, startDeleteTransition] = useTransition()
 
-    const handleDelete = async (id: number, name: string) => {
-        if (!confirm(`Are you sure you want to archive "${name}"? It will be removed from active service but kept in historical records.`)) return
+    const handleDeleteClick = (id: number, name: string) => {
+        setItemToDelete({ id, name })
+        setDeleteDialogOpen(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!itemToDelete) return
 
         startDeleteTransition(async () => {
             try {
-                const result = await deleteItem(id)
+                const result = await deleteItem(itemToDelete.id)
                 if (result.success) {
                     toast.success(result.message)
                     refresh()
                 } else {
-                    toast.error(result.error, {
-                        className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
-                    })
+                    toast.error(result.error)
                 }
             } catch (error) {
-                toast.error('An unexpected error occurred while removing the item.', {
-                    className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
-                })
+                toast.error('An unexpected error occurred while removing the item.')
+            } finally {
+                setDeleteDialogOpen(false)
+                setItemToDelete(null)
             }
         })
     }
 
+    const handleBulkDelete = async () => {
+        if (selectedItems.length === 0) {
+            toast.error('No items selected')
+            return
+        }
+
+        startDeleteTransition(async () => {
+            try {
+                let successCount = 0
+                let failCount = 0
+
+                for (const id of selectedItems) {
+                    const result = await deleteItem(id)
+                    if (result.success) successCount++
+                    else failCount++
+                }
+
+                if (successCount > 0) {
+                    toast.success(`Successfully archived ${successCount} item(s)`)
+                }
+                if (failCount > 0) {
+                    toast.error(`Failed to archive ${failCount} item(s)`)
+                }
+
+                setSelectedItems([])
+                setSelectionMode(false)
+                refresh()
+            } catch (error) {
+                toast.error('An unexpected error occurred during bulk delete.')
+            }
+        })
+    }
+
+    const toggleSelectionMode = () => {
+        setSelectionMode(!selectionMode)
+        setSelectedItems([])
+    }
+
     return (
-        <div className="space-y-4 animate-in fade-in duration-500 relative">
-            <InventoryHeader
-                lastUpdated={lastUpdated}
-                isLoading={isLoading}
-                onRefresh={refresh}
-                items={displayInventory}
-            />
+        <>
+            <div className="space-y-4 animate-in fade-in duration-500 relative">
+                <InventoryHeader
+                    lastUpdated={lastUpdated}
+                    isLoading={isLoading}
+                    onRefresh={refresh}
+                    items={displayInventory}
+                    selectedCount={selectedItems.length}
+                    onBulkDelete={handleBulkDelete}
+                    selectionMode={selectionMode}
+                    onToggleSelectionMode={toggleSelectionMode}
+                />
 
-            <InventoryStats 
-                items={displayInventory} 
-                onLocationFilter={setActiveLocationFilter}
-                activeLocation={activeLocationFilter}
-            />
+                <InventoryTable
+                    items={displayInventory}
+                    onDelete={handleDeleteClick}
+                    isDeleting={isDeleting}
+                    onRefresh={refresh}
+                    selectedItems={selectedItems}
+                    onSelectionChange={selectionMode ? setSelectedItems : undefined}
+                />
+            </div>
 
-            <InventoryTable
-                items={filteredInventory}
-                onDelete={handleDelete}
-                isDeleting={isDeleting}
-                onRefresh={refresh}
-            />
-        </div>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-900">
+                            Archive Item?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm text-gray-600">
+                            Are you sure you want to archive <span className="font-semibold text-gray-900">&quot;{itemToDelete?.name}&quot;</span>? 
+                            It will be removed from active service but kept in historical records.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirm}
+                            className="rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Archive Item
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     )
 }

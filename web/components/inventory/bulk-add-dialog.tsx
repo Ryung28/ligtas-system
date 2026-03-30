@@ -20,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { bulkAddItems } from '@/app/actions/inventory'
+import { bulkAddItems } from '@/src/features/catalog'
 import { toast } from 'sonner'
 
 interface BulkItemRow {

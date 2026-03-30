@@ -50,52 +50,34 @@ function LogFilterButton({ children, onClick, isActive }: { children: React.Reac
 }
 
 export function LogFilters({
-    filter,
-    setFilter,
     dateFilter,
     setDateFilter,
     searchQuery,
     setSearchQuery
-}: LogFiltersProps) {
+}: Omit<LogFiltersProps, 'filter' | 'setFilter'>) {
     const activeDate = dateFilter ? new Date(dateFilter) : undefined
 
     return (
-        <div className="flex flex-col xl:flex-row gap-4 justify-between xl:items-center">
-            {/* Filters Left - Achromatic Glass Segmented Control with Liquid Slider & Magnetic Pull */}
-            <div className="flex flex-wrap gap-1 p-1.5 bg-white/80 backdrop-blur-md rounded-xl border border-zinc-200/50 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-                {(['all', 'pending', 'borrowed', 'returned', 'overdue', 'rejected'] as const).map((f) => (
-                    <LogFilterButton
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        isActive={filter === f}
-                    >
-                        {f}
-                    </LogFilterButton>
-                ))}
-            </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <DatePicker
+                date={activeDate}
+                setDate={(date: Date | undefined) => setDateFilter(date ? format(date, "yyyy-MM-dd") : '')}
+                className="w-full sm:w-44"
+                placeholder="Filter by date"
+            />
 
-            {/* Search & Date Right - Command Bar (Compact) */}
-            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
-                <DatePicker
-                    date={activeDate}
-                    setDate={(date: Date | undefined) => setDateFilter(date ? format(date, "yyyy-MM-dd") : '')}
-                    className="w-full sm:w-44"
-                    placeholder="Filter by date"
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Input
+                    type="text"
+                    placeholder="Search logs..."
+                    value={searchQuery}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                    className={cn(
+                        "pl-10 h-10 border-zinc-200 rounded-lg text-xs font-medium shadow-sm bg-white",
+                        "focus-visible:ring-2 focus-visible:ring-zinc-900/10 focus-visible:border-zinc-900 focus-visible:ring-offset-0 transition-all"
+                    )}
                 />
-
-                <div className="relative flex-1 sm:w-64">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                    <Input
-                        type="text"
-                        placeholder="Search logs..."
-                        value={searchQuery}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                        className={cn(
-                            "pl-10 h-10 border-zinc-200 rounded-lg text-xs font-medium shadow-sm bg-white",
-                            "focus-visible:ring-2 focus-visible:ring-zinc-900/10 focus-visible:border-zinc-900 focus-visible:ring-offset-0 transition-all"
-                        )}
-                    />
-                </div>
             </div>
         </div>
     )

@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { QrCode, Search, RotateCcw, Package, User, CheckCircle2, AlertTriangle, ShieldCheck, Camera, X } from 'lucide-react'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
 import { useInventory } from '@/hooks/use-inventory'
-import { returnItem } from '@/app/actions/inventory'
+import { returnItem } from '@/src/features/transactions'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -82,12 +82,12 @@ export function SmartScanner() {
         }
     }
 
-    // CORE LOGIC: Stabilized Discovery
+    // CORE LOGIC: Stabilized Discovery (Senior Dev Performance Lock)
     useEffect(() => {
         const searchItem = () => {
             if (!scanValue) {
-                setFoundItem(null)
-                setActiveBorrowers([])
+                if (foundItem !== null) setFoundItem(null)
+                if (activeBorrowers.length > 0) setActiveBorrowers([])
                 return
             }
 
@@ -107,14 +107,14 @@ export function SmartScanner() {
                 (scanValue.length > 3 && i.item_name.toLowerCase().includes(scanValue.toLowerCase()))
             )
 
+            // 🛡️ TACTICAL GUARD: Only update state if identity has changed
             if (item) {
-                // Only update if it's a different item to prevent loops
-                if (!foundItem || foundItem.id !== item.id) {
+                if (foundItem?.id !== item.id) {
                     setFoundItem(item)
                     setActiveBorrowers((item as any).active_borrows || [])
                 }
             } else {
-                if (foundItem) {
+                if (foundItem !== null) {
                     setFoundItem(null)
                     setActiveBorrowers([])
                 }
@@ -122,7 +122,7 @@ export function SmartScanner() {
         }
 
         searchItem()
-    }, [scanValue, inventory, foundItem]) // Added foundItem to guard against unnecessary updates
+    }, [scanValue, inventory, foundItem, activeBorrowers]) // Stabilized with Identity Guard
 
     const startReturn = (borrowerName: string) => {
         const log = logs.find(l =>
@@ -144,7 +144,11 @@ export function SmartScanner() {
 
         try {
             setIsProcessing(true)
-            const res = await returnItem(returningLog.id, returnCondition, returnNotes)
+            const res = await returnItem(returningLog.id, {
+                receivedByName: '',
+                returnCondition: returnCondition.toLowerCase() as any,
+                returnNotes: returnNotes
+            })
             if (res.success) {
                 toast.success(`Successfully returned ${foundItem.item_name}`)
                 setReturningLog(null)

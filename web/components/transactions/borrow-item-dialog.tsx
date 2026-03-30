@@ -25,7 +25,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { borrowItem, returnItem, getAvailableItems, batchBorrowItems } from '@/app/actions/inventory'
+import { borrowItem, returnItem, batchBorrowItems } from '@/src/features/transactions'
+import { getAvailableItems } from '@/src/features/catalog'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
 
 interface AvailableItem {
@@ -190,7 +191,11 @@ export function BorrowItemDialog() {
             let result;
 
             if (isSmartReturn) {
-                result = await returnItem(existingBorrow.id, returnCondition, returnNotes)
+                result = await returnItem(existingBorrow.id, {
+                    receivedByName: '',
+                    returnCondition: returnCondition.toLowerCase() as any,
+                    returnNotes: returnNotes
+                })
             } else {
                 result = await borrowItem(formData)
             }

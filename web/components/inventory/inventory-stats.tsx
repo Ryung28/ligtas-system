@@ -28,62 +28,51 @@ export function InventoryStats({ items, onLocationFilter, activeLocation }: Inve
     }, [items])
 
     return (
-        <div className="space-y-3">
-            {/* Primary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="Total Items" value={stats.totalItems} icon={Package} color="slate" />
-                <StatCard label="Total Stock" value={stats.totalStock} icon={Layers} color="blue" />
-                <StatCard label="Low Stock" value={stats.lowStockItems} icon={AlertTriangle} color="amber" accent={stats.lowStockItems > 0 ? 'amber' : undefined} />
-                <StatCard label="Out of Stock" value={stats.outOfStockItems} icon={XCircle} color="rose" accent={stats.outOfStockItems > 0 ? 'red' : undefined} />
-            </div>
-
-            {/* Location Filter Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard 
-                    label="Lower Warehouse" 
-                    value={stats.locationStats.lower_warehouse || 0} 
-                    icon={Warehouse} 
-                    color="blue"
-                    size="compact"
-                    clickable
-                    isActive={activeLocation === 'lower_warehouse'}
-                    onClick={() => onLocationFilter?.(activeLocation === 'lower_warehouse' ? null : 'lower_warehouse')}
-                    hint="Click to filter"
-                />
-                <StatCard 
-                    label="2nd Floor Warehouse" 
-                    value={stats.locationStats['2nd_floor_warehouse'] || 0} 
-                    icon={Warehouse} 
-                    color="purple"
-                    size="compact"
-                    clickable
-                    isActive={activeLocation === '2nd_floor_warehouse'}
-                    onClick={() => onLocationFilter?.(activeLocation === '2nd_floor_warehouse' ? null : '2nd_floor_warehouse')}
-                    hint="Click to filter"
-                />
-                <StatCard 
-                    label="Office" 
-                    value={stats.locationStats.office || 0} 
-                    icon={Warehouse} 
-                    color="gray"
-                    size="compact"
-                    clickable
-                    isActive={activeLocation === 'office'}
-                    onClick={() => onLocationFilter?.(activeLocation === 'office' ? null : 'office')}
-                    hint="Click to filter"
-                />
-                <StatCard 
-                    label="Field" 
-                    value={stats.locationStats.field || 0} 
-                    icon={Warehouse} 
-                    color="green"
-                    size="compact"
-                    clickable
-                    isActive={activeLocation === 'field'}
-                    onClick={() => onLocationFilter?.(activeLocation === 'field' ? null : 'field')}
-                    hint="Click to filter"
-                />
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatCard 
+                label="Lower Warehouse" 
+                value={stats.locationStats.lower_warehouse || 0} 
+                icon={Warehouse} 
+                color="blue"
+                size="compact"
+                clickable
+                isActive={activeLocation === 'lower_warehouse'}
+                onClick={() => onLocationFilter?.(activeLocation === 'lower_warehouse' ? null : 'lower_warehouse')}
+                hint="Click to filter"
+            />
+            <StatCard 
+                label="2nd Floor Warehouse" 
+                value={stats.locationStats['2nd_floor_warehouse'] || 0} 
+                icon={Warehouse} 
+                color="purple"
+                size="compact"
+                clickable
+                isActive={activeLocation === '2nd_floor_warehouse'}
+                onClick={() => onLocationFilter?.(activeLocation === '2nd_floor_warehouse' ? null : '2nd_floor_warehouse')}
+                hint="Click to filter"
+            />
+            <StatCard 
+                label="Office" 
+                value={stats.locationStats.office || 0} 
+                icon={Warehouse} 
+                color="gray"
+                size="compact"
+                clickable
+                isActive={activeLocation === 'office'}
+                onClick={() => onLocationFilter?.(activeLocation === 'office' ? null : 'office')}
+                hint="Click to filter"
+            />
+            <StatCard 
+                label="Field" 
+                value={stats.locationStats.field || 0} 
+                icon={Warehouse} 
+                color="green"
+                size="compact"
+                clickable
+                isActive={activeLocation === 'field'}
+                onClick={() => onLocationFilter?.(activeLocation === 'field' ? null : 'field')}
+                hint="Click to filter"
+            />
         </div>
     )
 }
@@ -159,7 +148,10 @@ function StatCard({
                         </p>
                     </div>
                     <div className="flex items-baseline gap-1.5 overflow-hidden">
-                        <p className={`${numberSize} font-mono font-black tabular-nums tracking-tighter ${valueColor} group-hover:translate-x-0.5 transition-transform duration-300`}>
+                        <p 
+                            key={value}
+                            className={`${numberSize} font-mono font-black tabular-nums tracking-tighter ${valueColor} group-hover:translate-x-0.5 transition-all duration-300 animate-in fade-in zoom-in-95 duration-500`}
+                        >
                             {value}
                         </p>
                         {accent && (
