@@ -171,13 +171,14 @@ export function LogSessionTable({
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-zinc-50/50 hover:bg-zinc-50/50 border-b border-zinc-100/80">
-                                <TableHead className="w-[40px] pl-4 14in:pl-6 pr-3 py-3"></TableHead>
-                                <TableHead className="w-[200px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Borrower</TableHead>
-                                <TableHead className="w-[160px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Session Summary</TableHead>
-                                <TableHead className="w-[120px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Date Borrowed</TableHead>
-                                <TableHead className="w-[120px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Date Returned</TableHead>
-                                <TableHead className="w-[100px] px-3 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider">Status</TableHead>
-                                <TableHead className="pl-3 pr-4 14in:pr-6 py-3 font-medium text-gray-500 text-[11px] uppercase tracking-wider text-right">Actions</TableHead>
+                                <TableHead className="w-[30px] pl-4 14in:pl-6 pr-1 py-1.5 text-center"></TableHead>
+                                <TableHead className="w-[180px] px-1.5 py-1.5 font-bold text-gray-400 text-[10px] uppercase tracking-tighter">Borrower</TableHead>
+                                <TableHead className="w-[110px] px-1.5 py-1.5 font-bold text-gray-400 text-[10px] uppercase tracking-tighter">Authority</TableHead>
+                                <TableHead className="w-[110px] px-1.5 py-1.5 font-bold text-gray-400 text-[10px] uppercase tracking-tighter">Logistics</TableHead>
+                                <TableHead className="w-[130px] px-1.5 py-1.5 font-bold text-gray-400 text-[10px] uppercase tracking-tighter">Manifest</TableHead>
+                                <TableHead className="w-[100px] px-1.5 py-1.5 font-bold text-gray-400 text-[10px] uppercase tracking-tighter text-left">Timeline (Start)</TableHead>
+                                <TableHead className="w-[100px] px-1.5 py-1.5 font-bold text-gray-400 text-[10px] uppercase tracking-tighter text-left">Timeline (End)</TableHead>
+                                <TableHead className="w-[100px] pl-1.5 pr-4 14in:pr-6 py-1.5 text-right font-bold text-gray-400 text-[10px] uppercase tracking-tighter">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -257,43 +258,44 @@ function LogSessionRow({
     return (
         <React.Fragment>
             <TableRow
-                className="hover:bg-zinc-50/40 group border-b border-zinc-100/60 cursor-pointer select-none transition-colors"
+                className="hover:bg-zinc-50/40 group border-b border-zinc-100/40 cursor-pointer select-none transition-all duration-200 h-11"
                 onClick={onToggleExpand}
             >
-                <TableCell className="pl-4 14in:pl-6 pr-3 w-[40px] text-center">
+                <TableCell className="pl-4 14in:pl-6 pr-1 w-[30px] text-center">
                     {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400 mx-auto" /> : <ChevronRightIcon className="h-4 w-4 text-gray-400 mx-auto" />}
                 </TableCell>
-                <TableCell className="px-3 py-3">
-                    <div className="flex items-center gap-3">
-                        <InitialsAvatar name={session.borrower_name} />
+                <TableCell className="px-1.5 py-1.5">
+                    <div className="flex items-center gap-1.5">
+                        <InitialsAvatar name={session.borrower_name} size={7} />
                         <div className="flex flex-col min-w-0">
-                            <span className="text-sm 14in:text-base font-semibold text-gray-900 truncate">{session.borrower_name}</span>
-                            <span className="text-[11px] text-gray-500 truncate">{session.borrower_organization}</span>
+                            <span className="text-[13px] font-bold text-gray-900 truncate tracking-tight leading-none mb-0.5">{session.borrower_name}</span>
+                            <span className="text-[10px] text-gray-400 truncate leading-none uppercase font-bold">{session.borrower_organization}</span>
                         </div>
                     </div>
                 </TableCell>
-                <TableCell className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-                            <Package className="h-4 w-4 text-gray-500" />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium text-gray-900">{session.items.length} Unique Items</span>
-                            <span className="text-xs text-gray-500">{session.total_quantity} total units</span>
-                        </div>
+                <TableCell className="px-1.5 py-1.5">
+                    <span className="text-[12px] font-semibold text-gray-900 truncate leading-none block">{session.approved_by_name || '—'}</span>
+                </TableCell>
+                <TableCell className="px-1.5 py-1.5">
+                    <span className="text-[12px] font-semibold text-gray-900 truncate leading-none block">{session.released_by_name || '—'}</span>
+                </TableCell>
+                <TableCell className="px-1.5 py-1.5">
+                    <div className="flex items-center gap-1">
+                        <Package className="h-3.5 w-3.5 text-gray-400" />
+                        <span className="text-[13px] font-bold text-gray-900 leading-none">{session.items.length} ITM</span>
                     </div>
                 </TableCell>
-                <TableCell className="px-3 py-3">
-                    <div className="flex flex-col text-left">
-                        <span className="text-sm font-medium text-zinc-950 font-sans tracking-tight leading-none mb-1">
-                            {new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                <TableCell className="px-1.5 py-1.5">
+                    <div className="flex flex-col">
+                        <span className="text-[12px] font-bold text-zinc-900 tracking-tight leading-none">
+                            {new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
-                        <span className="text-[11px] font-mono text-zinc-500 uppercase leading-none">
+                        <span className="text-[10px] font-bold text-zinc-300 uppercase leading-none mt-0.5">
                             {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                         </span>
                     </div>
                 </TableCell>
-                <TableCell className="px-3 py-3">
+                <TableCell className="px-1.5 py-1.5">
                     {session.status === 'returned' || session.status === 'mixed' ? (() => {
                         const returnDates = session.items
                             .map((i: any) => i.actual_return_date)
@@ -302,46 +304,33 @@ function LogSessionRow({
                         const lastReturnDate = returnDates.length > 0 ? new Date(Math.max(...returnDates.map((d: Date) => d.getTime()))) : null;
 
                         if (!lastReturnDate) {
-                            return <span className="text-zinc-400 text-[10px] uppercase tracking-wider font-bold">Pending</span>;
+                            return <span className="text-zinc-200 text-[10px] font-bold uppercase tracking-tight">PENDING</span>;
                         }
 
                         return (
-                            <div className="flex flex-col text-left">
-                                <span className="text-sm font-medium text-zinc-950 font-sans tracking-tight leading-none mb-1">
-                                    {lastReturnDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            <div className="flex flex-col">
+                                <span className="text-[12px] font-bold text-zinc-900 tracking-tight leading-none">
+                                    {lastReturnDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </span>
-                                <span className="text-[11px] font-mono text-zinc-500 uppercase leading-none">
+                                <span className="text-[10px] font-bold text-zinc-300 uppercase leading-none mt-0.5">
                                     {lastReturnDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                                 </span>
                             </div>
                         );
                     })() : (
-                        <div className="text-left py-1">
-                            <span className="text-zinc-400 text-[10px] uppercase tracking-wider font-bold">Pending</span>
-                        </div>
+                        <span className="text-zinc-200 text-[10px] font-bold uppercase tracking-tight">PENDING</span>
                     )}
                 </TableCell>
-                <TableCell className="px-3 py-3">
-                    {session.status === 'mixed' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-amber-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] whitespace-nowrap">
-                            <span className="text-amber-700">PARTIAL RETURN</span>
-                        </span>
-                    ) : (
-                        getStatusBadge(session.status)
-                    )}
-                </TableCell>
-                <TableCell className="pl-3 pr-4 14in:pr-6 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium text-[11px] transition-colors cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onToggleExpand()
-                        }}
-                    >
-                        {isExpanded ? 'CLOSE' : 'VIEW ITEMS'}
-                    </Button>
+                <TableCell className="pl-1.5 pr-4 14in:pr-6 py-1.5 text-right">
+                    <div className="flex justify-end">
+                        {session.status === 'mixed' ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-tight bg-white border border-amber-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] whitespace-nowrap">
+                                <span className="text-amber-700">PARTIAL</span>
+                            </span>
+                        ) : (
+                            getStatusBadge(session.status)
+                        )}
+                    </div>
                 </TableCell>
             </TableRow>
 

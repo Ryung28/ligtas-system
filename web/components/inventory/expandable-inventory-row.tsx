@@ -9,7 +9,6 @@ import {
     Edit2, Trash2, Maximize2, Package, Clock, ChevronDown, User, Calendar, AlertTriangle
 } from 'lucide-react'
 import { InventoryItem } from '@/lib/supabase'
-import { InventoryItemDialog } from './inventory-dialog'
 import { QRDialog } from './qr-dialog'
 import { EditableStorageLocation } from './editable-storage-location'
 import { getPendingRequestsByItemId, type PendingRequest } from '@/src/features/transactions'
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/popover"
 
 interface ExpandableInventoryRowProps {
-    item: InventoryItem
+    item: InventoryItem & { variants?: InventoryItem[] }
     index: number
     onDelete: (id: number, name: string) => void
     isDeleting: boolean
@@ -34,6 +33,7 @@ interface ExpandableInventoryRowProps {
     isSelected?: boolean
     onSelect?: () => void
     showCheckbox?: boolean
+    onEdit?: (item: InventoryItem) => void
 }
 
 export function ExpandableInventoryRow({
@@ -50,15 +50,19 @@ export function ExpandableInventoryRow({
     isSelected = false,
     onSelect,
     showCheckbox = false,
+    onEdit,
 }: ExpandableInventoryRowProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
     const [isLoadingPending, setIsLoadingPending] = useState(false)
+    const [imgError, setImgError] = useState(false)
+    const [isImgLoading, setIsImgLoading] = useState(true)
 
     const stock = getStockDisplay(item)
-    const condition = getConditionDot(item.status)
+    // Senior Solution: Map the dominant health to the condition dot
+    const condition = getConditionDot(item.qty_damaged > 0 ? 'Damaged' : item.qty_maintenance > 0 ? 'Maintenance' : 'Good')
     const CategoryIcon = getCategoryIcon(item.category)
-    const stockPercentage = getStockPercentage(item.stock_available, item.stock_total)
+    const stockPercentage = getStockPercentage(item.qty_good, item.stock_total)
 
     // Calculate pending count from inventory_availability view if available
     const pendingCount = (item as any).stock_pending || 0
@@ -113,18 +117,25 @@ export function ExpandableInventoryRow({
                     <div className="flex items-center gap-3">
                         <div
                             className="h-14 w-14 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-pointer transition-all hover:border-gray-300 hover:shadow-sm"
-                            onClick={() => item.image_url && onImageClick(item.image_url, item.item_name)}
+                            onClick={() => item.image_url && !imgError && onImageClick(item.image_url, item.item_name)}
                         >
-                            {item.image_url ? (
+                            {item.image_url && !imgError ? (
                                 <>
+                                    {isImgLoading && (
+                                        <div className="absolute inset-0 bg-gray-50 animate-pulse flex items-center justify-center">
+                                            <Package className="h-6 w-6 text-gray-200" strokeWidth={1} />
+                                        </div>
+                                    )}
                                     <Image
                                         src={item.image_url}
                                         alt={item.item_name}
                                         fill
                                         unoptimized
-                                        className="object-contain p-2"
+                                        className={`object-contain p-2 transition-all duration-500 ${isImgLoading ? 'scale-90 blur-sm opacity-0' : 'scale-100 blur-0 opacity-100'}`}
+                                        onLoadingComplete={() => setIsImgLoading(false)}
+                                        onError={() => setImgError(true)}
                                     />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center ${isImgLoading ? 'hidden' : ''}`}>
                                         <Maximize2 className="h-4 w-4 text-white" />
                                     </div>
                                 </>
@@ -161,7 +172,29 @@ export function ExpandableInventoryRow({
 
                 <TableCell className="px-3 py-5">
                     <div className="flex flex-wrap items-center gap-1.5 min-w-[140px]">
-                        {/* PENDING REQUEST ALERT (Highest Action Priority) */}
+                        {/* ENTERPRISE HEALTH BUCKETS - Single Row Distribution */}
+                        {item.qty_good > 0 && (
+                            <Badge variant="outline" className="text-[10px] font-bold px-2 py-1 flex items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm transition-all hover:scale-105">
+                                <span className="opacity-60 tabular-nums">{item.qty_good}×</span> READY
+                            </Badge>
+                        )}
+                        {item.qty_damaged > 0 && (
+                            <Badge variant="outline" className="text-[10px] font-bold px-2 py-1 flex items-center gap-1 bg-rose-50 border-rose-200 text-rose-700 shadow-sm transition-all hover:scale-105">
+                                <span className="opacity-60 tabular-nums">{item.qty_damaged}×</span> REPAIR
+                            </Badge>
+                        )}
+                        {item.qty_maintenance > 0 && (
+                            <Badge variant="outline" className="text-[10px] font-bold px-2 py-1 flex items-center gap-1 bg-amber-50 border-amber-200 text-amber-700 shadow-sm transition-all hover:scale-105">
+                                <span className="opacity-60 tabular-nums">{item.qty_maintenance}×</span> MAINT.
+                            </Badge>
+                        )}
+                        {item.qty_lost > 0 && (
+                            <Badge variant="outline" className="text-[10px] font-bold px-2 py-1 flex items-center gap-1 bg-slate-50 border-slate-200 text-slate-600 shadow-sm transition-all hover:scale-105">
+                                <span className="opacity-60 tabular-nums">{item.qty_lost}×</span> LOST
+                            </Badge>
+                        )}
+
+                        {/* PENDING REQUEST ALERT */}
                         {hasPendingRequests && (
                             <Popover open={isOpen} onOpenChange={(open) => {
                                 setIsOpen(open)
@@ -169,115 +202,75 @@ export function ExpandableInventoryRow({
                             }}>
                                 <PopoverTrigger asChild>
                                     <button
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all duration-200 shadow-sm group/pending shrink-0"
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-all duration-200 shadow-sm shrink-0"
                                     >
-                                        <Clock className="h-3 w-3 text-amber-600" />
+                                        <Clock className="h-3 w-3 text-blue-600" />
                                         {pendingCount} PENDING
-                                        <ChevronDown className={`h-2.5 w-2.5 ml-0.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                                        <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                 </PopoverTrigger>
                                 <PopoverContent 
                                     side="bottom" 
                                     align="start" 
-                                    className="w-[300px] p-0 rounded-xl overflow-hidden shadow-2xl border-amber-200 animate-in zoom-in-95 duration-200 z-[100]"
+                                    className="w-[300px] p-0 rounded-xl overflow-hidden shadow-2xl border-blue-200 z-[100]"
                                 >
-                                    <div className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50/50 border-b border-amber-100/60">
-                                        <Clock className="h-3.5 w-3.5 text-amber-600" />
-                                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">Approval Queue</h4>
+                                    <div className="flex items-center gap-2 px-4 py-3 bg-blue-50/50 border-b border-blue-100">
+                                        <Clock className="h-3.5 w-3.5 text-blue-600" />
+                                        <h4 className="text-xs font-bold text-blue-900 uppercase">Approval Queue</h4>
                                     </div>
                                     <div className="max-h-[250px] overflow-y-auto p-2 space-y-1">
                                         {isLoadingPending ? (
-                                            <div className="flex items-center justify-center py-6 text-xs text-amber-700">
-                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent mr-2" />
-                                                Loading queue...
+                                            <div className="flex items-center justify-center py-6 text-xs text-blue-700">
+                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mr-2" />
+                                                Loading...
                                             </div>
                                         ) : pendingRequests.map((request) => (
-                                            <div key={request.id} className="p-2.5 rounded-lg bg-white border border-amber-100/40 flex items-center justify-between">
+                                            <div key={request.id} className="p-2 rounded-lg bg-white border border-blue-100/40 flex items-center justify-between">
                                                 <div className="min-w-0">
                                                     <p className="text-[12px] font-bold text-gray-900 truncate">{request.borrower_name}</p>
-                                                    <p className="text-[11px] text-gray-500 mt-0.5">{request.quantity} Units • {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</p>
+                                                    <p className="text-[11px] text-gray-500">{request.quantity} Units</p>
                                                 </div>
-                                                <Badge variant="outline" className="text-[9px] font-bold bg-amber-50 border-amber-200 text-amber-700">PENDING</Badge>
+                                                <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700">RESERVED</Badge>
                                             </div>
                                         ))}
                                     </div>
                                 </PopoverContent>
                             </Popover>
                         )}
-
-                        {/* PHYSICAL STATUS ALERT (Reliability Hazard) */}
-                        {item.status !== 'Good' && (
-                            <Badge 
-                                variant="outline" 
-                                className="text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow-sm bg-rose-50 border-rose-200 text-rose-700 shrink-0"
-                            >
-                                <AlertTriangle className="h-3 w-3" />
-                                {item.status.toUpperCase()}
-                            </Badge>
-                        )}
-
-                        {/* STOCK SAFETY ALERT (Supply Hazard) */}
-                        {stock.label !== 'IN STOCK' && (
-                            <Badge 
-                                variant="outline" 
-                                className={`text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 ${
-                                    stock.label === 'OUT OF STOCK' 
-                                        ? 'bg-rose-50 border-rose-200 text-rose-700' 
-                                        : 'bg-amber-50 border-amber-200 text-amber-700'
-                                }`}
-                            >
-                                <Package className="h-3 w-3" />
-                                {stock.label}
-                            </Badge>
-                        )}
-
-                        {/* EXPIRY COMPLIANCE ALERT (Compliance Risk) */}
-                        {expiryStatus && (expiryStatus.status === 'expired' || expiryStatus.status === 'critical' || expiryStatus.status === 'warning') && (
-                            <Badge 
-                                variant="outline" 
-                                className={`text-[10px] font-bold px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 ${expiryStatus.color}`}
-                            >
-                                <Clock className="h-3 w-3" />
-                                {expiryStatus.status === 'expired' ? 'EXPIRED' : `${expiryStatus.days}D REMAINING`}
-                            </Badge>
-                        )}
-
-                        {/* ALL CLEAR - OPERATIONAL (Only shown if no hazards exist) */}
-                        {!hasPendingRequests && 
-                         item.status === 'Good' && 
-                         stock.label === 'IN STOCK' && 
-                         (!expiryStatus || (expiryStatus.status !== 'expired' && expiryStatus.status !== 'critical' && expiryStatus.status !== 'warning')) && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-semibold ml-1">
-                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
-                                Operational
-                            </div>
-                        )}
                     </div>
                 </TableCell>
 
-                <TableCell className="px-3 py-5 text-right">
-                    <div className="flex flex-col items-end gap-1">
-                        <span className="text-[16px] font-semibold text-gray-900 tabular-nums leading-none tracking-tight">
-                            {item.stock_available}
-                        </span>
-                        <span className="text-[12px] text-gray-500 leading-none">
-                            of {item.stock_total} total
-                        </span>
-                        <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden mt-0.5">
-                            <div 
-                                className={`h-full transition-all duration-500 ${
-                                    stockPercentage === 0 ? 'bg-rose-500' :
-                                    stockPercentage < 50 ? 'bg-amber-500' :
-                                    'bg-emerald-500'
-                                }`}
-                                style={{ width: `${stockPercentage}%` }}
-                            />
+                <TableCell className="px-3 py-5 text-right w-fit">
+                    <div className="flex flex-col items-end gap-1.5 min-w-[120px]">
+                        {/* THE AVAILABILITY BREAKDOWN */}
+                        <div className="flex items-center gap-2">
+                             <span className="text-[16px] font-bold text-gray-900 tabular-nums tracking-tight">
+                                 {item.qty_good} Ready
+                             </span>
                         </div>
-                        {(item as any).active_borrows?.length > 0 && (
-                            <span className="text-[11px] text-blue-600 font-medium mt-0.5 cursor-pointer hover:underline leading-none">
-                                {(item as any).active_borrows.length} borrowed
-                            </span>
-                        )}
+                        <div className="flex flex-col items-end -mt-0.5 space-y-0.5">
+                            {(item.stock_borrowed || 0) > 0 && (
+                                <span className="text-[11px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded tracking-wide leading-none">
+                                    {item.stock_borrowed} BORROWED
+                                </span>
+                            )}
+                            {(item.qty_damaged + item.qty_maintenance + item.qty_lost) > 0 && (
+                                <span className="text-[11px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded tracking-wide leading-none">
+                                    {item.qty_damaged + item.qty_maintenance + item.qty_lost} OUT OF SERVICE
+                                </span>
+                            )}
+                        </div>
+                        <div className="w-20 h-1 bg-gray-100 rounded-full overflow-hidden mt-1 relative">
+                            {/* Proportional Availability Bar */}
+                            <div 
+                                className="h-full bg-emerald-500 transition-all duration-500 absolute left-0"
+                                style={{ width: `${(item.qty_good / item.stock_total) * 100}%` }}
+                            />
+                            {/* Incomplete bar can be used to show other health or borrowed */}
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-1">
+                            TOTAL {item.stock_total} UNIT{item.stock_total > 1 ? 'S' : ''}
+                        </span>
                     </div>
                 </TableCell>
 
@@ -287,15 +280,14 @@ export function ExpandableInventoryRow({
                             <QRDialog item={item} />
                         </div>
                         <div className="animate-in fade-in slide-in-from-right-2 duration-200" style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}>
-                            <InventoryItemDialog
-                                existingItem={item}
-                                onSuccess={onRefresh}
-                                trigger={
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors">
-                                        <Edit2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                }
-                            />
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => onEdit?.(item)}
+                                className="h-8 w-8 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                            >
+                                <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
                         <div className="animate-in fade-in slide-in-from-right-2 duration-200" style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}>
                             <Button

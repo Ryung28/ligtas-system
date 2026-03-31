@@ -3,6 +3,7 @@ import { Inter, Outfit, Inter_Tight, JetBrains_Mono, Syne, DM_Sans } from "next/
 import { Toaster } from "sonner";
 import "./globals.css";
 import { AudioPermissionWrapper } from "@/components/audio-permission-wrapper";
+import { RealtimeAudioProvider } from "@/components/realtime-audio";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -43,6 +44,9 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
     title: "LIGTAS CDRRMO - Inventory Management System",
     description: "City Disaster Risk Reduction & Management Office Inventory System",
+    icons: {
+        icon: "/oro-cervo.png",
+    }
 };
 
 export default function RootLayout({
@@ -54,7 +58,9 @@ export default function RootLayout({
         <html lang="en" className={`${inter.variable} ${outfit.variable} ${interTight.variable} ${jetbrainsMono.variable} ${syne.variable} ${dmSans.variable}`}>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
                 <AudioPermissionWrapper>
-                    {children}
+                    <RealtimeAudioProvider>
+                        {children}
+                    </RealtimeAudioProvider>
                 </AudioPermissionWrapper>
                 <Toaster position="top-right" richColors closeButton />
             </body>

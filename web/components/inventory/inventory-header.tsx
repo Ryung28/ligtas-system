@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button'
 import { Plus, ListPlus, Package, Layers, AlertTriangle, XCircle, Trash2, CheckSquare } from 'lucide-react'
 import { BulkAddDialog } from './bulk-add-dialog'
-import { InventoryItemDialog } from './inventory-dialog'
 import { InventoryPrintCatalog } from './inventory-print-catalog'
 import { InventoryItem } from '@/lib/supabase'
 import { useMemo } from 'react'
@@ -17,9 +16,10 @@ interface InventoryHeaderProps {
     onBulkDelete?: () => void
     selectionMode?: boolean
     onToggleSelectionMode?: () => void
+    onAddItem?: () => void
 }
 
-export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode }: InventoryHeaderProps) {
+export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode, onAddItem }: InventoryHeaderProps) {
     const stats = useMemo(() => {
         const totalItems = items.length
         const lowStockItems = items.filter(item => item.stock_available > 0 && item.stock_available < 5).length
@@ -79,15 +79,14 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
                             </Button>
                         }
                     />
-                    <InventoryItemDialog
-                        onSuccess={onRefresh}
-                        trigger={
-                            <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-semibold transition-all rounded-xl px-4 shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-0.5 active:scale-95">
+                            <Button 
+                                onClick={onAddItem}
+                                size="sm" 
+                                className="h-9 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-semibold transition-all rounded-xl px-4 shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-0.5 active:scale-95"
+                            >
                                 <Plus className="h-4 w-4 mr-1.5" />
                                 Add Item
                             </Button>
-                        }
-                    />
                         </>
                     )}
                 </div>

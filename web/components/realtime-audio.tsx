@@ -3,25 +3,44 @@
 import { useEffect, useRef } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
+/**
+ * 🏛️ ENTERPRISE ACOUSTIC DISPATCHER
+ * Unified sound engine that observes the 'system_notifications' sink.
+ * Senior Dev Note: This prevents fragmented audio logic and ensures that if a notification 
+ * is logged in the DB, it is heard by the Manager.
+ */
 export function RealtimeAudioProvider({ children }: { children: React.ReactNode }) {
     const audioRef = useRef<HTMLAudioElement | null>(null)
+    const criticalAudioRef = useRef<HTMLAudioElement | null>(null)
+    const lastPlayTime = useRef<number>(0)
     const supabaseRef = useRef<any>(null)
 
-    const playNotification = () => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0
-            audioRef.current.play()
-                .then(() => console.log('[Audio] Notification played'))
-                .catch(e => console.warn('[Audio] Play failed (user interaction may be required):', e))
+    const debounceAudio = (callback: () => void) => {
+        const now = Date.now();
+        if (now - lastPlayTime.current > 3000) { // 🛡️ 3s Acoustic Grace Period
+            callback();
+            lastPlayTime.current = now;
         }
     }
 
+    const playNotification = () => {
+        if (localStorage.getItem('audio_enabled') !== 'true') return;
+        debounceAudio(() => {
+            if (audioRef.current) {
+                audioRef.current.currentTime = 0
+                audioRef.current.play().catch(e => console.warn('[Audio] Blocked:', e))
+            }
+        });
+    }
+
     const playCriticalAlert = () => {
-        const criticalAudio = new Audio('/sounds/critical_alarm.mp3')
-        criticalAudio.volume = 0.7
-        criticalAudio.play()
-            .then(() => console.log('[Audio] Critical alert played'))
-            .catch(e => console.warn('[Audio] Critical play failed:', e))
+        if (localStorage.getItem('audio_enabled') !== 'true') return;
+        debounceAudio(() => {
+            if (criticalAudioRef.current) {
+                criticalAudioRef.current.currentTime = 0
+                criticalAudioRef.current.play().catch(e => console.warn('[Critical] Blocked:', e))
+            }
+        });
     }
 
     useEffect(() => {
@@ -31,58 +50,38 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
         )
         supabaseRef.current = supabase
 
-        // Preload audio (place your MP3 in public/sounds/)
+        // 🏗️ PRELOAD ASSETS: Minimize latency during high-stress disaster triage
         audioRef.current = new Audio('/sounds/notification.mp3')
         audioRef.current.volume = 0.5
+        
+        criticalAudioRef.current = new Audio('/sounds/critical_alarm.mp3')
+        criticalAudioRef.current.volume = 0.7
 
-        // ── Realtime Subscription for Borrow Logs (Approvals) ──
-        const borrowChannel = supabase.channel('borrow_logs_realtime')
+        // ── 🛰️ UNIFIED SINK LISTENER: The Centralized Doorbell ──
+        const notificationChannel = supabase.channel('system_notifications_audio_sync')
 
-        borrowChannel
+        notificationChannel
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'borrow_logs',
-                filter: "status=eq.pending"
+                table: 'system_notifications'
             }, (payload) => {
-                console.log('[Realtime] New pending approval detected')
-                playNotification()
-            })
-            .subscribe()
+                const type = payload.new.type as string;
+                console.log(`[Audio-Dispatcher] Intel Packet Received: ${type}`);
 
-        // ── Realtime Subscription for Chat Messages ──
-        const chatChannel = supabase.channel('chat_messages_realtime')
-
-        chatChannel
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'chat_messages'
-            }, (payload) => {
-                console.log('[Realtime] New chat message detected')
-                playNotification()
-            })
-            .subscribe()
-
-        // ── Realtime Subscription for Critical Alerts (Inventory Low Stock) ──
-        const inventoryChannel = supabase.channel('inventory_realtime')
-
-        inventoryChannel
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'inventory',
-                filter: "stock_available=lt.5"
-            }, (payload) => {
-                console.log('[Realtime] Critical low stock alert detected')
-                playCriticalAlert()
+                // 🏗️ TACTICAL MAPPING: Determine urgency based on notification type
+                const criticalTypes = ['borrow_request', 'stock_out', 'security_trigger', 'user_pending'];
+                
+                if (criticalTypes.includes(type)) {
+                    playCriticalAlert();
+                } else {
+                    playNotification();
+                }
             })
             .subscribe()
 
         return () => {
-            supabase.removeChannel(borrowChannel)
-            supabase.removeChannel(chatChannel)
-            supabase.removeChannel(inventoryChannel)
+            supabase.removeChannel(notificationChannel)
         }
     }, [])
 

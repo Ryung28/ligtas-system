@@ -32,12 +32,20 @@ export async function addItem(formData: FormData) {
             parent_id: formData.get('parent_id'),
             variant_label: formData.get('variant_label'),
             low_stock_threshold: formData.get('low_stock_threshold') || 20,
+            // Enterprise Sub-Buckets
+            qty_good: Number(formData.get('qty_good')) || Number(formData.get('stock_total')) || 0,
+            qty_damaged: Number(formData.get('qty_damaged')) || 0,
+            qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
+            qty_lost: Number(formData.get('qty_lost')) || 0,
         }
 
+        // 🛡️ RECONCILIATION: Ensure stock_total matches the sum of buckets
+        const calculatedTotal = rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost
+        const finalStockTotal = Math.max(Number(rawData.stock_total) || 0, calculatedTotal)
         const validatedData = addItemSchema.parse(rawData)
 
         // Validate that current stock doesn't exceed total stock
-        if (validatedData.stock_available > validatedData.stock_total) {
+        if (validatedData.stock_available > finalStockTotal) {
             return {
                 success: false,
                 error: 'Current stock cannot exceed fixed total stock',
@@ -78,7 +86,11 @@ export async function addItem(formData: FormData) {
                         category: validatedData.category,
                         stock_total: 0,
                         stock_available: 0,
-                        status: validatedData.status,
+                        qty_good: 0,
+                        qty_damaged: 0,
+                        qty_maintenance: 0,
+                        qty_lost: 0,
+                        status: 'Good',
                         image_url: validatedData.image_url,
                         serial_number: validatedData.serial_number,
                         equipment_type: validatedData.equipment_type,
@@ -112,9 +124,13 @@ export async function addItem(formData: FormData) {
                 variant_label: finalVariantLabel,
                 description: validatedData.description,
                 category: validatedData.category,
-                stock_total: validatedData.stock_total,
-                stock_available: validatedData.stock_available,
-                status: validatedData.status,
+                stock_total: finalStockTotal,
+                stock_available: rawData.qty_good, // Available is strictly Ready for Deployment
+                qty_good: rawData.qty_good,
+                qty_damaged: rawData.qty_damaged,
+                qty_maintenance: rawData.qty_maintenance,
+                qty_lost: rawData.qty_lost,
+                status: 'Good', // Base status is Good; sub-buckets handle triage
                 image_url: validatedData.image_url,
                 serial_number: validatedData.serial_number,
                 equipment_type: validatedData.equipment_type,
@@ -214,7 +230,15 @@ export async function updateItem(formData: FormData) {
             brand: formData.get('brand'),
             expiry_date: formData.get('expiry_date'),
             low_stock_threshold: formData.get('low_stock_threshold') || 20,
+            // Enterprise Sub-Buckets
+            qty_good: Number(formData.get('qty_good')) || 0,
+            qty_damaged: Number(formData.get('qty_damaged')) || 0,
+            qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
+            qty_lost: Number(formData.get('qty_lost')) || 0,
         }
+
+        const calculatedTotal = rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost
+        const finalStockTotal = Math.max(Number(rawData.stock_total) || 0, calculatedTotal)
 
         const validatedData = addItemSchema.parse(rawData)
 
@@ -226,22 +250,27 @@ export async function updateItem(formData: FormData) {
             }
         }
 
+        // 🛡️ SUB-BUCKET UPDATE (THE ENTERPRISE WAY)
+        // We update the single row with its partitioned quantities.
         const { data, error } = await supabase
             .from('inventory')
             .update({
-                item_name: validatedData.name,
-                description: validatedData.description,
-                category: validatedData.category,
-                stock_total: validatedData.stock_total,
-                stock_available: validatedData.stock_available,
-                status: validatedData.status,
-                image_url: validatedData.image_url,
-                serial_number: validatedData.serial_number,
-                equipment_type: validatedData.equipment_type,
-                storage_location: validatedData.storage_location,
-                brand: validatedData.brand,
-                expiry_date: validatedData.expiry_date,
-                low_stock_threshold: validatedData.low_stock_threshold,
+                item_name: rawData.name,
+                description: rawData.description,
+                category: rawData.category,
+                stock_total: finalStockTotal,
+                stock_available: rawData.qty_good,
+                qty_good: rawData.qty_good,
+                qty_damaged: rawData.qty_damaged,
+                qty_maintenance: rawData.qty_maintenance,
+                qty_lost: rawData.qty_lost,
+                image_url: rawData.image_url,
+                serial_number: rawData.serial_number,
+                equipment_type: rawData.equipment_type,
+                storage_location: rawData.storage_location,
+                brand: rawData.brand,
+                expiry_date: rawData.expiry_date,
+                low_stock_threshold: rawData.low_stock_threshold,
             })
             .eq('id', id)
             .select()
@@ -249,7 +278,8 @@ export async function updateItem(formData: FormData) {
         if (error) throw error
 
         revalidatePath('/dashboard/inventory')
-        return { success: true, message: 'Item updated successfully' }
+        revalidatePath('/dashboard')
+        return { success: true, message: 'Item reconciled successfully 🟢' }
     } catch (error: any) {
         return { success: false, error: error.message || 'Failed to update item' }
     }
@@ -304,5 +334,18 @@ export async function deleteItem(id: number) {
     } catch (error: any) {
         console.error('Archive Error:', error)
         return { success: false, error: error.message || 'Failed to archive item' }
+    }
+}
+
+/**
+ * TACTICAL STOCK SPLIT (LIQUIDATED)
+ * This function is now deprecated in favor of the Single-Row Bucket model.
+ * Status distribution is now handled directly in updateItem.
+ */
+export async function splitInventoryItem(id: number, _splitQty: number, _targetStatus: string) {
+    return {
+        success: false,
+        message: "Split Mode is deprecated.",
+        error: "Split Mode is deprecated. Use the 'Status Distribution' ledger in the Edit dialog instead. 🟢"
     }
 }

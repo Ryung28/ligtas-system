@@ -7,6 +7,15 @@ import { getStorageLocations, addStorageLocation } from '@/app/actions/storage-l
 import { InventoryItem } from '@/lib/supabase'
 import { optimizeImage } from '@/lib/image-optimizer'
 
+interface AdditionalDetailsFieldsProps {
+    existingItem?: InventoryItem
+    isSplitMode?: boolean
+    setIsSplitMode?: (value: boolean) => void
+    splitQty?: number | string
+    setSplitQty?: (value: number | string) => void
+    totalStock?: number | string
+}
+
 interface UseInventoryFormProps {
     existingItem?: InventoryItem
     isOpen: boolean
@@ -23,7 +32,8 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     const [categories, setCategories] = useState<string[]>([])
     const [isLoadingCategories, setIsLoadingCategories] = useState(true)
     const [itemType, setItemType] = useState<'equipment' | 'consumable'>('equipment')
-    const [storageLocation, setStorageLocation] = useState<string>((existingItem as any)?.storage_location || 'lower_warehouse')
+    const [categoryId, setCategoryId] = useState<string>('')
+    const [storageLocation, setStorageLocation] = useState<string>('')
     const [customLocation, setCustomLocation] = useState<string>('')
     const [savedLocations, setSavedLocations] = useState<string[]>([])
     const [isLoadingLocations, setIsLoadingLocations] = useState(true)
@@ -35,6 +45,19 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     const [parentItems, setParentItems] = useState<any[]>([])
     const [isLoadingParents, setIsLoadingParents] = useState(false)
     const [itemNameValue, setItemNameValue] = useState<string>(existingItem?.item_name || '')
+    // Enterprise Sub-Buckets State
+    const [qtyGood, setQtyGood] = useState<number | string>(existingItem?.qty_good || 0)
+    const [qtyDamaged, setQtyDamaged] = useState<number | string>(existingItem?.qty_damaged || 0)
+    const [qtyMaintenance, setQtyMaintenance] = useState<number | string>(existingItem?.qty_maintenance || 0)
+    const [qtyLost, setQtyLost] = useState<number | string>(existingItem?.qty_lost || 0)
+
+    // AUTO-BALANCING (THE ENTERPRISE WAY): stock_total is the aggregate of all status buckets
+    const stockTotalValue = Number(qtyGood) + Number(qtyDamaged) + Number(qtyMaintenance) + Number(qtyLost)
+    const stockAvailableValue = Number(qtyGood)
+    
+    // Split Mode State (DEPRECATED - Kept for reverse compatibility during refactor)
+    const [isSplitMode, setIsSplitMode] = useState(false)
+    const [splitQty, setSplitQty] = useState<number | string>(1)
     
     const fileInputRef = useRef<HTMLInputElement>(null)
     const formRef = useRef<HTMLFormElement>(null)
@@ -89,29 +112,47 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         loadData()
     }, [isOpen, supabase])
 
-    // Initialize item type, storage location, and variant data when dialog opens
+    // INITIALIZE FORM ON OPEN (THE SENIOR WAY): Single-pass initialization
     useEffect(() => {
+        if (!isOpen) {
+            // Clean up when dialog closes
+            setQtyGood(0)
+            setQtyDamaged(0)
+            setQtyMaintenance(0)
+            setQtyLost(0)
+            setItemNameValue('')
+            setPreviewUrl(null)
+            setStoredPath(null)
+            return
+        }
+
         if (isOpen && existingItem) {
-            setItemType((existingItem as any)?.item_type || 'equipment')
-            setItemNameValue(existingItem.item_name)
-            const location = (existingItem as any)?.storage_location || 'lower_warehouse'
+            setItemNameValue(existingItem.item_name || '')
+            setCategoryId(existingItem.category || '')
+            setItemType((existingItem as any).item_type || 'equipment')
+            setStorageLocation(existingItem.storage_location || '')
             
-            // Check if location exists in saved locations list
-            if (savedLocations.length > 0) {
-                if (savedLocations.includes(location)) {
-                    setStorageLocation(location)
-                    setCustomLocation('')
-                } else {
-                    // It's a custom location not in the saved list
-                    setStorageLocation('custom')
-                    setCustomLocation(location)
-                }
+            // Initialize Buckets
+            setQtyGood(existingItem.qty_good || 0)
+            setQtyDamaged(existingItem.qty_damaged || 0)
+            setQtyMaintenance(existingItem.qty_maintenance || 0)
+            setQtyLost(existingItem.qty_lost || 0)
+
+            setIsSplitMode(false)
+            
+            setPreviewUrl(existingItem.image_url || null)
+            setStoredPath(existingItem.image_url || null)
+            
+            const location = (existingItem as any)?.storage_location || 'lower_warehouse'
+            if (savedLocations.length > 0 && !savedLocations.includes(location)) {
+                setStorageLocation('custom')
+                setCustomLocation(location)
             } else {
-                // Locations not loaded yet, set the value directly
                 setStorageLocation(location)
+                setCustomLocation('')
             }
             
-            // Initialize variant data
+            // Variant logic
             const itemParentId = (existingItem as any)?.parent_id
             const itemVariantLabel = (existingItem as any)?.variant_label
             if (itemParentId && itemVariantLabel) {
@@ -124,16 +165,19 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
                 setVariantLabel('')
             }
         } else if (isOpen) {
+            // New Item defaults
+            setQtyGood(0)
+            setQtyDamaged(0)
+            setQtyMaintenance(0)
+            setQtyLost(0)
+            setCategoryId('')
+            setItemNameValue('')
             setItemType('equipment')
             setStorageLocation('lower_warehouse')
-            setCustomLocation('')
-            setHasVariants(false)
-            setParentId('new')
-            setVariantLabel('')
-            setCustomVariant('')
-            setItemNameValue('')
         }
     }, [isOpen, existingItem, savedLocations])
+    
+
 
     // MEMORY MANAGEMENT: Cleanup object URLs to prevent leaks
     useEffect(() => {
@@ -144,10 +188,6 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         }
     }, [previewUrl])
 
-    // Reset preview URL when dialog opens
-    useEffect(() => {
-        if (isOpen) setPreviewUrl(existingItem?.image_url || null)
-    }, [isOpen, existingItem])
 
     // Image Upload Handler
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,53 +245,33 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         const form = event.currentTarget
         const requiredFields = [
             { name: 'name', label: 'Item Name', ref: form.name },
-            { name: 'category', label: 'Category', ref: form.category },
-            { name: 'stock_total', label: 'Fixed Total Stock', ref: form.stock_total },
-            { name: 'stock_available', label: 'Current Stock', ref: form.stock_available },
+            { name: 'category', label: 'Category', ref: form.category }
         ]
 
         // Add variant validation if variants are enabled
         if (hasVariants && !variantLabel) {
             toast.error('Please select a variant type')
-            const variantSection = document.getElementById('variant-section')
-            if (variantSection) {
-                variantSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                variantSection.classList.add('animate-shake')
-                setTimeout(() => variantSection.classList.remove('animate-shake'), 500)
-            }
-            return
-        }
-
-        // Check custom variant input
-        if (hasVariants && variantLabel === 'custom' && !customVariant.trim()) {
-            toast.error('Please enter a custom variant name')
             return
         }
 
         // Validate required fields
-        for (const field of requiredFields) {
+        for (const field of requiredFields.filter(f => !['stock_total', 'stock_available'].includes(f.name))) {
             if (!field.ref || !field.ref.value || field.ref.value.trim() === '') {
                 toast.error(`${field.label} is required`)
                 field.ref?.focus()
-                field.ref?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                field.ref?.classList.add('animate-shake', 'border-red-500')
-                setTimeout(() => {
-                    field.ref?.classList.remove('animate-shake', 'border-red-500')
-                }, 500)
                 return
             }
         }
 
-        // Validate that current stock doesn't exceed total stock
-        const totalStock = parseInt(form.stock_total.value)
-        const currentStock = parseInt(form.stock_available.value)
-        if (currentStock > totalStock) {
-            toast.error('Current stock cannot exceed fixed total stock')
-            form.stock_available?.focus()
-            return
-        }
-
         const formData = new FormData(event.currentTarget)
+        
+        // Append buckets explicitly to ensure they reach the server action
+        formData.set('qty_good', qtyGood.toString())
+        formData.set('qty_damaged', qtyDamaged.toString())
+        formData.set('qty_maintenance', qtyMaintenance.toString())
+        formData.set('qty_lost', qtyLost.toString())
+        formData.set('stock_total', stockTotalValue.toString())
+        formData.set('stock_available', qtyGood.toString())
 
         if (isEditMode && existingItem) {
             formData.append('id', existingItem.id.toString())
@@ -266,11 +286,13 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
             formData.set('storage_location', customLocation.trim())
         }
 
-        // Handle variant data
+        // Handle variant data: Reset identity if status is 'Good'
         if (hasVariants && variantLabel) {
             const finalVariantLabel = variantLabel === 'custom' ? customVariant : variantLabel
-            if (finalVariantLabel) {
+            if (finalVariantLabel && formData.get('status') !== 'Good') {
                 formData.set('variant_label', finalVariantLabel)
+            } else if (formData.get('status') === 'Good') {
+                formData.delete('variant_label')
             }
         }
 
@@ -313,6 +335,9 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         previewUrl,
         categories,
         isLoadingCategories,
+        
+        // Data & Setters
+        categoryId,
         itemType,
         storageLocation,
         customLocation,
@@ -327,6 +352,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         isLoadingParents,
         itemNameValue,
         isEditMode,
+        stockTotalValue,
         
         // Refs
         fileInputRef,
@@ -340,6 +366,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         
         // Setters
         setItemType,
+        setCategoryId,
         setStorageLocation,
         setCustomLocation,
         setHasVariants,
@@ -347,5 +374,16 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         setVariantLabel,
         setCustomVariant,
         setItemNameValue,
+
+        // Bucket States
+        qtyGood,
+        qtyDamaged,
+        qtyMaintenance,
+        qtyLost,
+        // Bucket Setters
+        setQtyGood,
+        setQtyDamaged,
+        setQtyMaintenance,
+        setQtyLost
     }
 }

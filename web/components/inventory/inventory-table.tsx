@@ -20,7 +20,6 @@ import {
     DialogTitle as ShadinDialogTitle
 } from '@/components/ui/dialog'
 import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
-import { InventoryItemDialog } from './inventory-dialog'
 import { QRDialog } from './qr-dialog'
 import { FilterTabs } from '@/components/ui/filter-tabs'
 import { ExpandableInventoryRow } from './expandable-inventory-row'
@@ -32,11 +31,16 @@ interface InventoryTableProps {
     onRefresh?: () => void
     selectedItems?: number[]
     onSelectionChange?: (selected: number[]) => void
+    onEdit?: (item: InventoryItem) => void
+}
+
+interface AggregatedInventoryItem extends InventoryItem {
+    variants: InventoryItem[]
 }
 
 const ITEMS_PER_PAGE = 10
 
-export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange }: InventoryTableProps) {
+export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange, onEdit }: InventoryTableProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
@@ -63,9 +67,9 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             pending: items.filter(i => {
                 const hasPending = (i as any).stock_pending > 0
                 const threshold = (i as any).low_stock_threshold || 20
-                const percentage = i.stock_total > 0 ? (i.stock_available / i.stock_total) * 100 : 0
+                const percentage = i.stock_total > 0 ? (i.qty_good / i.stock_total) * 100 : 0
                 const isLowStock = percentage <= threshold
-                const isDamaged = i.status.toLowerCase() !== 'good'
+                const hasHealthIssues = i.qty_damaged > 0 || i.qty_maintenance > 0 || i.qty_lost > 0
                 
                 // Expiry Logic (Approaching in < 30 days)
                 let isExpiring = false
@@ -75,7 +79,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                     isExpiring = diff <= 30
                 }
 
-                return hasPending || isLowStock || isDamaged || isExpiring
+                return hasPending || isLowStock || hasHealthIssues || isExpiring
             }).length
         }
         
@@ -129,16 +133,19 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
             let matchesCondition = true
             if (conditionFilter !== 'all') {
-                matchesCondition = item.status === conditionFilter
+                if (conditionFilter === 'Good') matchesCondition = item.qty_good > 0
+                else if (conditionFilter === 'Damaged') matchesCondition = item.qty_damaged > 0
+                else if (conditionFilter === 'Maintenance') matchesCondition = item.qty_maintenance > 0
+                else if (conditionFilter === 'Lost') matchesCondition = item.qty_lost > 0
             }
 
             let matchesStatus = true
             if (statusFilter === 'pending') {
                 const hasPending = (item as any).stock_pending > 0
                 const threshold = (item as any).low_stock_threshold || 20
-                const percentage = (item.stock_available / item.stock_total) * 100
+                const percentage = item.stock_total > 0 ? (item.qty_good / item.stock_total) * 100 : 0
                 const isLowStock = percentage <= threshold
-                const isDamaged = item.status.toLowerCase() !== 'good'
+                const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
                 
                 let isExpiring = false
                 const expiry = (item as any).expiry_date
@@ -147,7 +154,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                     isExpiring = diff <= 30
                 }
 
-                matchesStatus = hasPending || isLowStock || isDamaged || isExpiring
+                matchesStatus = hasPending || isLowStock || hasHealthIssues || isExpiring
             }
 
             let matchesLocation = true
@@ -159,12 +166,35 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         })
     }, [items, searchQuery, categoryFilter, conditionFilter, statusFilter, locationFilter])
 
+    // Group items (Senior Solution: Since split-mode is gone, we usually have 1 row per item_name/category/location)
+    // We keep this for backward compatibility and potential variant support
+    const aggregatedItems = useMemo(() => {
+        const itemMap = new Map<string | number, AggregatedInventoryItem>()
+        
+        filteredItems.forEach(item => {
+            const groupId = (item as any).parent_id || item.id
+            
+            if (!itemMap.has(groupId)) {
+                itemMap.set(groupId, { ...item, variants: [item] })
+            } else {
+                const group = itemMap.get(groupId)!
+                group.variants.push(item)
+                if (!(item as any).parent_id) {
+                    const variants = group.variants
+                    Object.assign(group, { ...item, variants })
+                }
+            }
+        })
+        
+        return Array.from(itemMap.values())
+    }, [filteredItems])
+
     // Paginate Items
-    const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
+    const totalPages = Math.ceil(aggregatedItems.length / ITEMS_PER_PAGE)
     const paginatedItems = useMemo(() => {
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-        return filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE)
-    }, [filteredItems, currentPage])
+        return aggregatedItems.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+    }, [aggregatedItems, currentPage])
 
     // Reset page on filter change
     useEffect(() => {
@@ -202,15 +232,15 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
     const getStockDisplay = (item: InventoryItem) => {
         const threshold = (item as any).low_stock_threshold || 20
-        const percentage = getStockPercentage(item.stock_available, item.stock_total)
+        const percentage = getStockPercentage(item.qty_good, item.stock_total)
         
-        if (item.stock_available === 0) return { label: 'OUT OF STOCK' }
+        if (item.qty_good === 0) return { label: 'OUT OF STOCK' }
         if (percentage <= threshold) return { label: 'LOW STOCK' }
         return { label: 'IN STOCK' }
     }
 
     const getConditionDot = (status: string) => {
-        const s = (status || 'Good').toLowerCase()
+        const s = status.toLowerCase()
         if (s.includes('damaged') || s.includes('repair')) return { color: 'bg-rose-500', label: 'Needs Repair' }
         if (s.includes('maintenance')) return { color: 'bg-amber-500', label: 'In Maintenance' }
         if (s.includes('lost')) return { color: 'bg-slate-400', label: 'Missing' }
@@ -353,6 +383,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                         isSelected={selectedItems.includes(item.id)}
                                         onSelect={() => handleSelectItem(item.id)}
                                         showCheckbox={!!onSelectionChange}
+                                        onEdit={onEdit}
                                     />
                                 ))
                             )}

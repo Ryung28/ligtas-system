@@ -114,6 +114,8 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                     items: [log],
                     total_quantity: log.quantity,
                     status: log.status,
+                    approved_by_name: log.approved_by_name,
+                    released_by_name: log.released_by_name,
                     created_at: log.created_at
                 })
             }

@@ -368,7 +368,7 @@ function generateTableContent(type: ReportType, data: any[]): string {
             return `<table><thead><tr><th style="width: 10%;">Borrow Date</th><th style="width: 12%;">Borrower</th><th style="width: 15%;">Item</th><th style="width: 5%; text-align: center;">Qty</th><th style="width: 11%;">Approved By</th><th style="width: 11%;">Handed By</th><th style="width: 10%;">Return Date</th><th style="width: 11%;">Received By</th><th style="width: 10%; text-align: center;">Status</th></tr></thead><tbody>${data.map(log => {
                 const borrowDate = new Date(log.borrow_date || log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                 const returnDate = log.actual_return_date ? new Date(log.actual_return_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
-                return `<tr><td class="date">${borrowDate}</td><td style="font-weight: 600;">${log.borrower_name || '—'}</td><td>${log.item_name || '—'}</td><td class="center">${log.quantity || 0}</td><td>${log.approved_by || '—'}</td><td>${log.handed_by || '—'}</td><td class="date">${returnDate}</td><td>${log.received_by_name || '—'}</td><td class="center"><span class="badge" style="color: white; background: ${log.status === 'borrowed' ? '#ea580c' : log.status === 'returned' ? '#16a34a' : '#dc2626'};">${log.status.toUpperCase()}</span></td></tr>`
+                return `<tr><td class="date">${borrowDate}</td><td style="font-weight: 600;">${log.borrower_name || '—'}</td><td>${log.item_name || '—'}</td><td class="center">${log.quantity || 0}</td><td>${log.approved_by_name || '—'}</td><td>${log.released_by_name || '—'}</td><td class="date">${returnDate}</td><td>${log.received_by_name || '—'}</td><td class="center"><span class="badge" style="color: white; background: ${log.status === 'borrowed' ? '#ea580c' : log.status === 'returned' ? '#16a34a' : '#dc2626'};">${log.status.toUpperCase()}</span></td></tr>`
             }).join('')}</tbody></table>`
         
         case 'low-stock':
@@ -485,8 +485,8 @@ function prepareExcelData(type: ReportType, data: any[]): { headers: string[], r
             { key: 'borrower_name', label: 'Borrower' },
             { key: 'item_name', label: 'Item' },
             { key: 'quantity', label: 'Qty' },
-            { key: 'approved_by', label: 'Approved By' },
-            { key: 'handed_by', label: 'Handed By' },
+            { key: 'approved_by_name', label: 'Approved By' },
+            { key: 'released_by_name', label: 'Handed By' },
             { key: 'actual_return_date', label: 'Return Date/Time' },
             { key: 'received_by_name', label: 'Received By' },
             { key: 'status', label: 'Status' }

@@ -16,6 +16,8 @@ export const borrowItemSchema = z.object({
     item_id: z.coerce.number().min(1, 'Please select an item'),
     quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
     purpose: z.string().optional(),
+    approved_by: z.string().optional(),
+    released_by: z.string().optional(),
     expected_return_date: z.string().optional().nullable(),
 })
 
@@ -26,6 +28,8 @@ export const batchBorrowSchema = z.object({
         .regex(/^09\d{9}$/, 'Invalid Philippine mobile number (must be 09XXXXXXXXX)'),
     office_department: z.string().optional().nullable(),
     purpose: z.string().optional(),
+    approved_by: z.string().optional(),
+    released_by: z.string().optional(),
     expected_return_date: z.string().optional().nullable(),
     items: z.array(z.object({
         item_id: z.number().min(1),

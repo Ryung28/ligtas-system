@@ -10,6 +10,8 @@ interface BasicInfoFieldsProps {
     existingItem?: InventoryItem
     categories: string[]
     isLoadingCategories: boolean
+    categoryId?: string
+    onCategoryIdChange?: (value: string) => void
     // Variant badge props
     hasVariants?: boolean
     variantLabel?: string
@@ -17,7 +19,11 @@ interface BasicInfoFieldsProps {
     onToggleVariants?: (enabled: boolean) => void
     onVariantLabelChange?: (value: string) => void
     onCustomVariantChange?: (value: string) => void
-    itemType?: 'equipment' | 'consumable'
+    itemType?: 'equipment' | 'consumable',
+    parentId?: string,
+    onParentIdChange?: (value: string) => void,
+    parentItems?: any[],
+    isLoadingParents?: boolean
 }
 
 export function BasicInfoFields({
@@ -26,13 +32,19 @@ export function BasicInfoFields({
     existingItem,
     categories,
     isLoadingCategories,
+    categoryId,
+    onCategoryIdChange,
     hasVariants = false,
     variantLabel = '',
     customVariant = '',
     onToggleVariants,
     onVariantLabelChange,
     onCustomVariantChange,
-    itemType = 'equipment'
+    itemType = 'equipment',
+    parentId,
+    onParentIdChange,
+    parentItems = [],
+    isLoadingParents = false
 }: BasicInfoFieldsProps) {
     // Compute the display variant text
     const displayVariant = variantLabel === 'custom' ? customVariant : variantLabel
@@ -151,7 +163,12 @@ export function BasicInfoFields({
                 <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Category</Label>
                 <div className="relative">
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
-                    <Select name="category" defaultValue={existingItem?.category || categories[0]} disabled={isLoadingCategories}>
+                    <Select 
+                        name="category" 
+                        value={categoryId} 
+                        onValueChange={onCategoryIdChange}
+                        required
+                    >
                         <SelectTrigger className="h-11 pl-10 rounded-lg border-2 border-gray-200 bg-white text-sm transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-gray-300">
                             <SelectValue placeholder={isLoadingCategories ? "Loading..." : "Select category"} />
                         </SelectTrigger>

@@ -16,6 +16,13 @@ export interface BorrowLog {
     status: TransactionStatus;
     notes?: string;
     purpose?: string;
+    approved_by_name?: string | null;
+    released_by_name?: string | null;
+    released_by_user_id?: string | null;
+    received_by_name?: string | null;
+    received_by_user_id?: string | null;
+    return_condition?: string | null;
+    return_notes?: string | null;
     created_at: string;
 }
 
@@ -27,6 +34,8 @@ export interface BorrowSession {
     items: BorrowLog[];
     total_quantity: number;
     status: TransactionStatus;
+    approved_by_name?: string | null;
+    released_by_name?: string | null;
     created_at: string;
 }
 

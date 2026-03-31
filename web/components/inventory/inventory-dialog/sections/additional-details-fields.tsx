@@ -8,7 +8,9 @@ interface AdditionalDetailsFieldsProps {
     existingItem?: InventoryItem
 }
 
-export function AdditionalDetailsFields({ existingItem }: AdditionalDetailsFieldsProps) {
+export function AdditionalDetailsFields({ 
+    existingItem, 
+}: AdditionalDetailsFieldsProps) {
     return (
         <div className="space-y-4">
             {/* Equipment ID & Model/Type */}
@@ -45,21 +47,6 @@ export function AdditionalDetailsFields({ existingItem }: AdditionalDetailsField
                 </div>
             </div>
 
-            {/* Status */}
-            <div className="grid gap-2">
-                <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Status</Label>
-                <Select name="status" defaultValue={existingItem?.status || 'Good'}>
-                    <SelectTrigger className="h-11 rounded-lg border-2 border-gray-200 bg-white text-sm transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-gray-300">
-                        <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-200 shadow-xl">
-                        <SelectItem value="Good" className="text-sm text-emerald-600">Operational</SelectItem>
-                        <SelectItem value="Maintenance" className="text-sm text-amber-600">Under Maintenance</SelectItem>
-                        <SelectItem value="Damaged" className="text-sm text-red-600">Damaged</SelectItem>
-                        <SelectItem value="Lost" className="text-sm text-gray-600">Lost/Missing</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
         </div>
     )
 }

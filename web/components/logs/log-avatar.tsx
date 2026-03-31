@@ -5,11 +5,13 @@ import React from 'react'
 interface LogAvatarProps {
     name: string
     lastSeen?: string | null
+    size?: number
 }
 
-export function InitialsAvatar({ name, lastSeen }: LogAvatarProps) {
+export function InitialsAvatar({ name, lastSeen, size = 9 }: LogAvatarProps) {
     const initials = name
         .split(' ')
+        .filter(Boolean)
         .map(n => n[0])
         .slice(0, 2)
         .join('')
@@ -29,9 +31,16 @@ export function InitialsAvatar({ name, lastSeen }: LogAvatarProps) {
 
     const isOnline = lastSeen && (new Date().getTime() - new Date(lastSeen).getTime() < 1000 * 60 * 5)
 
+    const sizeClasses: Record<number, string> = {
+        6: 'h-6 w-6 text-[9px]',
+        7: 'h-7 w-7 text-[10px]',
+        8: 'h-8 w-8 text-[11px]',
+        9: 'h-9 w-9 text-[12px]',
+    }
+
     return (
         <div className="relative shrink-0">
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white ${colorClass}`}>
+            <div className={`${sizeClasses[size] || sizeClasses[9]} rounded-full flex items-center justify-center font-bold ring-2 ring-white ${colorClass}`}>
                 {initials}
             </div>
             {isOnline && (

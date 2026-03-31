@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Cpu, Camera } from 'lucide-react'
+import { Plus, Cpu, Camera, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -35,7 +35,7 @@ export function InventoryItemDialog({
     trigger, 
     open: controlledOpen, 
     onOpenChange, 
-    onSuccess 
+    onSuccess,
 }: InventoryItemDialogProps) {
     // Determine if dialog is controlled or uncontrolled
     const isControlled = controlledOpen !== undefined
@@ -49,6 +49,7 @@ export function InventoryItemDialog({
         previewUrl,
         categories,
         isLoadingCategories,
+        categoryId,
         itemType,
         storageLocation,
         customLocation,
@@ -63,6 +64,17 @@ export function InventoryItemDialog({
         isLoadingParents,
         itemNameValue,
         isEditMode,
+        stockTotalValue,
+        // Bucket States
+        qtyGood,
+        qtyDamaged,
+        qtyMaintenance,
+        qtyLost,
+        // Bucket Setters
+        setQtyGood,
+        setQtyDamaged,
+        setQtyMaintenance,
+        setQtyLost,
         
         // Refs
         fileInputRef,
@@ -74,8 +86,9 @@ export function InventoryItemDialog({
         handleSubmit,
         handleSaveLocation,
         
-        // Setters
+        // Handlers
         setItemType,
+        setCategoryId,
         setStorageLocation,
         setCustomLocation,
         setHasVariants,
@@ -132,13 +145,17 @@ export function InventoryItemDialog({
                                 <div className="h-1 w-1 rounded-full bg-blue-500" />
                                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Essential Details</h3>
                             </div>
-                            <BasicInfoFields
+                            <BasicInfoFields 
                                 itemNameValue={itemNameValue}
                                 onItemNameChange={setItemNameValue}
-                                existingItem={existingItem}
                                 categories={categories}
                                 isLoadingCategories={isLoadingCategories}
+                                categoryId={categoryId}
+                                onCategoryIdChange={setCategoryId}
                                 hasVariants={hasVariants}
+                                parentId={parentId}
+                                parentItems={parentItems}
+                                isLoadingParents={isLoadingParents}
                                 variantLabel={variantLabel}
                                 customVariant={customVariant}
                                 onToggleVariants={setHasVariants}
@@ -157,7 +174,18 @@ export function InventoryItemDialog({
                                 <div className="h-1 w-1 rounded-full bg-blue-500" />
                                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Stock & Location</h3>
                             </div>
-                            <StockManagementFields existingItem={existingItem} />
+                            <StockManagementFields 
+                                qtyGood={qtyGood}
+                                setQtyGood={setQtyGood}
+                                qtyDamaged={qtyDamaged}
+                                setQtyDamaged={setQtyDamaged}
+                                qtyMaintenance={qtyMaintenance}
+                                setQtyMaintenance={setQtyMaintenance}
+                                qtyLost={qtyLost}
+                                setQtyLost={setQtyLost}
+                                stockTotalValue={stockTotalValue}
+                                existingItem={existingItem}
+                            />
                             <StorageLocationSelect
                                 storageLocation={storageLocation}
                                 onStorageLocationChange={setStorageLocation}
@@ -182,7 +210,9 @@ export function InventoryItemDialog({
                                 </h3>
                             </div>
                             {itemType === 'equipment' ? (
-                                <AdditionalDetailsFields existingItem={existingItem} />
+                                <AdditionalDetailsFields 
+                                    existingItem={existingItem} 
+                                />
                             ) : (
                                 <ConsumableFields existingItem={existingItem} />
                             )}

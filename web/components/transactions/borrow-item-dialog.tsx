@@ -2,7 +2,8 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock } from 'lucide-react'
+import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck } from 'lucide-react'
+import { createClient } from '@/lib/supabase-browser'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -61,7 +62,10 @@ export function BorrowItemDialog() {
     // Condition assessment for smart-return
     const [returnCondition, setReturnCondition] = useState('Good')
     const [returnNotes, setReturnNotes] = useState('')
+    const [releasedBy, setReleasedBy] = useState('')
+    const [approvedBy, setApprovedBy] = useState('')
 
+    const supabase = createClient()
     const router = useRouter()
 
     // Check if selected item is consumable
@@ -98,26 +102,28 @@ export function BorrowItemDialog() {
                     }
                 }
             } catch (error) {
-                if (mounted) {
-                    console.error('Failed to load items:', error)
-                    toast.error('Could not load inventory items.', {
-                        className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)]'
-                    })
-                    setAvailableItems([])
-                }
+                console.error('Available items load error:', error)
             } finally {
-                if (mounted) {
-                    setIsLoadingItems(false)
-                }
+                if (mounted) setIsLoadingItems(false)
             }
         }
 
         loadItems()
 
+        // Sync Current User for Handed By field
+        const syncSession = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user && mounted) {
+                const name = user.user_metadata?.full_name || user.email?.split('@')[0] || ''
+                setReleasedBy(name)
+            }
+        }
+        syncSession()
+
         return () => {
             mounted = false
         }
-    }, [open])
+    }, [open, supabase])
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -125,13 +131,15 @@ export function BorrowItemDialog() {
         // If cart has items, use batch borrow
         if (cart.length > 0) {
             const formData = new FormData(event.currentTarget)
-            const borrowerName = formData.get('borrower_name') as string
-            const contactNumber = formData.get('contact_number') as string
-            const officeDepartment = formData.get('office_department') as string
+            const bName = formData.get('borrower_name') as string || borrowerName
+            const cNumber = formData.get('contact_number') as string
+            const oDept = formData.get('office_department') as string
             const purpose = formData.get('purpose') as string
             const expectedReturnDate = formData.get('expected_return_date') as string
+            const approvedBy = formData.get('approved_by') as string
+            const releasedByInput = formData.get('released_by') as string
 
-            if (!borrowerName.trim()) {
+            if (!bName.trim()) {
                 toast.error('Please enter borrower name', {
                     className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
                 })
@@ -140,10 +148,12 @@ export function BorrowItemDialog() {
 
             startTransition(async () => {
                 const result = await batchBorrowItems({
-                    borrower_name: borrowerName,
-                    contact_number: contactNumber,
-                    office_department: officeDepartment,
+                    borrower_name: bName,
+                    contact_number: cNumber,
+                    office_department: oDept,
                     purpose: purpose,
+                    approved_by: approvedBy,
+                    released_by: releasedByInput,
                     expected_return_date: expectedReturnDate || null,
                     items: cart.map(c => ({
                         item_id: c.item.id,
@@ -643,8 +653,74 @@ export function BorrowItemDialog() {
                                         name="purpose"
                                         placeholder={isConsumable ? "E.g., Emergency Response, Medical Aid" : "E.g., Emergency Response Training, Community Event"}
                                         disabled={isPending}
-                                        className="rounded-lg border-gray-300"
+                                        className="rounded-lg border-gray-300 transition-all focus:border-blue-400"
                                     />
+                                </div>
+
+                                {/* Dispatch Sign-off Details */}
+                                <div className="group/audit relative mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:border-blue-200">
+                                    <div className="relative space-y-4">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <ShieldCheck className="h-4 w-4 text-blue-500" />
+                                            <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dispatch Sign-off</h4>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            {/* Approved By Field */}
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="approved_by" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                                    <UserCheck className="h-3.5 w-3.5 text-blue-500" />
+                                                    Approved By <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="relative flex items-center">
+                                                    <Input
+                                                        id="approved_by"
+                                                        name="approved_by"
+                                                        placeholder="Name of approver"
+                                                        required
+                                                        value={approvedBy}
+                                                        onChange={(e) => setApprovedBy(e.target.value)}
+                                                        disabled={isPending}
+                                                        autoComplete="off"
+                                                        className="h-10 rounded-lg border-slate-200 bg-white px-3 text-sm transition-all focus:ring-2 focus:ring-blue-500/10 focus:border-blue-400 w-full pr-24"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setApprovedBy(releasedBy)}
+                                                        className="absolute right-1 h-8 px-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                                                    >
+                                                        USE MY NAME
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Released By Field */}
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="released_by" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                                    <Package className="h-3.5 w-3.5 text-emerald-500" />
+                                                    Released By <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="released_by"
+                                                        name="released_by"
+                                                        required
+                                                        defaultValue={releasedBy}
+                                                        onChange={(e) => setReleasedBy(e.target.value)}
+                                                        disabled={isPending}
+                                                        placeholder="Staff releasing items"
+                                                        className="h-10 rounded-lg border-slate-200 bg-slate-50/50 px-3 text-sm transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <p className="text-[10px] text-slate-400 font-medium">
+                                            * Permanent record: These names will be linked to this dispatch for audit purposes.
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {/* Consumable Notice */}

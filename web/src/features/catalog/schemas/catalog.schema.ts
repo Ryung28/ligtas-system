@@ -24,6 +24,11 @@ export const addItemSchema = z.object({
     parent_id: z.coerce.number().optional().nullable(),
     variant_label: z.string().optional().nullable(),
     low_stock_threshold: z.coerce.number().min(0).max(100).default(20),
+    // Enterprise Status Buckets
+    qty_good: z.coerce.number().min(0).default(0),
+    qty_damaged: z.coerce.number().min(0).default(0),
+    qty_maintenance: z.coerce.number().min(0).default(0),
+    qty_lost: z.coerce.number().min(0).default(0),
 })
 
 export type AddItemInput = z.infer<typeof addItemSchema>

@@ -14,6 +14,8 @@ import { borrowItemSchema, batchBorrowSchema } from '../schemas/transaction.sche
 
 export async function borrowItem(formData: FormData) {
     try {
+        const { data: { user } } = await supabase.auth.getUser()
+        
         // Parse and validate form data
         const rawData = {
             borrower_name: formData.get('borrower_name'),
@@ -22,6 +24,8 @@ export async function borrowItem(formData: FormData) {
             item_id: formData.get('item_id'),
             quantity: formData.get('quantity'),
             purpose: formData.get('purpose') || '',
+            approved_by: formData.get('approved_by') || '',
+            released_by: formData.get('released_by') || '',
             expected_return_date: formData.get('expected_return_date') || null,
         }
 
@@ -68,8 +72,6 @@ export async function borrowItem(formData: FormData) {
         const isConsumable = inventoryItem.item_type === 'consumable'
 
         // Step 2: Insert borrow log
-        // Note: The DB Trigger 'auto_update_inventory_stock' will automatically decrement 
-        // the inventory stock. If stock goes < 0, the DB Check Constraint will fail this insert.
         const now = new Date().toISOString();
         const { data: logData, error: logError } = await supabase
             .from('borrow_logs')
@@ -82,10 +84,13 @@ export async function borrowItem(formData: FormData) {
                     borrower_contact: validatedData.contact_number,
                     borrower_organization: validatedData.office_department || 'N/A',
                     purpose: validatedData.purpose,
+                    approved_by_name: validatedData.approved_by || null,
+                    released_by_name: validatedData.released_by || null,
+                    released_by_user_id: user?.id || null,
                     transaction_type: isConsumable ? 'dispense' : 'borrow',
                     status: isConsumable ? 'dispensed' : 'borrowed',
                     borrow_date: now,
-                    actual_return_date: isConsumable ? now : null, // Auto-complete consumables
+                    actual_return_date: isConsumable ? now : null, 
                     expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
                     created_at: now,
                 },
@@ -140,6 +145,8 @@ export async function batchBorrowItems(data: {
     contact_number: string
     office_department?: string | null
     purpose?: string
+    approved_by?: string
+    released_by?: string
     expected_return_date?: string | null
     items: Array<{
         item_id: number
@@ -148,6 +155,7 @@ export async function batchBorrowItems(data: {
     }>
 }) {
     try {
+        const { data: { user } } = await supabase.auth.getUser()
         const validatedData = batchBorrowSchema.parse(data)
 
         const now = new Date().toISOString()
@@ -188,6 +196,9 @@ export async function batchBorrowItems(data: {
                 borrower_contact: validatedData.contact_number,
                 borrower_organization: validatedData.office_department || 'N/A',
                 purpose: validatedData.purpose || '',
+                approved_by_name: validatedData.approved_by || null,
+                released_by_name: validatedData.released_by || null,
+                released_by_user_id: user?.id || null,
                 transaction_type: isConsumable ? 'dispense' : 'borrow',
                 status: isConsumable ? 'dispensed' : 'borrowed',
                 borrow_date: now,
@@ -250,6 +261,8 @@ export async function batchBorrowItems(data: {
         }
     }
 }
+
+
 
 export async function returnItem(
     logId: number, 

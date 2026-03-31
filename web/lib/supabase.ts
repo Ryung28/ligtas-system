@@ -22,7 +22,15 @@ export interface InventoryItem {
     description?: string
     stock_total: number
     stock_available: number
+    stock_borrowed?: number
+    stock_pending?: number
+    stock_truly_available?: number
     status: string // 'Good', 'Damaged', or calculated status
+    // Enterprise Status Buckets (Quantity Partitioning)
+    qty_good: number
+    qty_damaged: number
+    qty_maintenance: number
+    qty_lost: number
     image_url?: string
     location?: string
     serial_number?: string
@@ -30,7 +38,7 @@ export interface InventoryItem {
     storage_location?: StorageLocation
     brand?: string
     expiry_date?: string
-    expiry_alert_days?: number
+    low_stock_threshold?: number
     created_at?: string
     updated_at?: string
 }

@@ -7,6 +7,7 @@ import { InventoryHeader } from '@/components/inventory/inventory-header'
 import { InventoryTable } from '@/components/inventory/inventory-table'
 import { useInventory } from '@/hooks/use-inventory'
 import { InventoryItem } from '@/lib/supabase'
+import { InventoryItemDialog } from '@/components/inventory/inventory-dialog'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -28,6 +29,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const [itemToDelete, setItemToDelete] = useState<{ id: number; name: string } | null>(null)
     const [selectedItems, setSelectedItems] = useState<number[]>([])
     const [selectionMode, setSelectionMode] = useState(false)
+    const [activeItem, setActiveItem] = useState<InventoryItem | null | 'new'>(null)
     
     // Use server data during initial load, then switch to live data
     // Senior Dev Guard: Don't fallback to stale initialInventory if live inventory is truly empty (e.g. after deletion)
@@ -111,6 +113,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                     onBulkDelete={handleBulkDelete}
                     selectionMode={selectionMode}
                     onToggleSelectionMode={toggleSelectionMode}
+                    onAddItem={() => setActiveItem('new')}
                 />
 
                 <InventoryTable
@@ -120,6 +123,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                     onRefresh={refresh}
                     selectedItems={selectedItems}
                     onSelectionChange={selectionMode ? setSelectedItems : undefined}
+                    onEdit={(item) => setActiveItem(item)}
                 />
             </div>
 
@@ -145,6 +149,12 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <InventoryItemDialog
+                open={!!activeItem}
+                existingItem={activeItem === 'new' ? undefined : activeItem || undefined}
+                onOpenChange={(open) => !open && setActiveItem(null)}
+                onSuccess={refresh}
+            />
         </>
     )
 }
