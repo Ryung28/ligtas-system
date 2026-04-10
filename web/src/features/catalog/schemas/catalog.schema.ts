@@ -9,7 +9,7 @@ import { z } from 'zod'
 
 export const addItemSchema = z.object({
     name: z.string().min(2, 'Item name must be at least 2 characters'),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
     category: z.string().min(1, 'Please select a category'),
     stock_total: z.coerce.number().min(1, 'Fixed total stock must be at least 1'),
     stock_available: z.coerce.number().min(0, 'Current stock cannot be negative'),
@@ -33,3 +33,15 @@ export const addItemSchema = z.object({
 })
 
 export type AddItemInput = z.infer<typeof addItemSchema>
+
+export const siteDistributionSchema = z.object({
+    id: z.coerce.number().optional().nullable(),
+    locationId: z.coerce.number().optional().nullable(),
+    locationName: z.string().min(1, 'Location name is required'),
+    qtyGood: z.coerce.number().min(0, 'Quantity cannot be negative'),
+    qtyDamaged: z.coerce.number().min(0),
+    qtyMaintenance: z.coerce.number().min(0),
+    qtyLost: z.coerce.number().min(0),
+})
+
+export type SiteDistributionInput = z.infer<typeof siteDistributionSchema>

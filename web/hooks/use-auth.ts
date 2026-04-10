@@ -41,13 +41,55 @@ export function useAuth() {
     }, [])
 
     const handleSubmit = async (formData: any) => {
-        // Disabled: Using Google Sign-In only
-        toast.info('Standard login is disabled. Please use Google Sign-In.')
+        setIsLoading(true)
+        setError(null)
+        setSuccess(null)
+
+        try {
+            if (mode === 'login') {
+                const { error: authError } = await supabase.auth.signInWithPassword({
+                    email: formData.email,
+                    password: formData.password,
+                })
+                if (authError) throw authError
+                router.push('/dashboard/inventory')
+            } else if (mode === 'register') {
+                const { error: authError } = await supabase.auth.signUp({
+                    email: formData.email,
+                    password: formData.password,
+                    options: {
+                        data: {
+                            full_name: formData.fullName,
+                        },
+                        emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    },
+                })
+                if (authError) throw authError
+                setSuccess('Registration successful! Please check your email for verification.')
+            } else if (mode === 'forgot-password') {
+                const { error: authError } = await supabase.auth.resetPasswordForEmail(formData.email, {
+                    redirectTo: `${window.location.origin}/auth/reset-password`,
+                })
+                if (authError) throw authError
+                setSuccess('Password reset link sent to your email.')
+            }
+        } catch (err: any) {
+            setError(err.message || 'Authentication failed')
+            toast.error(err.message || 'Authentication failed')
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const signInWithGoogle = async () => {
         setIsLoading(true)
         setError(null)
+
+        // 🛡️ RECOVERY HANDSHAKE: Reset loading after 15s if no redirect occurs
+        const safetyTimeout = setTimeout(() => {
+            setIsLoading(false)
+        }, 15000)
+
         try {
             const { error: authError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -56,8 +98,12 @@ export function useAuth() {
                 },
             })
 
-            if (authError) throw authError
+            if (authError) {
+                clearTimeout(safetyTimeout)
+                throw authError
+            }
         } catch (err: any) {
+            clearTimeout(safetyTimeout)
             const message = err.message || 'Google sign-in failed'
             setError(message)
             toast.error(message)
@@ -66,7 +112,9 @@ export function useAuth() {
     }
 
     const toggleMode = () => {
-        // No-op as other modes are removed
+        setError(null)
+        setSuccess(null)
+        setMode(prev => prev === 'login' ? 'register' : 'login')
     }
 
     return {

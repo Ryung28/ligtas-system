@@ -75,7 +75,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         })
     }, [logs, searchQuery, statusFilter, dateFilter])
 
-    // Grouping into Sessions (Time-Gap Algorithm)
+    // Grouping into Sessions (Time-Gap Algorithm - Optimized O(N))
     const sessions = useMemo(() => {
         if (!filteredLogs.length) return []
 
@@ -87,26 +87,28 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
 
         const sessionsList: BorrowSession[] = []
         const TIME_GAP_MS = 15 * 60 * 1000 // 15 minutes
+        
+        // Track the "current" session being built to achieve O(N)
+        let currentSession: BorrowSession | null = null
 
         sorted.forEach((log) => {
             const logTime = new Date(log.created_at).getTime()
 
-            // Find an existing session for this borrower that is within the time gap
-            const parentSession = sessionsList.find(s =>
-                s.borrower_name === log.borrower_name &&
-                Math.abs(new Date(s.created_at).getTime() - logTime) <= TIME_GAP_MS
-            )
+            // Check if this log belongs to the session we just looked at
+            const isSameSession = currentSession && 
+                currentSession.borrower_name === log.borrower_name &&
+                Math.abs(new Date(currentSession.created_at).getTime() - logTime) <= TIME_GAP_MS
 
-            if (parentSession) {
-                parentSession.items.push(log)
-                parentSession.total_quantity += log.quantity
-                if (parentSession.status !== log.status) parentSession.status = 'mixed'
-                // Update session time to the latest item in the group
-                if (logTime > new Date(parentSession.created_at).getTime()) {
-                    parentSession.created_at = log.created_at
+            if (isSameSession && currentSession) {
+                currentSession.items.push(log)
+                currentSession.total_quantity += log.quantity
+                if (currentSession.status !== log.status) currentSession.status = 'mixed'
+                // Session time reflects the most recent activity in that window
+                if (logTime > new Date(currentSession.created_at).getTime()) {
+                    currentSession.created_at = log.created_at
                 }
             } else {
-                sessionsList.push({
+                currentSession = {
                     key: `${log.borrower_name}-${log.id}`,
                     borrower_name: log.borrower_name,
                     borrower_organization: log.borrower_organization,
@@ -118,7 +120,8 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                     released_by_name: log.released_by_name,
                     pickup_scheduled_at: log.pickup_scheduled_at,
                     created_at: log.created_at
-                })
+                }
+                sessionsList.push(currentSession)
             }
         })
 

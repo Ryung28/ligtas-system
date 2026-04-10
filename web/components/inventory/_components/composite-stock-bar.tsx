@@ -26,11 +26,11 @@ export function CompositeStockBar({
     setIsInternalOpen,
     fetchPending
 }: CompositeStockBarProps) {
-    const total = item.stock_total || 1
-    const goodPct = (item.qty_good / total) * 100
-    const maintPct = (item.qty_maintenance / total) * 100
-    const damagedPct = (item.qty_damaged / total) * 100
-    const lostPct = (item.qty_lost / total) * 100
+    const anchor = (item as any).target_stock || item.stock_total || 1
+    const goodPct = Math.min((item.qty_good / anchor) * 100, 100)
+    const maintPct = (item.qty_maintenance / anchor) * 100
+    const damagedPct = (item.qty_damaged / anchor) * 100
+    const lostPct = (item.qty_lost / anchor) * 100
 
     const hasIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
     const hasPending = pendingCount > 0

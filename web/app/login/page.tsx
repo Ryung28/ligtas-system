@@ -204,7 +204,7 @@ export default function LoginPage() {
 
 
                             {/* Technical Badge */}
-                            <div className="w-14 h-14 rounded-2xl bg-[#832838]/5 flex items-center justify-center mb-5 relative">
+                            <div className="w-14 h-14 rounded-2xl bg-[#832838]/5 flex items-center justify-center mb-5 relative shrink-0">
                                 <Shield className="w-7 h-7 text-[#832838] opacity-80" />
                                 <div className="absolute inset-x-[-8px] inset-y-[-8px] border border-[#832838]/10 rounded-2xl animate-pulse-slow" />
                             </div>

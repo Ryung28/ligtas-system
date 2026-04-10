@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { AudioPermissionWrapper } from "@/components/audio-permission-wrapper";
 import { RealtimeAudioProvider } from "@/components/realtime-audio";
+import { PWARegister } from "./pwa-register";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -46,7 +47,19 @@ export const metadata: Metadata = {
     description: "City Disaster Risk Reduction & Management Office Inventory System",
     icons: {
         icon: "/oro-cervo.png",
-    }
+    },
+    manifest: "/manifest.json",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "default",
+        title: "LIGTAS",
+    },
+    viewport: {
+        width: "device-width",
+        initialScale: 1,
+        maximumScale: 1,
+        userScalable: false,
+    },
 };
 
 export default function RootLayout({
@@ -56,7 +69,14 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" className={`${inter.variable} ${outfit.variable} ${interTight.variable} ${jetbrainsMono.variable} ${syne.variable} ${dmSans.variable}`}>
+            <head>
+                <link rel="apple-touch-icon" href="/oro-cervo.png" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+                <meta name="apple-mobile-web-app-title" content="LIGTAS" />
+            </head>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
+                <PWARegister />
                 <AudioPermissionWrapper>
                     <RealtimeAudioProvider>
                         {children}

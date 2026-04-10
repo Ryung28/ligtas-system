@@ -95,8 +95,8 @@ export async function getCategories() {
 
         if (error) throw error
 
-        // Predefined categories to always show
-        const predefinedCategories = ['Medical', 'Tools', 'Rescue', 'PPE', 'Logistics', 'Goods']
+        // Predefined categories to always show (Cold-Start Protection)
+        const predefinedCategories = ['Medical', 'Tools', 'Rescue', 'PPE', 'Logistics', 'Goods', 'System', 'Equipment']
         
         // Get unique categories from database
         const dbCategoriesSet = new Set(data?.map(item => item.category).filter(Boolean) || [])

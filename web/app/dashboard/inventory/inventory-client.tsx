@@ -7,7 +7,7 @@ import { InventoryHeader } from '@/components/inventory/inventory-header'
 import { InventoryTable } from '@/components/inventory/inventory-table'
 import { useInventory } from '@/hooks/use-inventory'
 import { InventoryItem } from '@/lib/supabase'
-import { InventoryItemDialog } from '@/components/inventory/inventory-dialog'
+import { InventoryDialogV2 } from '@/components/inventory/inventory-dialog-v2'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -151,10 +151,11 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <InventoryItemDialog
-                open={!!activeItem}
+            <InventoryDialogV2
+                key={activeItem === 'new' ? 'new_asset' : activeItem?.id || 'idle'}
+                isOpen={!!activeItem}
                 existingItem={activeItem === 'new' ? undefined : activeItem || undefined}
-                onOpenChange={(open) => !open && setActiveItem(null)}
+                onOpenChange={(open: boolean) => !open && setActiveItem(null)}
                 onSuccess={refresh}
             />
         </>

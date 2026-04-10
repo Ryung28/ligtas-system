@@ -23,7 +23,15 @@ interface InventoryHeaderProps {
 export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode, onAddItem }: InventoryHeaderProps) {
     const stats = useMemo(() => {
         const totalItems = items.length
-        const lowStockItems = items.filter(item => item.stock_available > 0 && item.stock_available < 5).length
+        const lowStockItems = items.filter(item => {
+            const hasStock = item.stock_available > 0
+            const anchor = item.target_stock || item.stock_total || 0
+            const threshold = item.low_stock_threshold || 20
+            const dangerLine = anchor * (threshold / 100)
+            
+            // Trigger if item exists and is at or below the danger line
+            return hasStock && item.stock_available <= dangerLine
+        }).length
         const outOfStockItems = items.filter(item => item.stock_available === 0).length
         const totalStock = items.reduce((sum, item) => sum + item.stock_available, 0)
         return { totalItems, lowStockItems, outOfStockItems, totalStock }

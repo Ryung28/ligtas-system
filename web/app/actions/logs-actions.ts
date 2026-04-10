@@ -23,6 +23,7 @@ export async function getBorrowLogsAction() {
                 )
             `)
             .order('created_at', { ascending: false })
+            .limit(100)
 
         if (error) {
             console.error('📡 SERVER BRIDGE ERROR (getBorrowLogsAction):', error)

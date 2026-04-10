@@ -242,7 +242,7 @@ export async function bulkAddItems(items: Array<{ name: string; category: string
             count: data.length,
             message: `Successfully added ${data.length} items`,
         }
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof z.ZodError) {
             return { success: false, error: 'Validation failed: ' + error.errors[0].message }
         }
@@ -250,91 +250,49 @@ export async function bulkAddItems(items: Array<{ name: string; category: string
     }
 }
 
+import { siteDistributionSchema } from '../schemas/catalog.schema'
+
 export async function updateItem(formData: FormData) {
     try {
         const id = formData.get('id')
         if (!id) throw new Error('Item ID is required')
 
+        // 1. Data Extraction & Coercion
         const rawData = {
-            name: formData.get('name'),
-            description: formData.get('description'),
-            category: formData.get('category'),
-            stock_total: formData.get('stock_total'),
-            stock_available: formData.get('stock_available'),
-            status: formData.get('status') || 'Good',
-            image_url: formData.get('image_url'),
-            serial_number: formData.get('serial_number'),
-            equipment_type: formData.get('equipment_type'),
-            storage_location: formData.get('storage_location'),
-            location_id: formData.get('location_id'),
-            brand: formData.get('brand'),
-            expiry_date: formData.get('expiry_date'),
-            low_stock_threshold: formData.get('low_stock_threshold') || 20,
-            item_type: formData.get('item_type') || 'equipment',
-            // Enterprise Sub-Buckets
+            name: String(formData.get('name') || ''),
+            description: formData.get('description') ? String(formData.get('description')) : null,
+            category: String(formData.get('category') || ''),
+            image_url: formData.get('image_url') ? String(formData.get('image_url')) : null,
+            serial_number: formData.get('serial_number') ? String(formData.get('serial_number')) : null,
+            equipment_type: formData.get('equipment_type') ? String(formData.get('equipment_type')) : null,
+            brand: formData.get('brand') ? String(formData.get('brand')) : null,
+            expiry_date: formData.get('expiry_date') ? String(formData.get('expiry_date')) : null,
+            low_stock_threshold: Number(formData.get('low_stock_threshold')) || 20,
+            target_stock: Number(formData.get('target_stock')) || 0,
+            item_type: String(formData.get('item_type') || 'equipment'),
             qty_good: Number(formData.get('qty_good')) || 0,
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
             qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
             qty_lost: Number(formData.get('qty_lost')) || 0,
         }
 
-        const calculatedTotal = rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost
-        const finalStockTotal = Math.max(Number(rawData.stock_total) || 0, calculatedTotal)
-
-        // 🛡️ IDENTITY PROXY: Fetch current state to detect group changes
+        // 🔒 IDENTITY LOCK: Get current name/category for targeting siblings
         const { data: itemBefore, error: fetchError } = await supabase
             .from('inventory')
             .select('item_name, category')
             .eq('id', id)
             .single()
 
-        if (fetchError || !itemBefore) throw new Error('Failed to reconcile item identity for sync.')
+        if (fetchError || !itemBefore) throw new Error('Could not find item to update')
 
-        const validatedData = addItemSchema.parse(rawData)
-
-        // Validate that current stock doesn't exceed total stock
-        if (validatedData.stock_available > validatedData.stock_total) {
-            return {
-                success: false,
-                error: 'Current stock cannot exceed fixed total stock',
-            }
-        }
-
-        // 🏛️ MASTER SKU IDENTITY SYNC
-        // If the user renames or recategorizes a distributed item, we must sync ALL sites
-        // to prevent the inventory from fragmenting into separate rows.
-        const nameChanged = rawData.name !== itemBefore.item_name
-        const categoryChanged = rawData.category !== itemBefore.category
-        
-        if (nameChanged || categoryChanged) {
-            const { error: syncError } = await supabase
-                .from('inventory')
-                .update({
-                    item_name: rawData.name,
-                    category: rawData.category,
-                    description: rawData.description,
-                    image_url: rawData.image_url,
-                    brand: rawData.brand,
-                    equipment_type: rawData.equipment_type,
-                    item_type: rawData.item_type || 'equipment'
-                } as any)
-                .eq('item_name', itemBefore.item_name)
-                .eq('category', itemBefore.category)
-
-            if (syncError) {
-                console.error('⚠️ IDENTITY SYNC FAILED:', syncError)
-                // We proceed anyway to at least update the target item
-            }
-        }
-
-        // 🏛️ MASTER RECONCILIATION ENGINE
-        // This is where we sync all sites for this item name + category
         const siteDistRaw = formData.get('site_distributions')
+        
         if (siteDistRaw) {
-            const distributions = JSON.parse(siteDistRaw as string)
-            const activeIds = distributions.filter((d: any) => d.id).map((d: any) => d.id)
+            // 🛡️ ZOD VALIDATION (Rule 21)
+            const distributions = z.array(siteDistributionSchema).parse(JSON.parse(siteDistRaw as string))
+            const activeIds = distributions.filter(d => d.id).map(d => d.id) as number[]
 
-            // 1. Fetch all current siblings to identify deletions
+            // 1. Identify Deletions
             const { data: siblings } = await supabase
                 .from('inventory')
                 .select('id')
@@ -342,54 +300,54 @@ export async function updateItem(formData: FormData) {
                 .eq('category', itemBefore.category)
 
             const existingIds = siblings?.map(s => s.id) || []
-            const idsToDelete = existingIds.filter(id => !activeIds.includes(id))
+            const idsToDelete = existingIds.filter(eid => !activeIds.includes(eid))
 
-            // 2. Perform Atomic Actions
-            await Promise.all([
-                // Update Existing & Insert New
-                ...distributions.map(async (dist: any) => {
-                    const payload = {
-                        item_name: rawData.name,
-                        description: rawData.description,
-                        category: rawData.category,
-                        image_url: rawData.image_url,
-                        brand: rawData.brand,
-                        equipment_type: rawData.equipment_type,
-                        item_type: rawData.item_type,
-                        serial_number: rawData.serial_number,
-                        expiry_date: rawData.expiry_date,
-                        low_stock_threshold: rawData.low_stock_threshold,
-                        
-                        // Site-Specific
-                        storage_location: dist.locationName,
-                        location_registry_id: dist.locationId,
-                        qty_good: dist.qtyGood,
-                        qty_damaged: dist.qtyDamaged,
-                        qty_maintenance: dist.qtyMaintenance,
-                        qty_lost: dist.qtyLost,
-                        stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
-                        stock_available: dist.qtyGood,
-                        status: 'Good'
-                    }
+            // 2. Verified Sequential Sync (Rule 62)
+            for (const dist of distributions) {
+                const payload = {
+                    item_name: rawData.name,
+                    description: rawData.description,
+                    category: rawData.category,
+                    image_url: rawData.image_url,
+                    brand: rawData.brand,
+                    equipment_type: rawData.equipment_type,
+                    item_type: rawData.item_type,
+                    serial_number: rawData.serial_number,
+                    expiry_date: rawData.expiry_date,
+                    low_stock_threshold: rawData.low_stock_threshold,
+                    target_stock: rawData.target_stock,
+                    storage_location: dist.locationName,
+                    location_registry_id: dist.locationId,
+                    qty_good: dist.qtyGood,
+                    qty_damaged: dist.qtyDamaged,
+                    qty_maintenance: dist.qtyMaintenance,
+                    qty_lost: dist.qtyLost,
+                    stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
+                    stock_available: dist.qtyGood,
+                    status: 'Good'
+                }
 
-                    if (dist.id) {
-                        return supabase.from('inventory').update(payload).eq('id', dist.id)
-                    } else {
-                        return supabase.from('inventory').insert([payload])
-                    }
-                }),
-                // Deletions
-                idsToDelete.length > 0 ? supabase.from('inventory').delete().in('id', idsToDelete) : Promise.resolve()
-            ])
+                const { error: dbError } = dist.id 
+                    ? await supabase.from('inventory').update(payload).eq('id', dist.id)
+                    : await supabase.from('inventory').insert([payload])
+
+                if (dbError) throw new Error(`Sync Error: ${dbError.message}`)
+            }
+
+            // 3. Handle Deletions
+            if (idsToDelete.length > 0) {
+                const { error: delError } = await supabase.from('inventory').delete().in('id', idsToDelete)
+                if (delError) throw delError
+            }
         } else {
-            // Fallback for non-distribution updates
-            const { error } = await supabase
+            // Standard Single-Site Update
+            const { error: updateError } = await supabase
                 .from('inventory')
                 .update({
                     item_name: rawData.name,
                     description: rawData.description,
                     category: rawData.category,
-                    stock_total: finalStockTotal,
+                    stock_total: rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost,
                     stock_available: rawData.qty_good,
                     qty_good: rawData.qty_good,
                     qty_damaged: rawData.qty_damaged,
@@ -398,15 +356,14 @@ export async function updateItem(formData: FormData) {
                     image_url: rawData.image_url,
                     serial_number: rawData.serial_number,
                     equipment_type: rawData.equipment_type,
-                    storage_location: rawData.storage_location,
-                    location_registry_id: rawData.location_id,
                     brand: rawData.brand,
                     expiry_date: rawData.expiry_date,
                     low_stock_threshold: rawData.low_stock_threshold,
+                    target_stock: rawData.target_stock,
                 })
                 .eq('id', id)
             
-            if (error) throw error
+            if (updateError) throw updateError
         }
 
         revalidatePath('/dashboard/inventory')
@@ -414,12 +371,15 @@ export async function updateItem(formData: FormData) {
         
         return { 
             success: true, 
-            message: 'Item reconciled successfully 🟢',
-            data: siteDistRaw ? JSON.parse(siteDistRaw as string)[0] : null
+            message: 'Inventory updated' 
         }
     } catch (error: any) {
-        console.error('Update Error:', error)
-        return { success: false, error: error.message || 'Failed to update item' }
+        console.error('LIGTAS_UPDATE_CRITICAL:', error)
+        return { 
+            success: false, 
+            message: 'Failed to save changes', 
+            error: error.message || 'Check connection' 
+        }
     }
 }
 

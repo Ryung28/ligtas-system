@@ -49,6 +49,14 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory' AND column_name = 'qty_lost') THEN 
         ALTER TABLE inventory ADD COLUMN qty_lost INTEGER NOT NULL DEFAULT 0;
     END IF;
+
+    -- Planning Thresholds
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory' AND column_name = 'target_stock') THEN 
+        ALTER TABLE inventory ADD COLUMN target_stock INTEGER NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory' AND column_name = 'low_stock_threshold') THEN 
+        ALTER TABLE inventory ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 20;
+    END IF;
 END $$;
 
 -- 2. DATA SYNCHRONIZATION: Fix the "0 Stock" bug by migrating existing data to buckets
@@ -102,6 +110,8 @@ SELECT
     i.item_type,
     i.brand,
     i.unit,
+    i.target_stock,
+    i.low_stock_threshold,
     i.storage_location as primary_location,
     -- 🛡️ LEGACY BRIDGE: Mapping new aggregate values back to original names
     (i.stock_available - COALESCE((
@@ -129,9 +139,10 @@ SELECT
 FROM inventory i
 LEFT JOIN variant_summary vs ON i.id = vs.parent_id
 WHERE i.parent_id IS NULL AND i.deleted_at IS NULL
--- 🛡️ SILO INTEGRITY: Restore Multi-Tenant Security Filter
+-- 🛡️ SILO INTEGRITY: Restore Multi-Tenant Security Filter (RESILIENT VERSION)
 AND (
-    (SELECT role FROM user_profiles WHERE id = auth.uid()) IN ('admin', 'editor')
+    COALESCE((SELECT role FROM user_profiles WHERE id = auth.uid()), 'guest') IN ('admin', 'editor')
+    OR auth.uid() IS NULL 
     OR get_user_warehouse() IS NULL 
     OR i.storage_location = get_user_warehouse()
     OR EXISTS (

@@ -107,9 +107,10 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             all: items.length,
             pending: items.filter(i => {
                 const hasPending = (i as any).stock_pending > 0
+                const anchor = (i as any).target_stock || i.stock_total || 0
                 const threshold = (i as any).low_stock_threshold || 20
-                const percentage = i.stock_total > 0 ? (i.qty_good / i.stock_total) * 100 : 0
-                const isLowStock = percentage <= threshold
+                const dangerLine = anchor * (threshold / 100)
+                const isLowStock = i.stock_available > 0 && i.stock_available <= dangerLine
                 const hasHealthIssues = i.qty_damaged > 0 || i.qty_maintenance > 0 || i.qty_lost > 0
                 
                 // Expiry Logic (Approaching in < 30 days)
@@ -191,9 +192,10 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             let matchesStatus = true
             if (statusFilter === 'pending') {
                 const hasPending = (item as any).stock_pending > 0
+                const anchor = (item as any).target_stock || item.stock_total || 0
                 const threshold = (item as any).low_stock_threshold || 20
-                const percentage = item.stock_total > 0 ? (item.qty_good / item.stock_total) * 100 : 0
-                const isLowStock = percentage <= threshold
+                const dangerLine = anchor * (threshold / 100)
+                const isLowStock = item.stock_available > 0 && item.stock_available <= dangerLine
                 const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
                 
                 let isExpiring = false
@@ -337,11 +339,12 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     }
 
     const getStockDisplay = (item: InventoryItem) => {
+        const anchor = (item as any).target_stock || item.stock_total || 0
         const threshold = (item as any).low_stock_threshold || 20
-        const percentage = getStockPercentage(item.qty_good, item.stock_total)
+        const dangerLine = anchor * (threshold / 100)
         
-        if (item.qty_good === 0) return { label: 'OUT OF STOCK' }
-        if (percentage <= threshold) return { label: 'LOW STOCK' }
+        if (item.stock_available === 0) return { label: 'OUT OF STOCK' }
+        if (item.stock_available <= dangerLine) return { label: 'LOW STOCK' }
         return { label: 'IN STOCK' }
     }
 

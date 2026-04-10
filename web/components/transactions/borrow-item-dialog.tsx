@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, Warehouse } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'

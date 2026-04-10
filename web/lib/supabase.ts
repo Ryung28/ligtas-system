@@ -50,6 +50,7 @@ export interface InventoryItem {
     primary_location?: string
     brand?: string
     expiry_date?: string
+    target_stock?: number
     low_stock_threshold?: number
     created_at?: string
     updated_at?: string
