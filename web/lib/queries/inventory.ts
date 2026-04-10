@@ -11,7 +11,7 @@ export async function getInventory() {
         .select('*')
         .is('deleted_at', null)
         .order('item_name', { ascending: true })
-        .limit(100)
+        .limit(1000)
 
     if (error) throw error
     return data || []

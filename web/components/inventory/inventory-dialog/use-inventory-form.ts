@@ -32,7 +32,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     const [categories, setCategories] = useState<string[]>([])
     const [isLoadingCategories, setIsLoadingCategories] = useState(true)
     const [itemType, setItemType] = useState<'equipment' | 'consumable'>('equipment')
-    const [categoryId, setCategoryId] = useState<string>('')
+    const [categoryId, setCategoryId] = useState<string | null>('')
     const [storageLocation, setStorageLocation] = useState<string>('')
     const [customLocation, setCustomLocation] = useState<string>('')
     const [savedLocations, setSavedLocations] = useState<any[]>([])

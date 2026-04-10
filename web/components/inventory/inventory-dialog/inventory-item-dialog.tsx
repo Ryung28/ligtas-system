@@ -166,10 +166,6 @@ export function InventoryItemDialog({
                                 onVariantLabelChange={setVariantLabel}
                                 onCustomVariantChange={setCustomVariant}
                                 itemType={itemType}
-                                targetStock={targetStock}
-                                onTargetStockChange={setTargetStock}
-                                lowStockThreshold={lowStockThreshold}
-                                onThresholdChange={setLowStockThreshold}
                             />
                         </div>
 

@@ -120,7 +120,7 @@ export function BasicInfoFields({
                                 <SelectContent className="rounded-xl shadow-2xl bg-white border border-slate-200">
                                     <SelectItem value="NONE" className="font-bold text-[13px] py-3 text-slate-400 italic">No set (Main item)</SelectItem>
                                     {parentItems.map((item) => (
-                                        <SelectItem key={item.id} value={item.id} className="font-bold text-[13px] py-3 text-slate-900">
+                                        <SelectItem key={item.id} value={String(item.id)} className="font-bold text-[13px] py-3 text-slate-900">
                                             {item.item_name}
                                         </SelectItem>
                                     ))}

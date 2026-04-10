@@ -30,6 +30,8 @@ const CATEGORY_COLORS: Record<string, string> = {
     'Tools': '#3b82f6',
     'PPE': '#f97316',
     'Logistics': '#6366f1',
+    'Goods': '#0891b2',
+    'Others': '#64748b',
     'Default': '#94a3b8'
 }
 
@@ -93,18 +95,35 @@ export function useDashboardStats() {
     const categoryDistribution = useMemo(() => {
         const inventoryData = data?.inventory || []
         const categoryMap = new Map<string, number>()
+        
         inventoryData.forEach(item => {
             const category = item.category || 'Uncategorized'
-            categoryMap.set(category, (categoryMap.get(category) || 0) + item.stock_available)
+            // We use stock_total to reflect the full weight of the category in the registry
+            categoryMap.set(category, (categoryMap.get(category) || 0) + (item.stock_total || 0))
         })
-        return Array.from(categoryMap.entries())
-            .map(([name, value]) => ({
-                name,
-                value,
-                fill: CATEGORY_COLORS[name] || CATEGORY_COLORS['Default']
-            }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5)
+
+        const entries = Array.from(categoryMap.entries())
+            .sort((a, b) => b[1] - a[1])
+
+        const top7 = entries.slice(0, 7)
+        const others = entries.slice(7)
+
+        const finalData = top7.map(([name, value]) => ({
+            name,
+            value,
+            fill: CATEGORY_COLORS[name] || CATEGORY_COLORS['Default']
+        }))
+
+        if (others.length > 0) {
+            const othersValue = others.reduce((sum, [_, val]) => sum + val, 0)
+            finalData.push({
+                name: 'Others',
+                value: othersValue,
+                fill: CATEGORY_COLORS['Others']
+            })
+        }
+
+        return finalData
     }, [data?.inventory])
 
     // Real-time updates subscription

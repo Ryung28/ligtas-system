@@ -80,7 +80,7 @@ export function DeploymentClustersChart({ data }: DeploymentClustersChartProps) 
                 </div>
 
                 {/* Data: Detailed Category Ledger with Hairline Dividers */}
-                <div className="flex-1 divide-y divide-slate-100/60 pr-2 overflow-y-auto max-h-[220px] scrollbar-hide">
+                <div className="flex-1 divide-y divide-slate-100/60 pr-2 overflow-y-auto min-h-0">
                     {data.sort((a, b) => b.value - a.value).map((item, index) => (
                         <div key={index} className="group flex items-center justify-between gap-4 py-3 px-2 first:pt-0 last:pb-0 hover:bg-slate-50/50 transition-colors rounded-lg">
                             <div className="flex items-center gap-3">
