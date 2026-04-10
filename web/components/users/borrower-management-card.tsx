@@ -231,7 +231,7 @@ export function BorrowerManagementCard({
                                                             {borrower.full_name || borrower.email.split('@')[0]}
                                                         </div>
                                                         <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 h-4 border border-emerald-100/50">
-                                                            Active
+                                                            {borrower.role === 'responder' ? 'Responder' : 'Active'}
                                                         </Badge>
                                                     </div>
                                                     <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">

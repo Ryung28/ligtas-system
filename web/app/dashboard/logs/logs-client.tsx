@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { RefreshCw, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { RefreshCw, Filter } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
 
@@ -11,22 +11,15 @@ import { LogStatsCards } from '@/components/logs/log-stats'
 import { LogFilters } from '@/components/logs/log-filters'
 import { LogSessionTable } from '@/components/logs/log-session-table'
 import { BorrowItemDialog } from '@/components/transactions/borrow-item-dialog'
+import { PendingTriageHeader } from '@/components/logs/pending-triage-header'
 
 interface LogsClientProps {
     initialLogs: BorrowLog[]
 }
 
 export function LogsClient({ initialLogs }: LogsClientProps) {
-    // Use the hook but with server-provided initial data
     const logsHook = useBorrowLogs('all')
     
-    // Hydrate with initial data on mount
-    useEffect(() => {
-        if (initialLogs.length > 0 && logsHook.logs.length === 0) {
-            // SWR will use initialLogs until it fetches fresh data
-        }
-    }, [initialLogs, logsHook.logs])
-
     const {
         sessions,
         stats,
@@ -45,13 +38,25 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
         expandedSessions,
     } = logsHook
 
+    const searchParams = useSearchParams()
+    const [highlightedName, setHighlightedName] = useState<string | null>(null)
+
+    // Deep-Link Hook (Enterprise Drill-Down)
+    useEffect(() => {
+        const search = searchParams.get('search')
+        const shouldHighlight = searchParams.get('highlight') === 'true'
+        
+        if (search) {
+            setSearchQuery(search)
+            if (shouldHighlight) setHighlightedName(search)
+        }
+    }, [searchParams, setSearchQuery])
+
     return (
         <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-500">
             {/* Page Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
-                <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1">
-                    </div>
+                <div>
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
                         Borrow/Return Logs
                     </h1>
@@ -60,6 +65,9 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
                     <BorrowItemDialog />
                 </div>
             </div>
+            
+            {/* Triage Hook: Contextual Command Bar */}
+            <PendingTriageHeader searchQuery={searchQuery} />
 
             {/* Stats Section */}
             <LogStatsCards 
@@ -101,38 +109,17 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
                             sessions={sessions}
                             expandedSessions={expandedSessions}
                             toggleSessionExpansion={toggleSessionExpansion}
+                            highlightedName={highlightedName}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            statusFilter={statusFilter}
+                            setStatusFilter={setStatusFilter}
+                            currentPage={currentPage}
+                            setCurrentPage={setCurrentPage}
+                            totalPages={totalPages}
                         />
                     )}
                 </CardContent>
-
-                {/* Pagination Footer */}
-                {totalPages > 1 && (
-                    <CardFooter className="bg-gray-50/50 border-t border-gray-100 p-4 flex items-center justify-between">
-                        <div className="text-sm text-gray-500">
-                            Page <span className="font-medium text-gray-900">{currentPage}</span> of <span className="font-medium text-gray-900">{totalPages}</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="bg-white border-gray-200 h-8 w-8 p-0"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className="bg-white border-gray-200 h-8 w-8 p-0"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardFooter>
-                )}
             </Card>
         </div>
     )

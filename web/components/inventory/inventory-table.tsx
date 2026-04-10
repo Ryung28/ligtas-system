@@ -2,9 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Image from 'next/image'
-import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +22,7 @@ import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/s
 import { QRDialog } from './qr-dialog'
 import { FilterTabs } from '@/components/ui/filter-tabs'
 import { ExpandableInventoryRow } from './expandable-inventory-row'
+import { CategoryManager } from './advanced-query-builder'
 
 interface InventoryTableProps {
     items: InventoryItem[]
@@ -35,7 +35,11 @@ interface InventoryTableProps {
 }
 
 interface AggregatedInventoryItem extends InventoryItem {
-    variants: InventoryItem[]
+    variants: any[] 
+    primary_location?: string
+    primary_stock_available?: number
+    primary_stock_total?: number
+    is_multi_location?: boolean
 }
 
 const ITEMS_PER_PAGE = 10
@@ -48,6 +52,43 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const [locationFilter, setLocationFilter] = useState<string>('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
+    const [localCategories, setLocalCategories] = useState<string[]>([])
+    const [highlightId, setHighlightId] = useState<number | null>(null)
+    const searchParams = useSearchParams()
+
+    // Listening for Deep-Links
+    useEffect(() => {
+        const search = searchParams.get('search')
+        const id = searchParams.get('id')
+        const highlight = searchParams.get('highlight')
+
+        if (search) {
+            setSearchQuery(search)
+        }
+        
+        if (id && highlight === 'true') {
+            setHighlightId(parseInt(id))
+            // Auto-clear highlight after 5s
+            const timer = setTimeout(() => setHighlightId(null), 5000)
+            return () => clearTimeout(timer)
+        }
+    }, [searchParams])
+
+    const handleCategoryCreate = (name: string) => {
+        if (!name) return
+        const sanitized = name.trim()
+        if (!localCategories.includes(sanitized)) {
+            setLocalCategories(prev => [...prev, sanitized])
+        }
+    }
+
+    const handleCategoryDelete = (name: string) => {
+        setLocalCategories(prev => prev.filter(c => c !== name))
+        // If the user was filtering by this category, reset the filter
+        if (categoryFilter === name) {
+            setCategoryFilter('all')
+        }
+    }
 
     // Get unique locations from ALL items (not filtered)
     const uniqueLocations = useMemo(() => {
@@ -84,7 +125,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         }
         
         items.forEach(item => {
-            const category = item.category || 'Uncategorized'
+            const category = (item.category || 'Uncategorized').trim()
             counts[category] = (counts[category] || 0) + 1
         })
         
@@ -94,7 +135,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const filterTabs = useMemo(() => {
         const tabs = [
             { value: 'all', label: 'All Items', count: filterCounts.all },
-            { value: 'pending', label: 'Needs Action', count: filterCounts.pending, color: 'amber' }
+            { value: 'pending', label: 'Alerts', count: filterCounts.pending, color: 'amber' }
         ]
         
         return tabs
@@ -103,12 +144,13 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const categoryFilterTabs = useMemo(() => {
         const tabs = [{ value: 'all', label: 'All Categories', count: filterCounts.all }]
         
-        // Predefined categories
-        const predefinedCategories = ['Medical', 'Tools', 'Rescue', 'PPE', 'Logistics', 'Goods']
-        const uniqueCategories = Array.from(new Set(items.map(i => i.category || 'Uncategorized')))
-        const allCategories = Array.from(new Set([...predefinedCategories, ...uniqueCategories]))
+        // Discover ALL unique categories from the database items + local admin-added categories
+        const discoveredCategories = Array.from(new Set([
+            ...items.map(i => (i.category || 'Uncategorized').trim()),
+            ...localCategories
+        ])).filter(Boolean).sort((a, b) => a.localeCompare(b))
         
-        allCategories.sort().forEach(category => {
+        discoveredCategories.forEach(category => {
             tabs.push({
                 value: category,
                 label: category,
@@ -117,11 +159,18 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         })
         
         return tabs
-    }, [items, filterCounts])
+    }, [items, filterCounts, localCategories])
+
+    const finalCategories = useMemo(() => {
+        return Array.from(new Set([
+            ...items.map(i => (i.category || 'Uncategorized').trim()),
+            ...localCategories
+        ])).filter(Boolean).sort((a, b) => a.localeCompare(b))
+    }, [items, localCategories])
 
     // Filter Items
     const filteredItems = useMemo(() => {
-        return items.filter((item) => {
+        const filtered = items.filter((item) => {
             const matchesSearch = item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
@@ -164,25 +213,82 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
             return matchesSearch && matchesCategory && matchesCondition && matchesStatus && matchesLocation
         })
-    }, [items, searchQuery, categoryFilter, conditionFilter, statusFilter, locationFilter])
 
-    // Group items (Senior Solution: Since split-mode is gone, we usually have 1 row per item_name/category/location)
-    // We keep this for backward compatibility and potential variant support
+        // 🛡️ HOISTING ENGINE: Move highlighted item to the absolute top
+        if (highlightId) {
+            const highlightIndex = filtered.findIndex(i => i.id === highlightId)
+            if (highlightIndex > -1) {
+                const [item] = filtered.splice(highlightIndex, 1)
+                return [item, ...filtered]
+            }
+        }
+
+        return filtered
+    }, [items, searchQuery, categoryFilter, conditionFilter, statusFilter, locationFilter, highlightId])
+
+    // 🏛️ SENIOR AGGREGATION ENGINE: Group by Name + Category to prevent Card Proliferation
     const aggregatedItems = useMemo(() => {
-        const itemMap = new Map<string | number, AggregatedInventoryItem>()
+        const itemMap = new Map<string, AggregatedInventoryItem>()
         
         filteredItems.forEach(item => {
-            const groupId = (item as any).parent_id || item.id
+            const groupKey = `${item.item_name.toLowerCase().trim()}-${(item.category || '').toLowerCase().trim()}`
+            const itemLocation = item.storage_location || 'unknown'
             
-            if (!itemMap.has(groupId)) {
-                itemMap.set(groupId, { ...item, variants: [item] })
+            if (!itemMap.has(groupKey)) {
+                // Initialize Master SKU with neutral balances then add first record
+                itemMap.set(groupKey, { 
+                    ...item, 
+                    // Reset balances to zero initially so we can sum them safely
+                    stock_total: 0,
+                    stock_available: 0,
+                    qty_good: 0,
+                    qty_damaged: 0,
+                    qty_maintenance: 0,
+                    qty_lost: 0,
+                    variants: [], 
+                    is_multi_location: false,
+                    primary_location: itemLocation,
+                } as any)
+            }
+            
+            const group = itemMap.get(groupKey)!
+            
+            // 🏛️ ATOMIC REDUCTION: Sum Global SKU metadata
+            group.stock_total += (item.stock_total || 0)
+            group.stock_available += (item.stock_available || 0)
+            group.qty_good += (item.qty_good || 0)
+            group.qty_damaged += (item.qty_damaged || 0)
+            group.qty_maintenance += (item.qty_maintenance || 0)
+            group.qty_lost += (item.qty_lost || 0)
+
+            // 🏛️ GEOGRAPHIC CONSOLIDATOR: Track unique sites
+            const existingVariant = group.variants.find(v => v.location === itemLocation)
+            
+            if (existingVariant) {
+                // MELD: Combine data if multiple rows exist for same location (edge case)
+                existingVariant.stock_available += item.stock_available
+                existingVariant.stock_total += item.stock_total
+                existingVariant.qty_good += item.qty_good
+                existingVariant.qty_damaged += item.qty_damaged
+                existingVariant.qty_maintenance += item.qty_maintenance
+                existingVariant.qty_lost += item.qty_lost
+                existingVariant.ids.push(item.id)
             } else {
-                const group = itemMap.get(groupId)!
-                group.variants.push(item)
-                if (!(item as any).parent_id) {
-                    const variants = group.variants
-                    Object.assign(group, { ...item, variants })
-                }
+                // REGISTER: New physical site for this SKU
+                if (group.variants.length > 0) group.is_multi_location = true
+                group.variants.push({
+                    id: item.id,
+                    location: itemLocation,
+                    location_id: (item as any).location_registry_id,
+                    qty_good: item.qty_good,
+                    qty_damaged: item.qty_damaged,
+                    qty_maintenance: item.qty_maintenance,
+                    qty_lost: item.qty_lost,
+                    stock_available: item.stock_available,
+                    stock_total: item.stock_total,
+                    status: item.status,
+                    ids: [item.id]
+                })
             }
         })
         
@@ -289,7 +395,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
                                     <SelectItem value="all" className="text-[14px] rounded-md">All Conditions</SelectItem>
-                                    <SelectItem value="Good" className="text-[14px] rounded-md">Operational</SelectItem>
+                                    <SelectItem value="Good" className="text-[14px] rounded-md">On Hand</SelectItem>
                                     <SelectItem value="Maintenance" className="text-[14px] rounded-md">Maintenance</SelectItem>
                                     <SelectItem value="Damaged" className="text-[14px] rounded-md">Damaged</SelectItem>
                                     <SelectItem value="Lost" className="text-[14px] rounded-md">Lost</SelectItem>
@@ -298,12 +404,19 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                         </div>
                     </div>
 
-                    {/* Middle Row: View Filter (All vs Needs Action) */}
-                    <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                    {/* Middle Row: View Filter (All vs Needs Action) + Advanced Query Engine */}
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-gray-100 pb-2">
                         <FilterTabs 
                             tabs={filterTabs}
                             activeTab={statusFilter}
                             onTabChange={(val) => setStatusFilter(val as any)}
+                        />
+                        
+                        <CategoryManager 
+                            onCategoryCreate={handleCategoryCreate}
+                            onCategoryDelete={handleCategoryDelete}
+                            allCategories={finalCategories}
+                            items={items}
                         />
                     </div>
                     
@@ -331,11 +444,10 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                         />
                                     </TableHead>
                                 )}
-                                <TableHead className="pl-4 14in:pl-6 pr-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Item</TableHead>
-                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Location</TableHead>
-                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide">Equipment Status</TableHead>
-                                <TableHead className="px-3 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide text-right">Stock</TableHead>
-                                <TableHead className="pl-3 pr-4 14in:pr-6 py-4 font-medium text-gray-500 text-[11px] uppercase tracking-wide text-right">Actions</TableHead>
+                                <TableHead className="pl-4 14in:pl-6 pr-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Item Name</TableHead>
+                                <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Location</TableHead>
+                                <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Status / Condition</TableHead>
+                                <TableHead className="pl-3 pr-4 14in:pr-6 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -381,6 +493,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                         getConditionDot={getConditionDot}
                                         getStockPercentage={getStockPercentage}
                                         isSelected={selectedItems.includes(item.id)}
+                                        isHighlighted={highlightId === item.id}
                                         onSelect={() => handleSelectItem(item.id)}
                                         showCheckbox={!!onSelectionChange}
                                         onEdit={onEdit}

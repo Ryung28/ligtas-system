@@ -1,11 +1,9 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
-import { Bell, Shield, Package, Clock, UserCheck, AlertTriangle, XCircle, UserPlus, MessageSquare, Trash2 } from 'lucide-react'
+import { Bell, Shield, Clock, AlertTriangle, XCircle, UserPlus, MessageSquare, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type NotificationItem } from '@/lib/validations/notifications'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { RestockForm } from '@/components/layout/_components/RestockForm'
 
 const icons = {
   borrow: Shield,
@@ -56,173 +54,127 @@ interface NotificationItemProps {
  */
 export const NotificationItemComponent: React.FC<NotificationItemProps> = ({ item, onMarkAsRead, onRefresh, onDelete }) => {
   const router = useRouter()
-  const [isRestockOpen, setIsRestockOpen] = useState(false)
 
-  // 🛡️ COMPONENT CRASH GUARD: Defensive property access
   if (!item) return null;
 
   try {
     const IconComponent = (icons as any)[item.type] || Bell
-    const isBroadcast = !item.userId // 🛡️ camelCase: Consistent with repo mapper
-
-    const onExecuteAction = (e: React.MouseEvent | React.KeyboardEvent) => {
-      e.stopPropagation(); // 🛡️ Prevent parent div from double-firing
-      if (!item.isRead && item.id && !item.id.includes('err-packet')) {
-          onMarkAsRead(item.id);
-      }
-      
-      if (!item.action) return;
-
-      if (item.action.type === 'link') {
-        router.push(item.action.target);
-      } else if (item.action.type === 'dialog' && item.action.target === 'restock_modal') {
-        // 🛡️ INLINE ORCHESTRATION: Mount dialog locally instead of global route change
-        setIsRestockOpen(true);
-      }
-    }
 
     return (
-      <>
-        <div 
-          role="button"
-          tabIndex={0}
-          aria-label={item.isRead ? 'Notification' : 'Unread notification, click to mark as read'}
-          onClick={() => {
-            if (!item.isRead && item.id && !item.id.includes('err-packet')) {
-                onMarkAsRead(item.id);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !item.isRead && item.id && !item.id.includes('err-packet')) {
-                onMarkAsRead(item.id);
-            }
-          }}
-          className={cn(
-            "p-4 mb-3 cursor-pointer transition-all duration-500 relative overflow-hidden group outline-none",
-            "animate-in fade-in slide-in-from-right-4",
-            // 📐 ASYMMETRICAL GEOMETRY: Sharp top-left (Command Zero)
-            "rounded-tl-none rounded-tr-2xl rounded-br-2xl rounded-bl-2xl",
-            // 💎 PREMIUM DEPTH: White for unread, "Arctic Glass" for read
-            !item.isRead 
-                ? "bg-white border-transparent shadow-[0_30px_60px_-12px_rgba(0,0,0,0.08),0_18px_36px_-18px_rgba(0,0,0,0.1)] scale-[1.01] z-10" 
-                : "bg-slate-50/40 border-slate-100 hover:bg-white hover:shadow-md opacity-80 hover:opacity-100",
-            "border-l-4",
-            borderColors[item.type as keyof typeof borderColors] || 'border-l-slate-300'
-          )}
-        >
-          {/* 🌫️ REFLECTIVE GLOW (Unread only) */}
-          {!item.isRead && (
-            <div className="absolute -inset-4 bg-gradient-to-tr from-blue-500/5 via-transparent to-transparent blur-2xl group-hover:from-blue-500/10 transition-all duration-700 pointer-events-none" />
-          )}
+      <div 
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          if (!item.isRead && item.id && !item.id.includes('err-packet')) {
+              onMarkAsRead(item.id);
+          }
+          
+          const meta = item.metadata || {};
+          const title = item.title || "";
+          const message = item.message || item.description || "";
 
-          <div className="flex gap-4 relative z-10">
-            <div className="relative">
-                <div className={cn(
-                    "p-2.5 rounded-xl h-fit transition-all duration-500",
-                    !item.isRead ? "bg-slate-900 text-white shadow-xl scale-110" : "bg-slate-200/50 text-slate-500"
-                )}>
-                    <IconComponent className="w-4 h-4" />
-                </div>
-                {!item.isRead && (
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border-2 border-white"></span>
-                    </span>
-                 )}
-            </div>
-            
-            <div className="flex-1 space-y-1.5">
-              <div className="flex justify-between items-start gap-2">
-                <div className="flex flex-col">
-                    <span className={cn(
-                        "text-[9px] font-black tracking-[0.25em] uppercase mb-1",
-                        isBroadcast ? "text-amber-600" : "text-blue-600"
-                    )}>
-                        {isBroadcast ? "Global Broadcast" : "Direct Command"}
-                    </span>
-                    <h4 className={cn(
-                        "text-sm font-bold tracking-tight leading-tight transition-colors",
-                        !item.isRead ? "text-slate-950" : "text-slate-600"
-                    )}>
-                        {item.title || 'Notification Intel'}
-                    </h4>
-                </div>
-                <div className="flex flex-col items-end shrink-0 gap-1.5 mt-0.5">
-                    <span className="text-[10px] tabular-nums font-bold text-slate-400 font-mono tracking-tighter leading-none">
-                        {item.time ? formatDistanceToNow(new Date(item.time), { addSuffix: false }).toUpperCase() : 'NOW'}
-                    </span>
-                    <div className="flex items-center gap-2 mt-1">
-                        {onDelete && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(item.id);
-                                }}
-                                className="text-slate-300 hover:text-red-500 transition-colors bg-white/50 rounded-full p-1 shadow-sm hover:shadow border border-slate-100 active:scale-95"
-                                aria-label="Delete intel"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        )}
-                        {!item.isRead && (
-                            <span className="text-[8px] font-black text-blue-500 leading-none animate-pulse">NEW</span>
-                        )}
-                    </div>
-                </div>
-              </div>
-              
-              <p className={cn(
-                "text-xs leading-relaxed line-clamp-2 transition-colors",
-                !item.isRead ? "text-slate-600 font-medium" : "text-slate-500/70 italic"
-              )}>
-                {item.message || 'Transmission received.'}
-              </p>
-              
-              {item.action && !item.isRead && (
-                <div className="pt-3">
-                  <button 
-                    onClick={onExecuteAction}
-                    className="group/btn relative px-4 py-2 bg-slate-900 text-white overflow-hidden transition-all duration-300 rounded-lg outline-none active:scale-95 shadow-lg shadow-slate-200"
-                  >
-                    <div className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-500 transform scale-x-0 group-hover/btn:scale-x-100 transition-transform duration-500 origin-left" />
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black tracking-widest uppercase">
-                            {item.action?.label || 'Execute Intel'}
-                        </span>
-                        <span className="text-xs transition-transform group-hover/btn:translate-x-1 duration-300">→</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
+          // 1. ASSET DOMAIN (The "What"): Redirect to Inventory Hub
+          const isInventoryContext = [
+            'stock_low', 'stock_out', 'low_stock', 'inventory_alert'
+          ].includes(item.type) || (item.id && item.id.startsWith('inv-'));
+
+          if (isInventoryContext) {
+            const itemName = meta.search_query || meta.item_name || title;
+            const itemId = meta.item_id || meta.id || item.referenceId || '';
+            const target = `/dashboard/inventory?search=${encodeURIComponent(itemName)}&id=${itemId}&highlight=true`;
+            router.push(target);
+            return;
+          }
+
+          // 2. IDENTITY/LOGISTICS DOMAIN (The "Who"): Redirect to Logs
+          const extractName = () => {
+            if (meta.search_query) return meta.search_query;
+            if (meta.borrower_name) return meta.borrower_name;
+            if (meta.requester_name) return meta.requester_name;
+            const fromMatch = message.match(/from\s+([A-Za-z0-9\s]+?)(?=\s*\()|from\s+([A-Za-z0-9\s]+?)$|by\s+([A-Za-z0-9\s]+?)(?=\s*\.|$)/i);
+            if (fromMatch) return (fromMatch[1] || fromMatch[2] || fromMatch[3]).trim();
+            if (title.includes("BORROWER") || title.includes("USER")) return title.split(":").pop()?.trim() || "";
+            return "";
+          };
+
+          const identityTypes = [
+            'borrow_request', 'item_overdue', 'item_returned', 
+            'user_pending', 'user_request', 'borrow_approved', 'borrow_rejected'
+          ];
+          
+          const targetName = extractName();
+          const isIdentityContext = identityTypes.includes(item.type) || 
+                                   (item.id && (item.id.startsWith('log-') || item.id.startsWith('bor-'))) ||
+                                   targetName.length > 0;
+
+          if (isIdentityContext) {
+            const target = `/dashboard/logs?search=${encodeURIComponent(targetName)}&id=${meta.borrower_user_id || meta.id || item.referenceId || ''}&highlight=true`;
+            router.push(target);
+            return;
+          }
+
+          // Fallback to existing action target if available
+          if (item.action?.target) {
+            const target = item.action.target === 'restock_modal' ? '/dashboard/inventory' : item.action.target;
+            router.push(target);
+          }
+        }}
+        className={cn(
+          "py-3.5 flex items-center gap-4 cursor-pointer transition-all hover:bg-slate-50/50 group outline-none border-b border-slate-100 last:border-0",
+          !item.isRead ? "opacity-100" : "opacity-60 hover:opacity-100"
+        )}
+      >
+        <div className="relative shrink-0">
+          <div className={cn(
+            "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-300 shadow-sm ring-1 ring-white",
+            !item.isRead ? colors[item.type as keyof typeof colors] : "bg-slate-100",
+            !item.isRead ? "text-white" : "text-slate-400"
+          )}>
+            <IconComponent className="w-4 h-4" />
           </div>
+          {!item.isRead && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500 border border-white"></span>
+            </span>
+          )}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <span className={cn(
+              "text-[8px] font-black tracking-[0.1em] uppercase",
+              !item.isRead ? "text-blue-600" : "text-slate-400"
+            )}>
+              {item.type.replace('_', ' ')}
+            </span>
+            <span className="text-[9px] font-bold text-slate-400 tabular-nums">
+              {item.time ? formatDistanceToNow(new Date(item.time), { addSuffix: false }).toUpperCase() : 'NOW'}
+            </span>
+          </div>
+          <h4 className={cn(
+            "text-xs font-bold truncate transition-colors leading-tight",
+            !item.isRead ? "text-slate-900" : "text-slate-500"
+          )}>
+            {item.title}
+          </h4>
+          <p className="text-[11px] text-slate-400 font-medium truncate opacity-80">
+            {item.message}
+          </p>
         </div>
 
-        {/* 🛡️ TACTICAL RESTOCK DIALOG: Local Orchestration */}
-        <Dialog open={isRestockOpen} onOpenChange={setIsRestockOpen}>
-          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-tl-none rounded-tr-2xl rounded-b-2xl border-slate-200/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] bg-white/95 backdrop-blur-xl z-[100]">
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle className="text-xl font-bold tracking-tight text-slate-900 uppercase">Resource Intelligence: Restock</DialogTitle>
-              <DialogDescription className="text-sm text-slate-500 italic">
-                Updating logistics ledger for {item.title}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="p-6">
-              <RestockForm 
-                n={item} 
-                onSuccess={async () => {
-                  setIsRestockOpen(false);
-                  
-                  // 🛡️ TACTICAL SYNC: The hook's Realtime listener will handle the card removal
-                  if (item.id) {
-                    await onMarkAsRead(item.id);
-                  }
-                }} 
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      </>
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(item.id);
+            }}
+            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all p-1.5 hover:bg-red-50 rounded-lg active:scale-95"
+            aria-label="Delete log"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     )
   } catch (error) {
     console.error('[NotificationItem] Render Crash:', error);

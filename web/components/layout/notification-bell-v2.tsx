@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell } from 'lucide-react'
+import { Bell, RefreshCw } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/hooks/use-notifications'
@@ -138,7 +138,15 @@ export function NotificationBellV2() {
                     <p className="text-sm font-medium">No notifications</p>
                   </motion.div>
                 ) : (
-                  filtered.map((notif: NotificationItem, i: number) => <NotificationCard key={notif.id} notif={notif} index={i} onMarkRead={markAsRead} onDelete={deleteNotification} />)
+                  filtered.map((notif: NotificationItem, i: number) => (
+                    <NotificationCard 
+                      key={notif.id} 
+                      notif={notif} 
+                      index={i}
+                      onMarkRead={markAsRead} 
+                      onDelete={deleteNotification} 
+                    />
+                  ))
                 )}
               </AnimatePresence>
             </div>

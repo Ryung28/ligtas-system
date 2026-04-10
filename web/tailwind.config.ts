@@ -136,6 +136,34 @@ const config = {
                         "background-position": "right center"
                     },
                 },
+                "highlight-pulse": {
+                    "0%": { 
+                        transform: "scale(1)", 
+                        "background-color": "rgba(59, 130, 246, 0.1)",
+                        "border-left-color": "rgb(37, 99, 235)"
+                    },
+                    "10%": { 
+                        transform: "scale(1.015)", 
+                        "background-color": "rgba(59, 130, 246, 0.2)",
+                        "box-shadow": "0 0 25px rgba(59, 130, 246, 0.3)",
+                        "border-left-color": "rgb(37, 99, 235)"
+                    },
+                    "20%": {
+                        transform: "scale(1)",
+                        "background-color": "rgba(59, 130, 246, 0.08)",
+                        "border-left-color": "rgb(37, 99, 235)"
+                    },
+                    "75%": { // Hold until 3s (75% of 4s)
+                        transform: "scale(1)",
+                        "background-color": "rgba(59, 130, 246, 0.08)",
+                        "border-left-color": "rgb(37, 99, 235)"
+                    },
+                    "100%": { // Gradual decay
+                        transform: "scale(1)", 
+                        "background-color": "transparent",
+                        "border-left-color": "transparent"
+                    },
+                },
             },
             animation: {
                 "accordion-down": "accordion-down 0.2s ease-out",
@@ -144,6 +172,7 @@ const config = {
                 "shimmer": "shimmer 2s ease-in-out infinite",
                 "pulse-slow": "pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
                 "error-shake": "error-shake 0.2s ease-in-out 0s 2",
+                "highlight-pulse": "highlight-pulse 4s cubic-bezier(0.4, 0, 0.2, 1) forwards",
             },
         },
     },

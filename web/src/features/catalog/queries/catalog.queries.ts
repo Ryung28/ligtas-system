@@ -16,7 +16,7 @@ export async function getInventoryItems(options: {
 } = {}) {
     try {
         let query = supabase
-            .from('inventory_availability')
+            .from('inventory_catalog')
             .select('*')
 
         // Apply Category Filter
@@ -62,9 +62,9 @@ export async function getInventoryItems(options: {
 export async function getAvailableItems() {
     try {
         const { data, error } = await supabase
-            .from('inventory_availability')
-            .select('id, item_name, stock_available, stock_truly_available, stock_pending, category, status, item_type')
-            .gt('stock_truly_available', 0)
+            .from('inventory_catalog')
+            .select('id, item_name, aggregate_available, aggregate_total, variants, category, status, item_type')
+            .gt('aggregate_available', 0)
             .order('item_name')
 
         if (error) throw error

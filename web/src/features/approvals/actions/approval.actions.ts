@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 
 /**
  * APPROVALS DOMAIN - Workflow Actions
@@ -10,22 +10,37 @@ import { supabase } from '@/lib/supabase'
  * Implements the tactical staging workflow.
  */
 
-export async function approveRequest(logId: number, approvedBy: string) {
+export async function approveRequest(logId: number, approvedBy: string, isInstant: boolean = false) {
     try {
+        const supabase = await createSupabaseServer()
+        
+        const updateData: any = { 
+            status: isInstant ? 'borrowed' : 'staged',
+            approved_by: approvedBy,
+            approved_at: new Date().toISOString()
+        }
+
+        if (isInstant) {
+            updateData.handed_by = approvedBy
+            updateData.handed_at = new Date().toISOString()
+            updateData.borrow_date = new Date().toISOString()
+        }
+
         const { error } = await supabase
             .from('borrow_logs')
-            .update({ 
-                status: 'staged',
-                approved_by: approvedBy,
-                approved_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', logId)
 
         if (error) throw error
 
         revalidatePath('/dashboard/logs')
         revalidatePath('/dashboard')
-        return { success: true, message: 'Request approved and moved to staging' }
+        return { 
+            success: true, 
+            message: isInstant 
+                ? 'Request approved and equipment marked as borrowed.' 
+                : 'Request approved and moved to staging' 
+        }
     } catch (error: any) {
         console.error('Approve error:', error)
         return { success: false, error: error.message || 'Failed to approve request' }
@@ -34,6 +49,7 @@ export async function approveRequest(logId: number, approvedBy: string) {
 
 export async function completeHandoff(logId: number, handedBy: string) {
     try {
+        const supabase = await createSupabaseServer()
         const { error } = await supabase
             .from('borrow_logs')
             .update({ 
@@ -57,6 +73,7 @@ export async function completeHandoff(logId: number, handedBy: string) {
 
 export async function rejectRequest(logId: number) {
     try {
+        const supabase = await createSupabaseServer()
         // 1. Fetch Log to get inventory_id and quantity for restoration
         const { data: log, error: fetchError } = await supabase
             .from('borrow_logs')

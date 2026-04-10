@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Cpu, Camera, Package } from 'lucide-react'
+import { Plus, Cpu, Camera, Package, Warehouse } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog,
@@ -15,12 +15,12 @@ import { InventoryItem } from '@/lib/supabase'
 import { useInventoryForm } from './use-inventory-form'
 import { ItemTypeSelector } from './sections/item-type-selector'
 import { BasicInfoFields } from './sections/basic-info-fields'
-import { StockManagementFields } from './sections/stock-management-fields'
-import { StorageLocationSelect } from './sections/storage-location-select'
+import { StockDistributionGrid } from './sections/stock-distribution-grid'
 import { ConsumableFields } from './sections/consumable-fields'
 import { AdditionalDetailsFields } from './sections/additional-details-fields'
 import { ImageUploadZone } from './sections/image-upload-zone'
 import { CollapsibleSection } from './sections/collapsible-section'
+
 
 interface InventoryItemDialogProps {
     existingItem?: InventoryItem
@@ -85,17 +85,25 @@ export function InventoryItemDialog({
         removeImage,
         handleSubmit,
         handleSaveLocation,
+        handleDeleteLocation,
         
+        setItemNameValue,
+        
+        // Distribution
+        siteDistributions,
+        addSiteDistribution,
+        removeSiteDistribution,
+        updateSiteQty,
+
         // Handlers
         setItemType,
         setCategoryId,
-        setStorageLocation,
-        setCustomLocation,
         setHasVariants,
         setParentId,
         setVariantLabel,
         setCustomVariant,
-        setItemNameValue,
+
+
     } = useInventoryForm({
         existingItem,
         isOpen: isOpen ?? false,
@@ -106,7 +114,7 @@ export function InventoryItemDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-            <DialogContent className="sm:max-w-[600px] max-h-[95vh] overflow-y-auto rounded-2xl p-0 border-none shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-white">
+            <DialogContent className="sm:max-w-[1000px] max-h-[95vh] overflow-y-auto rounded-3xl p-0 border-none shadow-[0_32px_80px_-20px_rgba(0,0,0,0.4)] bg-white backdrop-blur-sm">
                 <form ref={formRef} onSubmit={handleSubmit}>
                     {/* Header Section */}
                     <div className="relative p-6 pb-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -168,35 +176,20 @@ export function InventoryItemDialog({
                         {/* Divider */}
                         <div className="border-t border-gray-200" />
 
-                        {/* Stock & Location Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <div className="h-1 w-1 rounded-full bg-blue-500" />
-                                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Stock & Location</h3>
-                            </div>
-                            <StockManagementFields 
-                                qtyGood={qtyGood}
-                                setQtyGood={setQtyGood}
-                                qtyDamaged={qtyDamaged}
-                                setQtyDamaged={setQtyDamaged}
-                                qtyMaintenance={qtyMaintenance}
-                                setQtyMaintenance={setQtyMaintenance}
-                                qtyLost={qtyLost}
-                                setQtyLost={setQtyLost}
-                                stockTotalValue={stockTotalValue}
-                                existingItem={existingItem}
-                            />
-                            <StorageLocationSelect
-                                storageLocation={storageLocation}
-                                onStorageLocationChange={setStorageLocation}
-                                customLocation={customLocation}
-                                onCustomLocationChange={setCustomLocation}
-                                savedLocations={savedLocations}
-                                isLoadingLocations={isLoadingLocations}
-                                isSavingLocation={isSavingLocation}
-                                onSaveLocation={handleSaveLocation}
-                            />
-                        </div>
+                            <CollapsibleSection
+                                title="Storage & Multi-Site Distribution"
+                                subtitle="Manage stock across different locations"
+                                icon={<Warehouse className="h-4 w-4" />}
+                                defaultOpen={false}
+                            >
+                                <StockDistributionGrid
+                                    siteDistributions={siteDistributions}
+                                    onUpdateQty={updateSiteQty}
+                                    onAddSite={addSiteDistribution}
+                                    onRemoveSite={removeSiteDistribution}
+                                    savedLocations={savedLocations}
+                                />
+                            </CollapsibleSection>
 
                         {/* Divider */}
                         <div className="border-t border-gray-200" />

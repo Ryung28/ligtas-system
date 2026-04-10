@@ -1,9 +1,11 @@
 'use client'
 
 import React from 'react'
+import { cn } from '@/lib/utils'
 
 interface UserAvatarProps {
     fullName: string | null | undefined
+    className?: string
 }
 
 /**
@@ -49,13 +51,13 @@ const getInitials = (name: string | null | undefined) => {
     return (firstInitial + lastInitial).toUpperCase()
 }
 
-export function UserAvatar({ fullName }: UserAvatarProps) {
+export function UserAvatar({ fullName, className }: UserAvatarProps) {
     const initials = getInitials(fullName)
     const style = getAvatarStyle(fullName || '')
 
     return (
         <div
-            className={`
+            className={cn(`
                 flex-shrink-0
                 w-10 h-10 
                 rounded-xl 
@@ -69,7 +71,7 @@ export function UserAvatar({ fullName }: UserAvatarProps) {
                 duration-300
                 group-hover:scale-105
                 group-hover:shadow-md
-            `}
+            `, className)}
         >
             <span className="text-sm font-black tracking-tighter font-sans uppercase">
                 {initials}

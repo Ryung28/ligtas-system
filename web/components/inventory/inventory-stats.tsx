@@ -13,18 +13,37 @@ interface InventoryStatsProps {
 export function InventoryStats({ items, onLocationFilter, activeLocation }: InventoryStatsProps) {
     const stats = useMemo(() => {
         const totalItems = items.length
-        const lowStockItems = items.filter(item => item.stock_available > 0 && item.stock_available < 5).length
-        const outOfStockItems = items.filter(item => item.stock_available === 0).length
-        const totalStock = items.reduce((sum, item) => sum + item.stock_available, 0)
+        // Use aggregate values for city-wide health stats
+        const lowStockItems = items.filter(item => {
+            const available = item.aggregate_available ?? item.stock_available
+            return available > 0 && available < (item.low_stock_threshold || 5)
+        }).length
+        
+        const outOfStockItems = items.filter(item => {
+            const available = item.aggregate_available ?? item.stock_available
+            return available === 0
+        }).length
+        
+        const totalStockUnits = items.reduce((sum, item) => sum + (item.aggregate_available ?? item.stock_available), 0)
 
-        // Location breakdown
+        // 🚀 ENTERPRISE AGGREGATION: Count SKU presence across all physical sites
         const locationStats = items.reduce((acc, item) => {
-            const location = item.storage_location || 'lower_warehouse'
-            acc[location] = (acc[location] || 0) + 1
+            // 1. Count Primary/Master Location
+            const primaryLoc = item.storage_location || item.primary_location || 'lower_warehouse'
+            acc[primaryLoc] = (acc[primaryLoc] || 0) + 1
+            
+            // 2. Count all Variant Locations (Satellite Sites)
+            item.variants?.forEach(v => {
+                const vLoc = v.location
+                if (vLoc) {
+                    acc[vLoc] = (acc[vLoc] || 0) + 1
+                }
+            })
+            
             return acc
         }, {} as Record<string, number>)
 
-        return { totalItems, lowStockItems, outOfStockItems, totalStock, locationStats }
+        return { totalItems, lowStockItems, outOfStockItems, totalStock: totalStockUnits, locationStats }
     }, [items])
 
     return (

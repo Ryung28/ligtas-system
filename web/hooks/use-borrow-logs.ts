@@ -30,8 +30,8 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         isValidating,
         mutate: refresh
     } = useSWR(LOGS_CACHE_KEY, fetchLogs, {
-        revalidateOnFocus: true,
-        refreshInterval: 30000, // 30s Heartbeat (Senior Dev Best Practice)
+        revalidateOnFocus: false, // 🛡️ TRUST THE CACHE: Instant swap from memory
+        refreshInterval: 60000, // 60s Loose Heartbeat
         dedupingInterval: 10000,
     })
 
@@ -116,6 +116,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                     status: log.status,
                     approved_by_name: log.approved_by_name,
                     released_by_name: log.released_by_name,
+                    pickup_scheduled_at: log.pickup_scheduled_at,
                     created_at: log.created_at
                 })
             }
@@ -132,7 +133,8 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         returned: logs.filter(l => l.status === 'returned').length,
         overdue: logs.filter(l => l.status === 'overdue').length,
         pending: logs.filter(l => l.status === 'pending').length,
-        cancelled: logs.filter(l => l.status === 'cancelled').length,
+        staged: logs.filter(l => l.status === 'staged').length,
+        reserved: logs.filter(l => l.status === 'reserved').length,
     }), [logs])
 
     const paginatedSessions = useMemo(() => {

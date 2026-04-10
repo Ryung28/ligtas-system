@@ -2,9 +2,10 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck } from 'lucide-react'
+import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, Warehouse } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 import { toast } from 'sonner'
+import { STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { borrowItem, returnItem, batchBorrowItems } from '@/src/features/transactions'
 import { getAvailableItems } from '@/src/features/catalog'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
@@ -33,11 +35,18 @@ import { useBorrowLogs } from '@/hooks/use-borrow-logs'
 interface AvailableItem {
     id: number
     item_name: string
-    stock_available: number
-    stock_truly_available: number
-    stock_pending: number
     category: string
     item_type?: 'equipment' | 'consumable'
+    primary_location?: string
+    primary_stock_available: number
+    aggregate_available: number
+    stock_pending: number
+    variants: Array<{
+        id: number
+        location: string
+        stock_available: number
+        stock_total: number
+    }>
 }
 
 interface CartItem {
@@ -51,8 +60,11 @@ export function BorrowItemDialog() {
     const [availableItems, setAvailableItems] = useState<AvailableItem[]>([])
     const [isLoadingItems, setIsLoadingItems] = useState(false)
     const [selectedItem, setSelectedItem] = useState<AvailableItem | null>(null)
+    const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
     const [selectedQuantity, setSelectedQuantity] = useState(1)
     const [borrowerName, setBorrowerName] = useState('')
+    const [intakeMode, setIntakeMode] = useState<'immediate' | 'scheduled'>('immediate')
+    const [pickupDate, setPickupDate] = useState<string>('')
     const [returnType, setReturnType] = useState<'anytime' | 'date'>('anytime')
     const { logs, refresh: refreshLogs } = useBorrowLogs()
 
@@ -146,6 +158,15 @@ export function BorrowItemDialog() {
                 return
             }
 
+            // Validate Philippine phone number
+            const phoneRegex = /^09\d{9}$/
+            if (!cNumber || !phoneRegex.test(cNumber)) {
+                toast.error('Please enter a valid Philippine mobile number (09XXXXXXXXX)', {
+                    className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                })
+                return
+            }
+
             startTransition(async () => {
                 const result = await batchBorrowItems({
                     borrower_name: bName,
@@ -155,6 +176,7 @@ export function BorrowItemDialog() {
                     approved_by: approvedBy,
                     released_by: releasedByInput,
                     expected_return_date: expectedReturnDate || null,
+                    pickup_scheduled_at: intakeMode === 'scheduled' ? pickupDate : null,
                     items: cart.map(c => ({
                         item_id: c.item.id,
                         quantity: c.quantity,
@@ -197,6 +219,18 @@ export function BorrowItemDialog() {
 
         const formData = new FormData(event.currentTarget)
 
+        // Validate Philippine phone number for non-return transactions
+        if (!isSmartReturn) {
+            const cNumber = formData.get('contact_number') as string
+            const phoneRegex = /^09\d{9}$/
+            if (!cNumber || !phoneRegex.test(cNumber)) {
+                toast.error('Please enter a valid Philippine mobile number (09XXXXXXXXX)', {
+                    className: 'rounded-tl-none rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white border-red-200 text-red-900 shadow-[0_12px_24px_-12px_rgba(239,68,68,0.06)] ring-1 ring-red-50'
+                })
+                return
+            }
+        }
+
         startTransition(async () => {
             let result;
 
@@ -226,9 +260,21 @@ export function BorrowItemDialog() {
         })
     }
 
+    const handleItemSelect = (itemId: string) => {
+        const item = availableItems.find((i) => i.id.toString() === itemId)
+        setSelectedItem(item || null)
+        setSelectedVariantId(null) // Reset variant when item changes
+    }
+
     const handleAddToCart = () => {
         if (!selectedItem) {
             toast.error('Please select an item first')
+            return
+        }
+
+        // If item has variants, a location MUST be selected
+        if (selectedItem.variants && selectedItem.variants.length > 0 && !selectedVariantId) {
+            toast.error('Please select a pickup location')
             return
         }
 
@@ -237,31 +283,53 @@ export function BorrowItemDialog() {
             return
         }
 
-        if (selectedQuantity > selectedItem.stock_truly_available) {
-            toast.error(`Only ${selectedItem.stock_truly_available} units available`)
+        // Get the truly available stock for the chosen location
+        let maxAvailable = selectedItem.aggregate_available || selectedItem.primary_stock_available
+        let targetId = selectedItem.id
+
+        if (selectedVariantId) {
+            if (selectedVariantId === 'primary') {
+                maxAvailable = selectedItem.primary_stock_available
+                targetId = selectedItem.id
+            } else {
+                const variant = selectedItem.variants.find(v => v.id.toString() === selectedVariantId)
+                if (variant) {
+                    maxAvailable = variant.stock_available
+                    targetId = variant.id
+                }
+            }
+        }
+
+        if (selectedQuantity > maxAvailable) {
+            toast.error(`Only ${maxAvailable} units available at this location`)
             return
         }
 
         // Check if item already in cart
-        const existingIndex = cart.findIndex(c => c.item.id === selectedItem.id)
+        const existingIndex = cart.findIndex(c => c.item.id === targetId)
         if (existingIndex >= 0) {
             toast.error('Item already in cart. Remove it first to change quantity.')
             return
         }
 
-        setCart([...cart, { item: selectedItem, quantity: selectedQuantity }])
+        // Create a localized item object for the cart
+        const cartItem: AvailableItem = {
+            ...selectedItem,
+            id: targetId,
+            item_name: selectedVariantId && selectedVariantId !== 'primary' 
+                ? `${selectedItem.item_name} (${selectedItem.variants.find(v => v.id.toString() === selectedVariantId)?.location})`
+                : selectedItem.item_name
+        }
+
+        setCart([...cart, { item: cartItem, quantity: selectedQuantity }])
         setSelectedItem(null)
+        setSelectedVariantId(null)
         setSelectedQuantity(1)
-        toast.success(`Added ${selectedItem.item_name} to cart`)
+        toast.success(`Added ${cartItem.item_name} to cart`)
     }
 
     const handleRemoveFromCart = (itemId: number) => {
         setCart(cart.filter(c => c.item.id !== itemId))
-    }
-
-    const handleItemSelect = (itemId: string) => {
-        const item = availableItems.find((i) => i.id.toString() === itemId)
-        setSelectedItem(item || null)
     }
 
     return (
@@ -288,6 +356,60 @@ export function BorrowItemDialog() {
                     </DialogHeader>
 
                     <div className="grid gap-6 py-4">
+                        {/* 🚀 TACTICAL MODE TOGGLE: Immediate vs Scheduled */}
+                        {!isSmartReturn && !isConsumable && (
+                            <Tabs 
+                                value={intakeMode} 
+                                onValueChange={(val: any) => setIntakeMode(val)} 
+                                className="w-full"
+                            >
+                                <TabsList className="grid w-full grid-cols-2 h-12 p-1.5 bg-slate-100 rounded-xl">
+                                    <TabsTrigger 
+                                        value="immediate" 
+                                        className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
+                                    >
+                                        <Package className="h-3.5 w-3.5 mr-2" />
+                                        Issue Now (Real-time)
+                                    </TabsTrigger>
+                                    <TabsTrigger 
+                                        value="scheduled" 
+                                        className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm"
+                                    >
+                                        <Clock className="h-3.5 w-3.5 mr-2" />
+                                        Schedule Reserve
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        )}
+
+                        {/* Pickup Schedule (Only if Scheduled mode is active) */}
+                        {intakeMode === 'scheduled' && !isSmartReturn && !isConsumable && (
+                            <div className="grid gap-3 p-4 bg-amber-50/50 rounded-2xl border border-amber-100 animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-2 text-amber-800">
+                                    <Clock className="h-4 w-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Target Pickup Schedule</span>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="pickup_scheduled_at" className="text-xs font-semibold text-amber-900">
+                                        When will the responder collect this equipment? <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                        id="pickup_scheduled_at"
+                                        name="pickup_scheduled_at"
+                                        type="datetime-local"
+                                        required={intakeMode === 'scheduled'}
+                                        value={pickupDate}
+                                        onChange={(e) => setPickupDate(e.target.value)}
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        className="h-11 bg-white border-amber-200 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                    <p className="text-[9px] text-amber-600 font-medium">
+                                        * Choosing a future date will move this request to the <b>Command Queue</b> instead of issuing it immediately.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Borrower Name */}
                             <div className="grid gap-2">
@@ -306,10 +428,10 @@ export function BorrowItemDialog() {
                                 />
                             </div>
 
-                            {/* Contact Number - Optional if returning */}
+                            {/* Contact Number - Always Required */}
                             <div className="grid gap-2">
                                 <Label htmlFor="contact_number" className="text-sm font-semibold text-gray-700">
-                                    Contact Number {!isSmartReturn && <span className="text-red-500">*</span>}
+                                    Contact Number <span className="text-red-500">*</span>
                                     <span className="text-xs font-normal text-gray-400 ml-2">(09XXXXXXXXX)</span>
                                 </Label>
                                 <Input
@@ -318,8 +440,8 @@ export function BorrowItemDialog() {
                                     type="tel"
                                     placeholder="09XXXXXXXXX"
                                     pattern="^09\d{9}$"
-                                    title="Philippine mobile number (09XXXXXXXXX)"
-                                    required={!isSmartReturn}
+                                    title="Must be a valid Philippine mobile number starting with 09 followed by 9 digits"
+                                    required
                                     disabled={isPending || isSmartReturn}
                                     defaultValue={isSmartReturn ? existingBorrow.borrower_contact : ""}
                                     className={`rounded-lg border-gray-300 ${isSmartReturn ? 'bg-gray-50/50' : ''}`}
@@ -342,9 +464,7 @@ export function BorrowItemDialog() {
                                     options={availableItems.map(item => ({
                                         value: item.id.toString(),
                                         label: item.item_name,
-                                        description: `${item.stock_truly_available} available${
-                                            item.stock_pending > 0 ? ` • ⏳ ${item.stock_pending} pending` : ''
-                                        } • ${item.category}`,
+                                        description: `${item.aggregate_available} units City-wide • ${item.category}${item.variants?.length ? ` • [${item.variants.length + 1} Sites]` : ''}`,
                                     }))}
                                     value={selectedItem?.id.toString()}
                                     onValueChange={handleItemSelect}
@@ -366,6 +486,42 @@ export function BorrowItemDialog() {
                                 />
                             </div>
 
+                            {/* Location Selection (Conditional) */}
+                            {selectedItem && selectedItem.variants && selectedItem.variants.length > 0 && (
+                                <div className="col-span-12 animate-in slide-in-from-left-2 duration-300">
+                                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col md:flex-row md:items-center gap-4">
+                                        <div className="flex items-center gap-2 text-blue-900 shrink-0">
+                                            <Warehouse className="h-4 w-4" />
+                                            <span className="text-xs font-bold uppercase tracking-wider">Pickup Site <span className="text-red-500">*</span></span>
+                                        </div>
+                                        <Select 
+                                            value={selectedVariantId || ''} 
+                                            onValueChange={setSelectedVariantId}
+                                        >
+                                            <SelectTrigger className="bg-white border-blue-200 h-10 flex-1">
+                                                <SelectValue placeholder="Select warehouse or satellite location..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl border-blue-100 shadow-xl">
+                                                <SelectItem value="primary" className="py-2">
+                                                    <div className="flex justify-between items-center w-full gap-8">
+                                                        <span className="font-bold text-slate-900 uppercase text-[11px]">{STORAGE_LOCATION_LABELS[selectedItem.primary_location as StorageLocation] || selectedItem.primary_location || 'Main Hub'}</span>
+                                                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{selectedItem.primary_stock_available} READY</span>
+                                                    </div>
+                                                </SelectItem>
+                                                {selectedItem.variants.map(variant => (
+                                                    <SelectItem key={variant.id} value={variant.id.toString()} className="py-2">
+                                                        <div className="flex justify-between items-center w-full gap-8">
+                                                            <span className="font-bold text-slate-900 uppercase text-[11px]">{STORAGE_LOCATION_LABELS[variant.location as StorageLocation] || variant.location}</span>
+                                                            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{variant.stock_available} READY</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Quantity - 2 columns */}
                             <div className="col-span-6 md:col-span-2 space-y-2">
                                 <Label htmlFor="quantity" className="text-sm font-semibold text-slate-700">
@@ -381,7 +537,12 @@ export function BorrowItemDialog() {
                                     readOnly={isSmartReturn}
                                     required
                                     min={1}
-                                    max={selectedItem?.stock_truly_available || 999}
+                                    max={selectedVariantId 
+                                        ? (selectedVariantId === 'primary' 
+                                            ? selectedItem?.primary_stock_available 
+                                            : selectedItem?.variants.find(v => v.id.toString() === selectedVariantId)?.stock_available || 0)
+                                        : selectedItem?.aggregate_available || 999
+                                    }
                                     disabled={isPending || !selectedItem}
                                     className={`h-11 rounded-lg border-slate-300 shadow-inner ${
                                         isSmartReturn 
@@ -469,7 +630,12 @@ export function BorrowItemDialog() {
                             <div className="col-span-6 md:col-span-2">
                                 {selectedItem && !isSmartReturn && (
                                     <p className="text-xs text-gray-500 animate-in fade-in duration-200">
-                                        Maximum: {selectedItem.stock_truly_available} unit(s)
+                                        Maximum: {selectedVariantId 
+                                            ? (selectedVariantId === 'primary' 
+                                                ? selectedItem.primary_stock_available 
+                                                : selectedItem.variants.find(v => v.id.toString() === selectedVariantId)?.stock_available || 0)
+                                            : selectedItem.aggregate_available
+                                        } unit(s)
                                     </p>
                                 )}
                             </div>

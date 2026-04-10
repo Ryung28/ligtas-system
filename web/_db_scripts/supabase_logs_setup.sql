@@ -76,12 +76,18 @@ CREATE OR REPLACE FUNCTION update_inventory_stock()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.transaction_type = 'borrow' THEN
-        -- Decrease stock when borrowing
+        -- Equipment: Only available stock decreases
         UPDATE inventory
         SET stock_available = stock_available - NEW.quantity
         WHERE id = NEW.inventory_id;
+    ELSIF NEW.transaction_type = 'dispense' THEN
+        -- Consumables: Permanent depletion of both columns
+        UPDATE inventory
+        SET stock_available = stock_available - NEW.quantity,
+            quantity = quantity - NEW.quantity
+        WHERE id = NEW.inventory_id;
     ELSIF NEW.transaction_type = 'return' THEN
-        -- Increase stock when returning
+        -- Return: Replenish available stock
         UPDATE inventory
         SET stock_available = stock_available + NEW.quantity
         WHERE id = NEW.inventory_id;

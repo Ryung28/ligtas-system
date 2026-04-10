@@ -19,7 +19,7 @@ export interface UserProfile {
     id: string
     email: string
     full_name?: string
-    role: 'admin' | 'editor' | 'viewer'
+    role: 'admin' | 'editor' | 'viewer' | 'responder'
     status: UserStatus
     department?: string
     assigned_warehouse?: string | null
@@ -109,7 +109,7 @@ export function useUserManagement() {
 
     // ── MUTATION FUNCTIONS — all delegated to Server Actions ──────────────────
 
-    const approveUser = async (userId: string, role: 'admin' | 'editor' | 'viewer' = 'viewer') => {
+    const approveUser = async (userId: string, role: 'admin' | 'editor' | 'viewer' | 'responder' = 'responder') => {
         const result = await approveUserAction(userId, role)
         if (result.success) {
             toast.success(result.message)
@@ -251,7 +251,7 @@ export function useUserManagement() {
             suspendedCount: users.filter(u => u.status === 'suspended').length,
             adminsCount: activeUsers.filter(u => u.role === 'admin').length,
             editorsCount: activeUsers.filter(u => u.role === 'editor').length,
-            viewersCount: activeUsers.filter(u => u.role === 'viewer').length,
+            viewersCount: activeUsers.filter(u => u.role === 'viewer' || u.role === 'responder').length,
             whitelistedCount: authorizedEmails.length,
         }
     }, [users, authorizedEmails])

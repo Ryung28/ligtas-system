@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/header'
 import { getCurrentUserServer } from '@/lib/auth-server'
 import { PresenceHeartbeat } from '@/components/chat/presence-heartbeat'
 import { ChatNotificationListener } from '@/components/chat/chat-notification-listener'
+import { CacheWarmer } from '@/components/layout/cache-warmer'
 
 interface DashboardLayoutProps {
     children: ReactNode
@@ -33,6 +34,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 <Header user={user} />
                 <PresenceHeartbeat />
                 <ChatNotificationListener />
+                <CacheWarmer />
 
                 {/* Page Content - Independent Scrollable Region */}
                 <main className="flex-1 overflow-y-auto custom-scrollbar py-2 px-3 sm:py-3 sm:px-4 md:py-4 md:px-5 lg:py-4 lg:px-5 14in:py-5 14in:px-6 xl:py-6 xl:px-8 2xl:py-8 2xl:px-12 3xl:px-16 4xl:px-24">

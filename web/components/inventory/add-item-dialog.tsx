@@ -26,11 +26,14 @@ import {
 } from '@/components/ui/select'
 import { addItem } from '@/src/features/catalog'
 
+import { useStorageLocations } from '@/hooks/use-storage-locations'
+
 const CATEGORIES = ['Rescue', 'Medical', 'Comms', 'Vehicles'] as const
 
 export function AddItemDialog() {
     const [open, setOpen] = useState(false)
     const [isPending, startTransition] = useTransition()
+    const { locations, isLoading: isLocationsLoading } = useStorageLocations()
     const router = useRouter()
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -56,27 +59,27 @@ export function AddItemDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-xl">
+                <Button className="gap-2 bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg hover:shadow-blue-200 transition-all">
                     <Plus className="h-4 w-4" />
                     Add New Item
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] rounded-2xl border-zinc-200">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold text-gray-900">
-                            Add New Inventory Item
+                        <DialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                            Strategic Resource Entry
                         </DialogTitle>
-                        <DialogDescription className="text-gray-600">
-                            Fill in the details to add a new item to the inventory system.
+                        <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            Provision a new equipment asset in the logistics vault.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-6 py-6">
                         {/* Item Name */}
                         <div className="grid gap-2">
-                            <Label htmlFor="name" className="text-sm font-semibold text-gray-700">
-                                Item Name <span className="text-red-500">*</span>
+                            <Label htmlFor="name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                Item Name <span className="text-rose-500">*</span>
                             </Label>
                             <Input
                                 id="name"
@@ -85,33 +88,55 @@ export function AddItemDialog() {
                                 required
                                 minLength={2}
                                 disabled={isPending}
-                                className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-11 rounded-xl border-zinc-200 focus:ring-blue-500/20 text-sm font-semibold shadow-sm"
                             />
                         </div>
 
-                        {/* Category */}
-                        <div className="grid gap-2">
-                            <Label htmlFor="category" className="text-sm font-semibold text-gray-700">
-                                Category <span className="text-red-500">*</span>
-                            </Label>
-                            <Select name="category" required disabled={isPending}>
-                                <SelectTrigger className="rounded-lg border-gray-300">
-                                    <SelectValue placeholder="Select a category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CATEGORIES.map((category) => (
-                                        <SelectItem key={category} value={category}>
-                                            {category}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        {/* DOUBLE ROW: Category & Location */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Category */}
+                            <div className="grid gap-2">
+                                <Label htmlFor="category" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                    Category <span className="text-rose-500">*</span>
+                                </Label>
+                                <Select name="category" required disabled={isPending}>
+                                    <SelectTrigger className="h-11 rounded-xl border-zinc-200 shadow-sm font-semibold">
+                                        <SelectValue placeholder="Select Category" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
+                                        {CATEGORIES.map((category) => (
+                                            <SelectItem key={category} value={category} className="text-sm font-medium rounded-lg">
+                                                {category}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* THE MASTER FIX: Storage Location Registry */}
+                            <div className="grid gap-2">
+                                <Label htmlFor="location_id" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                    Storage Site <span className="text-rose-500">*</span>
+                                </Label>
+                                <Select name="location_id" required disabled={isPending || isLocationsLoading}>
+                                    <SelectTrigger className="h-11 rounded-xl border-zinc-200 shadow-sm font-bold text-blue-600 bg-blue-50/10">
+                                        <SelectValue placeholder={isLocationsLoading ? "Loading Sites..." : "Select Site"} />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
+                                        {locations.map((loc) => (
+                                            <SelectItem key={loc.id} value={String(loc.id)} className="text-sm font-bold text-slate-700 rounded-lg">
+                                                {loc.location_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         {/* Stock Total */}
                         <div className="grid gap-2">
-                            <Label htmlFor="stock_total" className="text-sm font-semibold text-gray-700">
-                                Initial Stock Quantity <span className="text-red-500">*</span>
+                            <Label htmlFor="stock_total" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                Initial Capacity <span className="text-rose-500">*</span>
                             </Label>
                             <Input
                                 id="stock_total"
@@ -121,9 +146,9 @@ export function AddItemDialog() {
                                 required
                                 min={1}
                                 disabled={isPending}
-                                className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-11 rounded-xl border-zinc-200 focus:ring-blue-500/20 text-sm font-bold tabular-nums shadow-sm"
                             />
-                            <p className="text-xs text-gray-500">This will be set as both total and available stock</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">This quantity will be initialized as &quot;Ready for Deployment&quot;</p>
                         </div>
                     </div>
 

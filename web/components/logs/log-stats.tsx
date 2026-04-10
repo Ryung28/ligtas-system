@@ -1,12 +1,14 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { LogStats } from '@/lib/types/inventory'
 import { TransactionStatus } from '@/lib/types/inventory'
+import { cn } from '@/lib/utils'
 import { 
     Clock, 
     Package, 
     RefreshCcw, 
     AlertCircle, 
-    ClipboardList 
+    ClipboardList,
+    Bookmark 
 } from 'lucide-react'
 
 interface LogStatsCardsProps {
@@ -16,116 +18,69 @@ interface LogStatsCardsProps {
 }
 
 export function LogStatsCards({ stats, currentFilter, onFilterChange }: LogStatsCardsProps) {
-    return (
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-            <StatsCard 
-                title="Total Registry" 
-                value={stats.total} 
-                color="slate" 
-                label="Logged" 
-                icon={ClipboardList}
-                isActive={currentFilter === 'all'}
-                onClick={() => onFilterChange('all')}
-            />
-            <StatsCard 
-                title="Pending Requests" 
-                value={stats.pending} 
-                color="amber" 
-                label="Requests" 
-                icon={Clock}
-                isActive={currentFilter === 'pending'}
-                onClick={() => onFilterChange('pending')}
-            />
-            <StatsCard 
-                title="Active Borrows" 
-                value={stats.borrowed} 
-                color="blue" 
-                label="Units" 
-                icon={Package}
-                isActive={currentFilter === 'borrowed'}
-                onClick={() => onFilterChange('borrowed')}
-            />
-            <StatsCard 
-                title="Returned Items" 
-                value={stats.returned} 
-                color="emerald" 
-                label="Units" 
-                icon={RefreshCcw}
-                isActive={currentFilter === 'returned'}
-                onClick={() => onFilterChange('returned')}
-            />
-            <StatsCard 
-                title="Overdue Items" 
-                value={stats.overdue} 
-                color="rose" 
-                label="Alert" 
-                icon={AlertCircle}
-                isActive={currentFilter === 'overdue'}
-                onClick={() => onFilterChange('overdue')}
-            />
-        </div>
-    )
-}
-
-function StatsCard({ 
-    title, 
-    value, 
-    color = 'slate', 
-    label, 
-    icon: Icon,
-    isActive = false,
-    onClick
-}: { 
-    title: string, 
-    value: number, 
-    color?: string, 
-    label: string,
-    icon: any,
-    isActive?: boolean,
-    onClick?: () => void
-}) {
-    const colorTheme: Record<string, { dot: string, text: string, activeBg: string, activeRing: string }> = {
-        slate: { dot: 'bg-slate-400', text: 'text-slate-500', activeBg: 'bg-slate-50', activeRing: 'ring-slate-300' },
-        blue: { dot: 'bg-blue-500', text: 'text-blue-500', activeBg: 'bg-blue-50', activeRing: 'ring-blue-300' },
-        emerald: { dot: 'bg-emerald-500', text: 'text-emerald-500', activeBg: 'bg-emerald-50', activeRing: 'ring-emerald-300' },
-        rose: { dot: 'bg-rose-500', text: 'text-rose-500', activeBg: 'bg-rose-50', activeRing: 'ring-rose-300' },
-        amber: { dot: 'bg-amber-500', text: 'text-amber-500', activeBg: 'bg-amber-50', activeRing: 'ring-amber-300' },
-    }
-
-    const theme = colorTheme[color] || colorTheme.slate
+    const metrics = [
+        { id: 'all', title: 'Total', value: stats.total, color: 'slate', icon: ClipboardList, label: 'Records' },
+        { id: 'pending', title: 'Pending', value: stats.pending, color: 'amber', icon: Clock, label: 'Requests' },
+        { id: 'staged', title: 'Staged', value: stats.staged, color: 'amber', icon: Package, label: 'Pickup' },
+        { id: 'borrowed', title: 'Borrowed', value: stats.borrowed, color: 'blue', icon: Package, label: 'Units' },
+        { id: 'returned', title: 'Returned', value: stats.returned, color: 'emerald', icon: RefreshCcw, label: 'Units' },
+        { id: 'overdue', title: 'Overdue', value: stats.overdue, color: 'rose', icon: AlertCircle, label: 'Alert' },
+        { id: 'reserved', title: 'Reserved', value: stats.reserved, color: 'indigo', icon: Bookmark, label: 'Units' },
+    ]
 
     return (
-        <Card 
-            onClick={onClick}
-            className={`relative overflow-hidden border-none ring-1 shadow-sm hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] transition-all duration-300 rounded-2xl group cursor-pointer ${
-                isActive 
-                    ? `${theme.activeBg} ${theme.activeRing} ring-2` 
-                    : 'bg-white ring-zinc-200/60 hover:ring-zinc-300'
-            }`}
-        >
-            <CardContent className="p-3.5 14in:p-5 flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center mb-1.5">
-                        <p className="text-[9px] 14in:text-[10px] font-bold tracking-[0.1em] text-zinc-400 uppercase truncate leading-none">
-                            {title}
-                        </p>
-                    </div>
-                    <div className="flex items-baseline gap-1.5 overflow-hidden">
-                        <p className="text-xl 14in:text-2xl font-mono font-black tabular-nums tracking-tighter text-zinc-900 group-hover:translate-x-0.5 transition-transform duration-300">
-                            {value}
-                        </p>
-                        <span className="text-[8px] 14in:text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-none opacity-60 italic shrink-0">{label}</span>
-                    </div>
-                </div>
-                
-                <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center bg-white border border-zinc-200 shadow-sm shadow-[inset_0_2px_4px_rgba(255,255,255,0.8)] transition-all duration-300 group-hover:border-zinc-300 group-hover:-translate-y-0.5`}>
-                    <Icon className={`h-5 w-5 ${theme.text} stroke-[2px] transition-transform duration-300 group-hover:scale-110`} />
-                </div>
-            </CardContent>
-            
-            {/* Minimal Grid - Faint Operational Texture */}
-            <div className="absolute inset-x-0 bottom-0 h-8 opacity-[0.015] pointer-events-none" 
-                 style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+        <Card className="border-none ring-1 ring-zinc-200/60 shadow-sm overflow-hidden bg-white/50 backdrop-blur-sm">
+            <div className="flex flex-wrap md:flex-nowrap divide-y md:divide-y-0 md:divide-x divide-zinc-100">
+                {metrics.map((metric) => {
+                    const isActive = currentFilter === metric.id
+                    const Icon = metric.icon
+                    const theme: any = {
+                        slate: 'text-zinc-500',
+                        amber: 'text-amber-500',
+                        blue: 'text-blue-500',
+                        emerald: 'text-emerald-500',
+                        rose: 'text-rose-500',
+                        indigo: 'text-indigo-500'
+                    }[metric.color] || 'text-zinc-500'
+
+                    return (
+                        <button
+                            key={metric.id}
+                            onClick={() => onFilterChange(metric.id as any)}
+                            className={cn(
+                                "flex-1 px-4 py-3 14in:py-4 transition-all duration-300 group relative",
+                                isActive ? "bg-white shadow-[inset_0_-2px_0_0_#000]" : "hover:bg-zinc-50"
+                            )}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "h-8 w-8 rounded-lg flex items-center justify-center border border-zinc-200/60 shadow-sm transition-all group-hover:scale-110",
+                                    isActive ? "bg-zinc-950 border-zinc-950" : "bg-white"
+                                )}>
+                                    <Icon className={cn(
+                                        "h-4 w-4 stroke-[2.5px]",
+                                        isActive ? "text-white" : theme
+                                    )} />
+                                </div>
+                                
+                                <div className="text-left min-w-0">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-zinc-600 transition-colors">
+                                        {metric.title}
+                                    </p>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-lg 14in:text-xl font-black text-zinc-950 tabular-nums tracking-tighter">
+                                            {metric.value}
+                                        </span>
+                                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-tight">
+                                            {metric.label}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    )
+                })}
+            </div>
         </Card>
     )
 }

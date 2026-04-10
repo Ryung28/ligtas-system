@@ -1,4 +1,4 @@
-import { Warehouse, Loader2 } from 'lucide-react'
+import { Warehouse, Loader2, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -9,10 +9,11 @@ interface StorageLocationSelectProps {
     onStorageLocationChange: (value: string) => void
     customLocation: string
     onCustomLocationChange: (value: string) => void
-    savedLocations: string[]
+    savedLocations: any[]
     isLoadingLocations: boolean
     isSavingLocation: boolean
     onSaveLocation: () => Promise<void>
+    onDeleteLocation: (id: number) => Promise<void>
 }
 
 export function StorageLocationSelect({
@@ -23,7 +24,8 @@ export function StorageLocationSelect({
     savedLocations,
     isLoadingLocations,
     isSavingLocation,
-    onSaveLocation
+    onSaveLocation,
+    onDeleteLocation
 }: StorageLocationSelectProps) {
     return (
         <div className="grid gap-2">
@@ -43,11 +45,31 @@ export function StorageLocationSelect({
                             <div className="p-2 text-center text-xs text-gray-500">Loading locations...</div>
                         ) : (
                             <>
-                                {savedLocations.map(loc => (
-                                    <SelectItem key={loc} value={loc} className="text-sm">
-                                        {loc}
-                                    </SelectItem>
-                                ))}
+                                {savedLocations.map(loc => {
+                                    const locName = loc.location_name;
+                                    const value = loc.id?.toString() || locName;
+                                    return (
+                                        <div key={value} className="flex items-center justify-between group px-1">
+                                            <SelectItem value={value} className="text-sm flex-1">
+                                                {locName}
+                                            </SelectItem>
+                                            {loc.id && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        onDeleteLocation(loc.id);
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-md transition-all mr-1"
+                                                    title="Remove from registry"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                                 <SelectItem value="custom" className="text-sm font-semibold text-blue-600">
                                     + Custom Location...
                                 </SelectItem>

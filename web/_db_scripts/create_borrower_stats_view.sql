@@ -1,84 +1,91 @@
 -- ============================================================================
--- LIGTAS CDRRMO SYSTEM - BORROWER STATISTICS VIEW
+-- LIGTAS CDRRMO SYSTEM - UNIFIED IDENTITY HUB (borrower_stats)
 -- ============================================================================
--- PURPOSE: Aggregate borrowing metrics per user for person-centric tracking
--- USAGE: Powers Borrower Registry page with full history and metrics
+-- VERSION: 4.0 (Production Hardened)
+-- PURPOSE: Unified forensic projection of all system identities.
+-- LOGIC: Normalizes identities via LOWER(TRIM()) and partitions metrics.
 -- ============================================================================
 
--- Drop existing view if any
 DROP VIEW IF EXISTS borrower_stats;
 
--- Create comprehensive borrower statistics view
 CREATE VIEW borrower_stats AS
+WITH normalized_identities AS (
+    -- 1. All Registered User Profiles (Primary Authority)
+    SELECT 
+        id as borrower_user_id,
+        LOWER(TRIM(full_name)) as norm_name,
+        full_name as display_name,
+        email as borrower_email,
+        role as user_role,
+        status as user_status,
+        true as is_verified_user
+    FROM user_profiles
+    
+    UNION
+    
+    -- 2. Guest Borrowers (Forensic Authority)
+    -- We only take names that don't match a verified profile to avoid duplicates
+    SELECT 
+        NULL as borrower_user_id,
+        LOWER(TRIM(borrower_name)) as norm_name,
+        borrower_name as display_name,
+        borrower_email,
+        NULL as user_role,
+        NULL as user_status,
+        false as is_verified_user
+    FROM borrow_logs
+    WHERE borrower_user_id IS NULL 
+    AND LOWER(TRIM(borrower_name)) NOT IN (SELECT LOWER(TRIM(full_name)) FROM user_profiles)
+),
+identity_base AS (
+    -- Deduplicate name-based identities
+    SELECT DISTINCT ON (norm_name) * FROM normalized_identities
+)
 SELECT 
-    bl.borrower_user_id,
-    bl.borrower_name,
-    bl.borrower_email,
-    up.full_name as user_full_name,
-    up.email as user_email,
-    up.role as user_role,
-    up.status as user_status,
+    i.borrower_user_id,
+    i.display_name as borrower_name,
+    MAX(i.borrower_email) as borrower_email,
+    MAX(i.user_role) as user_role,
+    MAX(i.user_status) as user_status,
     
-    -- Borrowing metrics
-    COUNT(*) as total_borrows,
-    SUM(bl.quantity) as total_items_borrowed,
+    -- 📊 CORE METRICS (The Senior Dev Way)
+    COUNT(bl.id) as total_borrows, -- Total Transactions (Events)
+    COALESCE(SUM(bl.quantity), 0) as total_items_handled, -- Total Volume
     
-    -- Status breakdown
-    COUNT(*) FILTER (WHERE bl.status = 'borrowed') as active_borrows,
-    SUM(bl.quantity) FILTER (WHERE bl.status = 'borrowed') as active_items,
+    -- 🛡️ LIABILITY (Equipment expected back)
+    COALESCE(SUM(bl.quantity) FILTER (WHERE bl.status = 'borrowed'), 0) as active_items,
+    COUNT(bl.id) FILTER (WHERE bl.status = 'borrowed') as active_borrows,
     
-    COUNT(*) FILTER (WHERE bl.status = 'returned') as returned_count,
-    SUM(bl.quantity) FILTER (WHERE bl.status = 'returned') as returned_items,
+    -- 🍎 SUPPORT (Consumables issued and gone)
+    COALESCE(SUM(bl.quantity) FILTER (WHERE bl.status = 'dispensed'), 0) as total_consumables_issued,
     
-    COUNT(*) FILTER (WHERE bl.status = 'overdue') as overdue_count,
-    SUM(bl.quantity) FILTER (WHERE bl.status = 'overdue') as overdue_items,
+    -- 🏁 AUDIT CLOSURE (Returned)
+    COUNT(bl.id) FILTER (WHERE bl.status = 'returned') as returned_count,
+    COUNT(bl.id) FILTER (WHERE bl.status = 'overdue') as overdue_count,
     
-    COUNT(*) FILTER (WHERE bl.status = 'cancelled') as cancelled_count,
-    
-    -- Timing metrics
-    MAX(bl.created_at) as last_borrow_date,
-    MIN(bl.created_at) as first_borrow_date,
-    
-    -- Return rate calculation (returned / (returned + overdue + cancelled))
+    -- 📈 RETURN RATE (Excludes consumables from penalty)
     CASE 
-        WHEN COUNT(*) FILTER (WHERE bl.status IN ('returned', 'overdue', 'cancelled')) > 0
+        WHEN COUNT(bl.id) FILTER (WHERE bl.status IN ('returned', 'overdue')) > 0
         THEN ROUND(
-            (COUNT(*) FILTER (WHERE bl.status = 'returned')::NUMERIC / 
-             COUNT(*) FILTER (WHERE bl.status IN ('returned', 'overdue', 'cancelled'))::NUMERIC) * 100, 
+            (COUNT(bl.id) FILTER (WHERE bl.status = 'returned')::NUMERIC / 
+             COUNT(bl.id) FILTER (WHERE bl.status IN ('returned', 'overdue'))::NUMERIC) * 100, 
             1
         )
         ELSE 100.0
     END as return_rate_percent,
     
-    -- Verification flag
-    CASE 
-        WHEN up.id IS NOT NULL THEN true
-        ELSE false
-    END as is_verified_user
+    i.is_verified_user
     
-FROM borrow_logs bl
-LEFT JOIN user_profiles up ON bl.borrower_user_id = up.id
+FROM identity_base i
+LEFT JOIN borrow_logs bl 
+    ON (i.borrower_user_id IS NOT NULL AND i.borrower_user_id = bl.borrower_user_id)
+    OR (i.borrower_user_id IS NULL AND LOWER(TRIM(i.display_name)) = LOWER(TRIM(bl.borrower_name)))
 GROUP BY 
-    bl.borrower_user_id, 
-    bl.borrower_name, 
-    bl.borrower_email,
-    up.id,
-    up.full_name,
-    up.email,
-    up.role,
-    up.status;
+    i.borrower_user_id,
+    i.display_name,
+    i.is_verified_user;
 
--- Grant access
 GRANT SELECT ON borrower_stats TO authenticated;
 
--- Add helpful comment
 COMMENT ON VIEW borrower_stats IS 
-'Aggregated borrowing statistics per user. Shows total borrows, active items, return rate, and verification status.';
-
--- Create index on underlying table for performance
-CREATE INDEX IF NOT EXISTS idx_borrow_logs_created_at 
-ON borrow_logs(created_at DESC);
-
-SELECT 'Borrower Stats View: CREATED' as status;
-SELECT COUNT(*) as total_borrowers FROM borrower_stats;
-SELECT COUNT(*) as verified_borrowers FROM borrower_stats WHERE is_verified_user = true;
+'LIGTAS v4: Identity-unified stats distinguishing between Equipment Liability and Consumable Support.';

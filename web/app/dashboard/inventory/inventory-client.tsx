@@ -32,9 +32,11 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const [activeItem, setActiveItem] = useState<InventoryItem | null | 'new'>(null)
     
     // Use server data during initial load, then switch to live data
-    // Senior Dev Guard: Don't fallback to stale initialInventory if live inventory is truly empty (e.g. after deletion)
-    const displayInventory = (isLoading && inventory.length === 0) ? initialInventory : inventory
+    // 🏛️ DATA FLOW FIX: Stop redundant aggregation here. 
+    // InventoryTable is the designated Master SKU Engine.
+    const displayInventory = (isLoading && inventory.length === 0) ? initialInventory : inventory 
     
+
     const [isDeleting, startDeleteTransition] = useTransition()
 
     const handleDeleteClick = (id: number, name: string) => {

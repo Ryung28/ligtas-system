@@ -1,41 +1,47 @@
--- 🏛️ LIGTAS MASTER ANOMALY VIEW (V1.1 - CORRECTED)
+-- 🏛️ LIGTAS MASTER ANOMALY VIEW (V1.2 - ENTERPRISE CALIBRATED)
 -- Aggregates inventory depletion, operational failures, and logistical bottlenecks.
 
 -- 1. RE-CREATE THE VIEW
 CREATE OR REPLACE VIEW public.view_system_anomalies AS
--- A. 🔴 CRITICAL: Damaged or Lost Equipment (from inventory)
+-- A. 🔴 CRITICAL: Asset Failures (Quantity-Based)
 SELECT 
     id::text as id,
     item_name as title,
-    'OPERATIONAL FAILURE: Asset ' || status as reason,
+    CASE 
+        WHEN qty_damaged > 0 THEN 'OPERATIONAL FAILURE: ' || qty_damaged || ' Units Damaged'
+        WHEN qty_lost > 0 THEN 'SECURITY BREACH: ' || qty_lost || ' Units Lost'
+        WHEN qty_maintenance > 0 THEN 'MAINTENANCE REQUIRED: ' || qty_maintenance || ' Units in Repair'
+        ELSE 'ASSET FAILURE: ' || status
+    END as reason,
     'operational' as category,
     'critical' as severity,
-    stock_available as current_value,
+    (qty_damaged + qty_lost + qty_maintenance) as current_value,
     0 as threshold_value,
-    updated_at as detected_at,
-    storage_location as warehouse_id 
-FROM public.inventory 
-WHERE status IN ('damaged', 'lost', 'missing')
-
-UNION ALL
-
--- B. 🟡 WARNING: Low Stock Depletion (from inventory)
-SELECT 
-    id::text as id,
-    item_name as title,
-    'CRITICAL DEPLETION: Low Stock' as reason,
-    'depletion' as category,
-    'warning' as severity,
-    stock_available as current_value,
-    10 as threshold_value,
     updated_at as detected_at,
     storage_location as warehouse_id
 FROM public.inventory 
-WHERE stock_available < 10 AND status = 'available'
+WHERE qty_damaged > 0 OR qty_lost > 0 OR qty_maintenance > 0 OR status = 'Damaged'
 
 UNION ALL
 
--- C. 🔴 CRITICAL: Overdue Logistics (from borrow_logs)
+-- B. 🟡 WARNING: Stock Depletion (Dynamic Threshold)
+SELECT 
+    id::text as id,
+    item_name as title,
+    'CRITICAL DEPLETION: ' || qty_good || ' Units Remaining' as reason,
+    'depletion' as category,
+    'warning' as severity,
+    qty_good as current_value,
+    COALESCE(low_stock_threshold, 10) as threshold_value,
+    updated_at as detected_at,
+    storage_location as warehouse_id
+FROM public.inventory 
+WHERE qty_good <= COALESCE(low_stock_threshold, 10) 
+  AND status NOT IN ('damaged', 'lost', 'deleted')
+
+UNION ALL
+
+-- C. 🔴 CRITICAL: Overdue Logistics
 SELECT 
     id::text as id,
     item_name as title,

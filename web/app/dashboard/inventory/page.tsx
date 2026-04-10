@@ -2,14 +2,15 @@ import { InventoryClient } from './inventory-client'
 import { getInitialInventory } from '@/lib/queries/inventory'
 import { Suspense } from 'react'
 
-export const dynamic = 'force-dynamic'
+// 🚀 ENTERPRISE PERFORMANCE: Shell Pattern (No force-dynamic)
 
 export default async function InventoryDashboardPage() {
-    const initialInventory = await getInitialInventory()
+    // ⚡ INSTANT NAVIGATION: Page returns immediately, SWR handles hydration via CacheWarmer
+    // const initialInventory = await getInitialInventory() // Disabled blocking fetch
 
     return (
         <Suspense fallback={<InventorySkeleton />}>
-            <InventoryClient initialInventory={initialInventory} />
+            <InventoryClient initialInventory={[]} />
         </Suspense>
     )
 }

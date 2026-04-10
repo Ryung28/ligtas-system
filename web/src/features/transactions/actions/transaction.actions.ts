@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { z } from 'zod'
 import { borrowItemSchema, batchBorrowSchema } from '../schemas/transaction.schema'
 
@@ -14,6 +14,7 @@ import { borrowItemSchema, batchBorrowSchema } from '../schemas/transaction.sche
 
 export async function borrowItem(formData: FormData) {
     try {
+        const supabase = await createSupabaseServer()
         const { data: { user } } = await supabase.auth.getUser()
         
         // Parse and validate form data
@@ -27,6 +28,7 @@ export async function borrowItem(formData: FormData) {
             approved_by: formData.get('approved_by') || '',
             released_by: formData.get('released_by') || '',
             expected_return_date: formData.get('expected_return_date') || null,
+            pickup_scheduled_at: formData.get('pickup_scheduled_at') || null,
         }
 
         // Validate item_id is present before parsing
@@ -54,11 +56,11 @@ export async function borrowItem(formData: FormData) {
             }
         }
 
-        // TACTICAL SAFEGUARD: No borrowing decommissioned items
+        // AUDIT SAFEGUARD: No borrowing decommissioned items
         if (inventoryItem.status === 'archived') {
             return {
                 success: false,
-                error: 'TACTICAL ERROR: Resource is archived and decommissioned from service.',
+                error: 'Error: Resource is archived and unavailable for checkout.',
             }
         }
 
@@ -70,6 +72,7 @@ export async function borrowItem(formData: FormData) {
         }
 
         const isConsumable = inventoryItem.item_type === 'consumable'
+        const isScheduled = !!validatedData.pickup_scheduled_at;
 
         // Step 2: Insert borrow log
         const now = new Date().toISOString();
@@ -88,8 +91,9 @@ export async function borrowItem(formData: FormData) {
                     released_by_name: validatedData.released_by || null,
                     released_by_user_id: user?.id || null,
                     transaction_type: isConsumable ? 'dispense' : 'borrow',
-                    status: isConsumable ? 'dispensed' : 'borrowed',
-                    borrow_date: now,
+                    status: isConsumable ? 'dispensed' : (isScheduled ? 'staged' : 'borrowed'),
+                    borrow_date: isScheduled ? null : now,
+                    pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
                     actual_return_date: isConsumable ? now : null, 
                     expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
                     created_at: now,
@@ -148,6 +152,7 @@ export async function batchBorrowItems(data: {
     approved_by?: string
     released_by?: string
     expected_return_date?: string | null
+    pickup_scheduled_at?: string | null
     items: Array<{
         item_id: number
         quantity: number
@@ -155,12 +160,15 @@ export async function batchBorrowItems(data: {
     }>
 }) {
     try {
+        const supabase = await createSupabaseServer()
         const { data: { user } } = await supabase.auth.getUser()
         const validatedData = batchBorrowSchema.parse(data)
 
         const now = new Date().toISOString()
         const borrowLogs = []
         const errors = []
+
+        const isScheduled = !!validatedData.pickup_scheduled_at;
 
         // Process each item
         for (const item of validatedData.items) {
@@ -200,8 +208,9 @@ export async function batchBorrowItems(data: {
                 released_by_name: validatedData.released_by || null,
                 released_by_user_id: user?.id || null,
                 transaction_type: isConsumable ? 'dispense' : 'borrow',
-                status: isConsumable ? 'dispensed' : 'borrowed',
-                borrow_date: now,
+                status: isConsumable ? 'dispensed' : (isScheduled ? 'staged' : 'borrowed'),
+                borrow_date: isScheduled ? null : now,
+                pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
                 actual_return_date: isConsumable ? now : null,
                 expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
                 created_at: now,
@@ -273,6 +282,7 @@ export async function returnItem(
     }
 ) {
     try {
+        const supabase = await createSupabaseServer()
         // 1. Fetch Log and current user
         const { data: log, error: logError } = await supabase
             .from('borrow_logs')
@@ -355,7 +365,6 @@ export async function bulkReturnItems(logIds: number[]) {
             failCount
         }
     } catch (error: any) {
-        console.error('Bulk return error:', error)
-        return { success: false, error: 'Tactical Error: Bulk return protocol interrupted' }
+        return { success: false, error: 'Error: Bulk return process interrupted' }
     }
 }

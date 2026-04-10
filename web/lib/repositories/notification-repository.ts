@@ -154,6 +154,7 @@ export class NotificationRepository {
       time: n.created_at || new Date().toISOString(),
       type: n.type || 'system_alert',
       isRead: !!n.is_read, // 🛡️ COERCION GATE: Map DB NULL or FALSE to strictly FALSE
+      metadata: n.metadata || {}, // 🛡️ PAYLOAD RECOVERY: Inject contextual data for UI routing
       action
     }
   }

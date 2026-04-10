@@ -10,6 +10,7 @@ export interface NotificationItem {
   time: string | Date
   isRead: boolean
   metadata?: Record<string, any>
+  reference_id?: string | null
   action?: {
     label: string
     type: 'link' | 'rpc' | 'dialog'

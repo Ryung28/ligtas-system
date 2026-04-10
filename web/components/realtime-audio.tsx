@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
@@ -15,35 +15,66 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
     const lastPlayTime = useRef<number>(0)
     const supabaseRef = useRef<any>(null)
 
-    const debounceAudio = (callback: () => void) => {
+    const debounceAudio = useCallback((callback: () => void) => {
         const now = Date.now();
         if (now - lastPlayTime.current > 3000) { // 🛡️ 3s Acoustic Grace Period
             callback();
             lastPlayTime.current = now;
         }
-    }
+    }, [])
 
-    const playNotification = () => {
+    const playNotification = useCallback(() => {
         if (localStorage.getItem('audio_enabled') !== 'true') return;
         debounceAudio(() => {
             if (audioRef.current) {
                 audioRef.current.currentTime = 0
-                audioRef.current.play().catch(e => console.warn('[Audio] Blocked:', e))
+                audioRef.current.play().catch(e => {
+                    console.warn('[Audio] Playback blocked by browser policy:', e);
+                    // 🛡️ TACTICAL FALLBACK: If blocked, the user might need to click the UI again
+                })
             }
         });
-    }
+    }, [debounceAudio])
 
-    const playCriticalAlert = () => {
+    const playCriticalAlert = useCallback(() => {
         if (localStorage.getItem('audio_enabled') !== 'true') return;
         debounceAudio(() => {
             if (criticalAudioRef.current) {
                 criticalAudioRef.current.currentTime = 0
-                criticalAudioRef.current.play().catch(e => console.warn('[Critical] Blocked:', e))
+                criticalAudioRef.current.play().catch(e => {
+                    console.warn('[Critical] Playback blocked by browser policy:', e);
+                })
             }
         });
-    }
+    }, [debounceAudio])
+
+    // 🛡️ TACTICAL UNLOCK: The "Acoustic Blessing"
+    // This function MUST be called during a User-Initiated Event (Click)
+    const unlockAudio = useCallback(() => {
+        console.log('[Audio-Dispatcher] Attempting Acoustic Priming...');
+        
+        const prime = (audio: HTMLAudioElement | null) => {
+            if (!audio) return;
+            const originalVolume = audio.volume;
+            audio.volume = 0; // Mute for priming
+            audio.play()
+                .then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = originalVolume;
+                    console.log(`[Audio-Dispatcher] ${audio.src.split('/').pop()} primed successfully.`);
+                })
+                .catch(e => console.warn('[Audio-Dispatcher] Priming failed:', e));
+        };
+
+        prime(audioRef.current);
+        prime(criticalAudioRef.current);
+    }, [])
 
     useEffect(() => {
+        // Expose unlock function to the global scope for the Permission Wrapper to call
+        (window as any).LIGTAS_UNLOCK_AUDIO = unlockAudio;
+
         const supabase = createBrowserClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -83,7 +114,7 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
         return () => {
             supabase.removeChannel(notificationChannel)
         }
-    }, [])
+    }, [playCriticalAlert, playNotification, unlockAudio])
 
     return <>{children}</>
 }

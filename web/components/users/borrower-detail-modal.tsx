@@ -6,9 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, Package, TrendingUp, AlertCircle, Clock } from 'lucide-react'
-import { getBorrowerHistory } from '@/hooks/use-borrower-registry'
+import { Button } from '@/components/ui/button'
+import { CheckCircle2, Package, TrendingUp, AlertCircle, Clock, X } from 'lucide-react'
+import { getBorrowerHistory, getBorrowerPending } from '@/hooks/use-borrower-registry'
 import { formatDistanceToNow } from 'date-fns'
+import { resolveLogisticsAction } from '@/app/actions/logistics-actions'
+import { toast } from 'sonner'
 
 interface BorrowerDetailModalProps {
     open: boolean
@@ -19,13 +22,19 @@ interface BorrowerDetailModalProps {
 
 export function BorrowerDetailModal({ open, onOpenChange, borrower, onRefresh }: BorrowerDetailModalProps) {
     const [history, setHistory] = useState<any[]>([])
+    const [pending, setPending] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [resolvingId, setResolvingId] = useState<string | null>(null)
 
     const loadHistory = useCallback(async () => {
         setLoading(true)
         try {
-            const data = await getBorrowerHistory(borrower.borrower_user_id)
-            setHistory(data)
+            const [historyData, pendingData] = await Promise.all([
+                getBorrowerHistory(borrower.borrower_user_id, borrower.borrower_name),
+                getBorrowerPending(borrower.borrower_name)
+            ])
+            setHistory(historyData)
+            setPending(pendingData)
         } catch (error) {
             console.error('Failed to load history:', error)
         } finally {
@@ -75,48 +84,126 @@ export function BorrowerDetailModal({ open, onOpenChange, borrower, onRefresh }:
                     </div>
                 </DialogHeader>
 
+                {/* 🚨 PENDING AUTHORIZATION QUEUE (The C2 Edge) */}
+                {pending.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                        {pending.map((req) => (
+                            <div key={req.id} className="relative overflow-hidden bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex items-center justify-between group animate-in slide-in-from-top-2 duration-300">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+                                <div className="flex items-center gap-4">
+                                    <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-200">
+                                        <AlertCircle className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-[10px] font-black text-amber-900 uppercase tracking-widest">Awaiting Authorization</h4>
+                                            <span className="text-[10px] font-bold text-amber-600/60 tabular-nums">
+                                                • {formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm font-black text-slate-900 mt-0.5">
+                                            Requesting {req.quantity}x {req.item_name}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={resolvingId !== null}
+                                        onClick={async () => {
+                                            setResolvingId(req.id)
+                                            const res = await resolveLogisticsAction(req.id, 'flagged', 'Flagged via Identity Insight')
+                                            if (res.success) {
+                                                toast.warning('Request flagged')
+                                                loadHistory()
+                                                onRefresh()
+                                            }
+                                            setResolvingId(null)
+                                        }}
+                                        className="h-8 px-3 rounded-lg border-amber-200 bg-white text-amber-700 hover:bg-amber-100 font-bold text-[10px] uppercase tracking-wider transition-all"
+                                    >
+                                        <X className="h-3 w-3 mr-1" /> Flag
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        disabled={resolvingId !== null}
+                                        onClick={async () => {
+                                            setResolvingId(req.id)
+                                            const res = await resolveLogisticsAction(req.id, 'completed', 'Authorized via Identity Insight')
+                                            if (res.success) {
+                                                toast.success('Authorized successfully')
+                                                loadHistory()
+                                                onRefresh()
+                                            }
+                                            setResolvingId(null)
+                                        }}
+                                        className="h-8 px-3 rounded-lg bg-slate-900 text-white hover:bg-black font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-slate-200"
+                                    >
+                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Authorize
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* Stats Cards */}
-                <div className="grid grid-cols-4 gap-3 mt-4">
-                    <Card>
+                <div className="grid grid-cols-5 gap-3 mt-4">
+                    <Card className="border-indigo-100 bg-indigo-50/30">
                         <CardContent className="p-4">
-                            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                                <Package className="h-3.5 w-3.5" />
-                                <span>Total Borrows</span>
+                            <div className="flex items-center gap-2 text-indigo-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                <TrendingUp className="h-3 w-3" />
+                                <span>All Items Received</span>
                             </div>
-                            <p className="text-2xl font-bold text-gray-900">{borrower.total_borrows}</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                <span>Active</span>
-                            </div>
-                            <p className="text-2xl font-bold text-blue-600">{borrower.active_items}</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                                <TrendingUp className="h-3.5 w-3.5" />
-                                <span>Return Rate</span>
-                            </div>
-                            <p className={`text-2xl font-bold ${
-                                borrower.return_rate_percent >= 90 ? 'text-emerald-600' :
-                                borrower.return_rate_percent >= 70 ? 'text-amber-600' : 'text-red-600'
-                            }`}>
-                                {borrower.return_rate_percent.toFixed(0)}%
+                            <p className="text-2xl font-black text-indigo-900 leading-none">
+                                {borrower?.total_items_handled ?? 0}
                             </p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="p-4">
-                            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                <span>Overdue</span>
+                            <div className="flex items-center gap-2 text-gray-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                <Package className="h-3 w-3" />
+                                <span>Distributed Supplies</span>
                             </div>
-                            <p className={`text-2xl font-bold ${borrower.overdue_count > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                                {borrower.overdue_count}
+                            <p className="text-2xl font-bold text-gray-900 leading-none">
+                                {borrower?.total_consumables_issued ?? 0}
+                            </p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 text-gray-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                <Clock className="h-3 w-3" />
+                                <span>Currently Borrowed</span>
+                            </div>
+                            <p className="text-2xl font-bold text-blue-600 leading-none">{borrower?.active_items ?? 0}</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 text-gray-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                <span>Return Reliability</span>
+                            </div>
+                            <p className={`text-2xl font-bold leading-none ${
+                                (borrower?.return_rate_percent ?? 100) >= 90 ? 'text-emerald-600' :
+                                (borrower?.return_rate_percent ?? 100) >= 70 ? 'text-amber-600' : 'text-red-600'
+                            }`}>
+                                {borrower?.return_rate_percent != null ? Number(borrower.return_rate_percent).toFixed(0) : '100'}%
+                            </p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 text-gray-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Past Due</span>
+                            </div>
+                            <p className={`text-2xl font-bold leading-none ${(borrower?.overdue_count ?? 0) > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                {borrower?.overdue_count ?? 0}
                             </p>
                         </CardContent>
                     </Card>
@@ -124,12 +211,15 @@ export function BorrowerDetailModal({ open, onOpenChange, borrower, onRefresh }:
 
                 {/* History Tabs */}
                 <Tabs defaultValue="active" className="mt-6">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="active">
-                            Active Borrows ({activeBorrows.length})
+                            Currently Borrowed ({activeBorrows.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="supplies">
+                            Distributed Supplies ({history.filter(log => log.status === 'dispensed').length})
                         </TabsTrigger>
                         <TabsTrigger value="history">
-                            History ({completedBorrows.length})
+                            Return History ({completedBorrows.length})
                         </TabsTrigger>
                     </TabsList>
 
@@ -137,7 +227,7 @@ export function BorrowerDetailModal({ open, onOpenChange, borrower, onRefresh }:
                         {loading ? (
                             <div className="text-center py-8 text-gray-500">Loading...</div>
                         ) : activeBorrows.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">No active borrows</div>
+                            <div className="text-center py-8 text-gray-500">No items currently borrowed</div>
                         ) : (
                             activeBorrows.map((log) => (
                                 <Card key={log.id} className="hover:shadow-md transition-shadow">
@@ -156,6 +246,35 @@ export function BorrowerDetailModal({ open, onOpenChange, borrower, onRefresh }:
                                             </div>
                                             <Badge variant={log.status === 'overdue' ? 'destructive' : 'secondary'}>
                                                 {log.status}
+                                            </Badge>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="supplies" className="mt-4 space-y-3">
+                        {loading ? (
+                            <div className="text-center py-8 text-gray-500">Loading...</div>
+                        ) : history.filter(log => log.status === 'dispensed').length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">No supplies issued</div>
+                        ) : (
+                            history.filter(log => log.status === 'dispensed').map((log) => (
+                                <Card key={log.id} className="bg-slate-50/50 border-slate-200">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <h4 className="font-semibold text-slate-900">{log.item_name}</h4>
+                                                <p className="text-sm text-slate-500 mt-1">
+                                                    Quantity: {log.quantity} • Issued {formatDistanceToNow(new Date(log.borrow_date), { addSuffix: true })}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">
+                                                    One-time Use / Consumable
+                                                </p>
+                                            </div>
+                                            <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200">
+                                                Dispensed
                                             </Badge>
                                         </div>
                                     </CardContent>

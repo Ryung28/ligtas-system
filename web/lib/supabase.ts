@@ -15,6 +15,14 @@ export const STORAGE_LOCATION_LABELS: Record<StorageLocation, string> = {
     field: 'Field'
 }
 
+export interface InventoryVariant {
+    id: number
+    location: string
+    stock_available: number
+    stock_total: number
+    status: string
+}
+
 export interface InventoryItem {
     id: number
     item_name: string
@@ -25,6 +33,9 @@ export interface InventoryItem {
     stock_borrowed?: number
     stock_pending?: number
     stock_truly_available?: number
+    aggregate_total?: number
+    aggregate_available?: number
+    variants?: InventoryVariant[]
     status: string // 'Good', 'Damaged', or calculated status
     // Enterprise Status Buckets (Quantity Partitioning)
     qty_good: number
@@ -35,7 +46,8 @@ export interface InventoryItem {
     location?: string
     serial_number?: string
     equipment_type?: string
-    storage_location?: StorageLocation
+    storage_location?: string
+    primary_location?: string
     brand?: string
     expiry_date?: string
     low_stock_threshold?: number

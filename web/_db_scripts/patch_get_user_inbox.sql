@@ -14,6 +14,7 @@ RETURNS TABLE (
     title TEXT,
     message TEXT,
     type TEXT,
+    metadata JSONB, -- 🛡️ CONTEXTUAL PAYLOAD: Added for precision deep-linking
     created_at TIMESTAMPTZ,
     is_read BOOLEAN
 ) AS $$
@@ -26,6 +27,7 @@ BEGIN
         sn.title,
         sn.message,
         sn.type,
+        sn.metadata, -- 🛡️ DYNAMIC INTEL: Pass-through from system_notifications
         sn.created_at,
         (nr.notification_id IS NOT NULL) AS is_read
     FROM public.system_notifications sn

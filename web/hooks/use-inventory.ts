@@ -76,24 +76,57 @@ export function useInventory() {
     }, [inventory, logs])
 
     useEffect(() => {
-        // Subscribe to inventory changes
+        // --- 🏛️ HIGHER-FIDELITY DELTA SYNC ENGINE ---
+        // Instead of a full reload, we 'patch' the individual item in the SWR cache.
+        
         const inventoryChannel = supabase
-            .channel('inventory-realtime-global')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
-                refresh(undefined, { revalidate: true })
+            .channel('inventory-realtime-delta')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
+                refresh((currentInventory: InventoryItem[] | undefined) => {
+                    if (!currentInventory) return []
+
+                    switch (payload.eventType) {
+                        case 'INSERT':
+                            return [payload.new as InventoryItem, ...currentInventory]
+                        
+                        case 'UPDATE':
+                            return currentInventory.map(item => {
+                                if (item.id === payload.old.id) {
+                                    // 🧩 IMAGE PERSISTENCE: If the update didn't touch the image_url, keep the resolved public URL.
+                                    const updatedItem = { ...item, ...payload.new }
+                                    if (payload.new.image_url === payload.old.image_url) {
+                                        updatedItem.image_url = item.image_url 
+                                    }
+                                    return updatedItem
+                                }
+                                return item
+                            })
+                        
+                        case 'DELETE':
+                            return currentInventory.filter(item => item.id !== payload.old.id)
+                        
+                        default:
+                            return currentInventory
+                    }
+                }, { revalidate: false }) // Don't trigger a network fetch if we patched locally
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, () => {
-                // Refresh if a disposal/action was logged in activity
+                // For activity logs, we still revalidate to ensure broad inventory consistency
                 refresh(undefined, { revalidate: true })
             })
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('🏛️ LIGTAS REALTIME: Streaming established for Inventory')
+                }
+            })
 
         // Subscribe to borrow_logs changes (for active status)
         const logsChannel = supabase
             .channel('inventory-logs-sync')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
-                refresh(undefined, { revalidate: true }) // Refresh inventory
-                mutate('borrow_logs') // Refresh logs cache
+                // Patches for complex views/joins are safer with a background revalidate
+                refresh(undefined, { revalidate: true }) 
+                mutate('borrow_logs') 
             })
             .subscribe()
 

@@ -18,7 +18,7 @@ interface StockManagementFieldsProps {
     stockTotalValue: number
 }
 
-export function StockManagementFields({ 
+export function StockManagementFields({
     qtyGood,
     setQtyGood,
     qtyDamaged,
@@ -32,16 +32,16 @@ export function StockManagementFields({
 }: StockManagementFieldsProps) {
     return (
         <div className="space-y-6">
-            {/* Header: Global Fleet Health */}
+            {/* Header */}
             <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
                 <Package className="h-4 w-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Stock Management</h3>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Stock Counts</h3>
             </div>
 
             <div className="bg-zinc-50 rounded-lg p-3 border border-zinc-200/60 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="text-[11px] font-black text-zinc-500 uppercase tracking-tighter">Total Fleet Inventory</span>
+                    <span className="text-[11px] font-black text-zinc-500 uppercase tracking-tighter">Total items in all statuses</span>
                 </div>
                 <span className="text-xl font-black text-zinc-900 tracking-tighter">
                     {stockTotalValue}
@@ -54,7 +54,7 @@ export function StockManagementFields({
                 <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight flex items-center gap-1.5 ml-1">
                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Ready / Good
+                        On Hand / Available
                     </Label>
                     <div className="relative group">
                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500/40 group-focus-within:text-emerald-500 transition-colors z-10" />
@@ -123,10 +123,11 @@ export function StockManagementFields({
                 </div>
             </div>
 
-            {/* Low Stock Alert */}
+
+
             <div className="grid gap-1.5 border-t border-zinc-100 pt-4 mt-2">
                 <Label htmlFor="low_stock_threshold" className="text-[10px] font-black text-zinc-500 uppercase tracking-tight ml-1">
-                    Low Stock Alert (%)
+                    Alert if stock below (%)
                 </Label>
                 <div className="relative group">
                     <AlertCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-blue-500 transition-colors z-10" />

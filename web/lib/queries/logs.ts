@@ -13,11 +13,13 @@ export async function getInitialLogs() {
             .from('borrow_logs')
             .select(`
                 *,
+                pickup_scheduled_at,
                 inventory:inventory_id (
                     item_name
                 )
             `)
             .order('created_at', { ascending: false })
+        .limit(50)
 
         if (error) throw error
 

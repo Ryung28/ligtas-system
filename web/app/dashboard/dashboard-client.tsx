@@ -1,17 +1,35 @@
 'use client'
 
-import { Package, AlertCircle, Plus, Activity, Box, ClipboardList } from 'lucide-react'
+import { Package, Activity, Clock, CheckCircle2, Box, ClipboardList, Plus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-// New modular components & hooks
+import useSWR from 'swr'
+import { createBrowserClient } from '@supabase/ssr'
 import { useDashboardStats } from '@/hooks/use-dashboard-stats'
+import { useTrendingInventory } from '@/hooks/use-trending-inventory'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { ResourcePulseChart } from '@/components/dashboard/resource-pulse-chart'
+import { LogisticsIntelQueue } from '@/components/dashboard/logistics-intel-queue'
+import { TrendingInventoryChart } from '@/components/dashboard/trending-inventory-chart'
 import { DeploymentClustersChart } from '@/components/dashboard/deployment-clusters-chart'
 import { OperationalControls } from '@/components/dashboard/operational-controls'
 
+const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export default function DashboardClient() {
     const { stats, isLoading, topItemsData, categoryDistribution } = useDashboardStats()
+    const { trendingData } = useTrendingInventory(5)
+
+    // Reactive Intel Count for the Hub Badge
+    const { data: intel = [] } = useSWR<any[]>('system_intel_count', async () => {
+        const { data } = await supabase.from('system_intel').select('id');
+        return data || [];
+    }, { refreshInterval: 10000 });
 
     // Empty State UI
     if (!isLoading && stats.totalItems === 0) {
@@ -37,9 +55,11 @@ export default function DashboardClient() {
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-1">
+                        <div className="h-1 w-8 bg-blue-600 rounded-full" />
+                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Overview</span>
                     </div>
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
-                        Dashboard Summary
+                        Main Dashboard
                     </h1>
                 </div>
                 <div className="flex gap-2">
@@ -73,38 +93,92 @@ export default function DashboardClient() {
                 })()}
             </section>
 
-            {/* Logistics Alert */}
-            {(stats.lowStockCount > 0 || stats.outOfStockCount > 0 || stats.damagedCount > 0) && (
-                <div className="bg-white/80 backdrop-blur-md border border-orange-100 shadow-lg shadow-orange-100/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-top-2 duration-500">
-                    <div className={`h-10 w-10 ${stats.damagedCount > 0 ? 'bg-red-100' : 'bg-orange-100'} rounded-xl flex items-center justify-center shrink-0`}>
-                        <AlertCircle className={`h-5 w-5 ${stats.damagedCount > 0 ? 'text-red-600' : 'text-orange-600'}`} />
+            {/* THE TACTICAL GRID: Optimized for 14" Enterprise Viewing */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    {/* 🎯 CORE ANALYTICS HUB: Stock Summary */}
+    <div className="lg:col-span-7">
+        <Card className="bg-white/80 backdrop-blur-md shadow-xl shadow-slate-200/40 border-none rounded-[1.5rem] ring-1 ring-slate-100 overflow-hidden min-h-[460px]">
+            <Tabs defaultValue="stock" className="w-full h-full flex flex-col">
+                <CardHeader className="p-6 pb-2 bg-slate-50/30 border-b border-slate-100/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-heading font-semibold text-slate-900 uppercase tracking-wide">Stock Performance</CardTitle>
+                            <CardDescription className="text-[10px] text-slate-500 font-medium uppercase tracking-tight mt-0.5">Inventory levels and trends</CardDescription>
+                        </div>
+                        <TabsList className="bg-slate-100/80 p-0.5 rounded-xl h-9">
+                            <TabsTrigger 
+                                value="stock" 
+                                className="text-[10px] uppercase font-bold tracking-tight rounded-lg px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
+                            >
+                                Current Stock
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="borrowed" 
+                                className="text-[10px] uppercase font-bold tracking-tight rounded-lg px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all"
+                            >
+                                Usage History
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
-                    <div className="flex-1">
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                            <span className={`font-semibold uppercase tracking-tight mr-1 ${stats.damagedCount > 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                                {stats.damagedCount > 0 ? 'Maintenance Alert:' : 'Stock Warning:'}
-                            </span>
-                            {stats.lowStockCount > 0 && `${stats.lowStockCount} items are low`}
-                            {stats.outOfStockCount > 0 && `${stats.lowStockCount > 0 ? ', ' : ''}${stats.outOfStockCount} are out`}
-                            {stats.damagedCount > 0 && `${(stats.lowStockCount > 0 || stats.outOfStockCount > 0) ? ' and ' : ''}${stats.damagedCount} need maintenance/repair`}
-                            . Please check the inventory registry.
-                        </p>
+                </CardHeader>
+                
+                <div className="flex-1">
+                    <TabsContent value="stock" className="m-0 border-none outline-none animate-in fade-in slide-in-from-left-2 duration-300">
+                        <ResourcePulseChart data={topItemsData} />
+                    </TabsContent>
+                    <TabsContent value="borrowed" className="m-0 border-none outline-none animate-in fade-in slide-in-from-right-2 duration-300">
+                        <TrendingInventoryChart data={trendingData} />
+                    </TabsContent>
+                </div>
+            </Tabs>
+        </Card>
+    </div>
+
+    {/* 🛠️ OPERATIONS HUB: Action Center (Wider for High-Density Data) */}
+    <div className="lg:col-span-5 space-y-6">
+        <Card className="bg-white/80 backdrop-blur-md shadow-xl shadow-slate-200/40 border-none rounded-[1.5rem] ring-1 ring-slate-100 overflow-hidden min-h-[460px]">
+            <Tabs defaultValue="tasks" className="w-full h-full flex flex-col">
+                <CardHeader className="p-6 pb-2 bg-slate-50/30 border-b border-slate-100/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-heading font-semibold text-slate-900 uppercase tracking-wide">Action Center</CardTitle>
+                            <CardDescription className="text-[10px] text-slate-500 font-medium uppercase tracking-tight mt-0.5">Items needing attention</CardDescription>
+                        </div>
+                        <TabsList className="bg-slate-100/80 p-0.5 rounded-xl h-9">
+                            <TabsTrigger 
+                                value="tasks" 
+                                className="text-[10px] uppercase font-bold tracking-tight rounded-lg px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all flex items-center gap-2"
+                            >
+                                <span>Tasks</span>
+                                {intel.length > 0 && (
+                                    <span className="flex h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                                )}
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="sectors" 
+                                className="text-[10px] uppercase font-bold tracking-tight rounded-lg px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
+                            >
+                                Categories
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
-                    <Button variant="ghost" asChild className="text-orange-600 font-medium text-[10px] uppercase tracking-wide hover:bg-orange-50 rounded-lg h-8 px-3">
-                        <a href="/dashboard/inventory">Resolve</a>
-                    </Button>
+                </CardHeader>
+                
+                <div className="flex-1 overflow-hidden">
+                    <TabsContent value="tasks" className="m-0 h-full border-none outline-none animate-in fade-in slide-in-from-left-2 duration-300">
+                        <LogisticsIntelQueue />
+                    </TabsContent>
+                    <TabsContent value="sectors" className="m-0 h-full border-none outline-none animate-in fade-in slide-in-from-right-2 duration-300">
+                        <DeploymentClustersChart data={categoryDistribution} />
+                    </TabsContent>
                 </div>
-            )}
+            </Tabs>
+        </Card>
 
-            {/* Sub-Command Grid */}
-            <div className="grid gap-5 lg:grid-cols-12">
-                <ResourcePulseChart data={topItemsData} />
-
-                <div className="lg:col-span-4 space-y-5">
-                    <DeploymentClustersChart data={categoryDistribution} />
-                    <OperationalControls />
-                </div>
-            </div>
+        <OperationalControls />
+    </div>
+</div>
         </div>
     )
 }

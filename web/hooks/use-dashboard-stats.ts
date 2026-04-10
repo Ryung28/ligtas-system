@@ -75,8 +75,8 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
 
 export function useDashboardStats() {
     const { data, error, isLoading, mutate: refresh } = useSWR('dashboard_stats', fetchDashboardData, {
-        revalidateOnFocus: true, // Emergency Duty: Always fresh on return
-        dedupingInterval: 3000, 
+        revalidateOnFocus: false, // 🚀 ZERO LATENCY: UI remains responsive during focus events
+        dedupingInterval: 5000, 
     })
 
     const topItemsData = useMemo(() => {

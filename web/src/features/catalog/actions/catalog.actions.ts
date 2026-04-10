@@ -26,7 +26,8 @@ export async function addItem(formData: FormData) {
             serial_number: formData.get('serial_number'),
             equipment_type: formData.get('equipment_type'),
             item_type: formData.get('item_type') || 'equipment',
-            storage_location: formData.get('storage_location') || 'lower_warehouse',
+            storage_location: formData.get('storage_location'),
+            location_id: formData.get('location_id'),
             brand: formData.get('brand'),
             expiry_date: formData.get('expiry_date'),
             parent_id: formData.get('parent_id'),
@@ -136,11 +137,49 @@ export async function addItem(formData: FormData) {
                 equipment_type: validatedData.equipment_type,
                 item_type: validatedData.item_type,
                 storage_location: validatedData.storage_location,
+                location_registry_id: validatedData.location_id,
                 brand: validatedData.brand,
                 expiry_date: validatedData.expiry_date,
                 low_stock_threshold: validatedData.low_stock_threshold,
             },
         ]).select()
+
+        if (error) {
+            console.error('Supabase error:', error)
+            return {
+                success: false,
+                error: 'Failed to add item to database',
+            }
+        }
+
+        const newItem = data[0]
+
+        // 🏛️ Handle Initial Distribution if provided
+        const siteDistRaw = formData.get('site_distributions')
+        if (siteDistRaw) {
+            try {
+                const distributions = JSON.parse(siteDistRaw as string)
+                if (distributions.length > 1) {
+                    // Create siblings for other sites (skip the first one as it's the primary just created)
+                    const siblings = distributions.slice(1).map((dist: any) => ({
+                        ...newItem,
+                        id: undefined, // Let DB generate ID
+                        storage_location: dist.locationName,
+                        location_registry_id: dist.locationId,
+                        qty_good: dist.qtyGood,
+                        qty_damaged: dist.qtyDamaged,
+                        qty_maintenance: dist.qtyMaintenance,
+                        qty_lost: dist.qtyLost,
+                        stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
+                        stock_available: dist.qtyGood
+                    }))
+                    
+                    await supabase.from('inventory').insert(siblings)
+                }
+            } catch (e) {
+                console.error('Error processing initial distribution:', e)
+            }
+        }
 
         if (error) {
             console.error('Supabase error:', error)
@@ -227,9 +266,11 @@ export async function updateItem(formData: FormData) {
             serial_number: formData.get('serial_number'),
             equipment_type: formData.get('equipment_type'),
             storage_location: formData.get('storage_location'),
+            location_id: formData.get('location_id'),
             brand: formData.get('brand'),
             expiry_date: formData.get('expiry_date'),
             low_stock_threshold: formData.get('low_stock_threshold') || 20,
+            item_type: formData.get('item_type') || 'equipment',
             // Enterprise Sub-Buckets
             qty_good: Number(formData.get('qty_good')) || 0,
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
@@ -239,6 +280,15 @@ export async function updateItem(formData: FormData) {
 
         const calculatedTotal = rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost
         const finalStockTotal = Math.max(Number(rawData.stock_total) || 0, calculatedTotal)
+
+        // 🛡️ IDENTITY PROXY: Fetch current state to detect group changes
+        const { data: itemBefore, error: fetchError } = await supabase
+            .from('inventory')
+            .select('item_name, category')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !itemBefore) throw new Error('Failed to reconcile item identity for sync.')
 
         const validatedData = addItemSchema.parse(rawData)
 
@@ -250,37 +300,125 @@ export async function updateItem(formData: FormData) {
             }
         }
 
-        // 🛡️ SUB-BUCKET UPDATE (THE ENTERPRISE WAY)
-        // We update the single row with its partitioned quantities.
-        const { data, error } = await supabase
-            .from('inventory')
-            .update({
-                item_name: rawData.name,
-                description: rawData.description,
-                category: rawData.category,
-                stock_total: finalStockTotal,
-                stock_available: rawData.qty_good,
-                qty_good: rawData.qty_good,
-                qty_damaged: rawData.qty_damaged,
-                qty_maintenance: rawData.qty_maintenance,
-                qty_lost: rawData.qty_lost,
-                image_url: rawData.image_url,
-                serial_number: rawData.serial_number,
-                equipment_type: rawData.equipment_type,
-                storage_location: rawData.storage_location,
-                brand: rawData.brand,
-                expiry_date: rawData.expiry_date,
-                low_stock_threshold: rawData.low_stock_threshold,
-            })
-            .eq('id', id)
-            .select()
+        // 🏛️ MASTER SKU IDENTITY SYNC
+        // If the user renames or recategorizes a distributed item, we must sync ALL sites
+        // to prevent the inventory from fragmenting into separate rows.
+        const nameChanged = rawData.name !== itemBefore.item_name
+        const categoryChanged = rawData.category !== itemBefore.category
+        
+        if (nameChanged || categoryChanged) {
+            const { error: syncError } = await supabase
+                .from('inventory')
+                .update({
+                    item_name: rawData.name,
+                    category: rawData.category,
+                    description: rawData.description,
+                    image_url: rawData.image_url,
+                    brand: rawData.brand,
+                    equipment_type: rawData.equipment_type,
+                    item_type: rawData.item_type || 'equipment'
+                } as any)
+                .eq('item_name', itemBefore.item_name)
+                .eq('category', itemBefore.category)
 
-        if (error) throw error
+            if (syncError) {
+                console.error('⚠️ IDENTITY SYNC FAILED:', syncError)
+                // We proceed anyway to at least update the target item
+            }
+        }
+
+        // 🏛️ MASTER RECONCILIATION ENGINE
+        // This is where we sync all sites for this item name + category
+        const siteDistRaw = formData.get('site_distributions')
+        if (siteDistRaw) {
+            const distributions = JSON.parse(siteDistRaw as string)
+            const activeIds = distributions.filter((d: any) => d.id).map((d: any) => d.id)
+
+            // 1. Fetch all current siblings to identify deletions
+            const { data: siblings } = await supabase
+                .from('inventory')
+                .select('id')
+                .eq('item_name', itemBefore.item_name)
+                .eq('category', itemBefore.category)
+
+            const existingIds = siblings?.map(s => s.id) || []
+            const idsToDelete = existingIds.filter(id => !activeIds.includes(id))
+
+            // 2. Perform Atomic Actions
+            await Promise.all([
+                // Update Existing & Insert New
+                ...distributions.map(async (dist: any) => {
+                    const payload = {
+                        item_name: rawData.name,
+                        description: rawData.description,
+                        category: rawData.category,
+                        image_url: rawData.image_url,
+                        brand: rawData.brand,
+                        equipment_type: rawData.equipment_type,
+                        item_type: rawData.item_type,
+                        serial_number: rawData.serial_number,
+                        expiry_date: rawData.expiry_date,
+                        low_stock_threshold: rawData.low_stock_threshold,
+                        
+                        // Site-Specific
+                        storage_location: dist.locationName,
+                        location_registry_id: dist.locationId,
+                        qty_good: dist.qtyGood,
+                        qty_damaged: dist.qtyDamaged,
+                        qty_maintenance: dist.qtyMaintenance,
+                        qty_lost: dist.qtyLost,
+                        stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
+                        stock_available: dist.qtyGood,
+                        status: 'Good'
+                    }
+
+                    if (dist.id) {
+                        return supabase.from('inventory').update(payload).eq('id', dist.id)
+                    } else {
+                        return supabase.from('inventory').insert([payload])
+                    }
+                }),
+                // Deletions
+                idsToDelete.length > 0 ? supabase.from('inventory').delete().in('id', idsToDelete) : Promise.resolve()
+            ])
+        } else {
+            // Fallback for non-distribution updates
+            const { error } = await supabase
+                .from('inventory')
+                .update({
+                    item_name: rawData.name,
+                    description: rawData.description,
+                    category: rawData.category,
+                    stock_total: finalStockTotal,
+                    stock_available: rawData.qty_good,
+                    qty_good: rawData.qty_good,
+                    qty_damaged: rawData.qty_damaged,
+                    qty_maintenance: rawData.qty_maintenance,
+                    qty_lost: rawData.qty_lost,
+                    image_url: rawData.image_url,
+                    serial_number: rawData.serial_number,
+                    equipment_type: rawData.equipment_type,
+                    storage_location: rawData.storage_location,
+                    location_registry_id: rawData.location_id,
+                    brand: rawData.brand,
+                    expiry_date: rawData.expiry_date,
+                    low_stock_threshold: rawData.low_stock_threshold,
+                })
+                .eq('id', id)
+            
+            if (error) throw error
+        }
 
         revalidatePath('/dashboard/inventory')
         revalidatePath('/dashboard')
-        return { success: true, message: 'Item reconciled successfully 🟢' }
+        
+        return { 
+            success: true, 
+            message: 'Item reconciled successfully 🟢',
+            data: siteDistRaw ? JSON.parse(siteDistRaw as string)[0] : null
+        }
     } catch (error: any) {
+        console.error('Update Error:', error)
         return { success: false, error: error.message || 'Failed to update item' }
     }
 }

@@ -19,7 +19,7 @@ export async function getStorageLocations() {
 
         return { 
             success: true, 
-            data: data?.map(loc => loc.location_name) || [] 
+            data: data || [] 
         }
     } catch (error: any) {
         return { success: false, error: error.message || 'Failed to fetch locations', data: [] }
@@ -45,33 +45,50 @@ export async function addStorageLocation(locationName: string) {
             return { success: false, error: 'This location already exists' }
         }
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from(STORAGE_LOCATIONS_TABLE)
             .insert([{ location_name: locationName.trim() }])
+            .select()
+            .single()
 
         if (error) throw error
 
         revalidatePath('/dashboard/inventory')
-        return { success: true, message: `"${locationName}" saved to locations` }
+        return { 
+            success: true, 
+            message: `"${locationName}" saved to locations`,
+            data: data 
+        }
     } catch (error: any) {
-        return { success: false, error: error.message || 'Failed to save location' }
+        return { success: false, error: error.message || 'Failed to save location', data: null }
     }
 }
 
-export async function deleteStorageLocation(locationName: string) {
+export async function deleteStorageLocation(id: number) {
     try {
         const supabase = await createSupabaseServer()
         
+        // 🔒 SAFETY CHECK: Prevent deletion of sites with gear
+        const { data: linked } = await supabase
+            .from('inventory')
+            .select('id')
+            .eq('location_registry_id', id)
+            .limit(1)
+
+        if (linked && linked.length > 0) {
+            return { success: false, error: '⚠️ Site has active inventory. Move gear first.' }
+        }
+
         const { error } = await supabase
             .from(STORAGE_LOCATIONS_TABLE)
             .delete()
-            .eq('location_name', locationName)
+            .eq('id', id)
 
         if (error) throw error
 
         revalidatePath('/dashboard/inventory')
-        return { success: true }
+        return { success: true, message: 'Site removed successfully.' }
     } catch (error: any) {
-        return { success: false, error: error.message || 'Failed to delete location' }
+        return { success: false, error: 'Failed to delete site registry entry.' }
     }
 }

@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createBrowserClient } from '@supabase/ssr'
 import { addItem, updateItem, getCategories } from '@/src/features/catalog'
-import { getStorageLocations, addStorageLocation } from '@/app/actions/storage-locations'
+import { getStorageLocations, addStorageLocation, deleteStorageLocation } from '@/app/actions/storage-locations'
 import { InventoryItem } from '@/lib/supabase'
 import { optimizeImage } from '@/lib/image-optimizer'
 
@@ -35,7 +35,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     const [categoryId, setCategoryId] = useState<string>('')
     const [storageLocation, setStorageLocation] = useState<string>('')
     const [customLocation, setCustomLocation] = useState<string>('')
-    const [savedLocations, setSavedLocations] = useState<string[]>([])
+    const [savedLocations, setSavedLocations] = useState<any[]>([])
     const [isLoadingLocations, setIsLoadingLocations] = useState(true)
     const [isSavingLocation, setIsSavingLocation] = useState(false)
     const [hasVariants, setHasVariants] = useState(false)
@@ -45,15 +45,18 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     const [parentItems, setParentItems] = useState<any[]>([])
     const [isLoadingParents, setIsLoadingParents] = useState(false)
     const [itemNameValue, setItemNameValue] = useState<string>(existingItem?.item_name || '')
-    // Enterprise Sub-Buckets State
-    const [qtyGood, setQtyGood] = useState<number | string>(existingItem?.qty_good || 0)
-    const [qtyDamaged, setQtyDamaged] = useState<number | string>(existingItem?.qty_damaged || 0)
-    const [qtyMaintenance, setQtyMaintenance] = useState<number | string>(existingItem?.qty_maintenance || 0)
-    const [qtyLost, setQtyLost] = useState<number | string>(existingItem?.qty_lost || 0)
+    // 🏛️ STATE-BASED ALLOCATION: Distribution across multiple sites
+    const [siteDistributions, setSiteDistributions] = useState<any[]>([])
+    
+    // 🏛️ COMPUTED LOGISTICAL TOTALS: Derived from site distributions
+    const qtyGood = useMemo(() => siteDistributions.reduce((sum, d) => sum + (Number(d.qtyGood) || 0), 0), [siteDistributions])
+    const qtyDamaged = useMemo(() => siteDistributions.reduce((sum, d) => sum + (Number(d.qtyDamaged) || 0), 0), [siteDistributions])
+    const qtyMaintenance = useMemo(() => siteDistributions.reduce((sum, d) => sum + (Number(d.qtyMaintenance) || 0), 0), [siteDistributions])
+    const qtyLost = useMemo(() => siteDistributions.reduce((sum, d) => sum + (Number(d.qtyLost) || 0), 0), [siteDistributions])
 
-    // AUTO-BALANCING (THE ENTERPRISE WAY): stock_total is the aggregate of all status buckets
-    const stockTotalValue = Number(qtyGood) + Number(qtyDamaged) + Number(qtyMaintenance) + Number(qtyLost)
-    const stockAvailableValue = Number(qtyGood)
+    // AUTO-BALANCING: aggregate of all computed status buckets
+    const stockTotalValue = qtyGood + qtyDamaged + qtyMaintenance + qtyLost
+    const stockAvailableValue = qtyGood
     
     // Split Mode State (DEPRECATED - Kept for reverse compatibility during refactor)
     const [isSplitMode, setIsSplitMode] = useState(false)
@@ -116,35 +119,54 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     useEffect(() => {
         if (!isOpen) {
             // Clean up when dialog closes
-            setQtyGood(0)
-            setQtyDamaged(0)
-            setQtyMaintenance(0)
-            setQtyLost(0)
             setItemNameValue('')
             setPreviewUrl(null)
             setStoredPath(null)
+            setSiteDistributions([])
             return
         }
 
-        if (isOpen && existingItem) {
+        if (existingItem) {
             setItemNameValue(existingItem.item_name || '')
             setCategoryId(existingItem.category || '')
             setItemType((existingItem as any).item_type || 'equipment')
-            setStorageLocation(existingItem.storage_location || '')
             
-            // Initialize Buckets
-            setQtyGood(existingItem.qty_good || 0)
-            setQtyDamaged(existingItem.qty_damaged || 0)
-            setQtyMaintenance(existingItem.qty_maintenance || 0)
-            setQtyLost(existingItem.qty_lost || 0)
-
             setIsSplitMode(false)
             
             setPreviewUrl(existingItem.image_url || null)
             setStoredPath(existingItem.image_url || null)
             
+            // 🏛️ Initialize State-Based Allocation
+            const variants = (existingItem as any).variants || []
+            if (variants.length > 0) {
+                setSiteDistributions(variants.map((v: any) => ({
+                    id: v.id,
+                    locationId: v.location_id,
+                    locationName: v.location,
+                    qtyGood: v.qty_good ?? 0,
+                    qtyDamaged: v.qty_damaged ?? 0,
+                    qtyMaintenance: v.qty_maintenance ?? 0,
+                    qtyLost: v.qty_lost ?? 0
+                })))
+            } else {
+                // Initialize with current item as the first site
+                setSiteDistributions([{
+                    id: existingItem.id,
+                    locationId: (existingItem as any).location_registry_id,
+                    locationName: existingItem.storage_location || 'lower_warehouse',
+                    qtyGood: existingItem.qty_good || 0,
+                    qtyDamaged: existingItem.qty_damaged || 0,
+                    qtyMaintenance: existingItem.qty_maintenance || 0,
+                    qtyLost: existingItem.qty_lost || 0
+                }])
+            }
+            
             const location = (existingItem as any)?.storage_location || 'lower_warehouse'
-            if (savedLocations.length > 0 && !savedLocations.includes(location)) {
+            const locationInRegistry = savedLocations.some(loc => 
+                loc.location_name === location || loc.id?.toString() === location
+            )
+            
+            if (savedLocations.length > 0 && !locationInRegistry) {
                 setStorageLocation('custom')
                 setCustomLocation(location)
             } else {
@@ -166,14 +188,17 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
             }
         } else if (isOpen) {
             // New Item defaults
-            setQtyGood(0)
-            setQtyDamaged(0)
-            setQtyMaintenance(0)
-            setQtyLost(0)
             setCategoryId('')
             setItemNameValue('')
             setItemType('equipment')
             setStorageLocation('lower_warehouse')
+            setSiteDistributions([{
+                locationName: 'lower_warehouse',
+                qtyGood: 0,
+                qtyDamaged: 0,
+                qtyMaintenance: 0,
+                qtyLost: 0
+            }])
         }
     }, [isOpen, existingItem, savedLocations])
     
@@ -245,8 +270,15 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         const form = event.currentTarget
         const requiredFields = [
             { name: 'name', label: 'Item Name', ref: form.name },
-            { name: 'category', label: 'Category', ref: form.category }
+            { name: 'category', label: 'Category', ref: form.category },
         ]
+
+        // Location Check
+        const cleanLocation = storageLocation === 'custom' ? customLocation.trim() : storageLocation.trim()
+        if (!cleanLocation || cleanLocation === 'Select location') {
+            toast.error('Please select a storage location.')
+            return
+        }
 
         // Add variant validation if variants are enabled
         if (hasVariants && !variantLabel) {
@@ -254,8 +286,8 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
             return
         }
 
-        // Validate required fields
-        for (const field of requiredFields.filter(f => !['stock_total', 'stock_available'].includes(f.name))) {
+        // Standard Field Validation
+        for (const field of requiredFields) {
             if (!field.ref || !field.ref.value || field.ref.value.trim() === '') {
                 toast.error(`${field.label} is required`)
                 field.ref?.focus()
@@ -273,6 +305,9 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         formData.set('stock_total', stockTotalValue.toString())
         formData.set('stock_available', qtyGood.toString())
 
+        // 🏛️ Pass the complete site distribution state
+        formData.set('site_distributions', JSON.stringify(siteDistributions))
+
         if (isEditMode && existingItem) {
             formData.append('id', existingItem.id.toString())
         }
@@ -281,9 +316,20 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
             formData.append('image_url', storedPath)
         }
 
-        // Handle custom location
-        if (storageLocation === 'custom' && customLocation.trim()) {
+        // 🏛️ GEOGRAPHIC RESOLUTION: Map internal state to DB fields
+        // If storageLocation is a number, it's a registry ID. If it's text, it's a manual entry.
+        const isNumericId = /^\d+$/.test(storageLocation)
+        if (isNumericId) {
+            formData.set('location_id', storageLocation)
+            // Also find the name for redundancy if possible
+            const locObj = savedLocations.find((l) => l.id?.toString() === storageLocation)
+            if (locObj) formData.set('storage_location', locObj.location_name)
+        } else if (storageLocation === 'custom' && customLocation.trim()) {
             formData.set('storage_location', customLocation.trim())
+            formData.delete('location_id')
+        } else {
+            formData.set('storage_location', storageLocation)
+            formData.delete('location_id')
         }
 
         // Handle variant data: Reset identity if status is 'Good'
@@ -328,6 +374,85 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         setIsSavingLocation(false)
     }
 
+    // Storage Location Delete Handler
+    const handleDeleteLocation = async (id: number) => {
+        if (!confirm('Are you sure you want to remove this site from the registry?')) return
+        
+        startTransition(async () => {
+            const result = await deleteStorageLocation(id)
+            if (result.success) {
+                toast.success(result.message)
+                setSavedLocations(savedLocations.filter(loc => loc.id !== id))
+            } else {
+                toast.error(result.error)
+            }
+        })
+    }
+
+    // 🏛️ BUCKET TRANSFER ENGINE: Reconciliation via Site Distribution
+    const handleBucketUpdate = (
+        bucket: string,
+        newVal: number | string
+    ) => {
+        if (siteDistributions.length === 0) return
+
+        const currentVal = Number(bucket === 'qtyDamaged' ? qtyDamaged : bucket === 'qtyMaintenance' ? qtyMaintenance : qtyLost)
+        const delta = Number(newVal) - currentVal
+        const currentGood = qtyGood
+        
+        // Safety Guard
+        if (delta > currentGood) {
+            toast.error(`Error: You only have ${currentGood} items left to move.`)
+            return
+        }
+
+        // Application of shift with typing resilience
+        const valToSet = newVal === '' ? '' : Number(newVal)
+        const newDist = [...siteDistributions]
+        newDist[0] = { 
+            ...newDist[0], 
+            [bucket]: valToSet,
+            qtyGood: Number(newDist[0].qtyGood || 0) - delta
+        }
+        setSiteDistributions(newDist)
+    }
+
+    // 🏛️ SITE ALLOCATION HANDLERS
+    const addSiteDistribution = (location: any) => {
+        const locName = location.location_name || location
+        const locId = location.id || null
+        
+        // Prevent duplicates
+        if (siteDistributions.some(d => d.locationName === locName || d.locationId === locId)) {
+            toast.error('Site already added to distribution')
+            return
+        }
+
+        setSiteDistributions([...siteDistributions, {
+            locationId: locId,
+            locationName: locName,
+            qtyGood: 0,
+            qtyDamaged: 0,
+            qtyMaintenance: 0,
+            qtyLost: 0
+        }])
+    }
+
+    const removeSiteDistribution = (index: number) => {
+        if (siteDistributions.length <= 1) {
+            toast.error('Item must be at minimum one location')
+            return
+        }
+        setSiteDistributions(siteDistributions.filter((_, i) => i !== index))
+    }
+
+    const updateSiteQty = (index: number, bucket: string, value: number | string) => {
+        const newDist = [...siteDistributions]
+        const valToSet = value === '' ? '' : Number(value)
+        newDist[index] = { ...newDist[index], [bucket]: valToSet }
+        setSiteDistributions(newDist)
+    }
+
     return {
         // State
         isPending,
@@ -363,6 +488,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         removeImage,
         handleSubmit,
         handleSaveLocation,
+        handleDeleteLocation,
         
         // Setters
         setItemType,
@@ -375,15 +501,27 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         setCustomVariant,
         setItemNameValue,
 
+        // Site Allocation
+        siteDistributions,
+        addSiteDistribution,
+        removeSiteDistribution,
+        updateSiteQty,
+
         // Bucket States
         qtyGood,
         qtyDamaged,
         qtyMaintenance,
         qtyLost,
-        // Bucket Setters
-        setQtyGood,
-        setQtyDamaged,
-        setQtyMaintenance,
-        setQtyLost
+        // 🏛️ SMART SETTERS: Redirect to Site Logic
+        setQtyGood: (val: number | string) => {
+            const newDist = [...siteDistributions]
+            if (newDist[0]) {
+                newDist[0] = { ...newDist[0], qtyGood: val === '' ? '' : Number(val) }
+                setSiteDistributions(newDist)
+            }
+        },
+        setQtyDamaged: (val: number | string) => handleBucketUpdate('qtyDamaged', val),
+        setQtyMaintenance: (val: number | string) => handleBucketUpdate('qtyMaintenance', val),
+        setQtyLost: (val: number | string) => handleBucketUpdate('qtyLost', val)
     }
 }

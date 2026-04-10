@@ -17,6 +17,11 @@ export function AudioPermissionWrapper({ children }: { children: React.ReactNode
     }, [])
 
     const handleEnable = () => {
+        // 🛡️ TACTICAL PRIMING: Execute the acoustic handshake during the user's gesture
+        if (typeof (window as any).LIGTAS_UNLOCK_AUDIO === 'function') {
+            (window as any).LIGTAS_UNLOCK_AUDIO();
+        }
+        
         localStorage.setItem('audio_enabled', 'true')
         setShowOverlay(false)
         setAudioEnabled(true)
@@ -39,12 +44,16 @@ export function AudioPermissionWrapper({ children }: { children: React.ReactNode
                             </p>
                             <button
                                 onClick={handleEnable}
-                                className="mt-3 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                className="mt-3 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all active:scale-95"
                             >
                                 Enable Now
                             </button>
                             <button
                                 onClick={() => {
+                                    // 🛡️ TACTICAL BYPASS: Still try to unlock even if they choose later
+                                    if (typeof (window as any).LIGTAS_UNLOCK_AUDIO === 'function') {
+                                        (window as any).LIGTAS_UNLOCK_AUDIO();
+                                    }
                                     localStorage.setItem('audio_enabled', 'true')
                                     setShowOverlay(false)
                                     setAudioEnabled(true)

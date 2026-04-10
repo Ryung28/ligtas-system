@@ -6,11 +6,14 @@ export const NotificationItemSchema = z.object({
     id: z.string(),
     userId: z.string().uuid().nullable().optional(), // 🛡️ BROADCAST SILO: Null for org-wide alerts
     referenceId: z.string().nullable().optional(), // 🛡️ POLYMORPHIC: Align with TEXT column
+    reference_id: z.string().nullable().optional(),
     title: z.string(),
+    description: z.string().optional(),
     message: z.string(),
     time: z.string().or(z.date()), // 🛡️ PERMISSIVE: Accept both DB strings and ISO dates
     type: z.string(), // 🛡️ RELAXED: Accept any categorical string to prevent validation drops
     isRead: z.boolean(),
+    metadata: z.record(z.any()).optional(), // 🛡️ HYDRATION PROTOCOL: Added to prevent stripping of contextual identity data (e.g., borrower_name)
     action: z.object({
         label: z.string(),
         type: z.enum(['link', 'rpc', 'dialog']),

@@ -17,29 +17,31 @@ BEGIN
         
         -- CASE 1: Borrow Request APPROVED (pending → borrowed)
         IF OLD.status = 'pending' AND NEW.status = 'borrowed' THEN
-            INSERT INTO system_notifications (type, title, message, reference_id)
+            INSERT INTO system_notifications (type, title, message, reference_id, metadata)
             VALUES (
                 'borrow_approved',
                 'REQUEST APPROVED',
                 'Your request for ' || NEW.item_name || ' (Qty: ' || NEW.quantity || ') has been approved.',
-                NEW.id::TEXT
+                NEW.id::TEXT,
+                jsonb_build_object('search_query', NEW.borrower_name, 'borrower_name', NEW.borrower_name, 'item_name', NEW.item_name)
             );
         END IF;
 
         -- CASE 2: Borrow Request REJECTED (pending → cancelled)
         IF OLD.status = 'pending' AND NEW.status = 'cancelled' THEN
-            INSERT INTO system_notifications (type, title, message, reference_id)
+            INSERT INTO system_notifications (type, title, message, reference_id, metadata)
             VALUES (
                 'borrow_rejected',
                 'REQUEST DECLINED',
                 'Your request for ' || NEW.item_name || ' (Qty: ' || NEW.quantity || ') was not approved.',
-                NEW.id::TEXT
+                NEW.id::TEXT,
+                jsonb_build_object('search_query', NEW.borrower_name, 'borrower_name', NEW.borrower_name, 'item_name', NEW.item_name)
             );
         END IF;
 
         -- CASE 3: Item RETURNED (borrowed → returned)
         IF OLD.status = 'borrowed' AND NEW.status = 'returned' THEN
-            INSERT INTO system_notifications (type, title, message, reference_id)
+            INSERT INTO system_notifications (type, title, message, reference_id, metadata)
             VALUES (
                 'item_returned',
                 'ITEM RETURNED',
@@ -48,7 +50,8 @@ BEGIN
                     WHEN NEW.return_condition IS NOT NULL THEN ' - Condition: ' || NEW.return_condition
                     ELSE ''
                 END,
-                NEW.id::TEXT
+                NEW.id::TEXT,
+                jsonb_build_object('search_query', NEW.borrower_name, 'borrower_name', NEW.borrower_name, 'item_name', NEW.item_name)
             );
         END IF;
 

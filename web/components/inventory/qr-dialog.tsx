@@ -115,14 +115,6 @@ export function QRDialog({ item, trigger }: QRDialogProps) {
                             size={300} // Larger default size for better quality
                             level="H"
                             includeMargin={false}
-                            imageSettings={{
-                                src: "/oro-cervo.png",
-                                x: undefined,
-                                y: undefined,
-                                height: 60,
-                                width: 60,
-                                excavate: true,
-                            }}
                         />
                     </div>
 

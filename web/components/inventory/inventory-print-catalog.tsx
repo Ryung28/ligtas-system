@@ -13,182 +13,182 @@ interface InventoryPrintCatalogProps {
 export function InventoryPrintCatalog({ items }: InventoryPrintCatalogProps) {
     const [isSyncing, setIsSyncing] = useState(false)
     const [syncItems, setSyncItems] = useState<InventoryItem[]>([])
+    const [printWindow, setPrintWindow] = useState<Window | null>(null)
     const printRef = useRef<HTMLDivElement>(null)
 
-    const handlePrint = async () => {
+    // SENIOR HANDSHAKE: Listen for sync completion to inject HTML
+    useEffect(() => {
+        if (!isSyncing && syncItems.length > 0 && printWindow) {
+            const printContent = printRef.current?.innerHTML || ''
+            
+            printWindow.document.open()
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>LIGTAS Technical Catalog</title>
+                    <style>
+                        @media print {
+                            @page { size: A4 landscape; margin: 10mm; }
+                            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        }
+                        
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: white; color: #0f172a; padding: 5mm; }
+                        
+                        .catalog-header { 
+                            text-align: center; 
+                            margin-bottom: 8mm; 
+                            border-bottom: 2px solid #0f172a; 
+                            padding-bottom: 6mm; 
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                        }
+                        .branding-tag { 
+                            font-size: 8pt; 
+                            font-weight: 800; 
+                            letter-spacing: 0.4em; 
+                            color: #3b82f6; 
+                            margin-bottom: 2mm; 
+                            text-transform: uppercase;
+                        }
+                        .catalog-title { 
+                            font-size: 28pt; 
+                            font-weight: 950; 
+                            letter-spacing: -0.04em;
+                            text-transform: uppercase;
+                            font-style: italic;
+                            color: #0f172a;
+                        }
+                        .catalog-meta { 
+                            font-size: 9pt; 
+                            color: #64748b; 
+                            margin-top: 2mm; 
+                            font-weight: 600;
+                            letter-spacing: 1px;
+                        }
+                        
+                        .category-group { margin-bottom: 10mm; break-inside: auto; }
+                        .category-label { 
+                            font-size: 11pt; 
+                            font-weight: 900; 
+                            margin-bottom: 5mm; 
+                            display: flex;
+                            align-items: center;
+                            gap: 4mm;
+                            text-transform: uppercase;
+                            letter-spacing: 2px;
+                            color: #1e293b;
+                        }
+                        .category-label::after {
+                            content: '';
+                            flex: 1;
+                            height: 2px;
+                            background: #f1f5f9;
+                        }
+                        
+                        /* Tactical Landscape Grid: 6-Column High-Density Layout */
+                        .grid-container { 
+                            display: grid; 
+                            grid-template-columns: repeat(6, 1fr); 
+                            gap: 3.5mm; 
+                        }
+                        
+                        /* Restaurant Menu Aesthetic Card (Landscape Optimized) */
+                        .menu-card { 
+                            border: 1px solid #e2e8f0; 
+                            padding: 12px; 
+                            break-inside: avoid; 
+                            display: flex; 
+                            flex-direction: column; 
+                            align-items: center; 
+                            text-align: center;
+                            background: white;
+                            border-radius: 4px;
+                        }
+                        
+                        .qr-frame { 
+                            aspect-ratio: 1 / 1; 
+                            width: 34mm; 
+                            margin-bottom: 4mm; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center;
+                            background: #fff;
+                        }
+                        
+                        .item-name-bold { 
+                            font-size: 9.5pt; 
+                            font-weight: 800; 
+                            line-height: 1.1;
+                            margin-bottom: 3mm; 
+                            display: -webkit-box;
+                            -webkit-line-clamp: 2;
+                            -webkit-box-orient: vertical;
+                            overflow: hidden;
+                            height: 2.2em;
+                            color: #1e293b;
+                        }
+                        
+                        .serial-footer { 
+                            font-size: 7pt; 
+                            font-weight: 700; 
+                            color: #64748b; 
+                            font-family: 'JetBrains Mono', 'Courier New', monospace;
+                            padding-top: 1.5mm;
+                            border-top: 1px dashed #f1f5f9;
+                            width: 100%;
+                            text-transform: uppercase;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printContent}
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => {
+                                window.print();
+                                window.close();
+                            }, 800); // Sufficient buffer for QR render
+                        }
+                    </script>
+                </body>
+                </html>
+            `)
+            printWindow.document.close()
+            setPrintWindow(null)
+            setSyncItems([])
+        }
+    }, [isSyncing, syncItems, printWindow])
+
+    const handlePrint = () => {
         if (items.length === 0) {
             alert('No items to print')
             return
         }
 
-        setIsSyncing(true)
-
-        try {
-            // STEP 1: Supabase Data Sync - Pull latest data before printing
-            const { data: latestItems, error } = await supabase
-                .from('inventory')
-                .select('*')
-                .in('id', items.map(item => item.id))
-                .order('item_name', { ascending: true })
-
-            if (error) throw error
-            setSyncItems(latestItems || [])
-
-            // Wait for React to render the hidden content
-            setTimeout(() => {
-                const printWindow = window.open('', '_blank')
-                if (!printWindow) {
-                    alert('Please allow pop-ups to print the catalog')
-                    setIsSyncing(false)
-                    return
-                }
-
-                const printContent = printRef.current?.innerHTML || ''
-
-                printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>LIGTAS Technical Catalog</title>
-                        <style>
-                            @media print {
-                                @page { size: A4 landscape; margin: 10mm; }
-                                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                            }
-                            
-                            * { margin: 0; padding: 0; box-sizing: border-box; }
-                            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: white; color: #0f172a; padding: 5mm; }
-                            
-                            .catalog-header { 
-                                text-align: center; 
-                                margin-bottom: 8mm; 
-                                border-bottom: 2px solid #0f172a; 
-                                padding-bottom: 6mm; 
-                                display: flex;
-                                flex-direction: column;
-                                align-items: center;
-                            }
-                            .branding-tag { 
-                                font-size: 8pt; 
-                                font-weight: 800; 
-                                letter-spacing: 0.4em; 
-                                color: #3b82f6; 
-                                margin-bottom: 2mm; 
-                                text-transform: uppercase;
-                            }
-                            .catalog-title { 
-                                font-size: 28pt; 
-                                font-weight: 950; 
-                                letter-spacing: -0.04em;
-                                text-transform: uppercase;
-                                font-style: italic;
-                                color: #0f172a;
-                            }
-                            .catalog-meta { 
-                                font-size: 9pt; 
-                                color: #64748b; 
-                                margin-top: 2mm; 
-                                font-weight: 600;
-                                letter-spacing: 1px;
-                            }
-                            
-                            .category-group { margin-bottom: 10mm; break-inside: auto; }
-                            .category-label { 
-                                font-size: 11pt; 
-                                font-weight: 900; 
-                                margin-bottom: 5mm; 
-                                display: flex;
-                                align-items: center;
-                                gap: 4mm;
-                                text-transform: uppercase;
-                                letter-spacing: 2px;
-                                color: #1e293b;
-                            }
-                            .category-label::after {
-                                content: '';
-                                flex: 1;
-                                height: 2px;
-                                background: #f1f5f9;
-                            }
-                            
-                            /* Tactical Landscape Grid: 6-Column High-Density Layout */
-                            .grid-container { 
-                                display: grid; 
-                                grid-template-columns: repeat(6, 1fr); 
-                                gap: 3.5mm; 
-                            }
-                            
-                            /* Restaurant Menu Aesthetic Card (Landscape Optimized) */
-                            .menu-card { 
-                                border: 1px solid #e2e8f0; 
-                                padding: 12px; 
-                                break-inside: avoid; 
-                                display: flex; 
-                                flex-direction: column; 
-                                align-items: center; 
-                                text-align: center;
-                                background: white;
-                                border-radius: 4px;
-                            }
-                            
-                            .qr-frame { 
-                                aspect-ratio: 1 / 1; 
-                                width: 34mm; 
-                                margin-bottom: 4mm; 
-                                display: flex; 
-                                align-items: center; 
-                                justify-content: center;
-                                background: #fff;
-                            }
-                            
-                            .item-name-bold { 
-                                font-size: 9.5pt; 
-                                font-weight: 800; 
-                                line-height: 1.1;
-                                margin-bottom: 3mm; 
-                                display: -webkit-box;
-                                -webkit-line-clamp: 2;
-                                -webkit-box-orient: vertical;
-                                overflow: hidden;
-                                height: 2.2em;
-                                color: #1e293b;
-                            }
-                            
-                            .serial-footer { 
-                                font-size: 7pt; 
-                                font-weight: 700; 
-                                color: #64748b; 
-                                font-family: 'JetBrains Mono', 'Courier New', monospace;
-                                padding-top: 1.5mm;
-                                border-top: 1px dashed #f1f5f9;
-                                width: 100%;
-                                text-transform: uppercase;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        ${printContent}
-                        <script>
-                            window.onload = function() {
-                                setTimeout(() => {
-                                    window.print();
-                                    window.close();
-                                }, 600);
-                            }
-                        </script>
-                    </body>
-                    </html>
-                `)
-
-                printWindow.document.close()
-                setIsSyncing(false)
-            }, 100) // Small delay to ensure React finish rendering to DOM
-
-        } catch (error) {
-            console.error('Print synchronization error:', error)
-            alert('Failed to synchronize latest data from vault.')
-            setIsSyncing(false)
+        // STEP 1: Open window immediately (User Gesture context)
+        const win = window.open('', '_blank')
+        if (!win) {
+            alert('Please allow pop-ups to print the catalog')
+            return
         }
+        
+        // Immediate Feedback in the new window
+        win.document.write(`
+            <html>
+                <head><title>Preparing Gallery...</title></head>
+                <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#64748b; background:#f8fafc;">
+                    <div style="width:40px; height:40px; border:3px solid #f1f5f9; border-top-color:#3b82f6; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                    <p style="margin-top:16px; font-weight:600; letter-spacing:0.05em; font-size:14px;">GENERATING CATALOG...</p>
+                    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+                </body>
+            </html>
+        `)
+        
+        setPrintWindow(win)
+        setSyncItems(items) // 🏛️ INHERITANCE: Use optimized memory data instantly
     }
 
     // Group items for the hidden render

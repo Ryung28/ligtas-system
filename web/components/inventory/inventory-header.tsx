@@ -1,9 +1,10 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Plus, ListPlus, Package, Layers, AlertTriangle, XCircle, Trash2, CheckSquare } from 'lucide-react'
+import { Plus, ListPlus, Package, Layers, AlertTriangle, XCircle, Trash2, CheckSquare, Settings2 } from 'lucide-react'
 import { BulkAddDialog } from './bulk-add-dialog'
 import { InventoryPrintCatalog } from './inventory-print-catalog'
+import { LocationManagerDialog } from './location-manager-dialog'
 import { InventoryItem } from '@/lib/supabase'
 import { useMemo } from 'react'
 
@@ -69,16 +70,19 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
                                 <CheckSquare className="h-4 w-4 mr-1.5" />
                                 Select Multiple
                             </Button>
+                            
+                            <LocationManagerDialog />
                             <InventoryPrintCatalog items={items} />
+                            
                             <BulkAddDialog
-                        onSuccess={onRefresh}
-                        trigger={
-                            <Button variant="ghost" size="sm" className="h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 text-[13px] font-medium transition-colors rounded-lg px-3">
-                                <ListPlus className="h-4 w-4 mr-1.5" />
-                                Bulk Add
-                            </Button>
-                        }
-                    />
+                                onSuccess={onRefresh}
+                                trigger={
+                                    <Button variant="ghost" size="sm" className="h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 text-[13px] font-medium transition-colors rounded-lg px-3">
+                                        <ListPlus className="h-4 w-4 mr-1.5" />
+                                        Bulk Add
+                                    </Button>
+                                }
+                            />
                             <Button 
                                 onClick={onAddItem}
                                 size="sm" 

@@ -16,10 +16,17 @@ interface ReportConfigDialogProps {
 }
 
 export function ReportConfigDialog({ reportType, onClose, onGenerate }: ReportConfigDialogProps) {
+    // SENIOR FIX: Get YYYY-MM-DD in local time without UTC rollover bugs
+    const getLocalISODate = (offsetDays = 0) => {
+        const date = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
+        return date.toLocaleDateString('en-CA'); // 'en-CA' is the only locale that natively returns YYYY-MM-DD
+    };
+
     const [config, setConfig] = useState<ReportConfig>({
-        dateFrom: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        dateTo: new Date().toISOString().split('T')[0],
+        dateFrom: getLocalISODate(-30),
+        dateTo: getLocalISODate(),
         category: 'all',
+        sortOrder: 'latest',
         status: ['borrowed', 'returned', 'overdue'],
         includeSignatures: true,
         includePageNumbers: true,
@@ -109,19 +116,36 @@ export function ReportConfigDialog({ reportType, onClose, onGenerate }: ReportCo
                         </>
                     )}
 
-                    <div>
-                        <Label className="text-xs">Category</Label>
-                        <Select value={config.category} onValueChange={(value) => setConfig({ ...config, category: value })}>
-                            <SelectTrigger className="h-9 text-sm">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
-                                <SelectItem value="medical">Medical</SelectItem>
-                                <SelectItem value="rescue">Rescue</SelectItem>
-                                <SelectItem value="communication">Communication</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <Label className="text-xs">Category</Label>
+                            <Select value={config.category} onValueChange={(value) => setConfig({ ...config, category: value })}>
+                                <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Categories</SelectItem>
+                                    <SelectItem value="medical">Medical</SelectItem>
+                                    <SelectItem value="rescue">Rescue</SelectItem>
+                                    <SelectItem value="communication">Communication</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs">Sort Order</Label>
+                            <Select 
+                                value={config.sortOrder} 
+                                onValueChange={(value: 'latest' | 'oldest') => setConfig({ ...config, sortOrder: value as any })}
+                            >
+                                <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="latest">Latest First</SelectItem>
+                                    <SelectItem value="oldest">Oldest First</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <div className="space-y-2 pt-2 border-t">

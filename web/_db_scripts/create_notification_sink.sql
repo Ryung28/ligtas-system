@@ -46,14 +46,14 @@ RETURNS TRIGGER AS $$
 BEGIN
     -- 🚨 Threshold: Stock Low (LT 10)
     IF (OLD.stock_available >= 10 AND NEW.stock_available < 10 AND NEW.stock_available > 0) THEN
-        INSERT INTO system_notifications (type, title, message, reference_id)
-        VALUES ('stock_low', 'LOW STOCK ALERT', 'Resource depletion: ' || NEW.item_name || ' (Available: ' || NEW.stock_available || ')', NEW.id::TEXT);
+        INSERT INTO system_notifications (type, title, message, reference_id, metadata)
+        VALUES ('stock_low', 'LOW STOCK ALERT', 'Resource depletion: ' || NEW.item_name || ' (Available: ' || NEW.stock_available || ')', NEW.id::TEXT, jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name));
     END IF;
 
     -- 🚨 Threshold: Stock Depleted (= 0)
     IF (OLD.stock_available > 0 AND NEW.stock_available = 0) THEN
-        INSERT INTO system_notifications (type, title, message, reference_id)
-        VALUES ('stock_out', 'RESOURCES DEPLETED', 'Supply chain break: ' || NEW.item_name || ' is out of stock.', NEW.id::TEXT);
+        INSERT INTO system_notifications (type, title, message, reference_id, metadata)
+        VALUES ('stock_out', 'RESOURCES DEPLETED', 'Supply chain break: ' || NEW.item_name || ' is out of stock.', NEW.id::TEXT, jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name));
     END IF;
 
     RETURN NEW;
@@ -72,8 +72,8 @@ CREATE OR REPLACE FUNCTION trg_handle_user_alerts()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (NEW.status = 'pending') THEN
-        INSERT INTO system_notifications (type, title, message, reference_id)
-        VALUES ('user_pending', 'NEW ACCESS REQUEST', NEW.full_name || ' is requesting system credentials.', NEW.id::TEXT);
+        INSERT INTO system_notifications (type, title, message, reference_id, metadata)
+        VALUES ('user_pending', 'NEW ACCESS REQUEST', NEW.full_name || ' is requesting system credentials.', NEW.id::TEXT, jsonb_build_object('search_query', NEW.full_name, 'borrower_name', NEW.full_name));
     END IF;
     RETURN NEW;
 END;
@@ -101,8 +101,8 @@ BEGIN
     -- Only create notification for pending requests (approval workflow)
     -- Skip notifications for direct borrows (status = 'borrowed')
     IF NEW.status = 'pending' THEN
-        INSERT INTO system_notifications (type, title, message, reference_id)
-        VALUES ('borrow_request', 'LOGISTICS ALERT', 'New borrow request from ' || NEW.borrower_name || ' (Qty: ' || NEW.quantity || ')', NEW.id::TEXT);
+        INSERT INTO system_notifications (type, title, message, reference_id, metadata)
+        VALUES ('borrow_request', 'LOGISTICS ALERT', 'New borrow request from ' || NEW.borrower_name || ' (Qty: ' || NEW.quantity || ')', NEW.id::TEXT, jsonb_build_object('search_query', NEW.borrower_name, 'borrower_name', NEW.borrower_name, 'item_name', NEW.item_name));
     END IF;
     RETURN NEW;
 END;

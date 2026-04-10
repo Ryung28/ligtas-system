@@ -36,8 +36,8 @@ export function usePendingRequests() {
         PENDING_REQUESTS_KEY,
         fetchPendingRequests,
         {
-            revalidateOnFocus: true,
-            refreshInterval: 10000, // Faster refresh for approvals
+            revalidateOnFocus: false,
+            refreshInterval: 20000, // Relaxed heartbeat
         }
     )
 

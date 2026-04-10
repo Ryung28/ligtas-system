@@ -37,8 +37,8 @@ export function useNotifications() {
     }
 
     const { data: notifications = [], mutate, isLoading, error } = useSWR(['notifications', limit], fetcher, {
-        revalidateOnFocus: true,
-        refreshInterval: 120000, // 2m safety net (we rely on Realtime)
+        revalidateOnFocus: false, // 🛰️ REALTIME SINK: No need for focus re-fetch
+        refreshInterval: 120000, 
         keepPreviousData: true, // 🛡️ ELIMINATES PAGINATION FLASH
     })
 

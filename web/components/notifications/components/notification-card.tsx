@@ -1,201 +1,210 @@
-import React, { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Icons, TYPE_CONFIG } from '../constants/notification.config'
 import { NotificationCardProps } from '../types/notification.types'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-} from '@/components/ui/dialog'
-import { RestockForm } from '@/components/layout/_components/RestockForm'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-export function NotificationCard({ notif, index, onMarkRead, onDelete }: NotificationCardProps) {
+export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCardProps) {
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
   
   const cfg = TYPE_CONFIG[notif.type] || {
-    icon: Icons.users,
-    label: "Auth",
-    accent: "#10b981",
-    bg: "rgba(16,185,129,0.08)",
-    border: "rgba(16,185,129,0.2)",
+    icon: Icons.box,
+    label: "Update",
+    accent: "#64748b",
+    bg: "rgba(241, 245, 249, 0.8)",
+    border: "rgba(148, 163, 184, 0.1)",
   }
 
-  const isLowStock = notif.type.includes('stock')
+  const isCritical = ['stock_out', 'item_overdue', 'borrow_rejected'].includes(notif.type);
+  const meta = notif.metadata || {}
 
-  const getActionData = () => {
-    if (notif.type === 'borrow_request') return { label: 'Manage Log', route: '/dashboard/logs' }
-    if (notif.type === 'user_pending') return { label: 'Review Access', route: '/dashboard/borrowers' }
-    if (isLowStock) return { label: 'Fast Restock', action: 'dialog' }
-    return null
+    const getTargetRoute = () => {
+      const message = notif.message || notif.description || ""
+      const title = notif.title || ""
+      
+      // 1. ASSET DOMAIN (The "What"): Redirect to Inventory Hub
+      // 🛡️ Priority One: Explicit Stock/Inventory types
+      const isInventoryContext = [
+        'stock_low', 'stock_out', 'low_stock', 'inventory_alert'
+      ].includes(notif.type) || (notif.id && notif.id.startsWith('inv-'))
+      
+      if (isInventoryContext) {
+        const itemName = meta.search_query || meta.item_name || title
+        const itemId = meta.item_id || meta.id || notif.reference_id || ''
+        return `/dashboard/inventory?search=${encodeURIComponent(itemName)}&id=${itemId}&highlight=true`
+      }
+
+      // 2. IDENTITY/LOGISTICS DOMAIN (The "Who"): Redirect to Logs
+      // 🛡️ TACTICAL NAME EXTRACTION (Fallback for Legacy/Unpatched Notifs)
+      const extractName = () => {
+        // Check Metadata first (Highest priority)
+        if (meta.search_query) return meta.search_query
+        if (meta.borrower_name) return meta.borrower_name
+        if (meta.requester_name) return meta.requester_name
+        
+        // Regex Scan from message ("from Lll", "by Lll")
+        const fromMatch = message.match(/from\s+([A-Za-z0-9\s]+?)(?=\s*\()|from\s+([A-Za-z0-9\s]+?)$|by\s+([A-Za-z0-9\s]+?)(?=\s*\.|$)/i)
+        if (fromMatch) return (fromMatch[1] || fromMatch[2] || fromMatch[3]).trim()
+        
+        // Fallback to title keywords if title contains user info
+        if (title.includes("BORROWER") || title.includes("USER")) return title.split(":").pop()?.trim() || ""
+        
+        return ""
+      }
+
+      const identityTypes = [
+        'borrow_request', 'item_overdue', 'item_returned', 
+        'user_pending', 'user_request', 'borrow_approved', 'borrow_rejected'
+      ]
+      
+      const targetName = extractName()
+      const isIdentityContext = identityTypes.includes(notif.type) || 
+                               (notif.id && (notif.id.startsWith('log-') || notif.id.startsWith('bor-'))) ||
+                               targetName.length > 0
+
+      if (isIdentityContext) {
+        return `/dashboard/logs?search=${encodeURIComponent(targetName)}&id=${meta.borrower_user_id || meta.id || notif.reference_id || ''}&highlight=true`
+      }
+      
+      return null
+    }
+
+  const getActionLabel = (type: string) => {
+    switch(type) {
+      case 'stock_low':
+      case 'stock_out':
+      case 'low_stock': return 'RESTOCK';
+      case 'item_overdue': return 'RECALL';
+      case 'user_pending':
+      case 'user_request': return 'REVIEW';
+      case 'borrow_approved':
+      case 'item_returned': return 'ARCHIVE';
+      default: return 'DETAILS';
+    }
   }
 
-  const actionData = getActionData()
+  const actionLabel = getActionLabel(notif.type);
 
-  const handleActionClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (actionData?.route) router.push(actionData.route)
+  const onRoute = () => {
+    if (!notif.isRead) onMarkRead(notif.id)
+    const target = getTargetRoute()
+    if (target) router.push(target)
   }
-
-  const cardContent = (
-    <div className="p-4 pl-5">
-      <div className="flex items-start gap-3">
-        {/* Icon badge */}
-        <motion.div
-          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mt-0.5"
-          style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.accent }}
-          whileHover={{ rotate: [0, -8, 8, 0], transition: { duration: 0.4 } }}
-        >
-          {cfg.icon}
-        </motion.div>
-
-        <div className="flex-1 min-w-0">
-          {/* Header row */}
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[10px] font-bold tracking-widest uppercase"
-                style={{ color: cfg.accent }}
-              >
-                {cfg.label}
-              </span>
-              {!notif.isRead && (
-                <motion.span
-                  animate={{ scale: [1, 1.3, 1] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: cfg.accent }}
-                />
-              )}
-            </div>
-            <span className="text-[11px] text-gray-400 font-medium flex-shrink-0">
-              {notif.time ? formatDistanceToNow(new Date(notif.time), { addSuffix: true }).replace('about ', '') : 'now'}
-            </span>
-          </div>
-
-          <h3 className="font-black text-[15px] text-gray-900 leading-tight tracking-tight mb-1">
-            {notif.title}
-          </h3>
-
-          <p className="text-[13px] text-gray-500 leading-relaxed mb-3 line-clamp-2">{notif.message || notif.description}</p>
-
-          <div className="flex items-center justify-between">
-            {actionData && (
-              isLowStock ? (
-                <DialogTrigger asChild>
-                  <motion.button
-                    className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase px-4 py-2 rounded-full bg-zinc-50 text-zinc-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-zinc-200/60 transition-all duration-200 hover:bg-zinc-950 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:border-zinc-950 hover:-translate-y-0.5"
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    {actionData.label}
-                    <motion.span initial={{ x: 0, y: 0 }} whileHover={{ x: 2, y: -2 }} transition={{ duration: 0.15 }}>
-                      {Icons.arrowUpRight}
-                    </motion.span>
-                  </motion.button>
-                </DialogTrigger>
-              ) : (
-                <motion.button
-                  onClick={handleActionClick}
-                  className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase px-4 py-2 rounded-full bg-zinc-50 text-zinc-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-zinc-200/60 transition-all duration-200 hover:bg-zinc-950 hover:text-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:border-zinc-950 hover:-translate-y-0.5"
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {actionData.label}
-                  <motion.span initial={{ x: 0, y: 0 }} whileHover={{ x: 2, y: -2 }} transition={{ duration: 0.15 }}>
-                    {Icons.arrowUpRight}
-                  </motion.span>
-                </motion.button>
-              )
-            )}
-
-            <div className="flex items-center gap-2">
-              {onDelete && (
-                <motion.button
-                  onClick={(e) => { e.stopPropagation(); onDelete(notif.id) }}
-                  className="text-gray-400 hover:text-red-500 transition-colors bg-white/50 rounded-full p-1 shadow-sm hover:shadow border border-zinc-200/50"
-                  whileTap={{ scale: 0.95 }}
-                  aria-label="Delete"
-                >
-                  {Icons.trash}
-                </motion.button>
-              )}
-              {!notif.isRead && (
-                <motion.button
-                  onClick={(e) => { e.stopPropagation(); onMarkRead(notif.id) }}
-                  className="text-[11px] text-gray-400 hover:text-gray-700 font-medium transition-colors px-2 py-1"
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Mark read
-                </motion.button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 16, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95, y: -8, transition: { duration: 0.15, ease: "easeOut", delay: 0 } }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], layout: { type: "spring", stiffness: 400, damping: 35 } }}
-        className="group relative rounded-xl overflow-hidden cursor-pointer transform-gpu will-change-[transform,opacity,height]"
-        style={{
-          background: "rgba(255,255,255,0.72)",
-          border: "1px solid rgba(0,0,0,0.07)",
-          backdropFilter: "blur(12px)",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03)",
-        }}
-        whileHover={{
-          y: -2,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)",
-          transition: { duration: 0.2 },
-        }}
-      >
-        {/* Unread indicator bar */}
-        <AnimatePresence>
-          {!notif.isRead && (
-            <motion.div
-              initial={{ scaleY: 0 }}
-              animate={{ scaleY: 1 }}
-              exit={{ scaleY: 0 }}
-              className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl origin-top"
-              style={{ background: cfg.accent }}
-            />
-          )}
-        </AnimatePresence>
-
-        {cardContent}
-      </motion.div>
-
-      {isLowStock && (
-        <DialogContent className="sm:max-w-[400px] rounded-[24px] border-none shadow-2xl bg-white/95 backdrop-blur-xl p-6 overflow-hidden">
-          <DialogHeader className="mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 mb-3 border border-amber-100">
-              {Icons.package}
-            </div>
-            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight"> Fast Restock </DialogTitle>
-            <DialogDescription className="text-sm text-slate-500 font-medium leading-relaxed">
-              Replenish inventory directly from the command center. This action will commit to the Vault immediately.
-            </DialogDescription>
-          </DialogHeader>
-          <RestockForm 
-            n={notif as any} 
-            onSuccess={() => {
-              setIsOpen(false)
-              onMarkRead(notif.id)
-            }} 
-          />
-        </DialogContent>
+    <div 
+      className={cn(
+        "group relative flex items-start gap-3 p-3 transition-all cursor-pointer border-b border-slate-100/50 hover:bg-slate-50",
+        !notif.isRead && "bg-blue-50/20"
       )}
-    </Dialog>
+      onClick={onRoute}
+    >
+      {/* Intent Strip (The Admin Edge) */}
+      <div 
+        className="absolute left-0 top-[10%] bottom-[10%] w-[2.5px] rounded-r-full"
+        style={{ backgroundColor: cfg.accent }}
+      />
+
+      <div className="relative flex-shrink-0">
+        <div 
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 border border-slate-200/50 shadow-sm"
+          style={{ background: cfg.bg, color: cfg.accent }}
+        >
+          {React.cloneElement(cfg.icon as React.ReactElement, { size: 16, strokeWidth: 2 })}
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider font-mono opacity-90" style={{ color: cfg.accent }}>
+            {cfg.label}
+          </span>
+          {isCritical && (
+            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#991b1b15] text-[#991b1b] text-[8px] font-black tracking-tighter uppercase border border-[#991b1b20]">
+              CRITICAL
+            </span>
+          )}
+          <span className="text-[10px] text-slate-400">•</span>
+          <span className="text-[10px] text-slate-400 font-medium tabular-nums">
+            {formatDistanceToNow(new Date(notif.time))}
+          </span>
+          {!notif.isRead && (
+             <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cfg.accent }} />
+          )}
+        </div>
+
+        <div className="mb-1">
+          <h4 className={cn(
+            "text-sm font-black truncate tracking-tight text-slate-900 group-hover:text-black transition-colors uppercase"
+          )}>
+            {notif.title}
+          </h4>
+        </div>
+        
+        <div className="mb-2">
+          <p className="text-[11px] text-slate-700 truncate font-bold font-sans">
+            {meta.borrower_name || notif.title}
+          </p>
+          {meta.borrower_organization && (
+            <span className="text-[7px] inline-block bg-slate-100 text-slate-500 px-1 py-0.5 rounded-[2px] font-black uppercase tracking-widest leading-none border border-slate-200 mt-1">
+              {meta.borrower_organization}
+            </span>
+          )}
+        </div>
+
+        {(() => {
+          const itemName = meta.item_name || meta.search_query || (notif.title.includes(':') ? notif.title.split(':').pop()?.trim() : null);
+          const quantity = meta.quantity || (notif.message?.match(/\(Qty:\s*(\d+)\)/i)?.[1]);
+          
+          if (!itemName) return null;
+
+          return (
+            <div className="mb-2">
+              <span className="inline-flex items-center gap-1.5 text-zinc-900 font-bold bg-zinc-50 px-1.5 py-1 rounded-[4px] border border-zinc-200 uppercase text-[9px] tracking-tight shadow-sm">
+                  <span className="opacity-60 text-[8px]">ITEM:</span>
+                  {itemName}
+                  {quantity && (
+                    <span className="text-zinc-400 bg-white px-1 rounded-[2px] border border-zinc-100 font-mono italic">x{quantity}</span>
+                  )}
+              </span>
+            </div>
+          );
+        })()}
+        
+        {/* 🛡️ DESCRIPTION: Removed as redundant with Title + Item Chips */}
+
+        {meta.id && (
+          <p className="text-[8px] text-slate-300 font-mono mt-1.5 font-bold tracking-tighter uppercase">
+            TXN: #{meta.id.toString().slice(-6)}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center self-center pl-2 gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="opacity-0 group-hover:opacity-100 transition-all h-7 px-2.5 text-[9px] font-black uppercase tracking-[0.15em] border border-slate-200/80 bg-white hover:bg-slate-50"
+          style={{ color: cfg.accent }}
+        >
+          {actionLabel}
+        </Button>
+        
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(notif.id);
+            }}
+            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1 hover:bg-red-50 rounded-md active:scale-90"
+            aria-label="Delete log"
+          >
+            {React.cloneElement(Icons.trash as React.ReactElement, { size: 12, strokeWidth: 2.5 })}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }

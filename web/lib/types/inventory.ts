@@ -1,4 +1,4 @@
-export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'pending' | 'rejected' | 'cancelled' | 'mixed' | 'all' | 'staged';
+export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'pending' | 'rejected' | 'cancelled' | 'mixed' | 'all' | 'staged' | 'reserved';
 export type TransactionType = 'borrow' | 'return';
 
 export interface BorrowLog {
@@ -23,6 +23,7 @@ export interface BorrowLog {
     received_by_user_id?: string | null;
     return_condition?: string | null;
     return_notes?: string | null;
+    pickup_scheduled_at?: string | null;
     created_at: string;
 }
 
@@ -36,6 +37,7 @@ export interface BorrowSession {
     status: TransactionStatus;
     approved_by_name?: string | null;
     released_by_name?: string | null;
+    pickup_scheduled_at?: string | null;
     created_at: string;
 }
 
@@ -45,5 +47,6 @@ export interface LogStats {
     returned: number;
     overdue: number;
     pending: number;
-    cancelled: number;
+    staged: number;
+    reserved: number;
 }

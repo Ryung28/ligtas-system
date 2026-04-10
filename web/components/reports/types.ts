@@ -23,7 +23,8 @@ export interface ReportConfig {
     borrower?: string
     includeSignatures?: boolean
     includePageNumbers?: boolean
-    includeWatermark?: boolean
+    includeWatermark: boolean
+    sortOrder?: 'latest' | 'oldest'
 }
 
 export interface ReportDefinition {

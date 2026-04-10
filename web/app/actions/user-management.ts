@@ -50,7 +50,7 @@ export async function updateUserRole(
 
 
 const UuidSchema = z.string().uuid({ message: 'A valid user UUID is required.' })
-const RoleSchema = z.enum(['admin', 'editor', 'viewer'])
+const RoleSchema = z.enum(['admin', 'editor', 'viewer', 'responder'])
 const EmailSchema = z.string().email({ message: 'A valid email is required.' })
 
 // ── Return Type ───────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ const ApproveUserInputSchema = z.object({
 
 export async function approveUserAction(
     userId: string,
-    role: 'admin' | 'editor' | 'viewer' = 'viewer',
+    role: 'admin' | 'editor' | 'viewer' | 'responder' = 'responder',
 ): Promise<ActionResult> {
     const parsed = ApproveUserInputSchema.safeParse({ userId, role })
     if (!parsed.success) {

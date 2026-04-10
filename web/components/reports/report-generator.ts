@@ -7,22 +7,44 @@ export async function generateReport(
     config: ReportConfig,
     format: 'print' | 'excel'
 ) {
+    let printWindow: Window | null = null;
+    
+    // SENIOR FIX: Open window immediately if printing to bypass popup blockers
+    if (format === 'print') {
+        printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(`
+                <html>
+                    <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#64748b; background:#f8fafc;">
+                        <div style="width:32px; height:32px; border:2px solid #f1f5f9; border-top-color:#dc2626; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                        <p style="margin-top:16px; font-weight:600; font-size:12px; letter-spacing:0.05em;">GENERATING SECURE REPORT...</p>
+                        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+                    </body>
+                </html>
+            `);
+        }
+    }
+
     try {
         const data = await fetchReportData(type, config)
         
         if (format === 'print') {
-            const html = generateReportHTML(type, data, config)
-            const printWindow = window.open('', '_blank')
             if (printWindow) {
+                const html = generateReportHTML(type, data, config)
+                printWindow.document.open()
                 printWindow.document.write(html)
                 printWindow.document.close()
-                setTimeout(() => printWindow.print(), 500)
+                // Small buffer for styles/images to settle
+                setTimeout(() => {
+                    if (printWindow) printWindow.print();
+                }, 500)
             }
         } else {
             exportToExcel(type, data, config)
         }
     } catch (error) {
         console.error('Report generation failed:', error)
+        if (printWindow) printWindow.close();
         throw error
     }
 }
@@ -45,6 +67,10 @@ export async function fetchReportData(type: ReportType, config: ReportConfig) {
     if (config.status && config.status.length > 0 && type === 'logs') {
         query = query.in('status', config.status)
     }
+
+    // SENIOR FIX: Apply sorting based on primary temporal column
+    const sortColumn = type === 'logs' || type === 'borrower-activity' ? 'created_at' : 'item_name';
+    query = query.order(sortColumn, { ascending: config.sortOrder === 'oldest' });
     
     const { data, error } = await query
     if (error) throw error
@@ -365,10 +391,25 @@ function generateTableContent(type: ReportType, data: any[]): string {
             return `<table><thead><tr><th style="width: 40%;">Item Name</th><th style="width: 25%;">Category</th><th style="width: 15%; text-align: right;">Stock</th><th style="width: 20%; text-align: center;">Status</th></tr></thead><tbody>${data.map(item => `<tr><td style="font-weight: 600;">${item.item_name}</td><td>${item.category}</td><td class="number">${item.stock_available}</td><td class="center"><span class="badge" style="color: white; background: ${item.stock_available === 0 ? '#dc2626' : item.stock_available < 5 ? '#ea580c' : '#16a34a'};">${item.stock_available === 0 ? 'OUT' : item.stock_available < 5 ? 'LOW' : 'READY'}</span></td></tr>`).join('')}</tbody></table>`
         
         case 'logs':
-            return `<table><thead><tr><th style="width: 10%;">Borrow Date</th><th style="width: 12%;">Borrower</th><th style="width: 15%;">Item</th><th style="width: 5%; text-align: center;">Qty</th><th style="width: 11%;">Approved By</th><th style="width: 11%;">Handed By</th><th style="width: 10%;">Return Date</th><th style="width: 11%;">Received By</th><th style="width: 10%; text-align: center;">Status</th></tr></thead><tbody>${data.map(log => {
+            return `<table><thead><tr><th style="width: 10%;">Borrow Date</th><th style="width: 10%;">Borrower</th><th style="width: 15%;">Item</th><th style="width: 5%; text-align: center;">Qty</th><th style="width: 10%;">Authorized By</th><th style="width: 10%;">Issued By</th><th style="width: 10%;">Return Date</th><th style="width: 8%; text-align: center;">Status</th><th style="width: 22%;">Return Verification</th></tr></thead><tbody>${data.map(log => {
                 const borrowDate = new Date(log.borrow_date || log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                 const returnDate = log.actual_return_date ? new Date(log.actual_return_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
-                return `<tr><td class="date">${borrowDate}</td><td style="font-weight: 600;">${log.borrower_name || '—'}</td><td>${log.item_name || '—'}</td><td class="center">${log.quantity || 0}</td><td>${log.approved_by_name || '—'}</td><td>${log.released_by_name || '—'}</td><td class="date">${returnDate}</td><td>${log.received_by_name || '—'}</td><td class="center"><span class="badge" style="color: white; background: ${log.status === 'borrowed' ? '#ea580c' : log.status === 'returned' ? '#16a34a' : '#dc2626'};">${log.status.toUpperCase()}</span></td></tr>`
+                
+                // 🏛️ IDENTITY SEPARATION: Authorized (Who Said Yes) vs Issued (Who Handed Gear)
+                const authority = `<div style="font-weight: 600; font-size: 7.5pt;">${log.approved_by_name || '—'}</div>`
+                const releaseAgent = `<div style="font-weight: 600; font-size: 7.5pt;">${log.released_by_name || '—'}</div>`
+                
+                // 🛡️ EXCEPTION-ONLY AUDIT: Hide [GOOD] to reduce signal noise
+                const isException = log.return_condition && log.return_condition.toLowerCase() !== 'good'
+                const conditionBadge = isException ? `<span style="font-size: 7.5pt; font-weight: 900; color: ${log.return_condition === 'damaged' ? '#dc2626' : '#ea580c'}; text-transform: uppercase;">[${log.return_condition}]</span>` : ''
+                const receiverName = log.received_by_name ? `<span style="font-size: 7.5pt; font-weight: 700; color: #0f172a; margin-left: 4px;">(${log.received_by_name})</span>` : ''
+                const noteContent = log.return_notes ? `<div style="font-size: 7.5pt; color: #64748b; margin-top: 2px; font-style: italic; line-height: 1.1;">"${log.return_notes}"</div>` : ''
+                
+                const auditTrail = log.status === 'returned' 
+                    ? `<div>${conditionBadge}${receiverName}</div>${noteContent}` 
+                    : '<span style="color:#cbd5e1; font-size:7pt;">AWAITS RETURN</span>'
+
+                return `<tr><td class="date">${borrowDate}</td><td style="font-weight: 600;">${log.borrower_name || '—'}</td><td>${log.item_name || '—'}</td><td class="center">${log.quantity || 0}</td><td>${authority}</td><td>${releaseAgent}</td><td class="date">${returnDate}</td><td class="center"><span class="badge" style="color: white; background: ${log.status === 'borrowed' ? '#ea580c' : log.status === 'returned' ? '#16a34a' : '#dc2626'};">${log.status.toUpperCase()}</span></td><td>${auditTrail}</td></tr>`
             }).join('')}</tbody></table>`
         
         case 'low-stock':
@@ -486,10 +527,10 @@ function prepareExcelData(type: ReportType, data: any[]): { headers: string[], r
             { key: 'item_name', label: 'Item' },
             { key: 'quantity', label: 'Qty' },
             { key: 'approved_by_name', label: 'Approved By' },
-            { key: 'released_by_name', label: 'Handed By' },
             { key: 'actual_return_date', label: 'Return Date/Time' },
-            { key: 'received_by_name', label: 'Received By' },
-            { key: 'status', label: 'Status' }
+            { key: 'status', label: 'Status' },
+            { key: 'return_condition', label: 'Return Condition' },
+            { key: 'return_notes', label: 'Return Notes' }
         ],
         'low-stock': [
             { key: 'item_name', label: 'Item Name' },
@@ -517,8 +558,9 @@ function prepareExcelData(type: ReportType, data: any[]): { headers: string[], r
             { key: 'item_name', label: 'Equipment' },
             { key: 'quantity', label: 'Qty' },
             { key: 'status', label: 'Action' },
-            { key: 'return_condition', label: 'Condition' }
-        ]
+            { key: 'return_condition', label: 'Return Condition' },
+            { key: 'return_notes', label: 'Return Notes' }
+        ],
     }
     
     const columns = columnMaps[type] || []
