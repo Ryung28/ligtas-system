@@ -8,8 +8,8 @@ export async function GET(request: Request) {
     const next = searchParams.get('next') ?? '/dashboard'
 
     if (code) {
-        // Next.js 14.1.0: cookies() is synchronous
-        const cookieStore = cookies()
+        // Next.js 15+: cookies() is an asynchronous Promise
+        const cookieStore = await cookies()
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

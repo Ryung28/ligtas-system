@@ -112,7 +112,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 border border-slate-200/50 shadow-sm"
           style={{ background: cfg.bg, color: cfg.accent }}
         >
-          {React.cloneElement(cfg.icon as React.ReactElement, { size: 16, strokeWidth: 2 })}
+          {React.cloneElement(cfg.icon as React.ReactElement<{ size: number; strokeWidth: number }>, { size: 16, strokeWidth: 2 })}
         </div>
       </div>
 
@@ -201,7 +201,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
             className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1 hover:bg-red-50 rounded-md active:scale-90"
             aria-label="Delete log"
           >
-            {React.cloneElement(Icons.trash as React.ReactElement, { size: 12, strokeWidth: 2.5 })}
+            {React.cloneElement(Icons.trash as React.ReactElement<{ size: number; strokeWidth: number }>, { size: 12, strokeWidth: 2.5 })}
           </button>
         )}
       </div>

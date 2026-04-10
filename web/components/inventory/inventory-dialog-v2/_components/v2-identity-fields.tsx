@@ -1,5 +1,6 @@
 "use client"
 
+import Image from 'next/image'
 import { Package, Grid, Camera, X, List, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,8 +22,13 @@ export function V2IdentityFields({
                 <div className="relative group h-28 w-28 shrink-0 border-2 border-dashed border-slate-200 rounded-3xl flex items-center justify-center overflow-hidden bg-slate-50">
                     {previewUrl ? (
                         <>
-                            <img src={previewUrl} className="h-full w-full object-cover" alt="Asset" />
-                            <Button size="icon" variant="destructive" onClick={onRemoveImage} className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Image 
+                                src={previewUrl} 
+                                fill
+                                className="object-cover" 
+                                alt="Asset Preview" 
+                            />
+                            <Button size="icon" variant="destructive" onClick={onRemoveImage} className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                 <X className="h-3 w-3" />
                             </Button>
                         </>

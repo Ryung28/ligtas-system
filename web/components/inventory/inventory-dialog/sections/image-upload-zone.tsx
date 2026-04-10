@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 interface ImageUploadZoneProps {
     previewUrl: string | null
     isUploading: boolean
-    fileInputRef: React.RefObject<HTMLInputElement>
+    fileInputRef: React.RefObject<HTMLInputElement | null>
     onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void
     onRemoveImage: () => void
 }

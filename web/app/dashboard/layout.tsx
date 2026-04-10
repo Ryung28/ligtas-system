@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
-import { getCurrentUserServer } from '@/lib/auth-server'
+import { getCachedUser } from '@/lib/auth-server'
 import { PresenceHeartbeat } from '@/components/chat/presence-heartbeat'
 import { ChatNotificationListener } from '@/components/chat/chat-notification-listener'
 import { CacheWarmer } from '@/components/layout/cache-warmer'
@@ -11,14 +11,17 @@ interface DashboardLayoutProps {
     children: ReactNode
 }
 
-
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-    const user = await getCurrentUserServer()
+    // 🛡️ Identity Singleton Handshake (Memoized across the whole request)
+    const user = await getCachedUser()
 
-    // ── Senior Dev Security Guard: Web Access is restricted to Staff (Admin/Editor) only ──
-    if (!user || user.status !== 'active' || (user.role !== 'admin' && user.role !== 'editor')) {
-        console.log(`[Security] Unauthorized web access attempt by ${user?.email || 'Unknown'}. Role: ${user?.role || 'None'}`)
-        redirect('/login?error=UNAUTHORIZED: Your account does not have staff permissions to access the web portal. Please use the mobile app or contact an admin if you were recently invited.')
+    // ── Senior Arch Security Guard: Staff Only Access ──
+    const isStaff = user && (user.role === 'admin' || user.role === 'editor')
+    const isActive = user?.status === 'active'
+
+    if (!user || !isActive || !isStaff) {
+        console.warn(`[Security] Denied access to ${user?.email || 'Guest'}. Status: ${user?.status}. Role: ${user?.role}`)
+        redirect('/login?error=UNAUTHORIZED: Staff access required.')
     }
 
     return (

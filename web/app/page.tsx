@@ -1,28 +1,16 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { getCachedUser } from '@/lib/auth-server'
 
+/**
+ * 🛰️ Root Traffic Controller
+ * 🛡️ SUPER SENIOR PROTOCOL: Redundancy removal.
+ * The primary routing happens in middleware.ts. This page serves
+ * as a secondary safety boundary using the Cached Identity handshake.
+ */
 export default async function RootPage() {
-    const cookieStore = await cookies()
+    const user = await getCachedUser()
 
-    // Create Supabase client to check session server-side
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value
-                },
-            },
-        }
-    )
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    // Senior Dev Logic: The root path (/) is no longer a landing page.
-    // It's a traffic controller.
-    if (session) {
+    if (user) {
         redirect('/dashboard/inventory')
     } else {
         redirect('/login')
