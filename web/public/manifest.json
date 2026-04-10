@@ -1,20 +1,29 @@
 {
-  "name": "LIGTAS CDRRMO Mobile",
+  "name": "LIGTAS Tactical Command",
   "short_name": "LIGTAS",
-  "description": "City Disaster Risk Reduction & Management Office Inventory System",
-  "start_url": "/dashboard",
+  "description": "Unified Logistics & Disaster Response Information System",
+  "start_url": "/m",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "background_color": "#0f172a",
+  "theme_color": "#b91c1c",
   "orientation": "portrait",
   "icons": [
     {
       "src": "/oro-cervo.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/oro-cervo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["productivity", "business"],
+  "categories": ["government", "productivity", "business"],
+  "dir": "ltr",
+  "lang": "en-US",
+  "prefer_related_applications": false,
   "screenshots": []
 }

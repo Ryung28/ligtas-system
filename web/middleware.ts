@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isMobileDevice } from '@/lib/device-detection'
 
 /**
  * 🛰️ High-Speed Auth Guard Middleware
@@ -8,6 +9,8 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
+    const userAgent = request.headers.get('user-agent') || ''
+    const isMobile = isMobileDevice(userAgent)
 
     // ── 1. Fast Asset Pass ──
     // The matcher handles most, but we double-check common static patterns
@@ -43,19 +46,17 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    // ── 2. Session Integrity Check ──
-    // Note: getSession() is purely cookie-based, getUser() hits Supabase.
-    // For middleware, getSession() is the "Speed" choice.
     const { data: { session } } = await supabase.auth.getSession()
 
     const isDashboardPath = pathname.startsWith('/dashboard')
+    const isMobilePath = pathname.startsWith('/m')
     const isLoginPage = pathname === '/login'
     const isRoot = pathname === '/'
 
     // ── 3. High-Efficiency Traffic Control ──
     
     // Auth Guard: Kicking non-users to Login
-    if (isDashboardPath && !session) {
+    if ((isDashboardPath || isMobilePath) && !session) {
         const redirectUrl = new URL('/login', request.url)
         return NextResponse.redirect(redirectUrl)
     }
@@ -65,11 +66,24 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Authenticated root: Send to inventory
-    if ((isRoot || isLoginPage) && session) {
-        // Only redirect if there's no auth error in params
-        if (!request.nextUrl.searchParams.get('error')) {
+    // Authenticated: Device-Based Segment Pivot
+    if (session) {
+        // Desktop user trying to access mobile routes
+        if (!isMobile && isMobilePath) {
             return NextResponse.redirect(new URL('/dashboard/inventory', request.url))
+        }
+
+        // Mobile user trying to access desktop routes
+        if (isMobile && isDashboardPath) {
+            return NextResponse.redirect(new URL('/m', request.url))
+        }
+
+        // Root/Login redirection
+        if (isRoot || isLoginPage) {
+            if (!request.nextUrl.searchParams.get('error')) {
+                const target = isMobile ? '/m' : '/dashboard/inventory'
+                return NextResponse.redirect(new URL(target, request.url))
+            }
         }
     }
 

@@ -35,6 +35,8 @@ export async function approveRequest(logId: number, approvedBy: string, isInstan
 
         revalidatePath('/dashboard/logs')
         revalidatePath('/dashboard')
+        revalidatePath('/m')
+        revalidatePath('/m/logs')
         return { 
             success: true, 
             message: isInstant 
@@ -64,6 +66,8 @@ export async function completeHandoff(logId: number, handedBy: string) {
 
         revalidatePath('/dashboard/logs')
         revalidatePath('/dashboard')
+        revalidatePath('/m')
+        revalidatePath('/m/logs')
         return { success: true, message: 'Handoff complete. Item is now in active service.' }
     } catch (error: any) {
         console.error('Handoff error:', error)
@@ -110,6 +114,8 @@ export async function rejectRequest(logId: number) {
 
         revalidatePath('/dashboard/logs')
         revalidatePath('/dashboard')
+        revalidatePath('/m')
+        revalidatePath('/m/logs')
         return { success: true, message: 'Request rejected and stock restored' }
     } catch (error: any) {
         console.error('Reject error:', error)

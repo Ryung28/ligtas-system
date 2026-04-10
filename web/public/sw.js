@@ -1,15 +1,19 @@
 // LIGTAS PWA Service Worker
 // Basic caching strategy for offline support
 
-const CACHE_NAME = 'ligtas-pwa-v1';
+const CACHE_NAME = 'ligtas-tactical-v2';
 const OFFLINE_URL = '/offline';
 
-// Assets to cache on install
+// Assets to cache on install - Strategic Pre-loading
 const PRECACHE_ASSETS = [
   '/',
   '/m',
+  '/m/inventory',
+  '/m/approvals',
+  '/m/logs',
   '/offline',
-  '/oro-cervo.png'
+  '/oro-cervo.png',
+  '/favicon.ico'
 ];
 
 // Install event - cache essential assets
@@ -40,38 +44,61 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - network first, fallback to cache
+// Fetch event - Optimized Strategy: Cache-First for UI, Network-First for Data
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
-
-  // Skip chrome extensions and non-http(s) requests
   if (!event.request.url.startsWith('http')) return;
 
+  const url = new URL(event.request.url);
+
+  // 🏛️ STRATEGY 1: Static Assets & JS Chunks - CACHE FIRST
+  if (url.pathname.startsWith('/_next/static/') || 
+      url.pathname.startsWith('/icons/') ||
+      url.pathname.endsWith('.png') ||
+      url.pathname.endsWith('.webp')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then((response) => {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // 🏛️ STRATEGY 2: Navigation & Routes - STALE-WHILE-REVALIDATE
+  // This makes "/m/inventory" load instantly from cache while updating in background
+  if (event.request.mode === 'navigate' || url.pathname.startsWith('/m')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return networkResponse;
+        });
+        return cachedResponse || fetchPromise;
+      }).catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
+
+  // 🏛️ STRATEGY 3: General Requests - NETWORK FIRST
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response before caching
         const responseToCache = response.clone();
-        
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
         });
-
         return response;
       })
-      .catch(() => {
-        // Network failed, try cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-
-          // If no cache, return offline page for navigation requests
-          if (event.request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-          }
-        });
-      })
+      .catch(() => caches.match(event.request))
   );
 });
