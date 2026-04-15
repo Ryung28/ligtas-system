@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/design_system/app_theme.dart';
 
 class ProfileActionTile extends StatelessWidget {
@@ -26,27 +27,28 @@ class ProfileActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).extension<LigtasColors>()!;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        splashColor: (iconColor ?? AppTheme.primaryBlue).withValues(alpha: 0.1),
-        highlightColor: (iconColor ?? AppTheme.primaryBlue).withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        splashColor: (iconColor ?? sentinel.navy).withOpacity(0.05),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (iconColor ?? AppTheme.primaryBlue).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: (iconColor ?? sentinel.navy).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
-                  color: iconColor ?? AppTheme.primaryBlue,
-                  size: 22,
+                  color: iconColor ?? sentinel.navy,
+                  size: 20,
                 ),
               ),
               const SizedBox(width: 16),
@@ -56,21 +58,22 @@ class ProfileActionTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: textColor ?? const Color(0xFF0F172A),
-                        letterSpacing: -0.2,
+                      style: GoogleFonts.lexend(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textColor ?? sentinel.navy,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: sentinel.navy.withOpacity(0.4),
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],
@@ -80,10 +83,10 @@ class ProfileActionTile extends StatelessWidget {
               if (trailing != null)
                 trailing!
               else if (showChevron)
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
-                  color: Color(0xFF94A3B8),
-                  size: 22,
+                  color: sentinel.navy.withOpacity(0.2),
+                  size: 20,
                 ),
             ],
           ),
@@ -111,39 +114,41 @@ class ProfileSwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).extension<LigtasColors>()!;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), // Adjusted padding
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (iconColor ?? AppTheme.primaryBlue).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              color: (iconColor ?? sentinel.navy).withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: iconColor ?? AppTheme.primaryBlue,
-              size: 22,
+              color: iconColor ?? sentinel.navy,
+              size: 20,
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
-                letterSpacing: -0.2,
+              style: GoogleFonts.lexend(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: sentinel.navy,
+                letterSpacing: 0.2,
               ),
             ),
           ),
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: AppTheme.primaryBlue,
-            activeTrackColor: AppTheme.primaryBlue.withValues(alpha: 0.2),
+            activeColor: sentinel.navy,
+            activeTrackColor: sentinel.navy.withOpacity(0.1),
           ),
         ],
       ),
@@ -158,14 +163,16 @@ class ProfileSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).extension<LigtasColors>()!;
+
     return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 12, top: 24),
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 24),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          color: Color(0xFF64748B),
+        style: GoogleFonts.lexend(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: sentinel.navy.withOpacity(0.3),
           letterSpacing: 1.2,
         ),
       ),
@@ -185,25 +192,21 @@ class ProfileSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).extension<LigtasColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ProfileSectionHeader(title: title),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.45), // Lighter translucency
-            borderRadius: BorderRadius.circular(24),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: sentinel.tactile.card,
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.4),
-              width: 1.2,
+              color: sentinel.navy.withOpacity(0.05),
+              width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: Column(
             children: [
@@ -213,9 +216,9 @@ class ProfileSection extends StatelessWidget {
                   Divider(
                     height: 1,
                     thickness: 1,
-                    color: Colors.black.withValues(alpha: 0.05),
-                    indent: 68,
-                    endIndent: 20,
+                    color: sentinel.navy.withOpacity(0.03),
+                    indent: 52,
+                    endIndent: 16,
                   ),
               ],
             ],
@@ -225,4 +228,6 @@ class ProfileSection extends StatelessWidget {
     );
   }
 }
+
+
 

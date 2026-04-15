@@ -27,9 +27,21 @@ class LoanModel with _$LoanModel {
     @JsonKey(name: 'return_notes') String? returnNotes,
     @JsonKey(name: 'borrowed_by') required String borrowedBy,
     @JsonKey(name: 'returned_by') String? returnedBy,
+    
+    // Audit & Accountability fields (Checklist 2.0)
+    @JsonKey(name: 'approved_by') String? approvedBy,
+    @JsonKey(name: 'approved_at') DateTime? approvedAt,
+    @JsonKey(name: 'handed_by') String? handedBy,
+    @JsonKey(name: 'handed_at') DateTime? handedAt,
+    @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+    @JsonKey(name: 'received_by_name') String? receivedByName,
+    @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
+    @JsonKey(name: 'return_condition') String? returnCondition,
+    
     @Default(0) int daysOverdue,
     @Default(0) int daysBorrowed,
     @Default(false) bool isPendingSync,
+    String? imageUrl,
   }) = _LoanModel;
 
   factory LoanModel.fromJson(Map<String, dynamic> json) => _$LoanModelFromJson(json);
@@ -61,9 +73,21 @@ class LoanCollection {
   String? returnNotes;
   late String borrowedBy;
   String? returnedBy;
+  
+  // Audit & Accountability fields (Checklist 2.0)
+  String? approvedBy;
+  DateTime? approvedAt;
+  String? handedBy;
+  DateTime? handedAt;
+  DateTime? pickupScheduledAt;
+  String? receivedByName;
+  String? receivedByUserId;
+  String? returnCondition;
+  
   late int daysOverdue;
   late int daysBorrowed;
   late bool isPendingSync;
+  String? imageUrl;
 
   static LoanCollection fromModel(LoanModel model) {
     return LoanCollection()
@@ -84,9 +108,18 @@ class LoanCollection {
       ..returnNotes = model.returnNotes
       ..borrowedBy = model.borrowedBy
       ..returnedBy = model.returnedBy
+      ..approvedBy = model.approvedBy
+      ..approvedAt = model.approvedAt
+      ..handedBy = model.handedBy
+      ..handedAt = model.handedAt
+      ..pickupScheduledAt = model.pickupScheduledAt
+      ..receivedByName = model.receivedByName
+      ..receivedByUserId = model.receivedByUserId
+      ..returnCondition = model.returnCondition
       ..daysOverdue = model.daysOverdue
       ..daysBorrowed = model.daysBorrowed
-      ..isPendingSync = model.isPendingSync;
+      ..isPendingSync = model.isPendingSync
+      ..imageUrl = model.imageUrl;
   }
 
   LoanModel toModel() {
@@ -108,9 +141,18 @@ class LoanCollection {
       returnNotes: returnNotes,
       borrowedBy: borrowedBy,
       returnedBy: returnedBy,
+      approvedBy: approvedBy,
+      approvedAt: approvedAt,
+      handedBy: handedBy,
+      handedAt: handedAt,
+      pickupScheduledAt: pickupScheduledAt,
+      receivedByName: receivedByName,
+      receivedByUserId: receivedByUserId,
+      returnCondition: returnCondition,
       daysOverdue: daysOverdue,
       daysBorrowed: daysBorrowed,
       isPendingSync: isPendingSync,
+      imageUrl: imageUrl,
     );
   }
 }

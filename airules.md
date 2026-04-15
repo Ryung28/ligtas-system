@@ -1,33 +1,116 @@
-# 🏗️ LIGTAS MASTER ARCHITECT PROTOCOL (V3.0)
+# LIGTAS ENTERPRISE AI CODE GENERATION PROTOCOL — V5.0
 
-## I. CORE PHILOSOPHY (NON-NEGOTIABLE)
-1. **Role:** You are a Senior Full-Stack Architect prioritizing stable, readable, and simple code. 
-2. **KISS & YAGNI:** Keep It Simple, Stupid. You Aren't Gonna Need It. Do not over-engineer. Do not create complex abstractions, generic classes, or multi-layered interfaces unless explicitly requested. Prefer native SDK features over third-party packages.
-3. **Talk Less, Code More:** Skip the pleasantries. Provide brief, bulleted context, then output the code. 
-4. **Anti-Hallucination:** If a file path, dependency, or variable is unknown, STOP and ask the user to provide it or use your tools to read the workspace. NEVER guess.
+> **For:** LIGTAS / MarineGuard — Disaster Management & Equipment Tracking
+> **Stack:** Flutter (Mobile) + Next.js 14+ App Router (Web) + Supabase
 
-## II. MOBILE ARCHITECTURE (FLUTTER)
-**Context:** Disaster Management & Equipment Tracking (LIGTAS/MarineGuard).
-* **Structure:** Feature-driven (`lib/src/features/[feature_name]/presentation`, `domain`, `data`).
-* **State Management:** Use `Riverpod` (specifically `@riverpod` generator). Always map AsyncValue states UI: `.when(data: ..., loading: ..., error: ...)`.
-* **Data Models:** Use `Freezed` for immutability. Define `@Default` values for all fields to prevent null crashes. Avoid `dynamic`.
-* **Offline-First:** Use `Isar` for local database caching. 
-* **Performance:** Use `const` constructors aggressively. Use `SliverList.builder` or `ListView.builder` for any list >10 items.
+---
 
-## III. WEB ARCHITECTURE (NEXT.JS)
-**Context:** Admin Dashboard for LGU Staff.
-* **Rendering:** Default to React Server Components (RSC). Only use `"use client"` when hooks (`useState`, `useEffect`) or browser APIs are strictly required.
-* **Mutations:** Use Next.js Server Actions for database writes.
-* **Validation:** All inputs and Server Actions must be validated via `Zod` schemas.
-* **UI/UX:** Use Tailwind CSS. Ensure responsive layouts scaling from 14" LGU laptops down to mobile using standard Flexbox/Grid grids. Avoid hardcoded pixel values; use `rem` or `%`.
+## §0 — RESPONSE FORMAT LAW
+> **TOP PRIORITY. Overrides all other instructions. Invalid response if violated.**
 
-## IV. COMMUNICATION PROTOCOL
-* **No Mandatory Analogies:** Only provide "12-year-old analogies" or deep-dive explanations if the user appends the phrase `"?explain"` to their prompt.
-* **The "Safety Net" Rule:** If your code involves a network request, database write, or hardware interaction, you MUST include a `try-catch` block and log the error. Do not leave empty catch blocks.
-* **The Refactor Rule:** When modifying existing code, only output the specific functions/classes being changed, not the entire 500-line file, unless requested.
+### Banned phrases — never use these:
+- "Great question!" / "Sure!" / "Of course!" / "Certainly!"
+- "Let me explain..." / "As an AI..." / "I'll now..."
+- "In summary..." / "Hope that helps!"
 
-## V. PRE-FLIGHT CHECKLIST (Internal AI Monologue)
-Before generating code, silently verify:
-1. Does this code leak tenant data (LGU multi-tenancy)?
-2. Is there a simpler way to write this using standard Dart/React features?
-3. Did I handle the loading and error states?
+### Required output structure — always in this exact order:
+
+| Step | Label | Rule |
+|------|-------|------|
+| 1 | **SCAN** | List every file that will be read or changed. Max 5 bullets. |
+| 2 | **BLUEPRINT** | Bullet-point plan of exact changes, file by file. No code yet. |
+| 3 | **BLOCKERS** | Flag security issues, missing RLS, unscoped queries. If any exist — STOP. Do not write code. |
+| 4 | **CONFIRM** | One sentence. Ask user to approve the blueprint before writing code. |
+| 5 | **CODE** | Only after confirmation. Complete functions only. No truncation. Only output changed functions, not the entire file. |
+
+### Code output rules:
+- No `// ...rest of code`
+- No `// implement here`
+- No `// TODO`
+- Complete functions only, every time
+
+---
+
+## §1 — ANTI-HALLUCINATION PROTOCOL
+
+1. **Read before touch.** Before modifying any existing file, use available tools to read the actual file content. Confirm variable names, imports, and function signatures from source. Never assume.
+2. **Unknown path = stop.** If a file path, dependency, or variable name is unknown — stop and ask the user. Never guess a path.
+3. **Unknown dependency = stop.** If a package version or API method is uncertain — state it explicitly. Do not fabricate method signatures.
+4. **Imports must be verified.** Every import in generated code must come from a confirmed, existing package in the project. No invented imports.
+
+---
+
+## §2 — SAFETY NET RULE
+
+1. Every network request, DB write, and hardware interaction **must** have a `try-catch` block.
+2. Empty catch blocks are **forbidden**. Log the error. Return a typed failure state.
+3. Server Actions must return:
+   ```ts
+   { success: boolean, message: string, errors?: any }
+   ```
+4. Flutter async functions must handle all three states — every time:
+   ```dart
+   .when(data: ..., loading: ..., error: ...)
+   ```
+
+---
+
+## §3 — SECURITY & MULTI-TENANCY
+> **BLOCKER: Missing RLS on any Supabase query = refuse to write the query until the policy is confirmed.**
+
+1. Every Supabase query must be scoped to the authenticated user. No unscoped `.select()` calls.
+2. LGU tenant isolation is mandatory. Cross-tenant data leaks are a critical vulnerability — flag immediately.
+3. All Server Action inputs must be validated via a `Zod` schema before any DB operation.
+4. Never expose raw Supabase errors to the client. Sanitize error messages before returning.
+
+---
+
+## §4 — FLUTTER ARCHITECTURE
+
+1. **Structure:** Feature-first directory layout:
+   ```
+   lib/src/features/[feature_name]/
+   ├── presentation/
+   ├── domain/
+   └── data/
+   ```
+2. **State:** `@riverpod` generator only. Every provider must handle `.when(data, loading, error)` in the UI.
+3. **Models:** `Freezed` with `@Default` on all fields. `dynamic` is strictly forbidden.
+4. **Offline:** `Isar` for local cache. `SyncRepository` for background sync.
+5. **Performance:** `const` constructors everywhere possible. `SliverList.builder` for all lists with more than 10 items.
+
+---
+
+## §5 — NEXT.JS ARCHITECTURE (App Router 14+)
+
+1. **Rendering:** Default to React Server Components. `"use client"` only on leaf components requiring hooks or browser APIs.
+2. **Mutations:** Server Actions exclusively. Must return typed `{ success, message, errors? }`.
+3. **Validation:** Every Server Action validates with a `Zod` schema before touching the DB.
+4. **State:** URL state (`searchParams`) first. Zustand only for global client state.
+5. **Styling:** Tailwind only. No hardcoded `px` values. Use `rem` or `%`. Responsive from 14" laptop down to mobile.
+
+---
+
+## §6 — LANGUAGE & OUTPUT STANDARDS
+
+1. Plain English with correct technical terms. Short sentences. Max 2 sentences per explanation point.
+2. No analogies or metaphors unless user appends `?explain` to the prompt.
+3. No truncation. No `// ...rest of code`. No `// implement here`. Complete functions only.
+4. When modifying existing code — output only the changed functions, not the entire file.
+5. **Zero sycophancy.** If a proposed design is insecure, over-engineered, or wrong — say so bluntly before writing anything.
+6. If a simpler native solution exists for a complex abstraction request — reject the complex version and provide the simple one.
+
+---
+
+## Quick Reference — Blocker Checklist
+
+Before writing any code, verify:
+
+- [ ] File read and confirmed before modifying?
+- [ ] RLS policy confirmed for every Supabase query?
+- [ ] Every query scoped to authenticated user?
+- [ ] `try-catch` on every network/DB/hardware call?
+- [ ] Zod schema on every Server Action input?
+- [ ] No `dynamic` types in Flutter models?
+- [ ] All three Riverpod states handled in UI?
+- [ ] Blueprint confirmed by user before code output?

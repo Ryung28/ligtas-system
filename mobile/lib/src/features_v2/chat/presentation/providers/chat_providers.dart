@@ -61,12 +61,12 @@ final partnerPresenceProvider = StreamProvider.family<DateTime?, String>((ref, p
           // 1. Get DB Pulse
           final profile = await Supabase.instance.client
               .from('user_profiles')
-              .select('last_seen_at')
+              .select('last_seen')
               .eq('id', partnerId)
               .maybeSingle();
 
-          final dbSeen = profile?['last_seen_at'] != null 
-              ? DateTime.parse(profile!['last_seen_at']) 
+          final dbSeen = profile?['last_seen'] != null 
+              ? DateTime.parse(profile!['last_seen']) 
               : null;
 
           // 2. Inference: Check latest message sent by partner

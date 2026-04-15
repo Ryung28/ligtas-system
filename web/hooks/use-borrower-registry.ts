@@ -26,7 +26,7 @@ const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-async function fetchBorrowerData(key: string) {
+export async function fetchBorrowerData(key: string) {
     const [, search, page, limit] = key.split('|')
     const p = parseInt(page)
     const l = parseInt(limit)
@@ -49,7 +49,7 @@ async function fetchBorrowerData(key: string) {
     return { data: data as BorrowerStats[], count: count || 0 }
 }
 
-async function fetchGlobalStats() {
+export async function fetchGlobalStats() {
     const { data, error } = await supabase
         .from('borrower_stats')
         .select('*')

@@ -4,6 +4,7 @@ import React, { useMemo } from 'react'
 import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { useInventory } from '@/hooks/use-inventory'
+import { getInventoryImageUrl } from '@/lib/supabase'
 import { MobileHeader } from '@/components/mobile/mobile-header'
 import { 
     Package, 
@@ -35,6 +36,9 @@ export default function MobileItemDetailsPage() {
     const item = useMemo(() => {
         return inventory.find(i => String(i.id) === String(id))
     }, [inventory, id])
+
+    // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
+    const imageUrl = item?.image_url ? getInventoryImageUrl(item.image_url) : null;
 
     if (isLoading) {
         return (
@@ -98,9 +102,9 @@ export default function MobileItemDetailsPage() {
             <MobileHeader title="Asset Intel" />
             {/* 1. Hero Aspect (Image & Key Stats) */}
             <div className="relative h-64 bg-gray-900 rounded-3xl overflow-hidden shadow-xl mt-2">
-                {item.image_url ? (
+                {imageUrl ? (
                     <Image 
-                        src={item.image_url} 
+                        src={imageUrl} 
                         alt={item.item_name} 
                         fill
                         className="object-cover opacity-90"
@@ -160,14 +164,14 @@ export default function MobileItemDetailsPage() {
                             <MapPin className="w-3 h-3" />
                             Storage Area
                         </div>
-                        <p className="text-sm font-bold text-gray-900">{item.storage_area || 'Central Depot'}</p>
+                        <p className="text-sm font-bold text-gray-900">{item.storage_location || 'Central Depot'}</p>
                     </div>
                     <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                             <Layers className="w-3 h-3" />
                             Storage Bin
                         </div>
-                        <p className="text-sm font-bold text-gray-900">{item.storage_bin || 'Unassigned'}</p>
+                        <p className="text-sm font-bold text-gray-900">{(item as any).storage_bin || 'Unassigned'}</p>
                     </div>
                 </div>
 

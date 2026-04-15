@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, RefreshCw } from 'lucide-react'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useRealtimeAudio } from '@/hooks/use-realtime-audio'
@@ -100,6 +100,10 @@ export function NotificationBellV2() {
         hideClose 
         className="w-full sm:max-w-[440px] p-0 flex flex-col overflow-hidden border-none shadow-none bg-transparent font-dm-sans"
       >
+        <SheetTitle className="sr-only">Notifications</SheetTitle>
+        <SheetDescription className="sr-only">
+          View and manage your recent activity, alerts, and logistical notifications.
+        </SheetDescription>
         <motion.div
           initial={{ opacity: 0, x: 20 }} 
           animate={{ opacity: 1, x: 0 }}

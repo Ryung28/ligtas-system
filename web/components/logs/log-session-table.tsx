@@ -13,14 +13,31 @@ import {
     ChevronRight,
     CheckCircle2,
     XCircle,
-    Loader2
+    Loader2,
+    RotateCcw,
+    Phone,
+    Building,
+    MessageSquare,
+    Maximize2,
+    ShieldCheck,
+    Clock,
+    Calendar
 } from 'lucide-react'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import { getInventoryImageUrl } from '@/lib/supabase'
 import { BorrowLog, BorrowSession, TransactionStatus } from '@/lib/types/inventory'
 import { InitialsAvatar } from './log-avatar'
-import { ReturnDialog } from '@/components/transactions/return-dialog'
+import { ReturnCommandSheet } from '@/src/features/transactions/v2/return-command-sheet'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { bulkReturnItems } from '@/src/features/transactions'
+import { bulkReturnItems, revertReturnItem, releaseReservedItem } from '@/src/features/transactions'
+import { 
+    Dialog as ShadinDialog, 
+    DialogContent as ShadinDialogContent, 
+    DialogHeader as ShadinDialogHeader, 
+    DialogTitle as ShadinDialogTitle 
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 
 interface LogSessionTableProps {
@@ -52,6 +69,7 @@ export function LogSessionTable({
 }: LogSessionTableProps) {
     const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set())
     const [isPending, startTransition] = useTransition()
+    const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
 
     // --- Selection Logic ---
     const allReturnableIds = sessions.flatMap(s => 
@@ -105,52 +123,25 @@ export function LogSessionTable({
         })
     }
     // UI Helpers copied from original implementation for consistency
+    // UI Helpers
     const getStatusBadge = (status: string) => {
-        const baseClass = "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-zinc-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] whitespace-nowrap";
+        const baseClass = "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-zinc-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)]";
         
         switch (status) {
             case 'borrowed':
-                return (
-                    <span className={baseClass}>
-                        <span className="text-blue-600">Borrowed</span>
-                    </span>
-                )
+                return <span className={baseClass}><span className="text-blue-600">Borrowed</span></span>
             case 'returned':
-                return (
-                    <span className={baseClass}>
-                        <span className="text-emerald-600">Returned</span>
-                    </span>
-                )
+                return <span className={baseClass}><span className="text-emerald-600">Returned</span></span>
             case 'overdue':
-                return (
-                    <span className={`${baseClass} border-rose-100`}>
-                        <span className="text-rose-600">Overdue</span>
-                    </span>
-                )
-            case 'pending':
-                return (
-                    <span className={baseClass}>
-                        <span className="text-amber-600">Review Pending</span>
-                    </span>
-                )
+                return <span className={`${baseClass} border-rose-100 bg-rose-50/30 font-black text-rose-600`}>Overdue</span>
             case 'staged':
-                return (
-                    <span className={`${baseClass} border-amber-200 bg-amber-50`}>
-                        <span className="text-amber-700">Ready for Pickup</span>
-                    </span>
-                )
+                return <span className={`${baseClass} border-amber-200 bg-amber-50 text-amber-700`}>Staged</span>
             case 'reserved':
-                return (
-                    <span className={`${baseClass} border-indigo-200 bg-indigo-50`}>
-                        <span className="text-indigo-700">Reserved</span>
-                    </span>
-                )
+                return <span className={`${baseClass} border-indigo-200 bg-indigo-50 text-indigo-700`}>Reserved</span>
+            case 'pending':
+                return <span className={baseClass}><span className="text-amber-600">Pending</span></span>
             default:
-                return (
-                    <span className={baseClass}>
-                        <span className="text-zinc-600">{status}</span>
-                    </span>
-                )
+                return <span className={baseClass}><span className="text-zinc-600">{status}</span></span>
         }
     }
 
@@ -253,6 +244,7 @@ export function LogSessionTable({
                                         session={session}
                                         isExpanded={expandedSessions.has(session.key)}
                                         onToggleExpand={() => toggleSessionExpansion(session.key)}
+                                        onImageClick={(url, name) => setExpandedImage({ url, name })}
                                         formatDate={formatDate}
                                         getUrgencyColor={getUrgencyColor}
                                         getStatusBadge={getStatusBadge}
@@ -262,6 +254,8 @@ export function LogSessionTable({
                                         toggleLogId={toggleLogId}
                                         isAllSelected={isAllSelected}
                                         isSomeSelected={isSomeSelected}
+                                        isPending={isPending}
+                                        startTransition={startTransition}
                                     />
                                 ))
                             )}
@@ -342,6 +336,27 @@ export function LogSessionTable({
                     </div>
                 </div>
             )}
+            {/* ── Image Preview Dialog ── */}
+            <ShadinDialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
+                <ShadinDialogContent className="max-w-3xl border-none bg-black/95 p-0 overflow-hidden rounded-2xl shadow-2xl [&>button]:text-white [&>button]:opacity-100">
+                    <ShadinDialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
+                        <ShadinDialogTitle className="text-white text-[10px] font-black uppercase tracking-widest bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                            {expandedImage?.name}
+                        </ShadinDialogTitle>
+                    </ShadinDialogHeader>
+                    <div className="relative w-full aspect-square md:aspect-video flex items-center justify-center p-8">
+                        {expandedImage && (
+                            <Image
+                                src={expandedImage.url}
+                                alt={expandedImage.name}
+                                fill
+                                unoptimized
+                                className="object-contain rounded-lg animate-in zoom-in-95 duration-300"
+                            />
+                        )}
+                    </div>
+                </ShadinDialogContent>
+            </ShadinDialog>
         </Card>
     )
 }
@@ -350,6 +365,7 @@ function LogSessionRow({
     session,
     isExpanded,
     onToggleExpand,
+    onImageClick,
     formatDate,
     getUrgencyColor,
     getStatusBadge,
@@ -358,7 +374,9 @@ function LogSessionRow({
     toggleSession,
     toggleLogId,
     isAllSelected,
-    isSomeSelected
+    isSomeSelected,
+    isPending,
+    startTransition
 }: any) {
     const returnableItems = session.items.filter((i: any) => i.status !== 'returned')
     const hasReturnable = returnableItems.length > 0
@@ -431,8 +449,11 @@ function LogSessionRow({
                         <span className="text-[10px] font-bold text-zinc-300 uppercase leading-none mt-0.5">
                             {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                         </span>
-                        {session.status === 'staged' && session.pickup_scheduled_at && (
-                            <span className="text-[9px] font-black text-amber-600 uppercase mt-1 leading-none">
+                        {(session.status === 'staged' || session.status === 'reserved') && session.pickup_scheduled_at && (
+                            <span className={cn(
+                                "text-[9px] font-black uppercase mt-1 leading-none animate-pulse",
+                                session.status === 'staged' ? "text-amber-600" : "text-indigo-600"
+                            )}>
                                 PICKUP: {new Date(session.pickup_scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
                         )}
@@ -466,147 +487,199 @@ function LogSessionRow({
                 </TableCell>
             </TableRow>
 
-            {isExpanded && (
-                <TableRow className="bg-slate-50/30 hover:bg-slate-50/30">
-                    <TableCell colSpan={9} className="p-0 border-b border-zinc-200">
-                        <div className="flex flex-col animate-in fade-in slide-in-from-top-1 duration-200">
-                            {/* 📑 ENTERPRISE MANIFEST VIEW: Clean, Inset Document Pattern */}
-                            <div className="flex">
-                                {/* Visual Hierarchy Indent */}
-                                <div className="w-12 14in:w-16 flex justify-center pt-4">
-                                    <div className="w-[2px] h-full bg-blue-600/20 rounded-full" />
-                                </div>
+            <AnimatePresence initial={false}>
+                {isExpanded && (
+                    <TableRow className="bg-slate-50/10 hover:bg-slate-50/10 border-none overflow-hidden">
+                        <TableCell colSpan={9} className="p-0 border-b border-zinc-100 overflow-hidden">
+                            <motion.div 
+                                initial={{ height: 0, opacity: 0, scaleY: 0.95 }}
+                                animate={{ height: 'auto', opacity: 1, scaleY: 1 }}
+                                exit={{ height: 0, opacity: 0, scaleY: 0.95 }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="px-6 py-5 flex gap-8">
+                                    {/* Sidebar: Borrower Profile */}
+                                    <div className="w-64 flex-shrink-0 space-y-4">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Personnel Details</p>
+                                            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
+                                                {/* Borrower Info */}
+                                                <div className="flex items-center gap-3">
+                                                    <InitialsAvatar name={session.borrower_name} size={10} />
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-black text-slate-900 leading-tight truncate">{session.borrower_name}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">{session.borrower_organization || 'External Member'}</p>
+                                                    </div>
+                                                </div>
 
-                                <div className="flex-1 pr-6 py-4">
-                                    {/* Sub-Header: Inset & Minimalist */}
-                                    <div className="flex items-center gap-4 mb-4 pb-2 border-b border-zinc-200/60">
-                                        <div className="flex items-center gap-2">
-                                            <Package className="h-3.5 w-3.5 text-blue-600" />
-                                            <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Return Verification Audit</h3>
+                                                {/* Contact Details */}
+                                                <div className="pt-3 space-y-2.5 border-t border-slate-50">
+                                                    <div className="flex items-center gap-2">
+                                                        <Phone className="h-3 w-3 text-slate-400" />
+                                                        <p className="text-[11px] font-bold text-slate-600">{session.borrower_contact || 'None'}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Building className="h-3 w-3 text-slate-400" />
+                                                        <p className="text-[11px] font-bold text-slate-600 truncate">{session.borrower_organization || 'Office not set'}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Dispatch Sign-off: Chain of Command */}
+                                                <div className="pt-3 space-y-3 border-t border-slate-50">
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-1.5 opacity-50">
+                                                            <ShieldCheck className="h-3 w-3 text-blue-500" />
+                                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Approved By</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-black text-slate-800 pl-4.5">{session.approved_by_name || 'System Auto'}</p>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-1.5 opacity-50">
+                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Released By</span>
+                                                        </div>
+                                                        <p className="text-[11px] font-black text-slate-800 pl-4.5">{session.released_by_name || 'Handoff Pending'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
-                                            <span className="flex items-center gap-1.5">
-                                                <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                                                ITEMS: <span className="text-slate-600 font-bold">{session.items.length}</span>
-                                            </span>
-                                        </div>
+
+                                        {session.items.some((i: any) => i.purpose) && (
+                                            <div className="bg-blue-50/50 rounded-2xl p-3 border border-blue-100/50">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <MessageSquare className="h-3 w-3 text-blue-400" />
+                                                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Declared Purpose</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-600 italic leading-snug">
+                                                    &ldquo;{session.items.find((i: any) => i.purpose)?.purpose}&rdquo;
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* FLAT MANIFEST LIST */}
-                                    <div className="bg-white rounded-xl border border-zinc-200/80 shadow-sm divide-y divide-zinc-100 overflow-hidden">
-                                        {session.items.map((item: BorrowLog, index: number) => {
-                                            const hasReturnRequest = item.notes?.includes('BORROWER INITIATED RETURN');
-                                            const isReturned = item.status === 'returned';
-                                            const isOverdue = item.status === 'borrowed' && item.expected_return_date && new Date(item.expected_return_date) < new Date();
-                                            
-                                            return (
-                                                <div 
-                                                    key={item.id} 
-                                                    className={cn(
-                                                        "flex flex-col md:flex-row items-center gap-6 px-5 py-3 transition-colors",
-                                                        index % 2 === 0 ? "bg-white" : "bg-slate-50/20",
-                                                        selectedLogIds.has(item.id) && "bg-blue-50/40"
-                                                    )}
-                                                >
-                                                    {/* SELECTION */}
-                                                    <div className={cn(
-                                                        "transition-all duration-300 overflow-hidden whitespace-nowrap flex justify-center",
-                                                        (selectedLogIds.has(item.id) || selectedLogIds.size > 0)
-                                                            ? "w-8 opacity-100"
-                                                            : (!isReturned) ? "w-0 opacity-0 group-hover:w-8 group-hover:opacity-100" : "w-0 opacity-0"
-                                                    )}>
-                                                        {!isReturned ? (
-                                                            <Checkbox 
-                                                                checked={selectedLogIds.has(item.id)}
-                                                                onCheckedChange={() => toggleLogId(item.id)}
-                                                                className="h-4 w-4 border-zinc-200"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-4 h-4" />
+                                    {/* Main Content: Equipment List */}
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Equipment List ({session.items.length})</p>
+                                        <div className="space-y-3">
+                                            {session.items.map((item: BorrowLog) => {
+                                                const isReturned = item.status === 'returned'
+                                                const isOverdue = item.status === 'borrowed' && item.expected_return_date && new Date(item.expected_return_date) < new Date()
+                                                const imageUrl = getInventoryImageUrl((item as any).inventory?.image_url)
+
+                                                return (
+                                                    <div 
+                                                        key={item.id} 
+                                                        className={cn(
+                                                            "bg-white rounded-2xl border p-4 flex items-center gap-5 transition-all shadow-sm",
+                                                            selectedLogIds.has(item.id) ? "border-blue-200 bg-blue-50/20" : "border-slate-100"
                                                         )}
-                                                    </div>
-                                                    {/* ID & NAME */}
-                                                    <div className="flex-1 flex flex-col min-w-0">
-                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                            <span className="text-xs font-black text-slate-800 tracking-tight">{item.item_name}</span>
-                                                            {hasReturnRequest && (
-                                                                <span className="text-[8px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm animate-pulse">
-                                                                    Return Req
-                                                                </span>
+                                                    >
+                                                        {/* Item Image with Preview */}
+                                                        <div 
+                                                            onClick={(e) => { e.stopPropagation(); if (imageUrl) onImageClick(imageUrl, item.item_name); }}
+                                                            className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 relative group cursor-pointer hover:border-blue-300 transition-all"
+                                                        >
+                                                            {imageUrl ? (
+                                                                <>
+                                                                    <Image src={imageUrl} alt={item.item_name} fill className="object-contain p-1.5 transition-transform group-hover:scale-110" unoptimized />
+                                                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                        <Maximize2 className="h-4 w-4 text-white shadow-sm" />
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                <Package className="h-7 w-7 text-slate-200" strokeWidth={1} />
+                                                            )}
+                                                        </div>
+
+                                                        {/* Item Info */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <p className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">{item.item_name}</p>
+                                                                <div className={cn(
+                                                                    "text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-tighter border",
+                                                                    isReturned ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                                    isOverdue ? "bg-rose-50 text-rose-600 border-rose-100 animate-pulse" :
+                                                                    "bg-blue-50 text-blue-600 border-blue-100"
+                                                                )}>
+                                                                    {isReturned ? 'Returned' : 'Borrowed'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Clock className="h-3 w-3 text-slate-400" />
+                                                                    <span className="text-[11px] font-bold text-slate-500">QUANTITY: {item.quantity}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Calendar className="h-3 w-3 text-slate-400" />
+                                                                    <span className={cn(
+                                                                        "text-[11px] font-bold",
+                                                                        isOverdue ? "text-rose-600" : "text-slate-500"
+                                                                    )}>
+                                                                        {isReturned ? `Returned: ${formatDate(item.actual_return_date)}` : `Due: ${formatDate(item.expected_return_date)}`}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Row Action Cluster */}
+                                                        <div className="flex items-center gap-2 pl-4 border-l border-slate-50">
+                                                            {isReturned ? (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (confirm(`ARE YOU SURE? Revert ${item.item_name} to Borrowed?`)) {
+                                                                            startTransition(async () => {
+                                                                                const res = await revertReturnItem(item.id);
+                                                                                if (res.success) toast.success(res.message);
+                                                                                else toast.error(res.error);
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                    disabled={isPending}
+                                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600"
+                                                                >
+                                                                    {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                                                </Button>
+                                                            ) : (item.status === 'reserved' || item.status === 'staged') ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        startTransition(async () => {
+                                                                            const res = await releaseReservedItem(item.id);
+                                                                            if (res.success) toast.success(res.message);
+                                                                            else toast.error(res.error);
+                                                                        });
+                                                                    }}
+                                                                    disabled={isPending}
+                                                                    className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-black uppercase px-3 rounded-lg"
+                                                                >
+                                                                    Release
+                                                                </Button>
+                                                            ) : (
+                                                                <ReturnCommandSheet
+                                                                    logId={item.id}
+                                                                    itemName={item.item_name}
+                                                                    borrowerName={item.borrower_name}
+                                                                    quantity={item.quantity}
+                                                                    inventoryId={item.inventory_id}
+                                                                />
                                                             )}
                                                         </div>
                                                     </div>
-
-                                                    {/* TRANSACTION STATUS */}
-                                                    <div className="w-28">
-                                                        <div className={cn(
-                                                            "text-[11px] font-black uppercase tracking-[0.1em] text-center md:text-left",
-                                                            isReturned ? "text-emerald-600" : 
-                                                            isOverdue ? "text-rose-600" : "text-blue-600"
-                                                        )}>
-                                                            {item.status}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* TIMELINE */}
-                                                    <div className="w-40 flex flex-col">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                                                            {isReturned ? 'Checked In' : 'Return Due'}
-                                                        </span>
-                                                        <span className={cn(
-                                                            "text-[11px] font-mono font-bold leading-none",
-                                                            isOverdue ? "text-rose-600" : "text-slate-600"
-                                                        )}>
-                                                            {formatDate(isReturned ? item.actual_return_date : item.expected_return_date).toUpperCase()}
-                                                        </span>
-                                                        <span className="text-[9px] font-bold text-slate-300 uppercase mt-1">
-                                                            {isReturned ? 'Arrival Date' : 'Due Date'}
-                                                        </span>
-                                                    </div>
-
-                                                    {/* AUDIT / ACTION */}
-                                                    <div className="w-72 flex items-center justify-end min-h-[32px]">
-                                                        {isReturned ? (
-                                                            <div className="flex flex-col items-end gap-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    {item.return_condition && item.return_condition !== 'good' && (
-                                                                        <span className={cn(
-                                                                            "text-[10px] font-black uppercase px-1.5 py-0.5 rounded border shadow-sm",
-                                                                            item.return_condition === 'fair' ? "text-amber-700 bg-amber-50 border-amber-100" :
-                                                                            "text-rose-700 bg-rose-50 border-rose-100"
-                                                                        )}>
-                                                                            {item.return_condition}
-                                                                        </span>
-                                                                    )}
-                                                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                                                                        Verified: <span className="text-slate-900">{item.received_by_name?.split(' ')[0]}</span>
-                                                                    </span>
-                                                                </div>
-                                                                {item.return_notes && (
-                                                                    <p className="text-[9px] text-slate-400 italic max-w-[240px] text-right truncate" title={item.return_notes}>
-                                                                        &quot;{item.return_notes}&quot;
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <ReturnDialog
-                                                                logId={item.id}
-                                                                itemName={item.item_name}
-                                                                borrowerName={item.borrower_name}
-                                                                quantity={item.quantity}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </TableCell>
-                </TableRow>
-            )}
+                            </motion.div>
+                        </TableCell>
+                    </TableRow>
+                )}
+            </AnimatePresence>
         </React.Fragment>
     )
 }

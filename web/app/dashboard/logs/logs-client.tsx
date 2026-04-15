@@ -10,7 +10,7 @@ import { useBorrowLogs } from '@/hooks/use-borrow-logs'
 import { LogStatsCards } from '@/components/logs/log-stats'
 import { LogFilters } from '@/components/logs/log-filters'
 import { LogSessionTable } from '@/components/logs/log-session-table'
-import { BorrowItemDialog } from '@/components/transactions/borrow-item-dialog'
+import { DispatchCommandSheet } from '@/src/features/transactions/v2/dispatch-command-sheet'
 import { PendingTriageHeader } from '@/components/logs/pending-triage-header'
 
 interface LogsClientProps {
@@ -53,7 +53,7 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
     }, [searchParams, setSearchQuery])
 
     return (
-        <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-500">
+        <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-200">
             {/* Page Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
                 <div>
@@ -62,7 +62,7 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
                     </h1>
                 </div>
                 <div className="flex items-center gap-2 font-heading">
-                    <BorrowItemDialog />
+                    <DispatchCommandSheet />
                 </div>
             </div>
             

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Package, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getInventoryImageUrl } from '@/lib/supabase'
 
 interface InventoryCardProps {
     item: {
@@ -30,6 +31,9 @@ export function InventoryCard({ item }: InventoryCardProps) {
     const available = item.stock_available || 0
     const total = item.stock_total || 1
     const ratio = available / total
+
+    // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
+    const imageUrl = item.image_url ? getInventoryImageUrl(item.image_url) : null;
     
     let statusLabel = 'In Stock'
     let statusColor = 'bg-green-50 text-green-700 border-green-100'
@@ -52,9 +56,9 @@ export function InventoryCard({ item }: InventoryCardProps) {
         >
             {/* 1. Visual Anchor (Image) */}
             <div className="relative h-40 bg-gray-50 flex items-center justify-center">
-                {item.image_url ? (
+                {imageUrl ? (
                     <Image 
-                        src={item.image_url} 
+                        src={imageUrl} 
                         alt={item.item_name} 
                         fill
                         className="object-cover"
@@ -97,6 +101,13 @@ export function InventoryCard({ item }: InventoryCardProps) {
                     )}>
                         <StatusIcon className="w-3.5 h-3.5" />
                         <span className="text-[11px] font-bold whitespace-nowrap">{statusLabel}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+assName="text-[11px] font-bold whitespace-nowrap">{statusLabel}</span>
                     </div>
                 </div>
             </div>

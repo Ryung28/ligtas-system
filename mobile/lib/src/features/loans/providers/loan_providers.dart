@@ -35,6 +35,7 @@ final myBorrowedItemsProvider = StreamProvider<List<LoanModel>>((ref) {
       daysOverdue: i.daysOverdue,
       daysBorrowed: i.daysBorrowed,
       isPendingSync: i.isPendingSync,
+      imageUrl: i.imageUrl,
     )).toList()),
     loading: () => const Stream.empty(),
     error: (e, st) => Stream.error(e, st),

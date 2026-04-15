@@ -19,6 +19,7 @@ _$UserModelImpl _$$UserModelImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      assignedWarehouse: json['assigned_warehouse'] as String?,
     );
 
 Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
@@ -31,4 +32,5 @@ Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
       'role': instance.role,
       'status': instance.status,
       'providers': instance.providers,
+      'assigned_warehouse': instance.assignedWarehouse,
     };

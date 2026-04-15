@@ -12,8 +12,8 @@ class InventoryModel with _$InventoryModel {
     @JsonKey(name: 'item_name') required String name,
     @Default('') String description,
     required String category,
-    @JsonKey(name: 'stock_total') required int quantity,
-    @JsonKey(name: 'stock_available') required int available,
+    @JsonKey(name: 'stock_total') @Default(0) int quantity,
+    @JsonKey(name: 'stock_available') @Default(0) int available,
     @Default('') String location,
     @Default('') String qrCode,
     @Default('Good') String status,
@@ -26,6 +26,14 @@ class InventoryModel with _$InventoryModel {
     @Default('') String supplierContact,
     @Default('') String notes,
     @JsonKey(name: 'image_url') @Default('') String imageUrl,
+    
+    // Multi-location fields
+    @JsonKey(name: 'aggregate_total') @Default(0) int aggregateTotal,
+    @JsonKey(name: 'aggregate_available') @Default(0) int aggregateAvailable,
+    @JsonKey(name: 'primary_location') String? primaryLocation,
+    @JsonKey(name: 'primary_stock_available') @Default(0) int primaryAvailable,
+    @JsonKey(name: 'location_registry_id') int? locationRegistryId, // MASTER IDENTITY ANCHOR
+    @Default([]) List<Map<String, dynamic>> variants,
   }) = _InventoryModel;
 
   factory InventoryModel.fromJson(Map<String, dynamic> json) => _$InventoryModelFromJson(json);
@@ -42,6 +50,8 @@ class InventoryCollection {
   
   late String name;
   String? description;
+  
+  @Index()
   late String category;
   late int quantity;
   late int available;
@@ -57,6 +67,10 @@ class InventoryCollection {
   String? supplierContact;
   String? notes;
   String? imageUrl;
+  
+  int? aggregateTotal;
+  int? aggregateAvailable;
+  int? locationRegistryId;
 
   // Convert from Model to Entity
   static InventoryCollection fromModel(InventoryModel model) {
@@ -78,7 +92,10 @@ class InventoryCollection {
       ..supplier = model.supplier
       ..supplierContact = model.supplierContact
       ..notes = model.notes
-      ..imageUrl = model.imageUrl;
+      ..imageUrl = model.imageUrl
+      ..aggregateTotal = model.aggregateTotal
+      ..aggregateAvailable = model.aggregateAvailable
+      ..locationRegistryId = model.locationRegistryId;
   }
 
   // Convert from Entity back to Model
@@ -102,6 +119,9 @@ class InventoryCollection {
       supplierContact: supplierContact ?? '',
       notes: notes ?? '',
       imageUrl: imageUrl ?? '',
+      aggregateTotal: aggregateTotal ?? 0,
+      aggregateAvailable: aggregateAvailable ?? 0,
+      locationRegistryId: locationRegistryId,
     );
   }
 }

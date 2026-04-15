@@ -43,8 +43,8 @@ subprojects {
                     if (namespace == null) {
                         namespace = "dev.isar.${project.name.replace("-", "_")}"
                     }
-                    // 🛡️ RECURSIVE SDK ALIGNMENT: Forces every dependent plugin to 36
-                    compileSdkVersion(36)
+                    // 🛡️ RECURSIVE SDK ALIGNMENT: Forces every dependent plugin to 35
+                    compileSdkVersion(35)
                 }
             }
         }

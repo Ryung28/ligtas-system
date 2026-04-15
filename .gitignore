@@ -1,9 +1,56 @@
-.agent/
-.clineignore
-.vscode/
-node_modules/
-.next/
-build/
-.dart_tool/
+# 🚀 LIGTAS ULTRA-PERFORMANCE AI IGNORE
+# Strictly enforced recursive blocking for maximum AI speed.
+
+# ─── RECURSIVE DEPENDENCY BLOCK ───
+**/node_modules/
+**/node_modules/**
+**/.next/
+**/build/
+**/.dart_tool/
+**/out/
+
+# ─── CLOUD & DB ARTIFCATS ───
+.vercel/
+.supabase/
+.turbo/
+.cache/
+.npm/
+
+# ─── ENV & SECRETS ───
+.env*
+!.env.example
+*.pem
+*.key
+
+# ─── SYSTEM & IDE JUNK ───
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.expo/
+.project
+.DS_Store
+*.tsbuildinfo
+*.log
+
+# ─── MEDIA & BINARIES (The Bloat) ───
+**/assets/
+**/public/icons/
+**/public/images/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
 *.pdf
-mobile/android/app/*.json
+*.zip
+*.mp4
+*.exe
+*.dll
+
+# ─── TEMP/BACKUP ───
+tmp/
+temp/
+backup/
+*.bak
+*.swp

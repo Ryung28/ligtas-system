@@ -55,3 +55,43 @@ export interface InventoryItem {
     created_at?: string
     updated_at?: string
 }
+export function getInventoryImageUrl(pathOrUrl?: string | null) {
+    if (!pathOrUrl || pathOrUrl.trim() === '') return null
+    
+    // 🛡️ DEFENSIVE RESOLVER: Handle both raw paths and potentially expired URLs
+    if (pathOrUrl.startsWith('http')) {
+        // If it's our own Supabase URL, extract path to avoid expired signatures/tokens
+        if (pathOrUrl.includes('/storage/v1/object/')) {
+            try {
+                // Parse: .../storage/v1/object/[type]/[bucket]/[path]
+                const pathSuffix = pathOrUrl.split('/storage/v1/object/')[1]
+                const parts = pathSuffix.split('?')[0].split('/') // Remove query params first
+                
+                const bucketName = parts[1]
+                const filePath = parts.slice(2).join('/')
+                
+                if (bucketName === 'item-images') {
+                    const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath)
+                    return data.publicUrl
+                }
+            } catch (e) {
+                return pathOrUrl // Fallback on parse error
+            }
+        }
+        return pathOrUrl
+    }
+    
+    // 🏛️ DEFENSIVE CLEANING: Remove leading slashes and redundant bucket prefixes
+    // This allows the system to handle 'mask.png', '/mask.png', and 'item-images/mask.png' correctly.
+    let cleanPath = pathOrUrl.trim().replace(/^\/+/, '')
+    
+    const BUCKET = 'item-images'
+    if (cleanPath.startsWith(`${BUCKET}/`)) {
+        cleanPath = cleanPath.replace(`${BUCKET}/`, '')
+    }
+    
+    // 🏛️ RELIABLE SDK RESOLUTION: Use the official Supabase SDK storage helper
+    // This handles URL encoding and bucket context correctly.
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(cleanPath)
+    return data.publicUrl
+}

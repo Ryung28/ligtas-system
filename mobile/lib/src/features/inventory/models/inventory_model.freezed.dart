@@ -43,7 +43,20 @@ mixin _$InventoryModel {
   String get supplierContact => throw _privateConstructorUsedError;
   String get notes => throw _privateConstructorUsedError;
   @JsonKey(name: 'image_url')
-  String get imageUrl => throw _privateConstructorUsedError;
+  String get imageUrl =>
+      throw _privateConstructorUsedError; // Multi-location fields
+  @JsonKey(name: 'aggregate_total')
+  int get aggregateTotal => throw _privateConstructorUsedError;
+  @JsonKey(name: 'aggregate_available')
+  int get aggregateAvailable => throw _privateConstructorUsedError;
+  @JsonKey(name: 'primary_location')
+  String? get primaryLocation => throw _privateConstructorUsedError;
+  @JsonKey(name: 'primary_stock_available')
+  int get primaryAvailable => throw _privateConstructorUsedError;
+  @JsonKey(name: 'location_registry_id')
+  int? get locationRegistryId =>
+      throw _privateConstructorUsedError; // MASTER IDENTITY ANCHOR
+  List<Map<String, dynamic>> get variants => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -75,7 +88,13 @@ abstract class $InventoryModelCopyWith<$Res> {
       String supplier,
       String supplierContact,
       String notes,
-      @JsonKey(name: 'image_url') String imageUrl});
+      @JsonKey(name: 'image_url') String imageUrl,
+      @JsonKey(name: 'aggregate_total') int aggregateTotal,
+      @JsonKey(name: 'aggregate_available') int aggregateAvailable,
+      @JsonKey(name: 'primary_location') String? primaryLocation,
+      @JsonKey(name: 'primary_stock_available') int primaryAvailable,
+      @JsonKey(name: 'location_registry_id') int? locationRegistryId,
+      List<Map<String, dynamic>> variants});
 }
 
 /// @nodoc
@@ -109,6 +128,12 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
     Object? supplierContact = null,
     Object? notes = null,
     Object? imageUrl = null,
+    Object? aggregateTotal = null,
+    Object? aggregateAvailable = null,
+    Object? primaryLocation = freezed,
+    Object? primaryAvailable = null,
+    Object? locationRegistryId = freezed,
+    Object? variants = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -183,6 +208,30 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
           ? _value.imageUrl
           : imageUrl // ignore: cast_nullable_to_non_nullable
               as String,
+      aggregateTotal: null == aggregateTotal
+          ? _value.aggregateTotal
+          : aggregateTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      aggregateAvailable: null == aggregateAvailable
+          ? _value.aggregateAvailable
+          : aggregateAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      primaryLocation: freezed == primaryLocation
+          ? _value.primaryLocation
+          : primaryLocation // ignore: cast_nullable_to_non_nullable
+              as String?,
+      primaryAvailable: null == primaryAvailable
+          ? _value.primaryAvailable
+          : primaryAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      locationRegistryId: freezed == locationRegistryId
+          ? _value.locationRegistryId
+          : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      variants: null == variants
+          ? _value.variants
+          : variants // ignore: cast_nullable_to_non_nullable
+              as List<Map<String, dynamic>>,
     ) as $Val);
   }
 }
@@ -213,7 +262,13 @@ abstract class _$$InventoryModelImplCopyWith<$Res>
       String supplier,
       String supplierContact,
       String notes,
-      @JsonKey(name: 'image_url') String imageUrl});
+      @JsonKey(name: 'image_url') String imageUrl,
+      @JsonKey(name: 'aggregate_total') int aggregateTotal,
+      @JsonKey(name: 'aggregate_available') int aggregateAvailable,
+      @JsonKey(name: 'primary_location') String? primaryLocation,
+      @JsonKey(name: 'primary_stock_available') int primaryAvailable,
+      @JsonKey(name: 'location_registry_id') int? locationRegistryId,
+      List<Map<String, dynamic>> variants});
 }
 
 /// @nodoc
@@ -245,6 +300,12 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
     Object? supplierContact = null,
     Object? notes = null,
     Object? imageUrl = null,
+    Object? aggregateTotal = null,
+    Object? aggregateAvailable = null,
+    Object? primaryLocation = freezed,
+    Object? primaryAvailable = null,
+    Object? locationRegistryId = freezed,
+    Object? variants = null,
   }) {
     return _then(_$InventoryModelImpl(
       id: null == id
@@ -319,6 +380,30 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
           ? _value.imageUrl
           : imageUrl // ignore: cast_nullable_to_non_nullable
               as String,
+      aggregateTotal: null == aggregateTotal
+          ? _value.aggregateTotal
+          : aggregateTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      aggregateAvailable: null == aggregateAvailable
+          ? _value.aggregateAvailable
+          : aggregateAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      primaryLocation: freezed == primaryLocation
+          ? _value.primaryLocation
+          : primaryLocation // ignore: cast_nullable_to_non_nullable
+              as String?,
+      primaryAvailable: null == primaryAvailable
+          ? _value.primaryAvailable
+          : primaryAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      locationRegistryId: freezed == locationRegistryId
+          ? _value.locationRegistryId
+          : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      variants: null == variants
+          ? _value._variants
+          : variants // ignore: cast_nullable_to_non_nullable
+              as List<Map<String, dynamic>>,
     ));
   }
 }
@@ -331,8 +416,8 @@ class _$InventoryModelImpl implements _InventoryModel {
       @JsonKey(name: 'item_name') required this.name,
       this.description = '',
       required this.category,
-      @JsonKey(name: 'stock_total') required this.quantity,
-      @JsonKey(name: 'stock_available') required this.available,
+      @JsonKey(name: 'stock_total') this.quantity = 0,
+      @JsonKey(name: 'stock_available') this.available = 0,
       this.location = '',
       this.qrCode = '',
       this.status = 'Good',
@@ -344,7 +429,14 @@ class _$InventoryModelImpl implements _InventoryModel {
       this.supplier = '',
       this.supplierContact = '',
       this.notes = '',
-      @JsonKey(name: 'image_url') this.imageUrl = ''});
+      @JsonKey(name: 'image_url') this.imageUrl = '',
+      @JsonKey(name: 'aggregate_total') this.aggregateTotal = 0,
+      @JsonKey(name: 'aggregate_available') this.aggregateAvailable = 0,
+      @JsonKey(name: 'primary_location') this.primaryLocation,
+      @JsonKey(name: 'primary_stock_available') this.primaryAvailable = 0,
+      @JsonKey(name: 'location_registry_id') this.locationRegistryId,
+      final List<Map<String, dynamic>> variants = const []})
+      : _variants = variants;
 
   factory _$InventoryModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$InventoryModelImplFromJson(json);
@@ -401,10 +493,36 @@ class _$InventoryModelImpl implements _InventoryModel {
   @override
   @JsonKey(name: 'image_url')
   final String imageUrl;
+// Multi-location fields
+  @override
+  @JsonKey(name: 'aggregate_total')
+  final int aggregateTotal;
+  @override
+  @JsonKey(name: 'aggregate_available')
+  final int aggregateAvailable;
+  @override
+  @JsonKey(name: 'primary_location')
+  final String? primaryLocation;
+  @override
+  @JsonKey(name: 'primary_stock_available')
+  final int primaryAvailable;
+  @override
+  @JsonKey(name: 'location_registry_id')
+  final int? locationRegistryId;
+// MASTER IDENTITY ANCHOR
+  final List<Map<String, dynamic>> _variants;
+// MASTER IDENTITY ANCHOR
+  @override
+  @JsonKey()
+  List<Map<String, dynamic>> get variants {
+    if (_variants is EqualUnmodifiableListView) return _variants;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_variants);
+  }
 
   @override
   String toString() {
-    return 'InventoryModel(id: $id, name: $name, description: $description, category: $category, quantity: $quantity, available: $available, location: $location, qrCode: $qrCode, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, code: $code, minStockLevel: $minStockLevel, unit: $unit, supplier: $supplier, supplierContact: $supplierContact, notes: $notes, imageUrl: $imageUrl)';
+    return 'InventoryModel(id: $id, name: $name, description: $description, category: $category, quantity: $quantity, available: $available, location: $location, qrCode: $qrCode, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, code: $code, minStockLevel: $minStockLevel, unit: $unit, supplier: $supplier, supplierContact: $supplierContact, notes: $notes, imageUrl: $imageUrl, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, primaryLocation: $primaryLocation, primaryAvailable: $primaryAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
   }
 
   @override
@@ -440,31 +558,49 @@ class _$InventoryModelImpl implements _InventoryModel {
                 other.supplierContact == supplierContact) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.imageUrl, imageUrl) ||
-                other.imageUrl == imageUrl));
+                other.imageUrl == imageUrl) &&
+            (identical(other.aggregateTotal, aggregateTotal) ||
+                other.aggregateTotal == aggregateTotal) &&
+            (identical(other.aggregateAvailable, aggregateAvailable) ||
+                other.aggregateAvailable == aggregateAvailable) &&
+            (identical(other.primaryLocation, primaryLocation) ||
+                other.primaryLocation == primaryLocation) &&
+            (identical(other.primaryAvailable, primaryAvailable) ||
+                other.primaryAvailable == primaryAvailable) &&
+            (identical(other.locationRegistryId, locationRegistryId) ||
+                other.locationRegistryId == locationRegistryId) &&
+            const DeepCollectionEquality().equals(other._variants, _variants));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      name,
-      description,
-      category,
-      quantity,
-      available,
-      location,
-      qrCode,
-      status,
-      createdAt,
-      updatedAt,
-      code,
-      minStockLevel,
-      unit,
-      supplier,
-      supplierContact,
-      notes,
-      imageUrl);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        name,
+        description,
+        category,
+        quantity,
+        available,
+        location,
+        qrCode,
+        status,
+        createdAt,
+        updatedAt,
+        code,
+        minStockLevel,
+        unit,
+        supplier,
+        supplierContact,
+        notes,
+        imageUrl,
+        aggregateTotal,
+        aggregateAvailable,
+        primaryLocation,
+        primaryAvailable,
+        locationRegistryId,
+        const DeepCollectionEquality().hash(_variants)
+      ]);
 
   @JsonKey(ignore: true)
   @override
@@ -483,25 +619,30 @@ class _$InventoryModelImpl implements _InventoryModel {
 
 abstract class _InventoryModel implements InventoryModel {
   const factory _InventoryModel(
-          {required final int id,
-          @JsonKey(name: 'item_name') required final String name,
-          final String description,
-          required final String category,
-          @JsonKey(name: 'stock_total') required final int quantity,
-          @JsonKey(name: 'stock_available') required final int available,
-          final String location,
-          final String qrCode,
-          final String status,
-          @JsonKey(name: 'created_at') final DateTime? createdAt,
-          @JsonKey(name: 'updated_at') final DateTime? updatedAt,
-          final String code,
-          final int minStockLevel,
-          final String unit,
-          final String supplier,
-          final String supplierContact,
-          final String notes,
-          @JsonKey(name: 'image_url') final String imageUrl}) =
-      _$InventoryModelImpl;
+      {required final int id,
+      @JsonKey(name: 'item_name') required final String name,
+      final String description,
+      required final String category,
+      @JsonKey(name: 'stock_total') final int quantity,
+      @JsonKey(name: 'stock_available') final int available,
+      final String location,
+      final String qrCode,
+      final String status,
+      @JsonKey(name: 'created_at') final DateTime? createdAt,
+      @JsonKey(name: 'updated_at') final DateTime? updatedAt,
+      final String code,
+      final int minStockLevel,
+      final String unit,
+      final String supplier,
+      final String supplierContact,
+      final String notes,
+      @JsonKey(name: 'image_url') final String imageUrl,
+      @JsonKey(name: 'aggregate_total') final int aggregateTotal,
+      @JsonKey(name: 'aggregate_available') final int aggregateAvailable,
+      @JsonKey(name: 'primary_location') final String? primaryLocation,
+      @JsonKey(name: 'primary_stock_available') final int primaryAvailable,
+      @JsonKey(name: 'location_registry_id') final int? locationRegistryId,
+      final List<Map<String, dynamic>> variants}) = _$InventoryModelImpl;
 
   factory _InventoryModel.fromJson(Map<String, dynamic> json) =
       _$InventoryModelImpl.fromJson;
@@ -548,6 +689,23 @@ abstract class _InventoryModel implements InventoryModel {
   @override
   @JsonKey(name: 'image_url')
   String get imageUrl;
+  @override // Multi-location fields
+  @JsonKey(name: 'aggregate_total')
+  int get aggregateTotal;
+  @override
+  @JsonKey(name: 'aggregate_available')
+  int get aggregateAvailable;
+  @override
+  @JsonKey(name: 'primary_location')
+  String? get primaryLocation;
+  @override
+  @JsonKey(name: 'primary_stock_available')
+  int get primaryAvailable;
+  @override
+  @JsonKey(name: 'location_registry_id')
+  int? get locationRegistryId;
+  @override // MASTER IDENTITY ANCHOR
+  List<Map<String, dynamic>> get variants;
   @override
   @JsonKey(ignore: true)
   _$$InventoryModelImplCopyWith<_$InventoryModelImpl> get copyWith =>

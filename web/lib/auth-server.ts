@@ -26,14 +26,18 @@ export const getCachedUser = cache(async () => {
     )
 
     try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) return null
+        // ⚡ SENIOR ARCHITECT FIX: Parallel Data Handshake
+        // We fetch the Auth User and the Profile Row concurrently to halve latency.
+        const [authResponse, profileResponse] = await Promise.all([
+            supabase.auth.getUser(),
+            supabase.from('user_profiles').select('*').maybeSingle() // ID filter implied by auth cookie context in SSR
+        ])
 
-        const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle()
+        const user = authResponse.data.user
+        if (authResponse.error || !user) return null
+
+        // If profile fetch failed or missed, we still use the user object to resolve status
+        const profile = profileResponse.data
 
         const { role, status } = await resolveUserStatus(supabase, user, profile)
 

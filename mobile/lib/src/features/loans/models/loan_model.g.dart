@@ -22,98 +22,143 @@ const LoanCollectionSchema = CollectionSchema(
       name: r'actualReturnDate',
       type: IsarType.dateTime,
     ),
-    r'borrowDate': PropertySchema(
+    r'approvedAt': PropertySchema(
       id: 1,
+      name: r'approvedAt',
+      type: IsarType.dateTime,
+    ),
+    r'approvedBy': PropertySchema(
+      id: 2,
+      name: r'approvedBy',
+      type: IsarType.string,
+    ),
+    r'borrowDate': PropertySchema(
+      id: 3,
       name: r'borrowDate',
       type: IsarType.dateTime,
     ),
     r'borrowedBy': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'borrowedBy',
       type: IsarType.string,
     ),
     r'borrowerContact': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'borrowerContact',
       type: IsarType.string,
     ),
     r'borrowerEmail': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'borrowerEmail',
       type: IsarType.string,
     ),
     r'borrowerName': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'borrowerName',
       type: IsarType.string,
     ),
     r'daysBorrowed': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'daysBorrowed',
       type: IsarType.long,
     ),
     r'daysOverdue': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'daysOverdue',
       type: IsarType.long,
     ),
     r'expectedReturnDate': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'expectedReturnDate',
       type: IsarType.dateTime,
     ),
+    r'handedAt': PropertySchema(
+      id: 11,
+      name: r'handedAt',
+      type: IsarType.dateTime,
+    ),
+    r'handedBy': PropertySchema(
+      id: 12,
+      name: r'handedBy',
+      type: IsarType.string,
+    ),
+    r'imageUrl': PropertySchema(
+      id: 13,
+      name: r'imageUrl',
+      type: IsarType.string,
+    ),
     r'inventoryItemId': PropertySchema(
-      id: 9,
+      id: 14,
       name: r'inventoryItemId',
       type: IsarType.string,
     ),
     r'isPendingSync': PropertySchema(
-      id: 10,
+      id: 15,
       name: r'isPendingSync',
       type: IsarType.bool,
     ),
     r'itemCode': PropertySchema(
-      id: 11,
+      id: 16,
       name: r'itemCode',
       type: IsarType.string,
     ),
     r'itemName': PropertySchema(
-      id: 12,
+      id: 17,
       name: r'itemName',
       type: IsarType.string,
     ),
     r'notes': PropertySchema(
-      id: 13,
+      id: 18,
       name: r'notes',
       type: IsarType.string,
     ),
     r'originalId': PropertySchema(
-      id: 14,
+      id: 19,
       name: r'originalId',
       type: IsarType.string,
     ),
+    r'pickupScheduledAt': PropertySchema(
+      id: 20,
+      name: r'pickupScheduledAt',
+      type: IsarType.dateTime,
+    ),
     r'purpose': PropertySchema(
-      id: 15,
+      id: 21,
       name: r'purpose',
       type: IsarType.string,
     ),
     r'quantityBorrowed': PropertySchema(
-      id: 16,
+      id: 22,
       name: r'quantityBorrowed',
       type: IsarType.long,
     ),
+    r'receivedByName': PropertySchema(
+      id: 23,
+      name: r'receivedByName',
+      type: IsarType.string,
+    ),
+    r'receivedByUserId': PropertySchema(
+      id: 24,
+      name: r'receivedByUserId',
+      type: IsarType.string,
+    ),
+    r'returnCondition': PropertySchema(
+      id: 25,
+      name: r'returnCondition',
+      type: IsarType.string,
+    ),
     r'returnNotes': PropertySchema(
-      id: 17,
+      id: 26,
       name: r'returnNotes',
       type: IsarType.string,
     ),
     r'returnedBy': PropertySchema(
-      id: 18,
+      id: 27,
       name: r'returnedBy',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 19,
+      id: 28,
       name: r'status',
       type: IsarType.byte,
       enumMap: _LoanCollectionstatusEnumValueMap,
@@ -153,6 +198,12 @@ int _loanCollectionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.approvedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.borrowedBy.length * 3;
   bytesCount += 3 + object.borrowerContact.length * 3;
   {
@@ -162,6 +213,18 @@ int _loanCollectionEstimateSize(
     }
   }
   bytesCount += 3 + object.borrowerName.length * 3;
+  {
+    final value = object.handedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.imageUrl;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.inventoryItemId.length * 3;
   bytesCount += 3 + object.itemCode.length * 3;
   bytesCount += 3 + object.itemName.length * 3;
@@ -173,6 +236,24 @@ int _loanCollectionEstimateSize(
   }
   bytesCount += 3 + object.originalId.length * 3;
   bytesCount += 3 + object.purpose.length * 3;
+  {
+    final value = object.receivedByName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.receivedByUserId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.returnCondition;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   {
     final value = object.returnNotes;
     if (value != null) {
@@ -195,25 +276,34 @@ void _loanCollectionSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDateTime(offsets[0], object.actualReturnDate);
-  writer.writeDateTime(offsets[1], object.borrowDate);
-  writer.writeString(offsets[2], object.borrowedBy);
-  writer.writeString(offsets[3], object.borrowerContact);
-  writer.writeString(offsets[4], object.borrowerEmail);
-  writer.writeString(offsets[5], object.borrowerName);
-  writer.writeLong(offsets[6], object.daysBorrowed);
-  writer.writeLong(offsets[7], object.daysOverdue);
-  writer.writeDateTime(offsets[8], object.expectedReturnDate);
-  writer.writeString(offsets[9], object.inventoryItemId);
-  writer.writeBool(offsets[10], object.isPendingSync);
-  writer.writeString(offsets[11], object.itemCode);
-  writer.writeString(offsets[12], object.itemName);
-  writer.writeString(offsets[13], object.notes);
-  writer.writeString(offsets[14], object.originalId);
-  writer.writeString(offsets[15], object.purpose);
-  writer.writeLong(offsets[16], object.quantityBorrowed);
-  writer.writeString(offsets[17], object.returnNotes);
-  writer.writeString(offsets[18], object.returnedBy);
-  writer.writeByte(offsets[19], object.status.index);
+  writer.writeDateTime(offsets[1], object.approvedAt);
+  writer.writeString(offsets[2], object.approvedBy);
+  writer.writeDateTime(offsets[3], object.borrowDate);
+  writer.writeString(offsets[4], object.borrowedBy);
+  writer.writeString(offsets[5], object.borrowerContact);
+  writer.writeString(offsets[6], object.borrowerEmail);
+  writer.writeString(offsets[7], object.borrowerName);
+  writer.writeLong(offsets[8], object.daysBorrowed);
+  writer.writeLong(offsets[9], object.daysOverdue);
+  writer.writeDateTime(offsets[10], object.expectedReturnDate);
+  writer.writeDateTime(offsets[11], object.handedAt);
+  writer.writeString(offsets[12], object.handedBy);
+  writer.writeString(offsets[13], object.imageUrl);
+  writer.writeString(offsets[14], object.inventoryItemId);
+  writer.writeBool(offsets[15], object.isPendingSync);
+  writer.writeString(offsets[16], object.itemCode);
+  writer.writeString(offsets[17], object.itemName);
+  writer.writeString(offsets[18], object.notes);
+  writer.writeString(offsets[19], object.originalId);
+  writer.writeDateTime(offsets[20], object.pickupScheduledAt);
+  writer.writeString(offsets[21], object.purpose);
+  writer.writeLong(offsets[22], object.quantityBorrowed);
+  writer.writeString(offsets[23], object.receivedByName);
+  writer.writeString(offsets[24], object.receivedByUserId);
+  writer.writeString(offsets[25], object.returnCondition);
+  writer.writeString(offsets[26], object.returnNotes);
+  writer.writeString(offsets[27], object.returnedBy);
+  writer.writeByte(offsets[28], object.status.index);
 }
 
 LoanCollection _loanCollectionDeserialize(
@@ -224,27 +314,36 @@ LoanCollection _loanCollectionDeserialize(
 ) {
   final object = LoanCollection();
   object.actualReturnDate = reader.readDateTimeOrNull(offsets[0]);
-  object.borrowDate = reader.readDateTime(offsets[1]);
-  object.borrowedBy = reader.readString(offsets[2]);
-  object.borrowerContact = reader.readString(offsets[3]);
-  object.borrowerEmail = reader.readStringOrNull(offsets[4]);
-  object.borrowerName = reader.readString(offsets[5]);
-  object.daysBorrowed = reader.readLong(offsets[6]);
-  object.daysOverdue = reader.readLong(offsets[7]);
-  object.expectedReturnDate = reader.readDateTime(offsets[8]);
+  object.approvedAt = reader.readDateTimeOrNull(offsets[1]);
+  object.approvedBy = reader.readStringOrNull(offsets[2]);
+  object.borrowDate = reader.readDateTime(offsets[3]);
+  object.borrowedBy = reader.readString(offsets[4]);
+  object.borrowerContact = reader.readString(offsets[5]);
+  object.borrowerEmail = reader.readStringOrNull(offsets[6]);
+  object.borrowerName = reader.readString(offsets[7]);
+  object.daysBorrowed = reader.readLong(offsets[8]);
+  object.daysOverdue = reader.readLong(offsets[9]);
+  object.expectedReturnDate = reader.readDateTime(offsets[10]);
+  object.handedAt = reader.readDateTimeOrNull(offsets[11]);
+  object.handedBy = reader.readStringOrNull(offsets[12]);
   object.id = id;
-  object.inventoryItemId = reader.readString(offsets[9]);
-  object.isPendingSync = reader.readBool(offsets[10]);
-  object.itemCode = reader.readString(offsets[11]);
-  object.itemName = reader.readString(offsets[12]);
-  object.notes = reader.readStringOrNull(offsets[13]);
-  object.originalId = reader.readString(offsets[14]);
-  object.purpose = reader.readString(offsets[15]);
-  object.quantityBorrowed = reader.readLong(offsets[16]);
-  object.returnNotes = reader.readStringOrNull(offsets[17]);
-  object.returnedBy = reader.readStringOrNull(offsets[18]);
+  object.imageUrl = reader.readStringOrNull(offsets[13]);
+  object.inventoryItemId = reader.readString(offsets[14]);
+  object.isPendingSync = reader.readBool(offsets[15]);
+  object.itemCode = reader.readString(offsets[16]);
+  object.itemName = reader.readString(offsets[17]);
+  object.notes = reader.readStringOrNull(offsets[18]);
+  object.originalId = reader.readString(offsets[19]);
+  object.pickupScheduledAt = reader.readDateTimeOrNull(offsets[20]);
+  object.purpose = reader.readString(offsets[21]);
+  object.quantityBorrowed = reader.readLong(offsets[22]);
+  object.receivedByName = reader.readStringOrNull(offsets[23]);
+  object.receivedByUserId = reader.readStringOrNull(offsets[24]);
+  object.returnCondition = reader.readStringOrNull(offsets[25]);
+  object.returnNotes = reader.readStringOrNull(offsets[26]);
+  object.returnedBy = reader.readStringOrNull(offsets[27]);
   object.status =
-      _LoanCollectionstatusValueEnumMap[reader.readByteOrNull(offsets[19])] ??
+      _LoanCollectionstatusValueEnumMap[reader.readByteOrNull(offsets[28])] ??
           LoanStatus.active;
   return object;
 }
@@ -259,42 +358,60 @@ P _loanCollectionDeserializeProp<P>(
     case 0:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
-      return (reader.readString(offset)) as P;
-    case 4:
       return (reader.readStringOrNull(offset)) as P;
+    case 3:
+      return (reader.readDateTime(offset)) as P;
+    case 4:
+      return (reader.readString(offset)) as P;
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readLong(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 8:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 10:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 11:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 12:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 13:
       return (reader.readStringOrNull(offset)) as P;
     case 14:
       return (reader.readString(offset)) as P;
     case 15:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 16:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 17:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 18:
       return (reader.readStringOrNull(offset)) as P;
     case 19:
+      return (reader.readString(offset)) as P;
+    case 20:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 21:
+      return (reader.readString(offset)) as P;
+    case 22:
+      return (reader.readLong(offset)) as P;
+    case 23:
+      return (reader.readStringOrNull(offset)) as P;
+    case 24:
+      return (reader.readStringOrNull(offset)) as P;
+    case 25:
+      return (reader.readStringOrNull(offset)) as P;
+    case 26:
+      return (reader.readStringOrNull(offset)) as P;
+    case 27:
+      return (reader.readStringOrNull(offset)) as P;
+    case 28:
       return (_LoanCollectionstatusValueEnumMap[
               reader.readByteOrNull(offset)] ??
           LoanStatus.active) as P;
@@ -309,6 +426,8 @@ const _LoanCollectionstatusEnumValueMap = {
   'returned': 2,
   'cancelled': 3,
   'pending': 4,
+  'staged': 5,
+  'reserved': 6,
 };
 const _LoanCollectionstatusValueEnumMap = {
   0: LoanStatus.active,
@@ -316,6 +435,8 @@ const _LoanCollectionstatusValueEnumMap = {
   2: LoanStatus.returned,
   3: LoanStatus.cancelled,
   4: LoanStatus.pending,
+  5: LoanStatus.staged,
+  6: LoanStatus.reserved,
 };
 
 Id _loanCollectionGetId(LoanCollection object) {
@@ -585,6 +706,234 @@ extension LoanCollectionQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'approvedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'approvedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'approvedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'approvedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'approvedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'approvedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'approvedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'approvedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'approvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'approvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'approvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'approvedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'approvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'approvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'approvedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'approvedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'approvedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      approvedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'approvedBy',
+        value: '',
       ));
     });
   }
@@ -1375,6 +1724,234 @@ extension LoanCollectionQueryFilter
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'handedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'handedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'handedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'handedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'handedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'handedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'handedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'handedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'handedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'handedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'handedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'handedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'handedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'handedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'handedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'handedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'handedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      handedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'handedBy',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition> idEqualTo(
       Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -1426,6 +2003,160 @@ extension LoanCollectionQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'imageUrl',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'imageUrl',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'imageUrl',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'imageUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'imageUrl',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imageUrl',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      imageUrlIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'imageUrl',
+        value: '',
       ));
     });
   }
@@ -2139,6 +2870,80 @@ extension LoanCollectionQueryFilter
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      pickupScheduledAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'pickupScheduledAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      pickupScheduledAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'pickupScheduledAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      pickupScheduledAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pickupScheduledAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      pickupScheduledAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'pickupScheduledAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      pickupScheduledAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'pickupScheduledAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      pickupScheduledAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'pickupScheduledAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
       purposeEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -2326,6 +3131,468 @@ extension LoanCollectionQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'receivedByName',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'receivedByName',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'receivedByName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'receivedByName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'receivedByName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'receivedByName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'receivedByName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'receivedByName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'receivedByName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'receivedByName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'receivedByName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'receivedByName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'receivedByUserId',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'receivedByUserId',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'receivedByUserId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'receivedByUserId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'receivedByUserId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'receivedByUserId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'receivedByUserId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'receivedByUserId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'receivedByUserId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'receivedByUserId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'receivedByUserId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      receivedByUserIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'receivedByUserId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'returnCondition',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'returnCondition',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'returnCondition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'returnCondition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'returnCondition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'returnCondition',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'returnCondition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'returnCondition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'returnCondition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'returnCondition',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'returnCondition',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterFilterCondition>
+      returnConditionIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'returnCondition',
+        value: '',
       ));
     });
   }
@@ -2718,6 +3985,34 @@ extension LoanCollectionQuerySortBy
   }
 
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByApprovedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByApprovedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByApprovedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByApprovedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedBy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
       sortByBorrowDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'borrowDate', Sort.asc);
@@ -2829,6 +4124,45 @@ extension LoanCollectionQuerySortBy
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> sortByHandedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByHandedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> sortByHandedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByHandedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedBy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> sortByImageUrl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrl', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByImageUrlDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrl', Sort.desc);
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
       sortByInventoryItemId() {
     return QueryBuilder.apply(this, (query) {
@@ -2909,6 +4243,20 @@ extension LoanCollectionQuerySortBy
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByPickupScheduledAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pickupScheduledAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByPickupScheduledAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pickupScheduledAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> sortByPurpose() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'purpose', Sort.asc);
@@ -2933,6 +4281,48 @@ extension LoanCollectionQuerySortBy
       sortByQuantityBorrowedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'quantityBorrowed', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByReceivedByName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByReceivedByNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByReceivedByUserId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByUserId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByReceivedByUserIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByUserId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByReturnCondition() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'returnCondition', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      sortByReturnConditionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'returnCondition', Sort.desc);
     });
   }
 
@@ -2991,6 +4381,34 @@ extension LoanCollectionQuerySortThenBy
       thenByActualReturnDateDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'actualReturnDate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByApprovedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByApprovedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByApprovedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByApprovedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'approvedBy', Sort.desc);
     });
   }
 
@@ -3106,6 +4524,32 @@ extension LoanCollectionQuerySortThenBy
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByHandedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByHandedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByHandedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByHandedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'handedBy', Sort.desc);
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -3115,6 +4559,19 @@ extension LoanCollectionQuerySortThenBy
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByImageUrl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrl', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByImageUrlDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrl', Sort.desc);
     });
   }
 
@@ -3198,6 +4655,20 @@ extension LoanCollectionQuerySortThenBy
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByPickupScheduledAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pickupScheduledAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByPickupScheduledAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pickupScheduledAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy> thenByPurpose() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'purpose', Sort.asc);
@@ -3222,6 +4693,48 @@ extension LoanCollectionQuerySortThenBy
       thenByQuantityBorrowedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'quantityBorrowed', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByReceivedByName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByReceivedByNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByReceivedByUserId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByUserId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByReceivedByUserIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'receivedByUserId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByReturnCondition() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'returnCondition', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QAfterSortBy>
+      thenByReturnConditionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'returnCondition', Sort.desc);
     });
   }
 
@@ -3273,6 +4786,20 @@ extension LoanCollectionQueryWhereDistinct
       distinctByActualReturnDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'actualReturnDate');
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
+      distinctByApprovedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'approvedAt');
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct> distinctByApprovedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'approvedBy', caseSensitive: caseSensitive);
     });
   }
 
@@ -3334,6 +4861,26 @@ extension LoanCollectionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct> distinctByHandedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'handedAt');
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct> distinctByHandedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'handedBy', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct> distinctByImageUrl(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'imageUrl', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QDistinct>
       distinctByInventoryItemId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3377,6 +4924,13 @@ extension LoanCollectionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
+      distinctByPickupScheduledAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pickupScheduledAt');
+    });
+  }
+
   QueryBuilder<LoanCollection, LoanCollection, QDistinct> distinctByPurpose(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3388,6 +4942,30 @@ extension LoanCollectionQueryWhereDistinct
       distinctByQuantityBorrowed() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'quantityBorrowed');
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
+      distinctByReceivedByName({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'receivedByName',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
+      distinctByReceivedByUserId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'receivedByUserId',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<LoanCollection, LoanCollection, QDistinct>
+      distinctByReturnCondition({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'returnCondition',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -3424,6 +5002,19 @@ extension LoanCollectionQueryProperty
       actualReturnDateProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'actualReturnDate');
+    });
+  }
+
+  QueryBuilder<LoanCollection, DateTime?, QQueryOperations>
+      approvedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'approvedAt');
+    });
+  }
+
+  QueryBuilder<LoanCollection, String?, QQueryOperations> approvedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'approvedBy');
     });
   }
 
@@ -3480,6 +5071,24 @@ extension LoanCollectionQueryProperty
     });
   }
 
+  QueryBuilder<LoanCollection, DateTime?, QQueryOperations> handedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'handedAt');
+    });
+  }
+
+  QueryBuilder<LoanCollection, String?, QQueryOperations> handedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'handedBy');
+    });
+  }
+
+  QueryBuilder<LoanCollection, String?, QQueryOperations> imageUrlProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'imageUrl');
+    });
+  }
+
   QueryBuilder<LoanCollection, String, QQueryOperations>
       inventoryItemIdProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -3517,6 +5126,13 @@ extension LoanCollectionQueryProperty
     });
   }
 
+  QueryBuilder<LoanCollection, DateTime?, QQueryOperations>
+      pickupScheduledAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pickupScheduledAt');
+    });
+  }
+
   QueryBuilder<LoanCollection, String, QQueryOperations> purposeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'purpose');
@@ -3527,6 +5143,27 @@ extension LoanCollectionQueryProperty
       quantityBorrowedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'quantityBorrowed');
+    });
+  }
+
+  QueryBuilder<LoanCollection, String?, QQueryOperations>
+      receivedByNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'receivedByName');
+    });
+  }
+
+  QueryBuilder<LoanCollection, String?, QQueryOperations>
+      receivedByUserIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'receivedByUserId');
+    });
+  }
+
+  QueryBuilder<LoanCollection, String?, QQueryOperations>
+      returnConditionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'returnCondition');
     });
   }
 
@@ -3577,9 +5214,24 @@ _$LoanModelImpl _$$LoanModelImplFromJson(Map<String, dynamic> json) =>
       returnNotes: json['return_notes'] as String?,
       borrowedBy: json['borrowed_by'] as String,
       returnedBy: json['returned_by'] as String?,
+      approvedBy: json['approved_by'] as String?,
+      approvedAt: json['approved_at'] == null
+          ? null
+          : DateTime.parse(json['approved_at'] as String),
+      handedBy: json['handed_by'] as String?,
+      handedAt: json['handed_at'] == null
+          ? null
+          : DateTime.parse(json['handed_at'] as String),
+      pickupScheduledAt: json['pickup_scheduled_at'] == null
+          ? null
+          : DateTime.parse(json['pickup_scheduled_at'] as String),
+      receivedByName: json['received_by_name'] as String?,
+      receivedByUserId: json['received_by_user_id'] as String?,
+      returnCondition: json['return_condition'] as String?,
       daysOverdue: (json['daysOverdue'] as num?)?.toInt() ?? 0,
       daysBorrowed: (json['daysBorrowed'] as num?)?.toInt() ?? 0,
       isPendingSync: json['isPendingSync'] as bool? ?? false,
+      imageUrl: json['imageUrl'] as String?,
     );
 
 Map<String, dynamic> _$$LoanModelImplToJson(_$LoanModelImpl instance) =>
@@ -3601,9 +5253,18 @@ Map<String, dynamic> _$$LoanModelImplToJson(_$LoanModelImpl instance) =>
       'return_notes': instance.returnNotes,
       'borrowed_by': instance.borrowedBy,
       'returned_by': instance.returnedBy,
+      'approved_by': instance.approvedBy,
+      'approved_at': instance.approvedAt?.toIso8601String(),
+      'handed_by': instance.handedBy,
+      'handed_at': instance.handedAt?.toIso8601String(),
+      'pickup_scheduled_at': instance.pickupScheduledAt?.toIso8601String(),
+      'received_by_name': instance.receivedByName,
+      'received_by_user_id': instance.receivedByUserId,
+      'return_condition': instance.returnCondition,
       'daysOverdue': instance.daysOverdue,
       'daysBorrowed': instance.daysBorrowed,
       'isPendingSync': instance.isPendingSync,
+      'imageUrl': instance.imageUrl,
     };
 
 const _$LoanStatusEnumMap = {
@@ -3612,4 +5273,6 @@ const _$LoanStatusEnumMap = {
   LoanStatus.returned: 'returned',
   LoanStatus.cancelled: 'cancelled',
   LoanStatus.pending: 'pending',
+  LoanStatus.staged: 'staged',
+  LoanStatus.reserved: 'reserved',
 };

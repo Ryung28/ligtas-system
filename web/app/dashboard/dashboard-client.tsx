@@ -50,7 +50,7 @@ export default function DashboardClient() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-200">
             {/* Header */}
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative z-10">

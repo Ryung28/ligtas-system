@@ -13,11 +13,9 @@ export const fetchPendingRequests = async () => {
         .from('borrow_logs')
         .select(`
             *,
-            inventory:inventory_id (
-                item_name
-            )
+            inventory:inventory_id (*)
         `)
-        .in('status', ['pending', 'staged'])
+        .in('status', ['pending', 'staged', 'reserved'])
         .order('created_at', { ascending: false })
 
     if (error) throw error

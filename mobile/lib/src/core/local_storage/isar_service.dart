@@ -95,12 +95,12 @@ class IsarService {
   // Transaction sync logic
   static Future<void> savePendingTransaction(TransactionModel transaction) async {
     await _isar.writeTxn(() async {
-      await _isar.transactionCollections.put(TransactionCollection.fromModel(transaction));
+      await _isar.collection<TransactionCollection>().put(TransactionCollection.fromModel(transaction));
     });
   }
 
   static Future<List<TransactionModel>> getPendingTransactions() async {
-    final entities = await _isar.transactionCollections
+    final entities = await _isar.collection<TransactionCollection>()
         .where()
         .filter()
         .isPendingSyncEqualTo(true)
@@ -111,7 +111,7 @@ class IsarService {
   static Future<void> deleteTransaction(int id) async {
     await _isar.writeTxn(() async {
       // For transactions, we seek by originalId if it exists, or just id if it's the Isar ID
-      await _isar.transactionCollections.delete(id);
+      await _isar.collection<TransactionCollection>().delete(id);
     });
   }
 

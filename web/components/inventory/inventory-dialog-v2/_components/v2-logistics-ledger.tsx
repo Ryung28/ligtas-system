@@ -122,18 +122,24 @@ export function V2LogisticsLedger({
                 ))}
             </div>
 
-            {/* Quick Add Buttons */}
+            {/* Quick Add Buttons: Only show locations NOT already added */}
             <div className="flex flex-wrap gap-2 pt-1 px-1">
-                {savedLocations.slice(0, 3).map((loc) => (
-                    <Button
-                        key={loc.id} variant="outline" size="sm"
-                        onClick={() => onAdd(loc)}
-                        className="h-7 px-3 rounded-full border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
-                    >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add {loc.location_name}
-                    </Button>
-                ))}
+                {savedLocations
+                    .filter(loc => !distributions.some(dist => 
+                        dist.locationId === String(loc.id) || 
+                        dist.locationName.toLowerCase() === loc.location_name.toLowerCase()
+                    ))
+                    .slice(0, 3)
+                    .map((loc) => (
+                        <Button
+                            key={loc.id} variant="outline" size="sm"
+                            onClick={() => onAdd(loc)}
+                            className="h-7 px-3 rounded-full border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                        >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add {loc.location_name}
+                        </Button>
+                    ))}
             </div>
         </div>
     )

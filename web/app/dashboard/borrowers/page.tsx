@@ -1,16 +1,15 @@
+import dynamic from 'next/dynamic'
 import { Suspense } from 'react'
-import { getInitialBorrowers } from '@/lib/queries/borrowers'
-import { BorrowersClient } from './borrowers-client'
 import BorrowersLoading from './loading'
 
-export const dynamic = 'force-dynamic'
+const BorrowersClient = dynamic(() => import('./borrowers-client').then(mod => mod.BorrowersClient), {
+    loading: () => <BorrowersLoading />
+})
 
-export default async function BorrowerRegistryPage() {
-    const initialData = await getInitialBorrowers()
-
+export default function BorrowerRegistryPage() {
     return (
         <Suspense fallback={<BorrowersLoading />}>
-            <BorrowersClient initialData={initialData} />
+            <BorrowersClient initialData={{ borrowers: [], stats: {} }} />
         </Suspense>
     )
 }

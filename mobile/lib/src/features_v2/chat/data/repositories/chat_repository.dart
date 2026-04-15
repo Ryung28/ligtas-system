@@ -441,13 +441,6 @@ class ChatRepository with SupabasePresenceMixin implements IChatRepository {
   }
 
   @override
-  Stream<List<String>> watchOnlineUsers(String roomId) {
-    // ── Realtime Presence ──
-    // Implementation placeholder for interface compliance
-    return const Stream.empty();
-  }
-
-  @override
   void leavePresenceChannel(String roomId) {
     _client.channel('presence:$roomId').unsubscribe();
   }

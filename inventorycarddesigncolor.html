@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LIGTAS | Inventory Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Lexend:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-on-surface": "#eff1f5",
+              "surface-tint": "#4a607c",
+              "secondary-fixed": "#dbe3f2",
+              "inverse-primary": "#b1c8e9",
+              "primary": "#000000",
+              "surface-bright": "#f7f9fd",
+              "secondary": "#575f6b",
+              "on-tertiary-fixed-variant": "#663c28",
+              "on-primary": "#ffffff",
+              "error-container": "#ffdad6",
+              "background": "#f0f3f9","secondary-fixed-dim": "#bfc7d5",
+              "surface-container-low": "#f2f4f8",
+              "tertiary-fixed": "#ffdbcc",
+              "surface-dim": "#d8dade",
+              "on-primary-container": "#6f85a3",
+              "surface": "#f0f3f9",
+              "surface-container": "#eceef2",
+              "primary-fixed": "#d2e4ff",
+              "on-secondary": "#ffffff",
+              "primary-fixed-dim": "#b1c8e9",
+              "on-tertiary-fixed": "#321203",
+              "on-primary-fixed-variant": "#324863",
+              "tertiary-fixed-dim": "#f6b99e",
+              "tertiary": "#000000",
+              "secondary-container": "#dbe3f2",
+              "outline": "#74777e",
+              "on-secondary-fixed": "#141c27",
+              "on-primary-fixed": "#021c36",
+              "on-surface-variant": "#43474d",
+              "on-background": "#191c1f",
+              "on-tertiary": "#ffffff",
+              "on-surface": "#191c1f",
+              "error": "#ba1a1a",
+              "outline-variant": "#c4c6ce",
+              "on-secondary-container": "#5d6571",
+              "surface-container-highest": "#e0e2e6",
+              "on-error": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-high": "#e6e8ec",
+              "on-tertiary-container": "#ac7860",
+              "inverse-surface": "#2d3134",
+              "surface-variant": "#e0e2e6",
+              "on-error-container": "#93000a",
+              "tertiary-container": "#321203",
+              "primary-container": "#021c36",
+              "on-secondary-fixed-variant": "#3f4753"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Lexend"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style type="text/tailwindcss">
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .mesh-gradient-blue {
+            background-color: transparent;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(210, 228, 255, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(177, 200, 233, 0.3) 0px, transparent 50%);
+        }
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.5), inset -1px -1px 2px rgba(0,0,0,0.05);
+        }.neu-card {
+            background: #f0f3f9;
+            box-shadow: 12px 12px 24px #d1d9e6, 
+                        -12px -12px 24px #ffffff;
+        }
+        .neu-icon-container {
+            background: #f0f3f9;
+            box-shadow: 6px 6px 12px #d1d9e6, 
+                        -6px -6px 12px #ffffff;
+        }
+        .neu-icon-container-inset {
+            background: #f0f3f9;
+            box-shadow: inset 4px 4px 8px #d1d9e6, 
+                        inset -4px -4px 8px #ffffff;
+        }
+        .neu-button {
+            background: #f0f3f9;
+            box-shadow: 4px 4px 8px #d1d9e6, 
+                        -4px -4px 8px #ffffff;
+        }
+        .neu-button:active {
+            box-shadow: inset 2px 2px 5px #d1d9e6, 
+                        inset -2px -2px 5px #ffffff;
+        }
+        .neu-button-primary {
+            background: #324863;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.2), 
+                        -2px -2px 6px rgba(255,255,255,0.1);
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-background min-h-screen pb-32">
+<header class="fixed top-0 w-full z-50 bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-xl border-b border-white/10 dark:border-slate-800/50 shadow-sm flex items-center justify-between px-6 h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-blue-900 dark:text-blue-100" data-icon="inventory_2">inventory_2</span>
+<h1 class="font-['Plus_Jakarta_Sans'] font-extrabold text-lg tracking-tight text-blue-950 dark:text-white font-extrabold tracking-tighter">LIGTAS</h1>
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex gap-8">
+<a class="text-slate-500 dark:text-slate-400 font-label text-sm font-medium hover:opacity-80 transition-opacity" href="#">Map</a>
+<a class="text-blue-700 dark:text-blue-400 font-label text-sm font-medium hover:opacity-80 transition-opacity" href="#">Inventory</a>
+<a class="text-slate-500 dark:text-slate-400 font-label text-sm font-medium hover:opacity-80 transition-opacity" href="#">Reports</a>
+</nav>
+<button class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity" data-icon="account_circle">account_circle</button>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-6 pt-24">
+<section class="mb-12">
+<span class="font-label text-xs font-semibold tracking-[0.2em] text-on-primary-container uppercase mb-2 block">Stock Management</span>
+<h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight leading-tight">Emergency Resource <br/>Inventory</h2>
+</section>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+<div class="group flex flex-col neu-card rounded-[2.5rem] overflow-hidden transition-transform duration-500 hover:scale-[1.01]">
+<div class="h-56 mesh-gradient-blue relative flex items-center justify-center p-8">
+<span class="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-primary-fixed-variant opacity-5 font-thin" data-icon="medical_services">medical_services</span>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full neu-icon-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-primary-fixed-variant text-3xl" data-icon="first_aid_kit">fire_extinguisher</span>
+</div>
+<h3 class="font-headline font-bold text-on-primary-fixed-variant text-xl">Advanced Medical Kits</h3>
+<p class="font-label text-sm text-on-primary-container mt-1">Tier-1 Emergency Response</p>
+</div>
+</div>
+<div class="p-8 flex flex-col justify-between flex-grow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-widest mb-1">Stock Level</p>
+<span class="text-2xl font-extrabold text-on-primary-fixed-variant">124 <span class="text-sm font-medium text-on-surface-variant">Units</span></span>
+</div>
+<div class="glass-pill px-4 py-2 rounded-full">
+<span class="font-label text-xs font-bold text-on-primary-fixed-variant">80% CAPACITY</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 neu-button py-3 rounded-2xl font-label text-xs font-bold text-on-primary-fixed-variant hover:text-on-primary-container transition-all uppercase tracking-wider">Request Restock</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-2xl neu-button-primary text-white hover:brightness-110 transition-all">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group flex flex-col neu-card rounded-[2.5rem] overflow-hidden transition-transform duration-500 hover:scale-[1.01]">
+<div class="h-56 mesh-gradient-blue relative flex items-center justify-center p-8">
+<span class="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-primary-fixed-variant opacity-5 font-thin" data-icon="water_drop">water_drop</span>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full neu-icon-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-primary-fixed-variant text-3xl" data-icon="opacity">opacity</span>
+</div>
+<h3 class="font-headline font-bold text-on-primary-fixed-variant text-xl">Potable Water Reserves</h3>
+<p class="font-label text-sm text-on-primary-container mt-1">Sustainment Level A</p>
+</div>
+</div>
+<div class="p-8 flex flex-col justify-between flex-grow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-widest mb-1">Stock Level</p>
+<span class="text-2xl font-extrabold text-on-primary-fixed-variant">2,450 <span class="text-sm font-medium text-on-surface-variant">Liters</span></span>
+</div>
+<div class="glass-pill px-4 py-2 rounded-full bg-error-container/10 border-error/20">
+<span class="font-label text-xs font-bold text-error">CRITICAL LOW</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 neu-button py-3 rounded-2xl font-label text-xs font-bold text-on-primary-fixed-variant transition-all uppercase tracking-wider">Emergency Dispatch</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-2xl neu-button-primary text-white transition-all">
+<span class="material-symbols-outlined" data-icon="priority_high">priority_high</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group flex flex-col neu-card rounded-[2.5rem] overflow-hidden transition-transform duration-500 hover:scale-[1.01]">
+<div class="h-56 mesh-gradient-blue relative flex items-center justify-center p-8">
+<span class="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-primary-fixed-variant opacity-5 font-thin" data-icon="cell_tower">cell_tower</span>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full neu-icon-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-primary-fixed-variant text-3xl" data-icon="radio">radio</span>
+</div>
+<h3 class="font-headline font-bold text-on-primary-fixed-variant text-xl">Comm-Relay Units</h3>
+<p class="font-label text-sm text-on-primary-container mt-1">Satellite Link Modules</p>
+</div>
+</div>
+<div class="p-8 flex flex-col justify-between flex-grow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-widest mb-1">Stock Level</p>
+<span class="text-2xl font-extrabold text-on-primary-fixed-variant">18 <span class="text-sm font-medium text-on-surface-variant">Active</span></span>
+</div>
+<div class="glass-pill px-4 py-2 rounded-full">
+<span class="font-label text-xs font-bold text-on-primary-fixed-variant">OPERATIONAL</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 neu-button py-3 rounded-2xl font-label text-xs font-bold text-on-primary-fixed-variant transition-all uppercase tracking-wider">Diagnostics</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-2xl neu-button-primary text-white transition-all">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</div>
+</div>
+<div class="group flex flex-col neu-card rounded-[2.5rem] overflow-hidden transition-transform duration-500 hover:scale-[1.01]">
+<div class="h-56 mesh-gradient-blue relative flex items-center justify-center p-8">
+<span class="material-symbols-outlined absolute -top-4 -right-4 text-[120px] text-on-primary-fixed-variant opacity-5 font-thin" data-icon="fastfood">fastfood</span>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full neu-icon-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-primary-fixed-variant text-3xl" data-icon="lunch_dining">lunch_dining</span>
+</div>
+<h3 class="font-headline font-bold text-on-primary-fixed-variant text-xl">MRE Ration Packs</h3>
+<p class="font-label text-sm text-on-primary-container mt-1">Calorie-Dense Provisions</p>
+</div>
+</div>
+<div class="p-8 flex flex-col justify-between flex-grow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-widest mb-1">Stock Level</p>
+<span class="text-2xl font-extrabold text-on-primary-fixed-variant">840 <span class="text-sm font-medium text-on-surface-variant">Packs</span></span>
+</div>
+<div class="glass-pill px-4 py-2 rounded-full">
+<span class="font-label text-xs font-bold text-on-primary-fixed-variant">OPTIMAL</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 neu-button py-3 rounded-2xl font-label text-xs font-bold text-on-primary-fixed-variant transition-all uppercase tracking-wider">Log Shipment</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-2xl neu-button-primary text-white transition-all">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<nav class="fixed bottom-6 left-0 right-0 z-50 flex justify-around items-center px-4 py-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl w-[90%] max-w-md mx-auto rounded-[2rem] border border-white/20 shadow-[0_12px_24px_-4px_rgba(0,26,51,0.12)] md:hidden">
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 w-12 h-12 hover:bg-slate-200/40 transition-all duration-300 ease-out hover:-translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-['Lexend'] text-[10px] font-medium uppercase tracking-wider">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-blue-950 dark:bg-blue-500 text-white dark:text-slate-950 rounded-full w-12 h-12 shadow-lg scale-110 transition-all duration-300 ease-out hover:-translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-['Lexend'] text-[10px] font-medium uppercase tracking-wider">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 w-12 h-12 hover:bg-slate-200/40 transition-all duration-300 ease-out hover:-translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="Assignment_late">assignment_late</span>
+<span class="font-['Lexend'] text-[10px] font-medium uppercase tracking-wider">Reports</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 w-12 h-12 hover:bg-slate-200/40 transition-all duration-300 ease-out hover:-translate-y-1" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Lexend'] text-[10px] font-medium uppercase tracking-wider">Profile</span>
+</a>
+</nav>
+
+</body></html>

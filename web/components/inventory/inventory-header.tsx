@@ -1,12 +1,14 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, ListPlus, Package, Layers, AlertTriangle, XCircle, Trash2, CheckSquare, Settings2 } from 'lucide-react'
 import { BulkAddDialog } from './bulk-add-dialog'
 import { InventoryPrintCatalog } from './inventory-print-catalog'
 import { LocationManagerDialog } from './location-manager-dialog'
 import { InventoryItem } from '@/lib/supabase'
-import { useMemo } from 'react'
+import { SelectionToolbar } from './selection-toolbar'
+import { DispatchCommandSheet } from '@/src/features/transactions/v2/dispatch-command-sheet'
 
 interface InventoryHeaderProps {
     lastUpdated: Date
@@ -29,7 +31,6 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
             const threshold = item.low_stock_threshold || 20
             const dangerLine = anchor * (threshold / 100)
             
-            // Trigger if item exists and is at or below the danger line
             return hasStock && item.stock_available <= dangerLine
         }).length
         const outOfStockItems = items.filter(item => item.stock_available === 0).length
@@ -38,10 +39,10 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
     }, [items])
 
     return (
-        <div className="bg-white/95 backdrop-blur-xl border border-zinc-200/60 p-4 14in:p-5 rounded-2xl shadow-[0_8px_40px_rgb(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.8)]">
+        <div className="bg-white/95 backdrop-blur-xl border border-zinc-200/60 p-3 14in:p-4 rounded-2xl shadow-[0_8px_40px_rgb(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.8)]">
             {/* Title + Actions Row */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic leading-none">
+                <h1 className="text-xl 14in:text-2xl font-black tracking-tight text-slate-900 font-heading uppercase italic leading-none">
                     Inventory
                 </h1>
                 <div className="flex items-center gap-2">
@@ -81,6 +82,7 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
                             
                             <LocationManagerDialog />
                             <InventoryPrintCatalog items={items} />
+                            <DispatchCommandSheet />
                             
                             <BulkAddDialog
                                 onSuccess={onRefresh}

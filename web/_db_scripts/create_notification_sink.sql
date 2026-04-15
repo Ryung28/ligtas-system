@@ -44,16 +44,40 @@ WITH CHECK (true);
 CREATE OR REPLACE FUNCTION trg_handle_stock_alerts()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- 🚨 Threshold: Stock Low (LT 10)
+    -- 🚨 BRANCH A: THE ALARM (When stock drops below thresholds)
+    
+    -- 1. Threshold: Low Stock (Below 10)
     IF (OLD.stock_available >= 10 AND NEW.stock_available < 10 AND NEW.stock_available > 0) THEN
         INSERT INTO system_notifications (type, title, message, reference_id, metadata)
-        VALUES ('stock_low', 'LOW STOCK ALERT', 'Resource depletion: ' || NEW.item_name || ' (Available: ' || NEW.stock_available || ')', NEW.id::TEXT, jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name));
+        VALUES (
+            'stock_low', 
+            'LOW STOCK ALERT', 
+            'Resource depletion: ' || NEW.item_name || ' (Available: ' || NEW.stock_available || ')', 
+            NEW.id::TEXT, 
+            jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name)
+        );
     END IF;
 
-    -- 🚨 Threshold: Stock Depleted (= 0)
+    -- 2. Threshold: Stock Depleted (= 0)
     IF (OLD.stock_available > 0 AND NEW.stock_available = 0) THEN
         INSERT INTO system_notifications (type, title, message, reference_id, metadata)
-        VALUES ('stock_out', 'RESOURCES DEPLETED', 'Supply chain break: ' || NEW.item_name || ' is out of stock.', NEW.id::TEXT, jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name));
+        VALUES (
+            'stock_out', 
+            'RESOURCES DEPLETED', 
+            'Supply chain break: ' || NEW.item_name || ' is out of stock.', 
+            NEW.id::TEXT, 
+            jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name)
+        );
+    END IF;
+
+    -- ✨ BRANCH B: THE RESOLUTION (The "Healing" Logic)
+    
+    -- If stock was in an alert state (< 10) and is now recovered (>= 10), 
+    -- we purge the alerts from the system_notifications table.
+    IF (OLD.stock_available < 10 AND NEW.stock_available >= 10) THEN
+        DELETE FROM public.system_notifications 
+        WHERE reference_id = NEW.id::TEXT 
+        AND type IN ('stock_low', 'stock_out');
     END IF;
 
     RETURN NEW;

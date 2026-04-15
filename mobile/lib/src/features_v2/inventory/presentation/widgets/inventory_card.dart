@@ -2,247 +2,296 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shimmer/shimmer.dart';
-
-import '../../../loans/presentation/widgets/borrow_request_sheet.dart';
-import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
 import '../../domain/entities/inventory_item.dart';
-import '../providers/inventory_provider.dart';
-import 'reserve_button.dart';
+import '../providers/mission_cart_provider.dart';
+import 'manager_action_sheet.dart';
+import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'tactical_asset_image.dart';
 
 class InventoryCard extends ConsumerWidget {
   final InventoryItem item;
+  final int index; 
+  final VoidCallback? onBorrow;
+  final VoidCallback? onImageTap;
+  final bool isManager;
 
-  const InventoryCard({super.key, required this.item});
-
-  void _expandImage(BuildContext context, WidgetRef ref) async {
-    if (item.imageUrl == null || item.imageUrl!.isEmpty) return;
-
-    ref.read(isDockSuppressedProvider.notifier).state = true;
-
-    await showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.8),
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
-              ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Hero(
-                    tag: 'inventory_image_v2_${item.id}',
-                    child: InteractiveViewer(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: CachedNetworkImage(
-                          imageUrl: item.imageUrl!,
-                          fit: BoxFit.contain,
-                          errorWidget: (context, url, error) => _SmartIcon(category: item.category),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      child: IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(opacity: animation, child: child);
-      },
-    );
-
-    ref.read(isDockSuppressedProvider.notifier).state = false;
-  }
+  const InventoryCard({
+    super.key,
+    required this.item,
+    required this.index,
+    this.onBorrow,
+    this.onImageTap,
+    this.isManager = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              // Navigation to details would go here
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => _expandImage(context, ref),
-                    child: Hero(
-                      tag: 'inventory_image_v2_${item.id}',
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: (item.imageUrl != null && item.imageUrl!.isNotEmpty)
-                              ? CachedNetworkImage(
-                                  imageUrl: item.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  memCacheWidth: 112, 
-                                  memCacheHeight: 112,
-                                  placeholder: (context, url) => Shimmer.fromColors(
-                                    baseColor: const Color(0xFFF1F5F9),
-                                    highlightColor: Colors.white,
-                                    child: Container(color: Colors.white),
-                                  ),
-                                  errorWidget: (context, url, error) => _SmartIcon(category: item.category),
-                                )
-                              : _SmartIcon(category: item.category),
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const Gap(12),
-                  
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          item.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const Gap(2),
-                        Text(
-                          item.category.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF64748B),
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        const Gap(8),
-                        _buildStockIndicator(item.availableStock),
-                      ],
-                    ),
-                  ),
-                  
-                  ReserveButton(onTap: () {
-                    BorrowRequestSheet.show(context, item: item);
-                  }),
-                ],
+    final sentinel = Theme.of(context).sentinel;
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: () {
+        if (isManager) {
+          HapticFeedback.heavyImpact();
+          showModalBottomSheet(
+            context: context,
+            useRootNavigator: true, 
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => ManagerActionSheet(item: item),
+          );
+        } else {
+          onBorrow?.call();
+        }
+      },
+      child: Container(
+        clipBehavior: Clip.antiAlias, // 🛡️ ASSET SEAL: Prevent border bleeding
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: sentinel.tactile.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 🛡️ ASSET HEADER (Image Area) ──
+            Expanded(
+              flex: 1,
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onImageTap?.call();
+                },
+                child: Hero(
+                  tag: 'inv_img_${item.id}',
+                  child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: item.imageUrl!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          placeholder: (context, url) => Container(color: sentinel.containerLow),
+                          errorWidget: (context, url, error) => _buildIconPlaceholder(sentinel),
+                        )
+                      : _buildIconPlaceholder(sentinel),
+                ),
               ),
             ),
-          ),
+
+            // ── 🛡️ INFO BLOCK (Content Area) ──
+            Expanded(
+              flex: 1,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTight = constraints.maxHeight < 120; // 🛡️ ADAPTIVE PRUNING THRESHOLD
+                  
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.start, // 🛡️ CONTENT-FIRST GROUPING
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!isTight) 
+                              Text(
+                                item.category.toUpperCase(),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: sentinel.primary.withOpacity(0.7),
+                                  letterSpacing: 1.2,
+                                  fontSize: 8,
+                                ),
+                              ),
+                            const Gap(2),
+                            Text(
+                              item.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                                fontSize: 13,
+                                color: sentinel.navy,
+                              ),
+                            ),
+                            const Gap(4),
+                              Text(
+                                item.status.toLowerCase() == 'staged' || item.status.toLowerCase() == 'reserved'
+                                    ? 'RESERVED'
+                                    : (item.availableStock <= 0 
+                                        ? 'OUT OF STOCK' 
+                                        : (item.availableStock <= item.minStockLevel ? 'LOW STOCK: ${item.availableStock.toInt()} ${item.unit.toUpperCase()}' : 'STOCK: ${item.availableStock.toInt()} ${item.unit.toUpperCase()}')),
+                                style: GoogleFonts.lexend(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: (item.status.toLowerCase() == 'staged' || item.status.toLowerCase() == 'reserved')
+                                      ? AppTheme.primaryBlue
+                                      : (item.availableStock <= 0 
+                                          ? Colors.redAccent 
+                                          : (item.availableStock <= item.minStockLevel ? Colors.orangeAccent : sentinel.onSurfaceVariant.withOpacity(0.6))),
+                                ),
+                              ),
+                          ],
+                        ),
+                        
+                        // 🛡️ ADAPTIVE PROXIMITY: Anchors the button to the bottom
+                        const Gap(2), 
+                        const Spacer(), 
+                        const Gap(2), 
+                        
+                        // ── 🛡️ ACTION ROW (KINETIC HUB) ──
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final cart = ref.watch(missionCartNotifierProvider);
+                            final isInCart = cart.containsKey(item.id.toString());
+                            final currentQty = cart[item.id.toString()]?.quantity ?? 0;
+                            final isReserved = item.status.toLowerCase() == 'staged' || item.status.toLowerCase() == 'reserved';
+                            
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: double.infinity,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: isManager 
+                                    ? sentinel.containerLow 
+                                    : (isInCart ? sentinel.primary : (item.availableStock <= 0 || isReserved ? sentinel.containerLow : sentinel.navy)),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: isInCart 
+                                    ? [BoxShadow(color: sentinel.primary.withOpacity(0.4), blurRadius: 8)] 
+                                    : null,
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return ScaleTransition(scale: animation, child: FadeTransition(opacity: animation, child: child));
+                                },
+                                child: isInCart && !isManager 
+                                  ? Row(
+                                      key: const ValueKey('counter_state'),
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        _TacticalIconButton(
+                                          icon: Icons.remove_circle_outline_rounded,
+                                          onPressed: () {
+                                            HapticFeedback.lightImpact();
+                                            ref.read(missionCartNotifierProvider.notifier).decrementItem(item);
+                                          },
+                                        ),
+                                        Text(
+                                          '$currentQty',
+                                          style: GoogleFonts.lexend(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        _TacticalIconButton(
+                                          icon: Icons.add_circle_rounded,
+                                          onPressed: () {
+                                            if (currentQty < item.availableStock) {
+                                              HapticFeedback.mediumImpact();
+                                              ref.read(missionCartNotifierProvider.notifier).addItem(item);
+                                            } else {
+                                              HapticFeedback.vibrate();
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    )
+                                  : Row(
+                                      key: const ValueKey('initial_state'),
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          isManager ? Icons.settings_input_component_rounded : (isReserved ? Icons.bookmark_added_rounded : Icons.shopping_bag_outlined),
+                                          color: isManager ? sentinel.navy : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
+                                          size: 14,
+                                        ),
+                                        const Gap(6),
+                                        Flexible(
+                                          child: Text(
+                                            isManager 
+                                                ? 'MANAGE' 
+                                                : (isReserved 
+                                                    ? 'RESERVED' 
+                                                    : (item.availableStock <= 0 
+                                                        ? 'OUT OF STOCK' 
+                                                        : 'BORROW ITEM')),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.visible, 
+                                            style: GoogleFonts.lexend(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w900,
+                                              color: isManager ? sentinel.navy : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
+                                              letterSpacing: 1.0,
+                                              height: 1.0,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildStockIndicator(int available) {
-    Color color = const Color(0xFF10B981); // Emerald 500
-    String label = 'AVAILABLE: $available';
-    IconData icon = Icons.check_circle_outline_rounded;
-
-    if (available == 0) {
-      color = const Color(0xFFEF4444); // Red 500
-      label = 'OUT OF STOCK';
-      icon = Icons.error_outline_rounded;
-    } else if (available < 5) {
-      color = const Color(0xFFF59E0B); // Amber 500
-      label = 'LOW STOCK: $available';
-      icon = Icons.warning_amber_rounded;
-    }
-
+  Widget _buildIconPlaceholder(LigtasColors sentinel) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const Gap(4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: color,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
+      color: sentinel.containerLow,
+      child: Center(
+        child: Icon(
+          _getCategoryIcon(item.category),
+          color: sentinel.navy.withOpacity(0.15),
+          size: 40,
+        ),
       ),
     );
   }
+
+  IconData _getCategoryIcon(String category) {
+    final key = category.toLowerCase();
+    if (key.contains('med')) return Icons.local_hospital_rounded;
+    if (key.contains('rescue')) return Icons.construction_rounded;
+    if (key.contains('food')) return Icons.inventory_2_rounded;
+    if (key.contains('shelter')) return Icons.home_rounded;
+    if (key.contains('water')) return Icons.water_drop_rounded;
+    return Icons.inventory_rounded;
+  }
 }
 
-class _SmartIcon extends ConsumerWidget {
-  final String category;
-  const _SmartIcon({required this.category});
+/// 🛡️ TACTICAL TOUCH TARGET: Expanded hit-testing for emergency precision
+class _TacticalIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _TacticalIconButton({required this.icon, required this.onPressed});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final icon = ref.watch(categoryIconProvider(category));
-    return Center(
-      child: Icon(icon, size: 30, color: const Color(0xFF64748B)),
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onPressed,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
     );
   }
 }

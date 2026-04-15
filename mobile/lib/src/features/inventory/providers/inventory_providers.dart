@@ -4,31 +4,27 @@ import 'package:mobile/src/features/inventory/models/inventory_model.dart';
 import 'package:mobile/src/core/di/app_providers.dart';
 
 import 'package:mobile/src/features_v2/inventory/presentation/providers/inventory_provider.dart';
+import 'package:mobile/src/features_v2/inventory/domain/entities/inventory_item.dart';
 
 final inventoryItemsProvider = StreamProvider<List<InventoryModel>>((ref) {
-  // 🚀 Bridge: Watch the V2 Reactive Stream and map to Legacy Models
-  final v2InventoryAsync = ref.watch(inventoryNotifierProvider);
+  final v2Stream = ref.watch(allInventoryStreamProvider.stream);
   
-  return v2InventoryAsync.when(
-    data: (items) => Stream.value(items.map((i) => InventoryModel(
-      id: i.id,
-      name: i.name,
-      description: i.description,
-      category: i.category,
-      quantity: i.totalStock,
-      available: i.availableStock,
-      location: i.location,
-      qrCode: i.qrCode,
-      status: i.status,
-      code: i.code,
-      minStockLevel: i.minStockLevel,
-      unit: i.unit,
-      imageUrl: i.imageUrl ?? '',
-      updatedAt: i.lastUpdated,
-    )).toList()),
-    loading: () => const Stream.empty(),
-    error: (e, st) => Stream.error(e, st),
-  );
+  return v2Stream.map((items) => items.map((i) => InventoryModel(
+    id: i.id,
+    name: i.name,
+    description: i.description,
+    category: i.category,
+    quantity: i.totalStock,
+    available: i.availableStock,
+    location: i.location,
+    qrCode: i.qrCode,
+    status: i.status,
+    code: i.code,
+    minStockLevel: i.minStockLevel,
+    unit: i.unit,
+    imageUrl: i.imageUrl ?? '',
+    updatedAt: i.lastUpdated,
+  )).toList());
 });
 
 final categoryIconProvider = Provider.family<IconData, String>((ref, category) {

@@ -18,6 +18,7 @@ class UserModel with _$UserModel {
     @Default('viewer') String role, // admin, editor, viewer
     @Default('pending') String status, // pending, active, suspended
     @Default([]) List<String> providers, // ['email', 'google', etc]
+    String? assignedWarehouse, // warehouse assignment for equipment managers
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
@@ -32,6 +33,7 @@ class UserModel with _$UserModel {
       role: (json['role'] ?? 'viewer').toString(),
       status: (json['status'] ?? 'pending').toString(),
       providers: providers ?? [],
+      assignedWarehouse: json['assigned_warehouse'] as String?,
     );
   }
 
@@ -56,17 +58,30 @@ class UserModel with _$UserModel {
   String get firstName => fullName.split(' ').first;
 
   /// Check if user has active access
-  bool get isActive => status == 'active';
+  bool get isActive => status.toLowerCase() == 'active';
   
   /// Check if user is waiting for approval
-  bool get isPending => status == 'pending';
+  bool get isPending => status.toLowerCase() == 'pending';
   
   /// Check if user is suspended/rejected
-  bool get isSuspended => status == 'suspended';
+  bool get isSuspended => status.toLowerCase() == 'suspended';
   
   /// Check if user has admin privileges
-  bool get isAdmin => role == 'admin' && isActive;
+  bool get isAdmin => (role.toLowerCase() == 'admin') && isActive;
   
-  /// Check if user can edit (admin or editor)
-  bool get canEdit => (role == 'admin' || role == 'editor') && isActive;
+  /// Check if user can edit (admin, editor, or manager variant)
+  bool get canEdit {
+    final r = role.toLowerCase();
+    return (r == 'admin' || 
+            r == 'editor' || 
+            r == 'manager' || 
+            r == 'inventory_manager' || 
+            r == 'inventory manager') && isActive;
+  }
+  
+  /// Check if user is equipment manager (editor role)
+  bool get isEquipmentManager => role.toLowerCase() == 'editor' && isActive;
+  
+  /// Check if manager has warehouse assigned
+  bool get hasWarehouseAssigned => assignedWarehouse != null && assignedWarehouse!.isNotEmpty;
 }

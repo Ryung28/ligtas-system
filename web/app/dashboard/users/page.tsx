@@ -1,32 +1,18 @@
-import { UsersClient } from './users-client'
-import { createSupabaseServer } from '@/lib/supabase-server'
+import dynamic from 'next/dynamic'
 import { Suspense } from 'react'
 import Loading from './loading'
 
-export const dynamic = 'force-dynamic'
+// ⚡ LIGTAS INSTANT-NAV PROTOCOL:
+// We lazy-load the client component to ensure the server can eject 
+// the high-fidelity skeleton instantly without waiting for the JS bundle.
+const UsersClient = dynamic(() => import('./users-client').then(mod => mod.UsersClient), {
+    loading: () => <Loading />
+})
 
-export default async function AccessControlPage() {
-    const initialUsers = await getInitialUsers()
-
+export default function AccessControlPage() {
     return (
         <Suspense fallback={<Loading />}>
-            <UsersClient initialUsers={initialUsers} />
+            <UsersClient initialUsers={[]} />
         </Suspense>
     )
-}
-
-async function getInitialUsers() {
-    try {
-        const supabase = await createSupabaseServer()
-        const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .order('created_at', { ascending: false })
-
-        if (error) throw error
-        return data || []
-    } catch (error) {
-        console.error('Failed to load users on server:', error)
-        return []
-    }
 }

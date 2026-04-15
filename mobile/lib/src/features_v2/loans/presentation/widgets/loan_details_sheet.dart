@@ -1,214 +1,193 @@
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:mobile/src/features_v2/loans/presentation/providers/loan_provider.dart';
+import 'package:mobile/src/core/design_system/widgets/tactical_forensic_detail_sheet.dart';
 import '../../domain/entities/loan_item.dart';
 import '../../../../core/design_system/app_theme.dart';
+import 'package:gap/gap.dart';
 
-class LoanDetailsSheet extends StatelessWidget {
+class LoanDetailsSheet extends ConsumerWidget {
   final LoanItem loan;
+  final bool readOnly;
 
-  const LoanDetailsSheet({super.key, required this.loan});
+  const LoanDetailsSheet({
+    super.key, 
+    required this.loan,
+    this.readOnly = true, 
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 40,
-            color: Colors.black12,
-            offset: Offset(0, -10),
-          )
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.neutralGray200,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const Gap(32),
-            Row(
-              children: [
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: _getSmartIcon(loan.itemName),
-                  ),
-                ),
-                const Gap(20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        loan.itemName,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.neutralGray900,
-                          letterSpacing: -1.0,
-                        ),
-                      ),
-                      const Gap(4),
-                      Text(
-                        'ASSET-${loan.itemCode}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.primaryBlue,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Gap(32),
-            
-            _buildDetailRow(
-              icon: Icons.person_outline_rounded,
-              label: 'Borrower',
-              value: loan.borrowerName,
-            ),
-            const Gap(16),
-            _buildDetailRow(
-              icon: Icons.calendar_today_rounded,
-              label: 'Borrow Date',
-              value: _formatDate(loan.borrowDate),
-            ),
-            const Gap(16),
-            _buildDetailRow(
-              icon: Icons.event_available_rounded,
-              label: 'Expected Return',
-              value: _formatDate(loan.expectedReturnDate),
-            ),
-            
-            if (loan.purpose.isNotEmpty) ...[
-              const Gap(24),
-              const Text(
-                'PURPOSE',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF94A3B8),
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const Gap(8),
-              Text(
-                loan.purpose,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF475569),
-                  height: 1.5,
-                ),
-              ),
-            ],
-            
-            const Gap(40),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F172A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Close Details',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-              ),
-            ),
-          ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isPending = loan.status == LoanStatus.pending;
+    final bool isApproved = loan.status == LoanStatus.active && loan.handedBy == null;
+
+    final statusInfo = _getStatusInfo(loan.status);
+
+    return TacticalForensicDetailSheet(
+      id: loan.id,
+      title: loan.itemName,
+      referenceId: 'ASSET-${loan.itemCode}',
+      statusLabel: statusInfo.label,
+      accentColor: statusInfo.color,
+      isAlertStatus: statusInfo.isAlert,
+      statusIcon: statusInfo.icon,
+      imageUrl: loan.imageUrl,
+      heroTagPrefix: 'loan',
+      purpose: loan.purpose,
+      details: [
+        DetailRowData(
+          icon: Icons.person_outline_rounded,
+          label: 'Borrower',
+          value: loan.borrowerName,
         ),
-      ),
+        DetailRowData(
+          icon: Icons.calendar_today_rounded,
+          label: 'Borrow Date',
+          value: _formatDate(loan.borrowDate),
+        ),
+        DetailRowData(
+          icon: Icons.event_available_rounded,
+          label: 'Expected Return',
+          value: _formatDate(loan.expectedReturnDate),
+        ),
+      ],
+      actionHub: _buildActionHub(context, ref, isPending, isApproved),
     );
   }
 
-  Widget _buildDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(10),
+  Widget _buildActionHub(BuildContext context, WidgetRef ref, bool isPending, bool isApproved) {
+    if (!readOnly && isPending) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('DECLINE', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700)),
+            ),
           ),
-          child: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-        ),
-        const Gap(16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF94A3B8),
-                letterSpacing: 0.5,
+          const Gap(16),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () async {
+                await ref.read(managerLoansNotifierProvider.notifier).approveRequest(loan.id);
+                if (context.mounted) Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.successGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
               ),
+              child: const Text('AUTHORIZE', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-          ],
+          ),
+        ],
+      );
+    } else if (!readOnly && isApproved) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            await ref.read(managerLoansNotifierProvider.notifier).confirmHandoff(loan.id);
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.handshake_rounded),
+          label: const Text('READY FOR DISPATCH', style: TextStyle(fontWeight: FontWeight.w700)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0F172A),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
         ),
-      ],
-    );
+      );
+    } else {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0F172A),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          child: const Text('ACKNOWLEDGE', style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+      );
+    }
+  }
+
+  _StatusInfo _getStatusInfo(LoanStatus status) {
+    String label = status.name.toUpperCase();
+    Color color = Colors.grey;
+    IconData icon = Icons.info_outline_rounded;
+    bool isAlert = false;
+
+    switch (status) {
+      case LoanStatus.pending:
+        label = 'AWAITING APPROVAL';
+        color = const Color(0xFF92400E);
+        icon = Icons.access_time_filled_rounded;
+        isAlert = true;
+        break;
+      case LoanStatus.active:
+        if (loan.handedBy == null) {
+          label = 'READY FOR DISPATCH';
+          color = AppTheme.successGreen;
+          icon = Icons.local_shipping_rounded;
+        } else {
+          label = 'IN USE';
+          color = AppTheme.primaryBlue;
+          icon = Icons.check_circle_rounded;
+        }
+        break;
+      case LoanStatus.overdue:
+        label = 'OVERDUE NOTICE';
+        color = Colors.redAccent;
+        icon = Icons.warning_amber_rounded;
+        isAlert = true;
+        break;
+      case LoanStatus.returned:
+        label = 'RETURNED & STORED';
+        color = Colors.grey[600]!;
+        icon = Icons.inventory_2_rounded;
+        break;
+      case LoanStatus.cancelled:
+        label = 'CANCELLED';
+        color = Colors.grey[400]!;
+        icon = Icons.cancel_outlined;
+        break;
+      case LoanStatus.staged:
+        label = 'STAGED & READY';
+        color = AppTheme.primaryBlue;
+        icon = Icons.assignment_turned_in_rounded;
+        isAlert = true;
+        break;
+      default:
+        break;
+    }
+
+    return _StatusInfo(label: label, color: color, icon: icon, isAlert: isAlert);
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('MMMM dd, yyyy').format(date).toUpperCase();
   }
+}
 
-  Widget _getSmartIcon(String name) {
-    IconData iconData = Icons.inventory_2_outlined;
-    Color color = Colors.grey[700]!;
+class _StatusInfo {
+  final String label;
+  final Color color;
+  final IconData icon;
+  final bool isAlert;
 
-    final n = name.toLowerCase();
-    if (n.contains('radio') || n.contains('comms')) {
-      iconData = Icons.settings_input_antenna_rounded;
-    } else if (n.contains('bolt') || n.contains('power') || n.contains('gen')) {
-      iconData = Icons.bolt_rounded;
-    } else if (n.contains('drone') || n.contains('fly')) {
-      iconData = Icons.flight_takeoff_rounded;
-    } else if (n.contains('med') || n.contains('aid')) {
-      iconData = Icons.medical_services_rounded;
-    }
-
-    return Icon(iconData, color: color, size: 28);
-  }
+  _StatusInfo({required this.label, required this.color, required this.icon, required this.isAlert});
 }

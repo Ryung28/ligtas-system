@@ -7,15 +7,27 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     
+    <!-- Required for Android 11+ Package Visibility (The Smoking Gun for Google Sign In) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.gms.auth.api.signin.SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:label="LIGTAS"
         android:name="${applicationName}"
-        android:icon="@drawable/cdrrmo_logo">
+        android:icon="@drawable/cdrrmo_logo"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -53,6 +65,14 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/notification_blue" />
+
+        <!-- 🛡️ DETERMINISTIC RENDERING: Hard-lock Skia for 120Hz consistency
+             Impeller on Android still lacks a Raster Cache for blurs/shadows,
+             causing Neumorphic designs to jitter beyond 16ms.
+             Skia ensures the "Draw Once, Copy Many" bitmap strategy is used. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

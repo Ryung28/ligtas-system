@@ -19,7 +19,9 @@ export async function getBorrowLogsAction() {
             .select(`
                 *,
                 inventory:inventory_id (
-                    item_name
+                    item_name,
+                    image_url,
+                    item_type
                 )
             `)
             .order('created_at', { ascending: false })

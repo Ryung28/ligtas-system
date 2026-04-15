@@ -13,6 +13,24 @@ abstract class ILoanRepository {
   /// Cancel a loan request
   Future<void> cancelLoan(String loanId);
 
+  // --- Manager Operations (WMS Checklist) ---
+  
+  /// Fetch all requests for a specific warehouse (Manager View)
+  Future<List<LoanItem>> fetchWarehouseRequests(String? warehouseId);
+
+  /// Approve a pending request (Audit included)
+  Future<void> approveLoan(String loanId, String managerName);
+
+  /// Confirm physical handoff (Audit included)
+  Future<void> confirmHandoff(String loanId, String staffName);
+
+  /// Confirm return with condition and notes (Audit included)
+  Future<void> confirmReturn(String loanId, {
+    required String staffName,
+    required String condition,
+    String? notes,
+  });
+
   /// Watch for remote changes from Supabase Realtime
-  Stream<void> watchRemote();
+  Stream<void> watchRemote({String? warehouseId});
 }

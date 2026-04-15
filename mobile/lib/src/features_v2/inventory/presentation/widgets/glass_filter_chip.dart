@@ -17,6 +17,8 @@ class GlassFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -31,47 +33,22 @@ class GlassFilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected 
-                ? AppTheme.primaryBlue 
-                : Colors.white.withOpacity(0.6),
-            borderRadius: isSelected
-                ? const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomRight: Radius.circular(12),
-                    topRight: Radius.circular(4),
-                    bottomLeft: Radius.circular(4),
-                  )
-                : BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected 
-                  ? AppTheme.primaryBlue 
-                  : Colors.white.withOpacity(0.8),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4), // 🛡️ Tactical Soft Neumorphism
-              ),
-              if (isSelected)
-                BoxShadow(
-                  color: AppTheme.primaryBlue.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-            ],
+                ? sentinel.containerLowest 
+                : sentinel.containerLow,
+            borderRadius: BorderRadius.circular(9999), // full roundedness for chips
+            boxShadow: isSelected ? sentinel.raisedShadow : [],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isSelected) ...[
-                const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                Icon(Icons.check_rounded, size: 14, color: sentinel.navy),
                 const Gap(6),
               ],
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                  color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   fontSize: 13,
                   letterSpacing: isSelected ? -0.2 : 0,

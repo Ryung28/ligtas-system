@@ -34,23 +34,18 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
-  Widget _buildRecentActivity() {
-    final loansAsync = ref.watch(freshDashboardLoansProvider);
-    
-    return loansAsync.when(
-      data: (loans) => RecentActivitySection(loans: loans),
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ),
-      error: (_, __) => LigtasErrorState(
-        title: 'Activity Error',
-        message: 'Unable to stream recent activity logs.',
-        onRetry: () => ref.invalidate(freshDashboardLoansProvider),
-      ),
-    );
+  // Premium Gold Standard Curve
+  static const _premiumCurve = Cubic(0.05, 0.7, 0.1, 1.0);
+
+  @override
+  void initState() {
+    super.initState();
+    // 🛡️ GOLD STANDARD: Mark entry as complete after the first build cycle.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(dashboardEntryProvider.notifier).state = true;
+      }
+    });
   }
 
   @override
@@ -58,12 +53,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final userName = ref.watch(dashboardUserNameProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final controller = ref.watch(dashboardControllerProvider);
+    final loansAsync = ref.watch(sortedDashboardActivityProvider);
     
-    // Initialize presence heartbeat / controller
-    ref.watch(presenceControllerProvider);
+    // 🛡️ GOLD STANDARD: Animation Gating
+    final hasEntered = ref.watch(dashboardEntryProvider);
+    final duration = hasEntered ? 0.ms : 600.ms;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7), // Match My Borrowed Items background
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // ── Layer 1: Ambient Background ──
@@ -83,20 +80,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 }
               },
               color: AppTheme.primaryBlue,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                slivers: [
-                  // 0. Notification Sync Status (Scenario B Repair)
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    sliver: SliverToBoxAdapter(child: SyncErrorBanner()),
+              child: Listener(
+                onPointerDown: (_) {
+                  // 🏁 KINETIC PRE-LOAD: Signal display governor on touch
+                  HapticFeedback.selectionClick();
+                },
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  slivers: [
+                  // 0. Notification Sync Status
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: const SyncErrorBanner()
+                          .animate()
+                          .fadeIn(duration: duration, curve: _premiumCurve)
+                          .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
+                    ),
                   ),
 
                   // 1. Header Section
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                     sliver: SliverToBoxAdapter(
-                      child: DashboardHeader(userName: userName),
+                      child: DashboardHeader(userName: userName)
+                          .animate()
+                          .fadeIn(duration: duration, curve: _premiumCurve)
+                          .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
                     ),
                   ),
 
@@ -108,54 +118,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         height: 140,
                         child: BentoScanTile(
                           onTap: () => controller.openScanner(context),
-                          animationDelay: 100,
+                          animationDelay: hasEntered ? 0 : 200, // Staggered load balance
                         ),
                       ),
                     ),
                   ),
 
-                  // 3. Overdue Banner
-                  statsAsync.maybeWhen(
-                    data: (stats) => stats.overdueLoans > 0 
-                      ? SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                          sliver: SliverToBoxAdapter(
-                            child: OverdueAlertBanner(overdueCount: stats.overdueLoans),
-                          ),
-                        )
-                      : const SliverToBoxAdapter(child: SizedBox.shrink()),
-                    orElse: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                  ),
-
-                  // 4. Equipment Ribbon
-                  const SliverPadding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    sliver: SliverToBoxAdapter(
-                      child: EquipmentRibbon(),
-                    ),
-                  ),
-
-                  // 5. Telemetry Intelligence
-                  const SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverToBoxAdapter(
-                      child: SystemTelemetryGrid(),
-                    ),
-                  ),
-
-                  // 6. Recent Borrowed Feed (replaced with RecentActivitySection for correct timestamps)
+                  // 3. Equipment Ribbon (Categories)
                   SliverPadding(
-                    padding: const EdgeInsets.only(top: 24, bottom: 24),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     sliver: SliverToBoxAdapter(
-                      child: _buildRecentActivity(),
+                      child: const EquipmentRibbon()
+                          .animate(delay: hasEntered ? 0.ms : 100.ms)
+                          .fadeIn(duration: duration, curve: _premiumCurve)
+                          .slideX(begin: 0.1, end: 0, duration: duration, curve: _premiumCurve),
                     ),
                   ),
+
+                  // 4. Mission Intelligence (Bento Stat Grid)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: SliverToBoxAdapter(
+                      child: const SystemTelemetryGrid()
+                          .animate(delay: hasEntered ? 0.ms : 200.ms)
+                          .fadeIn(duration: duration, curve: _premiumCurve)
+                          .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
+                    ),
+                  ),
+
+                   // 6. Recent Activity (Virtualized Sliver)
+                  ref.watch(freshDashboardLoansProvider).when(
+                    data: (_) => SliverRecentActivitySection(loans: loansAsync), // Use the pre-sorted list
+                    loading: () => const SliverRecentActivitySection(isLoading: true),
+                    error: (_, __) => SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                      sliver: SliverToBoxAdapter(
+                        child: LigtasErrorState(
+                          title: 'Activity Error',
+                          message: 'Unable to stream recent activity logs.',
+                          onRetry: () => ref.invalidate(sortedDashboardActivityProvider),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SliverGap(40),
                 ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    ),
     );
   }
 

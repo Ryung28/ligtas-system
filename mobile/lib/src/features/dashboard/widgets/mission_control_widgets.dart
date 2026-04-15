@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:mobile/src/features/dashboard/widgets/bento_tiles.dart';
 
 import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:mobile/src/features/dashboard/providers/dashboard_provider.dart';
 import 'package:mobile/src/features/loans/providers/loan_providers.dart';
 import 'package:mobile/src/features/loans/models/loan_model.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart' hide LoanStatus;
+import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
+import 'package:mobile/src/core/design_system/widgets/shimmer_skeleton.dart';
 
 /// Small horizontal ribbon for equipment categories - iOS Glass Style
 class EquipmentRibbon extends ConsumerWidget {
@@ -17,69 +22,65 @@ class EquipmentRibbon extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoryStatsProvider);
+    final hasEntered = ref.watch(dashboardEntryProvider);
 
     if (categoriesAsync.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: categoriesAsync.length,
-        separatorBuilder: (_, __) => const Gap(12),
-        itemBuilder: (context, index) {
-          final cat = categoriesAsync[index];
-          return Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.6),
-                width: 1.2,
+    return RepaintBoundary( // 🛡️ RASTER CACHE: Isolate category scrolling
+      child: SizedBox(
+        height: 48,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          itemCount: categoriesAsync.length,
+          separatorBuilder: (_, __) => const Gap(12),
+          itemBuilder: (context, index) {
+            final cat = categoriesAsync[index];
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(100), // Pill shape
+                border: Border.all(
+                  color: const Color(0xFF001A33).withOpacity(0.12), // Tactical stroke
+                  width: 1.5,
+                ),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(cat['icon'] as IconData, size: 14, color: AppTheme.neutralGray700),
-                const Gap(8),
-                Text(
-                  cat['name'] as String,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.neutralGray900,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const Gap(6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    cat['count'].toString(),
-                    style: const TextStyle(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(cat['icon'] as IconData, size: 14, color: const Color(0xFF43474D)),
+                  const Gap(8),
+                  Text(
+                    (cat['name'] as String).toUpperCase(),
+                    style: GoogleFonts.lexend(
                       fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF191C1F),
+                      letterSpacing: 0.5,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1, end: 0); // Simplified animation
-        },
+                  const Gap(8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF001A33).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      cat['count'].toString(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF001A33),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: hasEntered ? 0.ms : 400.ms, delay: hasEntered ? 0.ms : (index * 50).ms).slideX(begin: 0.1, end: 0);
+          },
+        ),
       ),
     );
   }
@@ -93,196 +94,199 @@ class SystemTelemetryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(inventorySummaryProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final hasEntered = ref.watch(dashboardEntryProvider);
     final stats = statsAsync.valueOrNull;
-
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.3,
-      children: [
-        _buildGlassTelemetryTile(
-          Icons.inventory_rounded,
-          'AVAILABLE NOW',
-          '${summary['total_assets'] ?? 0} ITEMS',
-          AppTheme.primaryBlue,
-        ),
-        _buildGlassTelemetryTile(
-          Icons.warning_rounded,
-          'DUE',
-          '${stats?.overdueLoans ?? 0} OVERDUE',
-          const Color(0xFFEF4444),
-        ),
-        _buildGlassTelemetryTile(
-          Icons.layers_rounded,
-          'ACTIVE',
-          '${stats?.activeLoans ?? 0} ITEMS',
-          const Color(0xFF10B981),
-        ),
-        _buildGlassTelemetryTile(
-          Icons.check_circle_rounded,
-          'DONE',
-          '${stats?.totalReturnedItems ?? 0} RETURNED',
-          const Color(0xFF3B82F6),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGlassTelemetryTile(IconData icon, String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.6),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const Gap(12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.neutralGray500,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.neutralGray900,
-                    height: 1.1,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98));
-  }
-}
-
-/// Live Operation Feed for Team Activity - iOS Glass Style
-/// Senior Dev: Now with TWO SECTIONS - PENDING and ACTIVE
-class OperationFeedSection extends ConsumerWidget {
-  const OperationFeedSection({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activityAsync = ref.watch(myBorrowedItemsProvider);
+    final isLoading = statsAsync.isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'RECENT BORROWED',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF64748B),
-                  letterSpacing: 1.2,
-                ),
-              ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('View All', 
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
-              ),
-            ],
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            'MISSION INTELLIGENCE',
+            style: GoogleFonts.lexend(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF43474D), // onSurfaceVariant
+              letterSpacing: 1.5,
+            ),
           ),
         ),
-        activityAsync.when(
-          data: (List<LoanModel> loans) {
-            // Separate pending and active/overdue
-            final pendingLoans = loans.where((l) => l.status == LoanStatus.pending).toList();
-            final activeLoans = loans.where((l) => 
-              l.status == LoanStatus.active || l.daysOverdue > 0
-            ).toList();
-
-            // Sort each by borrow date (most recent first)
-            pendingLoans.sort((a, b) => b.borrowDate.compareTo(a.borrowDate));
-            activeLoans.sort((a, b) => b.borrowDate.compareTo(a.borrowDate));
-
-            // Take top 2 from each
-            final recentPending = pendingLoans.take(2).toList();
-            final recentActive = activeLoans.take(2).toList();
-
-            if (pendingLoans.isEmpty && activeLoans.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: const Text('No recent activity', 
-                  style: TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w600)),
-              );
-            }
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // SECTION 1: PENDING (Purple) with counter badge
-                  if (pendingLoans.isNotEmpty) ...[
-                    _buildSectionHeader('PENDING', const Color(0xFF8B5CF6), Icons.hourglass_empty_rounded, pendingLoans.length),
-                    const Gap(8),
-                    ...recentPending.map((loan) => _buildLoanCard(loan, const Color(0xFF8B5CF6))),
-                    const Gap(16),
-                  ],
-                  
-                  // SECTION 2: ACTIVE (Green/Blue) with counter badge
-                  if (activeLoans.isNotEmpty) ...[
-                    _buildSectionHeader('ACTIVE', const Color(0xFF10B981), Icons.outbound_rounded, activeLoans.length),
-                    const Gap(8),
-                    ...recentActive.map((loan) {
-                      final isOverdue = loan.daysOverdue > 0;
-                      return _buildLoanCard(loan, isOverdue ? const Color(0xFFEF4444) : const Color(0xFF10B981));
-                    }),
-                  ],
-                ],
-              ),
-            );
-          },
-          loading: () => const Center(child: Padding(
-            padding: EdgeInsets.all(20.0),
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )),
-          error: (_, __) => const SizedBox.shrink(),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.5, // Refactored for better vertical density
+          children: isLoading 
+            ? List.generate(4, (index) => const ShimmerTile())
+            : [
+                BentoStatTile(
+                  icon: Icons.inventory_2_rounded,
+                  label: 'TOTAL',
+                  value: '${summary['total_assets'] ?? 0}',
+                  color: const Color(0xFF001A33), // stitchNavy
+                  animationDelay: hasEntered ? 0 : 300,
+                ),
+                BentoStatTile(
+                  icon: Icons.history_rounded,
+                  label: 'OVERDUE',
+                  value: '${stats?.overdueLoans ?? 0}',
+                  color: const Color(0xFFBA1A1A), // stitchError
+                  animationDelay: hasEntered ? 0 : 400,
+                ),
+                BentoStatTile(
+                  icon: Icons.sync_alt_rounded,
+                  label: 'BORROWED',
+                  value: '${stats?.activeLoans ?? 0}',
+                  color: const Color(0xFF43474D), // stitchOnSurfaceVariant
+                  animationDelay: hasEntered ? 0 : 500,
+                ),
+                BentoStatTile(
+                  icon: Icons.check_circle_rounded,
+                  label: 'RETURNED',
+                  value: '${stats?.totalReturnedItems ?? 0}',
+                  color: const Color(0xFF575F6B), // secondary
+                  animationDelay: hasEntered ? 0 : 600,
+                ),
+              ],
         ),
+      ],
+    );
+  }
+}
+
+class ShimmerTile extends StatelessWidget {
+  const ShimmerTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(12), // 🛡️ ADAPTIVE PADDING: Prevent grid-clamping overflows
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center, // 🛡️ CENTER-ALIGNED: More resilient
+          children: [
+            ShimmerSkeleton(width: 24, height: 24, borderRadius: 8),
+            SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerSkeleton(width: 50, height: 10),
+                SizedBox(height: 4),
+                ShimmerSkeleton(width: 32, height: 16),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Live Operation Feed for Team Activity
+/// 🛡️ Virtualized for 120Hz performance on dashboard return.
+class SliverOperationFeedSection extends ConsumerWidget {
+  const SliverOperationFeedSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final segments = ref.watch(operationLogSegmentsProvider);
+    final pendingLoans = segments['pending'] as List<LoanModel>;
+    final activeLoans = segments['active'] as List<LoanModel>;
+    final pendingCount = segments['all_pending_count'] as int;
+    final activeCount = segments['all_active_count'] as int;
+
+    if (pendingLoans.isEmpty && activeLoans.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverMainAxisGroup(
+      slivers: [
+        // Title Section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'OPERATION LOGS',
+                  style: GoogleFonts.lexend(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF43474D), // onSurfaceVariant
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {},
+                  child: Text('EXPLORE', 
+                    style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF324863))),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // 🛡️ PENDING SECTION (Virtualized)
+        if (pendingLoans.isNotEmpty) ...[
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            sliver: SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildSectionHeader('PENDING', const Color(0xFF8B5CF6), Icons.hourglass_empty_rounded, pendingCount),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            sliver: SliverList.builder(
+              itemCount: pendingLoans.length,
+              itemBuilder: (context, index) => RepaintBoundary(
+                child: _OperationLogCard(loan: pendingLoans[index], statusColor: const Color(0xFF8B5CF6)),
+              ),
+            ),
+          ),
+          const SliverGap(16),
+        ],
+
+        // 🛡️ ACTIVE SECTION (Virtualized)
+        if (activeLoans.isNotEmpty) ...[
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            sliver: SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildSectionHeader('ACTIVE', const Color(0xFF10B981), Icons.outbound_rounded, activeCount),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            sliver: SliverList.builder(
+              itemCount: activeLoans.length,
+              itemBuilder: (context, index) {
+                final loan = activeLoans[index];
+                final isOverdue = loan.daysOverdue > 0;
+                return RepaintBoundary(
+                  child: _OperationLogCard(
+                    loan: loan, 
+                    statusColor: isOverdue ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -291,28 +295,28 @@ class OperationFeedSection extends ConsumerWidget {
     return Row(
       children: [
         Icon(icon, size: 14, color: color),
-        const Gap(6),
+        const Gap(8),
         Text(
           title,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
+          style: GoogleFonts.lexend(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
             color: color,
             letterSpacing: 1.0,
           ),
         ),
-        const Gap(6),
+        const Gap(8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             count.toString(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
               color: color,
             ),
           ),
@@ -320,14 +324,30 @@ class OperationFeedSection extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _buildLoanCard(LoanModel loan, Color statusColor) {
-    // DEBUG: Print timestamp for debugging
-    print('DEBUG UI: loan.id=${loan.id}, borrowDate=${loan.borrowDate}, timeago=${timeago.format(loan.borrowDate)}');
+class _OperationLogCard extends ConsumerStatefulWidget {
+  final LoanModel loan;
+  final Color statusColor;
+
+  const _OperationLogCard({required this.loan, required this.statusColor});
+
+  @override
+  ConsumerState<_OperationLogCard> createState() => _OperationLogCardState();
+}
+
+class _OperationLogCardState extends ConsumerState<_OperationLogCard> {
+  bool _isAnimating = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasEntered = ref.watch(dashboardEntryProvider);
+    final isPending = widget.loan.status == LoanStatus.pending;
+    final isOverdue = widget.loan.daysOverdue > 0;
     
-    final isPending = loan.status == LoanStatus.pending;
-    final isOverdue = loan.daysOverdue > 0;
-    
+    // 🛡️ GOLD STANDARD: Prune Neumorphic depth during motion
+    final depth = (hasEntered || !_isAnimating) ? 4.0 : 0.0;
+
     String actionText;
     if (isPending) {
       actionText = 'pending approval';
@@ -337,83 +357,78 @@ class OperationFeedSection extends ConsumerWidget {
       actionText = 'borrowed';
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.all(12),
+    return Neumorphic(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      style: NeumorphicStyle(
+        shape: NeumorphicShape.convex,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(24)),
+        depth: depth,
+        intensity: 0.8,
+        color: Theme.of(context).sentinel.surface,
+        lightSource: LightSource.topLeft,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.55),
-                  Colors.white.withOpacity(0.3),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: statusColor.withOpacity(0.25),
-                width: 1.2,
-              ),
+              color: widget.statusColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
+            child: Icon(
+              isPending ? Icons.hourglass_empty_rounded : 
+              isOverdue ? Icons.warning_rounded : Icons.check_circle_rounded,
+              size: 18, 
+              color: widget.statusColor,
+            ),
+          ),
+          const Gap(16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: statusColor.withOpacity(0.1),
-                  child: Icon(
-                    isPending ? Icons.hourglass_empty_rounded : 
-                    isOverdue ? Icons.warning_rounded : Icons.check_circle_rounded,
-                    size: 12, 
-                    color: statusColor,
-                  ),
-                ),
-                const Gap(10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        loan.itemName,
-                        style: TextStyle(
-                          fontSize: 13, 
-                          fontWeight: FontWeight.w800, 
-                          color: statusColor,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Gap(2),
-                      Text(
-                        actionText,
-                        style: TextStyle(
-                          fontSize: 10, 
-                          fontWeight: FontWeight.w500, 
-                          color: AppTheme.neutralGray500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // DEBUG: Print the actual borrowDate to diagnose timestamp issues
                 Text(
-                  // Use timeago package for reliable timestamp formatting (same as recent_activity_section)
-                  timeago.format(loan.borrowDate),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.neutralGray500,
+                  widget.loan.itemName,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w800, 
+                    color: const Color(0xFF191C1F), // onSurface
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Gap(2),
+                Text(
+                  actionText.toUpperCase(),
+                  style: GoogleFonts.lexend(
+                    fontSize: 9, 
+                    fontWeight: FontWeight.w700, 
+                    color: widget.statusColor,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          Text(
+            timeago.format(widget.loan.borrowDate),
+            style: GoogleFonts.lexend(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF43474D), // onSurfaceVariant
+            ),
+          ),
+        ],
       ),
-    );
+    ).animate(
+      onComplete: (_) {
+        if (mounted && !hasEntered) {
+          setState(() => _isAnimating = false);
+        }
+      },
+    ).fadeIn(duration: hasEntered ? 0.ms : 400.ms);
   }
 }

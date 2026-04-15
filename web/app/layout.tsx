@@ -5,6 +5,7 @@ import "./globals.css";
 import { AudioPermissionWrapper } from "@/components/audio-permission-wrapper";
 import { RealtimeAudioProvider } from "@/components/realtime-audio";
 import { PWARegister } from "./pwa-register";
+import { AuthProvider } from "@/providers/auth-provider";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -78,11 +79,13 @@ export default function RootLayout({
             </head>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
                 <PWARegister />
-                <AudioPermissionWrapper>
-                    <RealtimeAudioProvider>
-                        {children}
-                    </RealtimeAudioProvider>
-                </AudioPermissionWrapper>
+                <AuthProvider>
+                    <AudioPermissionWrapper>
+                        <RealtimeAudioProvider>
+                            {children}
+                        </RealtimeAudioProvider>
+                    </AudioPermissionWrapper>
+                </AuthProvider>
                 <Toaster position="top-right" richColors closeButton />
             </body>
         </html>

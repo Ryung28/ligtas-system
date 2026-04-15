@@ -1,6 +1,6 @@
 // Auth feature barrel file
-export 'models/user_model.dart';
-export 'providers/auth_provider.dart';
+export 'domain/models/user_model.dart';
+export 'presentation/providers/auth_providers.dart';
 export 'screens/login_screen.dart';
 export 'screens/register_screen.dart';
 export 'widgets/login_header.dart';

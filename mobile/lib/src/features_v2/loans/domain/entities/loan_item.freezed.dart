@@ -25,6 +25,7 @@ mixin _$LoanItem {
   String get itemCode => throw _privateConstructorUsedError;
   String get borrowerName => throw _privateConstructorUsedError;
   String get borrowerContact => throw _privateConstructorUsedError;
+  String get borrowerOrganization => throw _privateConstructorUsedError;
   String get borrowerEmail => throw _privateConstructorUsedError;
   String get purpose => throw _privateConstructorUsedError;
   int get quantityBorrowed => throw _privateConstructorUsedError;
@@ -35,10 +36,28 @@ mixin _$LoanItem {
   String? get notes => throw _privateConstructorUsedError;
   String? get returnNotes => throw _privateConstructorUsedError;
   String get borrowedBy => throw _privateConstructorUsedError;
-  String? get returnedBy => throw _privateConstructorUsedError;
+  String? get returnedBy =>
+      throw _privateConstructorUsedError; // Audit & Accountability fields (Checklist 2.0)
+  @JsonKey(name: 'approved_by')
+  String? get approvedBy => throw _privateConstructorUsedError;
+  @JsonKey(name: 'approved_at')
+  DateTime? get approvedAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'handed_by')
+  String? get handedBy => throw _privateConstructorUsedError;
+  @JsonKey(name: 'handed_at')
+  DateTime? get handedAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'received_by_name')
+  String? get receivedByName => throw _privateConstructorUsedError;
+  @JsonKey(name: 'received_by_user_id')
+  String? get receivedByUserId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'return_condition')
+  String? get returnCondition => throw _privateConstructorUsedError;
+  @JsonKey(name: 'pickup_scheduled_at')
+  DateTime? get pickupScheduledAt => throw _privateConstructorUsedError;
   int get daysOverdue => throw _privateConstructorUsedError;
   int get daysBorrowed => throw _privateConstructorUsedError;
   bool get isPendingSync => throw _privateConstructorUsedError;
+  String? get imageUrl => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $LoanItemCopyWith<LoanItem> get copyWith =>
@@ -58,6 +77,7 @@ abstract class $LoanItemCopyWith<$Res> {
       String itemCode,
       String borrowerName,
       String borrowerContact,
+      String borrowerOrganization,
       String borrowerEmail,
       String purpose,
       int quantityBorrowed,
@@ -69,9 +89,18 @@ abstract class $LoanItemCopyWith<$Res> {
       String? returnNotes,
       String borrowedBy,
       String? returnedBy,
+      @JsonKey(name: 'approved_by') String? approvedBy,
+      @JsonKey(name: 'approved_at') DateTime? approvedAt,
+      @JsonKey(name: 'handed_by') String? handedBy,
+      @JsonKey(name: 'handed_at') DateTime? handedAt,
+      @JsonKey(name: 'received_by_name') String? receivedByName,
+      @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
+      @JsonKey(name: 'return_condition') String? returnCondition,
+      @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
       int daysOverdue,
       int daysBorrowed,
-      bool isPendingSync});
+      bool isPendingSync,
+      String? imageUrl});
 }
 
 /// @nodoc
@@ -94,6 +123,7 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
     Object? itemCode = null,
     Object? borrowerName = null,
     Object? borrowerContact = null,
+    Object? borrowerOrganization = null,
     Object? borrowerEmail = null,
     Object? purpose = null,
     Object? quantityBorrowed = null,
@@ -105,9 +135,18 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
     Object? returnNotes = freezed,
     Object? borrowedBy = null,
     Object? returnedBy = freezed,
+    Object? approvedBy = freezed,
+    Object? approvedAt = freezed,
+    Object? handedBy = freezed,
+    Object? handedAt = freezed,
+    Object? receivedByName = freezed,
+    Object? receivedByUserId = freezed,
+    Object? returnCondition = freezed,
+    Object? pickupScheduledAt = freezed,
     Object? daysOverdue = null,
     Object? daysBorrowed = null,
     Object? isPendingSync = null,
+    Object? imageUrl = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -138,6 +177,10 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
           ? _value.borrowerContact
           : borrowerContact // ignore: cast_nullable_to_non_nullable
               as String,
+      borrowerOrganization: null == borrowerOrganization
+          ? _value.borrowerOrganization
+          : borrowerOrganization // ignore: cast_nullable_to_non_nullable
+              as String,
       borrowerEmail: null == borrowerEmail
           ? _value.borrowerEmail
           : borrowerEmail // ignore: cast_nullable_to_non_nullable
@@ -182,6 +225,38 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
           ? _value.returnedBy
           : returnedBy // ignore: cast_nullable_to_non_nullable
               as String?,
+      approvedBy: freezed == approvedBy
+          ? _value.approvedBy
+          : approvedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      approvedAt: freezed == approvedAt
+          ? _value.approvedAt
+          : approvedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      handedBy: freezed == handedBy
+          ? _value.handedBy
+          : handedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      handedAt: freezed == handedAt
+          ? _value.handedAt
+          : handedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      receivedByName: freezed == receivedByName
+          ? _value.receivedByName
+          : receivedByName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      receivedByUserId: freezed == receivedByUserId
+          ? _value.receivedByUserId
+          : receivedByUserId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      returnCondition: freezed == returnCondition
+          ? _value.returnCondition
+          : returnCondition // ignore: cast_nullable_to_non_nullable
+              as String?,
+      pickupScheduledAt: freezed == pickupScheduledAt
+          ? _value.pickupScheduledAt
+          : pickupScheduledAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       daysOverdue: null == daysOverdue
           ? _value.daysOverdue
           : daysOverdue // ignore: cast_nullable_to_non_nullable
@@ -194,6 +269,10 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
               as bool,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -214,6 +293,7 @@ abstract class _$$LoanItemImplCopyWith<$Res>
       String itemCode,
       String borrowerName,
       String borrowerContact,
+      String borrowerOrganization,
       String borrowerEmail,
       String purpose,
       int quantityBorrowed,
@@ -225,9 +305,18 @@ abstract class _$$LoanItemImplCopyWith<$Res>
       String? returnNotes,
       String borrowedBy,
       String? returnedBy,
+      @JsonKey(name: 'approved_by') String? approvedBy,
+      @JsonKey(name: 'approved_at') DateTime? approvedAt,
+      @JsonKey(name: 'handed_by') String? handedBy,
+      @JsonKey(name: 'handed_at') DateTime? handedAt,
+      @JsonKey(name: 'received_by_name') String? receivedByName,
+      @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
+      @JsonKey(name: 'return_condition') String? returnCondition,
+      @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
       int daysOverdue,
       int daysBorrowed,
-      bool isPendingSync});
+      bool isPendingSync,
+      String? imageUrl});
 }
 
 /// @nodoc
@@ -248,6 +337,7 @@ class __$$LoanItemImplCopyWithImpl<$Res>
     Object? itemCode = null,
     Object? borrowerName = null,
     Object? borrowerContact = null,
+    Object? borrowerOrganization = null,
     Object? borrowerEmail = null,
     Object? purpose = null,
     Object? quantityBorrowed = null,
@@ -259,9 +349,18 @@ class __$$LoanItemImplCopyWithImpl<$Res>
     Object? returnNotes = freezed,
     Object? borrowedBy = null,
     Object? returnedBy = freezed,
+    Object? approvedBy = freezed,
+    Object? approvedAt = freezed,
+    Object? handedBy = freezed,
+    Object? handedAt = freezed,
+    Object? receivedByName = freezed,
+    Object? receivedByUserId = freezed,
+    Object? returnCondition = freezed,
+    Object? pickupScheduledAt = freezed,
     Object? daysOverdue = null,
     Object? daysBorrowed = null,
     Object? isPendingSync = null,
+    Object? imageUrl = freezed,
   }) {
     return _then(_$LoanItemImpl(
       id: null == id
@@ -292,6 +391,10 @@ class __$$LoanItemImplCopyWithImpl<$Res>
           ? _value.borrowerContact
           : borrowerContact // ignore: cast_nullable_to_non_nullable
               as String,
+      borrowerOrganization: null == borrowerOrganization
+          ? _value.borrowerOrganization
+          : borrowerOrganization // ignore: cast_nullable_to_non_nullable
+              as String,
       borrowerEmail: null == borrowerEmail
           ? _value.borrowerEmail
           : borrowerEmail // ignore: cast_nullable_to_non_nullable
@@ -336,6 +439,38 @@ class __$$LoanItemImplCopyWithImpl<$Res>
           ? _value.returnedBy
           : returnedBy // ignore: cast_nullable_to_non_nullable
               as String?,
+      approvedBy: freezed == approvedBy
+          ? _value.approvedBy
+          : approvedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      approvedAt: freezed == approvedAt
+          ? _value.approvedAt
+          : approvedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      handedBy: freezed == handedBy
+          ? _value.handedBy
+          : handedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      handedAt: freezed == handedAt
+          ? _value.handedAt
+          : handedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      receivedByName: freezed == receivedByName
+          ? _value.receivedByName
+          : receivedByName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      receivedByUserId: freezed == receivedByUserId
+          ? _value.receivedByUserId
+          : receivedByUserId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      returnCondition: freezed == returnCondition
+          ? _value.returnCondition
+          : returnCondition // ignore: cast_nullable_to_non_nullable
+              as String?,
+      pickupScheduledAt: freezed == pickupScheduledAt
+          ? _value.pickupScheduledAt
+          : pickupScheduledAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       daysOverdue: null == daysOverdue
           ? _value.daysOverdue
           : daysOverdue // ignore: cast_nullable_to_non_nullable
@@ -348,6 +483,10 @@ class __$$LoanItemImplCopyWithImpl<$Res>
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
               as bool,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -363,6 +502,7 @@ class _$LoanItemImpl extends _LoanItem {
       required this.itemCode,
       required this.borrowerName,
       required this.borrowerContact,
+      this.borrowerOrganization = '',
       this.borrowerEmail = '',
       required this.purpose,
       required this.quantityBorrowed,
@@ -374,9 +514,18 @@ class _$LoanItemImpl extends _LoanItem {
       this.returnNotes,
       required this.borrowedBy,
       this.returnedBy,
+      @JsonKey(name: 'approved_by') this.approvedBy,
+      @JsonKey(name: 'approved_at') this.approvedAt,
+      @JsonKey(name: 'handed_by') this.handedBy,
+      @JsonKey(name: 'handed_at') this.handedAt,
+      @JsonKey(name: 'received_by_name') this.receivedByName,
+      @JsonKey(name: 'received_by_user_id') this.receivedByUserId,
+      @JsonKey(name: 'return_condition') this.returnCondition,
+      @JsonKey(name: 'pickup_scheduled_at') this.pickupScheduledAt,
       this.daysOverdue = 0,
       this.daysBorrowed = 0,
-      this.isPendingSync = false})
+      this.isPendingSync = false,
+      this.imageUrl})
       : super._();
 
   @override
@@ -395,6 +544,9 @@ class _$LoanItemImpl extends _LoanItem {
   final String borrowerName;
   @override
   final String borrowerContact;
+  @override
+  @JsonKey()
+  final String borrowerOrganization;
   @override
   @JsonKey()
   final String borrowerEmail;
@@ -419,6 +571,31 @@ class _$LoanItemImpl extends _LoanItem {
   final String borrowedBy;
   @override
   final String? returnedBy;
+// Audit & Accountability fields (Checklist 2.0)
+  @override
+  @JsonKey(name: 'approved_by')
+  final String? approvedBy;
+  @override
+  @JsonKey(name: 'approved_at')
+  final DateTime? approvedAt;
+  @override
+  @JsonKey(name: 'handed_by')
+  final String? handedBy;
+  @override
+  @JsonKey(name: 'handed_at')
+  final DateTime? handedAt;
+  @override
+  @JsonKey(name: 'received_by_name')
+  final String? receivedByName;
+  @override
+  @JsonKey(name: 'received_by_user_id')
+  final String? receivedByUserId;
+  @override
+  @JsonKey(name: 'return_condition')
+  final String? returnCondition;
+  @override
+  @JsonKey(name: 'pickup_scheduled_at')
+  final DateTime? pickupScheduledAt;
   @override
   @JsonKey()
   final int daysOverdue;
@@ -428,10 +605,12 @@ class _$LoanItemImpl extends _LoanItem {
   @override
   @JsonKey()
   final bool isPendingSync;
+  @override
+  final String? imageUrl;
 
   @override
   String toString() {
-    return 'LoanItem(id: $id, userId: $userId, inventoryItemId: $inventoryItemId, itemName: $itemName, itemCode: $itemCode, borrowerName: $borrowerName, borrowerContact: $borrowerContact, borrowerEmail: $borrowerEmail, purpose: $purpose, quantityBorrowed: $quantityBorrowed, borrowDate: $borrowDate, expectedReturnDate: $expectedReturnDate, actualReturnDate: $actualReturnDate, status: $status, notes: $notes, returnNotes: $returnNotes, borrowedBy: $borrowedBy, returnedBy: $returnedBy, daysOverdue: $daysOverdue, daysBorrowed: $daysBorrowed, isPendingSync: $isPendingSync)';
+    return 'LoanItem(id: $id, userId: $userId, inventoryItemId: $inventoryItemId, itemName: $itemName, itemCode: $itemCode, borrowerName: $borrowerName, borrowerContact: $borrowerContact, borrowerOrganization: $borrowerOrganization, borrowerEmail: $borrowerEmail, purpose: $purpose, quantityBorrowed: $quantityBorrowed, borrowDate: $borrowDate, expectedReturnDate: $expectedReturnDate, actualReturnDate: $actualReturnDate, status: $status, notes: $notes, returnNotes: $returnNotes, borrowedBy: $borrowedBy, returnedBy: $returnedBy, approvedBy: $approvedBy, approvedAt: $approvedAt, handedBy: $handedBy, handedAt: $handedAt, receivedByName: $receivedByName, receivedByUserId: $receivedByUserId, returnCondition: $returnCondition, pickupScheduledAt: $pickupScheduledAt, daysOverdue: $daysOverdue, daysBorrowed: $daysBorrowed, isPendingSync: $isPendingSync, imageUrl: $imageUrl)';
   }
 
   @override
@@ -451,6 +630,8 @@ class _$LoanItemImpl extends _LoanItem {
                 other.borrowerName == borrowerName) &&
             (identical(other.borrowerContact, borrowerContact) ||
                 other.borrowerContact == borrowerContact) &&
+            (identical(other.borrowerOrganization, borrowerOrganization) ||
+                other.borrowerOrganization == borrowerOrganization) &&
             (identical(other.borrowerEmail, borrowerEmail) ||
                 other.borrowerEmail == borrowerEmail) &&
             (identical(other.purpose, purpose) || other.purpose == purpose) &&
@@ -470,12 +651,30 @@ class _$LoanItemImpl extends _LoanItem {
                 other.borrowedBy == borrowedBy) &&
             (identical(other.returnedBy, returnedBy) ||
                 other.returnedBy == returnedBy) &&
+            (identical(other.approvedBy, approvedBy) ||
+                other.approvedBy == approvedBy) &&
+            (identical(other.approvedAt, approvedAt) ||
+                other.approvedAt == approvedAt) &&
+            (identical(other.handedBy, handedBy) ||
+                other.handedBy == handedBy) &&
+            (identical(other.handedAt, handedAt) ||
+                other.handedAt == handedAt) &&
+            (identical(other.receivedByName, receivedByName) ||
+                other.receivedByName == receivedByName) &&
+            (identical(other.receivedByUserId, receivedByUserId) ||
+                other.receivedByUserId == receivedByUserId) &&
+            (identical(other.returnCondition, returnCondition) ||
+                other.returnCondition == returnCondition) &&
+            (identical(other.pickupScheduledAt, pickupScheduledAt) ||
+                other.pickupScheduledAt == pickupScheduledAt) &&
             (identical(other.daysOverdue, daysOverdue) ||
                 other.daysOverdue == daysOverdue) &&
             (identical(other.daysBorrowed, daysBorrowed) ||
                 other.daysBorrowed == daysBorrowed) &&
             (identical(other.isPendingSync, isPendingSync) ||
-                other.isPendingSync == isPendingSync));
+                other.isPendingSync == isPendingSync) &&
+            (identical(other.imageUrl, imageUrl) ||
+                other.imageUrl == imageUrl));
   }
 
   @override
@@ -488,6 +687,7 @@ class _$LoanItemImpl extends _LoanItem {
         itemCode,
         borrowerName,
         borrowerContact,
+        borrowerOrganization,
         borrowerEmail,
         purpose,
         quantityBorrowed,
@@ -499,9 +699,18 @@ class _$LoanItemImpl extends _LoanItem {
         returnNotes,
         borrowedBy,
         returnedBy,
+        approvedBy,
+        approvedAt,
+        handedBy,
+        handedAt,
+        receivedByName,
+        receivedByUserId,
+        returnCondition,
+        pickupScheduledAt,
         daysOverdue,
         daysBorrowed,
-        isPendingSync
+        isPendingSync,
+        imageUrl
       ]);
 
   @JsonKey(ignore: true)
@@ -520,6 +729,7 @@ abstract class _LoanItem extends LoanItem {
       required final String itemCode,
       required final String borrowerName,
       required final String borrowerContact,
+      final String borrowerOrganization,
       final String borrowerEmail,
       required final String purpose,
       required final int quantityBorrowed,
@@ -531,9 +741,18 @@ abstract class _LoanItem extends LoanItem {
       final String? returnNotes,
       required final String borrowedBy,
       final String? returnedBy,
+      @JsonKey(name: 'approved_by') final String? approvedBy,
+      @JsonKey(name: 'approved_at') final DateTime? approvedAt,
+      @JsonKey(name: 'handed_by') final String? handedBy,
+      @JsonKey(name: 'handed_at') final DateTime? handedAt,
+      @JsonKey(name: 'received_by_name') final String? receivedByName,
+      @JsonKey(name: 'received_by_user_id') final String? receivedByUserId,
+      @JsonKey(name: 'return_condition') final String? returnCondition,
+      @JsonKey(name: 'pickup_scheduled_at') final DateTime? pickupScheduledAt,
       final int daysOverdue,
       final int daysBorrowed,
-      final bool isPendingSync}) = _$LoanItemImpl;
+      final bool isPendingSync,
+      final String? imageUrl}) = _$LoanItemImpl;
   const _LoanItem._() : super._();
 
   @override
@@ -551,6 +770,8 @@ abstract class _LoanItem extends LoanItem {
   String get borrowerName;
   @override
   String get borrowerContact;
+  @override
+  String get borrowerOrganization;
   @override
   String get borrowerEmail;
   @override
@@ -573,12 +794,38 @@ abstract class _LoanItem extends LoanItem {
   String get borrowedBy;
   @override
   String? get returnedBy;
+  @override // Audit & Accountability fields (Checklist 2.0)
+  @JsonKey(name: 'approved_by')
+  String? get approvedBy;
+  @override
+  @JsonKey(name: 'approved_at')
+  DateTime? get approvedAt;
+  @override
+  @JsonKey(name: 'handed_by')
+  String? get handedBy;
+  @override
+  @JsonKey(name: 'handed_at')
+  DateTime? get handedAt;
+  @override
+  @JsonKey(name: 'received_by_name')
+  String? get receivedByName;
+  @override
+  @JsonKey(name: 'received_by_user_id')
+  String? get receivedByUserId;
+  @override
+  @JsonKey(name: 'return_condition')
+  String? get returnCondition;
+  @override
+  @JsonKey(name: 'pickup_scheduled_at')
+  DateTime? get pickupScheduledAt;
   @override
   int get daysOverdue;
   @override
   int get daysBorrowed;
   @override
   bool get isPendingSync;
+  @override
+  String? get imageUrl;
   @override
   @JsonKey(ignore: true)
   _$$LoanItemImplCopyWith<_$LoanItemImpl> get copyWith =>

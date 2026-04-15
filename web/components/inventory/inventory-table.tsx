@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
-import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2, Wrench, Cross, Shield, Box, Warehouse } from 'lucide-react'
+import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2, Wrench, Cross, Shield, Box, Warehouse, Plus } from 'lucide-react'
 import {
     Dialog as ShadinDialog,
     DialogContent as ShadinDialogContent,
@@ -32,6 +32,7 @@ interface InventoryTableProps {
     selectedItems?: number[]
     onSelectionChange?: (selected: number[]) => void
     onEdit?: (item: InventoryItem) => void
+    isLoading?: boolean
 }
 
 interface AggregatedInventoryItem extends InventoryItem {
@@ -44,7 +45,7 @@ interface AggregatedInventoryItem extends InventoryItem {
 
 const ITEMS_PER_PAGE = 10
 
-export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange, onEdit }: InventoryTableProps) {
+export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange, onEdit, isLoading }: InventoryTableProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
@@ -90,84 +91,72 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         }
     }
 
-    // Get unique locations from ALL items (not filtered)
-    const uniqueLocations = useMemo(() => {
+    // 🏎️ SINGLE-PASS SCANNER: Replaces 5 separate useMemo loops
+    // Computes uniqueLocations, filterCounts, categoryTabs, and finalCategories in one O(n) pass
+    const derivedData = useMemo(() => {
         const locations = new Set<string>()
-        items.forEach(item => {
-            if (item.storage_location) {
-                locations.add(item.storage_location)
-            }
-        })
-        return Array.from(locations).sort()
-    }, [items])
+        const categoryCounts: Record<string, number> = {}
+        let pendingCount = 0
+        const now = Date.now()
 
-    // Calculate counts for filters
-    const filterCounts = useMemo(() => {
-        const counts: Record<string, number> = { 
-            all: items.length,
-            pending: items.filter(i => {
-                const hasPending = (i as any).stock_pending > 0
-                const anchor = (i as any).target_stock || i.stock_total || 0
-                const threshold = (i as any).low_stock_threshold || 20
-                const dangerLine = anchor * (threshold / 100)
-                const isLowStock = i.stock_available > 0 && i.stock_available <= dangerLine
-                const hasHealthIssues = i.qty_damaged > 0 || i.qty_maintenance > 0 || i.qty_lost > 0
-                
-                // Expiry Logic (Approaching in < 30 days)
-                let isExpiring = false
-                const expiry = (i as any).expiry_date
-                if (expiry) {
-                    const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-                    isExpiring = diff <= 30
-                }
+        for (const item of items) {
+            // 1. Locations
+            if (item.storage_location) locations.add(item.storage_location)
 
-                return hasPending || isLowStock || hasHealthIssues || isExpiring
-            }).length
-        }
-        
-        items.forEach(item => {
+            // 2. Category counts
             const category = (item.category || 'Uncategorized').trim()
-            counts[category] = (counts[category] || 0) + 1
-        })
-        
-        return counts
-    }, [items])
+            categoryCounts[category] = (categoryCounts[category] || 0) + 1
 
-    const filterTabs = useMemo(() => {
-        const tabs = [
-            { value: 'all', label: 'All Items', count: filterCounts.all },
-            { value: 'pending', label: 'Alerts', count: filterCounts.pending, color: 'amber' }
+            // 3. Pending/Alert count
+            const hasPending = (item as any).stock_pending > 0
+            const anchor = (item as any).target_stock || item.stock_total || 0
+            const threshold = (item as any).low_stock_threshold || 20
+            const dangerLine = anchor * (threshold / 100)
+            const isLowStock = item.stock_available > 0 && item.stock_available <= dangerLine
+            const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
+            const expiry = (item as any).expiry_date
+            const isExpiring = expiry
+                ? (new Date(expiry).getTime() - now) / (1000 * 60 * 60 * 24) <= 30
+                : false
+
+            if (hasPending || isLowStock || hasHealthIssues || isExpiring) pendingCount++
+        }
+
+        const sortedCategories = [...Object.keys(categoryCounts)]
+            .concat(localCategories.filter(c => !categoryCounts[c]))
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b))
+
+        const filterCounts: Record<string, number> = {
+            all: items.length,
+            pending: pendingCount,
+            ...categoryCounts,
+        }
+
+        const filterTabs = [
+            { value: 'all', label: 'All Items', count: items.length },
+            { value: 'pending', label: 'Alerts', count: pendingCount, color: 'amber' },
         ]
-        
-        return tabs
-    }, [filterCounts])
 
-    const categoryFilterTabs = useMemo(() => {
-        const tabs = [{ value: 'all', label: 'All Categories', count: filterCounts.all }]
-        
-        // Discover ALL unique categories from the database items + local admin-added categories
-        const discoveredCategories = Array.from(new Set([
-            ...items.map(i => (i.category || 'Uncategorized').trim()),
-            ...localCategories
-        ])).filter(Boolean).sort((a, b) => a.localeCompare(b))
-        
-        discoveredCategories.forEach(category => {
-            tabs.push({
-                value: category,
-                label: category,
-                count: filterCounts[category] || 0
-            })
-        })
-        
-        return tabs
-    }, [items, filterCounts, localCategories])
+        const categoryFilterTabs = [
+            { value: 'all', label: 'All Categories', count: items.length },
+            ...sortedCategories.map(cat => ({
+                value: cat,
+                label: cat,
+                count: categoryCounts[cat] || 0,
+            })),
+        ]
 
-    const finalCategories = useMemo(() => {
-        return Array.from(new Set([
-            ...items.map(i => (i.category || 'Uncategorized').trim()),
-            ...localCategories
-        ])).filter(Boolean).sort((a, b) => a.localeCompare(b))
+        return {
+            uniqueLocations: Array.from(locations).sort(),
+            filterCounts,
+            filterTabs,
+            categoryFilterTabs,
+            finalCategories: sortedCategories,
+        }
     }, [items, localCategories])
+
+    const { uniqueLocations, filterCounts, filterTabs, categoryFilterTabs, finalCategories } = derivedData
 
     // Filter Items
     const filteredItems = useMemo(() => {
@@ -358,7 +347,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
     return (
         <Card className="bg-white border-none rounded-xl overflow-hidden flex flex-col shadow-sm">
-            <CardHeader className="border-b border-gray-200 p-4 14in:p-5 bg-white">
+            <CardHeader className="border-b border-gray-200 p-3 14in:p-4 bg-white">
                 <div className="flex flex-col gap-4">
                     {/* Top Row: Title + Search + Condition Filter */}
                     <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
@@ -438,7 +427,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                         <TableHeader>
                             <TableRow className="border-b border-gray-200 hover:bg-transparent">
                                 {onSelectionChange && (
-                                    <TableHead className="pl-4 14in:pl-6 pr-3 py-4 w-12">
+                                    <TableHead className="pl-3 14in:pl-4 pr-2 py-4 w-12">
                                         <input
                                             type="checkbox"
                                             checked={selectedItems.length === paginatedItems.length && paginatedItems.length > 0}
@@ -447,17 +436,25 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                         />
                                     </TableHead>
                                 )}
-                                <TableHead className="pl-4 14in:pl-6 pr-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Item Name</TableHead>
+                                <TableHead className="pl-3 14in:pl-4 pr-2 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Item Name</TableHead>
                                 <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Location</TableHead>
                                 <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Status / Condition</TableHead>
-                                <TableHead className="pl-3 pr-4 14in:pr-6 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Actions</TableHead>
+                                <TableHead className="pl-2 pr-3 14in:pr-4 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {paginatedItems.length === 0 ? (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i} className="animate-pulse">
+                                        <TableCell colSpan={6} className="p-4">
+                                            <div className="h-12 bg-gray-100/30 rounded-xl" />
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : paginatedItems.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-96 text-center">
-                                        <div className="flex flex-col items-center justify-center p-12 animate-in fade-in duration-500">
+                                    <TableCell colSpan={6} className="h-96 text-center">
+                                        <div className="flex flex-col items-center justify-center p-12 animate-in fade-in duration-200">
                                             <div className="relative mb-6">
                                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full blur-2xl opacity-50" />
                                                 <div className="relative bg-slate-50 h-20 w-20 rounded-2xl flex items-center justify-center border border-slate-100">
@@ -468,13 +465,13 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                             <p className="text-[14px] text-gray-500 mb-6 max-w-[320px]">
                                                 Try adjusting your search or filter criteria, or add your first item to get started.
                                             </p>
-                                            {onRefresh && (
+                                            {onEdit && (
                                                 <Button 
-                                                    onClick={onRefresh}
+                                                    onClick={() => onEdit({} as any)}
                                                     size="sm" 
                                                     className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm"
                                                 >
-                                                    <Package className="h-3.5 w-3.5 mr-2" />
+                                                    <Plus className="h-3.5 w-3.5 mr-2" />
                                                     Add First Item
                                                 </Button>
                                             )}
@@ -509,7 +506,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             </CardContent>
 
             {totalPages > 1 && (
-                <CardFooter className="border-t border-gray-200 bg-white px-4 14in:px-6 py-3.5 flex items-center justify-between">
+                <CardFooter className="border-t border-gray-200 bg-white px-3 14in:px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <p className="text-[12px] text-gray-500">
                             Showing <span className="font-semibold text-gray-900">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)}</span> of <span className="font-semibold text-gray-900">{filteredItems.length}</span> items

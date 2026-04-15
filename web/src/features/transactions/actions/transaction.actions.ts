@@ -91,7 +91,7 @@ export async function borrowItem(formData: FormData) {
                     released_by_name: validatedData.released_by || null,
                     released_by_user_id: user?.id || null,
                     transaction_type: isConsumable ? 'dispense' : 'borrow',
-                    status: isConsumable ? 'dispensed' : (isScheduled ? 'staged' : 'borrowed'),
+                    status: isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
                     borrow_date: isScheduled ? null : now,
                     pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
                     actual_return_date: isConsumable ? now : null, 
@@ -208,7 +208,7 @@ export async function batchBorrowItems(data: {
                 released_by_name: validatedData.released_by || null,
                 released_by_user_id: user?.id || null,
                 transaction_type: isConsumable ? 'dispense' : 'borrow',
-                status: isConsumable ? 'dispensed' : (isScheduled ? 'staged' : 'borrowed'),
+                status: isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
                 borrow_date: isScheduled ? null : now,
                 pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
                 actual_return_date: isConsumable ? now : null,
@@ -366,5 +366,105 @@ export async function bulkReturnItems(logIds: number[]) {
         }
     } catch (error: any) {
         return { success: false, error: 'Error: Bulk return process interrupted' }
+    }
+}
+export async function revertReturnItem(logId: number) {
+    try {
+        const supabase = await createSupabaseServer()
+        
+        // 1. Fetch the log to verify status and get metadata
+        const { data: log, error: logError } = await supabase
+            .from('borrow_logs')
+            .select('*')
+            .eq('id', logId)
+            .single()
+
+        if (logError || !log) throw new Error('Transaction log not found')
+        if (log.status !== 'returned') return { success: false, error: 'Only returned items can be reverted to borrowed state' }
+
+        // 2. Atomically Revert Status and Correct Stock
+        // Note: In a production environment, this should ideally be handled inside a DB function to ensure atomicity.
+        // For this restoration, we use sequential updates with error checking.
+        
+        // Step A: Restore Borrowed Status
+        const { error: updateError } = await supabase
+            .from('borrow_logs')
+            .update({
+                status: 'borrowed',
+                actual_return_date: null,
+                received_by_name: null,
+                received_by_user_id: null,
+                return_condition: null,
+                return_notes: null,
+            })
+            .eq('id', logId)
+
+        if (updateError) throw updateError
+
+        // Step B: Pull stock back out of Inventory
+        const { data: item, error: itemError } = await supabase
+            .from('inventory')
+            .select('stock_available')
+            .eq('id', log.inventory_id)
+            .single()
+
+        if (item) {
+            const newStock = Math.max(0, item.stock_available - log.quantity)
+            await supabase
+                .from('inventory')
+                .update({ stock_available: newStock })
+                .eq('id', log.inventory_id)
+        }
+
+        revalidatePath('/dashboard/logs')
+        revalidatePath('/dashboard/inventory')
+        revalidatePath('/dashboard')
+
+        return { 
+            success: true, 
+            message: `Reversion successful: ${log.item_name} is now marked as BORROWED again.` 
+        }
+
+    } catch (error: any) {
+        console.error('Revert return error:', error)
+        return { success: false, error: error.message || 'Failed to revert return' }
+    }
+}
+
+export async function releaseReservedItem(logId: number) {
+    try {
+        const supabase = await createSupabaseServer()
+        const { data: { user } } = await supabase.auth.getUser()
+        const userName = user?.user_metadata?.full_name || user?.email || 'Authorized Staff'
+        
+        const now = new Date().toISOString()
+        
+        const { data, error } = await supabase
+            .from('borrow_logs')
+            .update({
+                status: 'borrowed',
+                borrow_date: now,
+                released_by_user_id: user?.id || null,
+                released_by_name: userName,
+                updated_at: now
+            })
+            .eq('id', logId)
+            .select()
+
+        if (error) throw error
+
+        revalidatePath('/dashboard/logs')
+        revalidatePath('/dashboard/inventory')
+        
+        return { 
+            success: true, 
+            message: 'Item released successfully. Status updated to BORROWED.' 
+        }
+    } catch (error) {
+        console.error('Release Reserved Error:', error)
+        return { 
+            success: false, 
+            error: 'Failed to release reserved item' 
+        }
     }
 }

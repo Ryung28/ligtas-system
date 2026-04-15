@@ -172,4 +172,11 @@
   .animate-shake {
     animation: shake 0.5s ease-in-out;
   }
+
+  /* PWA Steel Cage: Prevent iOS overscroll / rubber-banding */
+  .mobile-cage {
+    overscroll-behavior-y: none;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
 }

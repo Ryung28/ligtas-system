@@ -105,7 +105,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
 
     return (
         <>
-            <div className="space-y-4 animate-in fade-in duration-500 relative">
+            <div className="space-y-4 animate-in fade-in duration-200 relative">
                 <InventoryHeader
                     lastUpdated={lastUpdated}
                     isLoading={isLoading}
@@ -126,6 +126,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                     selectedItems={selectedItems}
                     onSelectionChange={selectionMode ? setSelectedItems : undefined}
                     onEdit={(item) => setActiveItem(item)}
+                    isLoading={isLoading}
                 />
             </div>
 

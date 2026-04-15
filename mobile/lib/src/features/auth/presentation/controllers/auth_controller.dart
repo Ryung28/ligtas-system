@@ -12,21 +12,26 @@ part 'auth_controller.g.dart';
 
 @riverpod
 class AuthController extends _$AuthController {
-  StreamSubscription<AuthState>? _sub;
+  StreamSubscription? _sub;
 
   @override
   FutureOr<AuthState> build() async {
     // 🛡️ TACTICAL LISTEN: Bind Supabase Auth Events to Riverpod State
     _sub?.cancel();
     
-    // Using a micro-task to avoid setting state during build if the stream emits immediately
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+    // We only attach ONE stable listener for auth changes
+    _sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+      final event = data.event;
       final session = data.session;
+      
+      debugPrint('📡 Auth Lifecycle: [${event.name}] Session is ${session != null ? "ACTIVE" : "NONE"}');
+      
       if (session != null) {
+        // We wait for the session to be fully ready before refreshing profile
         await refreshProfile();
       } else {
-        if (state.value is! Initial) {
-           state = AsyncValue.data(AuthState.initial());
+        if (state.hasValue && state.value is! Initial) {
+          state = AsyncValue.data(AuthState.initial());
         }
       }
     });
@@ -55,18 +60,22 @@ class AuthController extends _$AuthController {
     }
     return const AuthState.initial();
   }
-
   Future<void> refreshProfile() async {
+    // 🛡️ ATOMIC TRIAGE: Force loading state to prevent stale/default role detection
+    state = const AsyncValue.loading(); 
+    
     try {
       final repo = ref.read(authRepositoryProvider);
       final user = await repo.getCurrentUser();
+      
       if (user != null) {
         state = AsyncValue.data(_mapUserToAuthState(user));
       } else {
         state = AsyncValue.data(AuthState.initial());
       }
     } catch (e) {
-      debugPrint('[AuthController] Profile Refresh Failed: $e');
+      debugPrint('[AuthController] Profile Triage Failure: $e');
+      state = AsyncValue.data(AuthState.error(e.toString()));
     }
   }
 
@@ -87,9 +96,27 @@ class AuthController extends _$AuthController {
 
     try {
       final repo = ref.read(authRepositoryProvider);
-      await repo.signInWithGoogle(rememberMe: rememberMe);
-      // Profile will be refreshed by onAuthStateChange listener
+      final googleUser = await repo.signInWithGoogle(rememberMe: rememberMe);
+      
+      // 🛡️ RECOVERY: If user closed the picker, reset UI to initial clickable state
+      if (googleUser == null) {
+        debugPrint('📡 [Auth-Guard] Picker closed. Resetting UI...');
+        state = AsyncValue.data(AuthState.initial());
+        return;
+      }
+
+      // 🛡️ RECOVERY CHECK: If we return from the picker but no session exists, reset UI
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        debugPrint('📡 [Auth-Guard] No session found after picker. Resetting UI...');
+        state = AsyncValue.data(AuthState.initial());
+        return;
+      }
+
+      // 🚀 THE DOUBLE-DIVE: Force immediate profile triage
+      await refreshProfile();
     } catch (e) {
+      debugPrint('⛔ Google Auth Aborted: $e');
       state = AsyncValue.data(AuthState.error(ExceptionHandler.getDisplayMessage(e)));
     }
   }

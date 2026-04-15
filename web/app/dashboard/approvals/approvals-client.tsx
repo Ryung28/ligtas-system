@@ -1,10 +1,15 @@
 'use client'
 
+import { useState, useEffect, useCallback } from 'react'
 import { usePendingRequests } from '@/hooks/use-pending-requests'
-import { PendingRequestsTable } from '@/components/approvals/pending-requests-table'
-import { RefreshCw, ClipboardList, ShieldCheck } from 'lucide-react'
+import { RefreshCw, Zap, Calendar, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BorrowLog } from '@/lib/types/inventory'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { createBrowserClient } from '@supabase/ssr'
+import { RequestLedgerList } from '@/components/approvals/_components/request-ledger-list'
+import { RequestDossier } from '@/components/approvals/_components/request-dossier'
+import { ClipboardList as EmptyIcon } from 'lucide-react'
 
 interface ApprovalsClientProps {
     initialRequests: BorrowLog[]
@@ -12,113 +17,163 @@ interface ApprovalsClientProps {
 
 export function ApprovalsClient({ initialRequests }: ApprovalsClientProps) {
     const { requests: liveRequests, isLoading, error, refresh } = usePendingRequests()
-    
-    // Fallback to initial requests if loading
+    const [currentView, setCurrentView] = useState<'immediate' | 'reserved'>('immediate')
+    const [selectedRequest, setSelectedRequest] = useState<BorrowLog | null>(null)
+    const [staffName, setStaffName] = useState('')
+
+    // Resolve current staff name once
+    useEffect(() => {
+        const supabase = createBrowserClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        const load = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .single()
+                if (profile?.full_name) setStaffName(profile.full_name)
+            }
+        }
+        load()
+    }, [])
+
     const requests = (isLoading && liveRequests.length === 0) ? initialRequests : liveRequests
 
-    // 🚀 TACTICAL GROUPING: Separate Urgent Deployments from Future Planning
     const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
 
+    // Partition: Today's action vs future planning
     const urgentRequests = requests.filter(r => {
-        if (!r.pickup_scheduled_at) return true
-        return new Date(r.pickup_scheduled_at) <= today
+        if (!r.pickup_scheduled_at) return r.status !== 'reserved'
+        return new Date(r.pickup_scheduled_at) <= todayEnd
     })
 
     const futureReservations = requests.filter(r => {
+        if (r.status === 'reserved') return true
         if (!r.pickup_scheduled_at) return false
-        return new Date(r.pickup_scheduled_at) > today
+        return new Date(r.pickup_scheduled_at) > todayEnd
     })
 
+    const displayRequests = currentView === 'immediate' ? urgentRequests : futureReservations
+
+    // Auto-select first item when tab or list changes
+    useEffect(() => {
+        if (displayRequests.length > 0) {
+            // Keep current selection if it's still in the list
+            const stillExists = displayRequests.find(r => r.id === selectedRequest?.id)
+            if (!stillExists) {
+                setSelectedRequest(displayRequests[0])
+            }
+        } else {
+            setSelectedRequest(null)
+        }
+    }, [currentView, displayRequests.length])
+
+    const handleActionComplete = useCallback(() => {
+        setSelectedRequest(null)
+        refresh()
+    }, [refresh])
+
     return (
-        <div className="space-y-6 14in:space-y-4 animate-in fade-in duration-500">
-            {/* Header Section */}
-            <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white/80 backdrop-blur-md p-4 14in:p-4 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <ShieldCheck className="h-24 w-24 text-blue-900" />
-                </div>
+        <div className="flex flex-col h-[calc(100vh-105px)] animate-in fade-in duration-200">
 
-                <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1">
-                    </div>
-                    <h1 className="text-2xl 14in:text-2xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
-                        Command Queue
-                    </h1>
-                    <p className="text-slate-500 text-xs 14in:text-[11px] mt-1 max-w-md">
-                        Review equipment requests and finalize logistics dispatch.
-                    </p>
+            {/* ── Page Header ── */}
+            <header className="flex items-center justify-between mb-5">
+                <div>
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight">Request Queue</h1>
+                    <p className="text-xs text-slate-500 mt-0.5">Review and approve equipment requests from your team.</p>
                 </div>
-
-                <div className="flex items-center gap-4 relative z-10">
-                    <div className="flex gap-4 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="text-center border-r border-slate-200 pr-4">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Today</p>
-                            <p className="text-sm font-black text-blue-600">{urgentRequests.length}</p>
-                        </div>
-                        <div className="text-center pl-4">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Planned</p>
-                            <p className="text-sm font-black text-amber-600">{futureReservations.length}</p>
-                        </div>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as any)} className="w-fit">
+                        <TabsList className="bg-slate-100 p-1 rounded-xl h-10 border border-slate-200/50">
+                            <TabsTrigger
+                                value="immediate"
+                                className="rounded-lg px-4 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all"
+                            >
+                                <Zap className="h-3 w-3 mr-1.5" />
+                                Today ({urgentRequests.length})
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="reserved"
+                                className="rounded-lg px-4 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white transition-all"
+                            >
+                                <Calendar className="h-3 w-3 mr-1.5" />
+                                Future ({futureReservations.length})
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => refresh()}
                         disabled={isLoading}
-                        className="h-10 px-4 rounded-xl border-slate-200 bg-white/50 hover:bg-white text-slate-600 font-bold text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                        className="h-10 w-10 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-500"
                     >
-                        <RefreshCw className={`h-3.5 w-3.5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                        {isLoading ? 'Syncing...' : 'Force Refresh'}
+                        <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
             </header>
 
-            {/* Main Content Interface (Grouped Queue) */}
-            {error ? (
-                <div className="p-8 text-center bg-red-50 text-red-600 rounded-3xl border border-red-100 font-bold uppercase tracking-wide text-xs">
-                    Command Failure: {error}
-                </div>
-            ) : (
-                <div className="space-y-8 14in:space-y-6">
-                    {/* Section 1: Immediate Deployments */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 px-2">
-                            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                            <h2 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Immediate Deployments (Today)</h2>
-                        </div>
-                        <PendingRequestsTable requests={urgentRequests} onRefresh={refresh} />
-                        {urgentRequests.length === 0 && (
-                            <div className="p-12 text-center bg-slate-50/50 rounded-[2.5rem] border border-dashed border-slate-200">
-                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">No active deployments for today</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Section 2: Future Reservations */}
-                    {futureReservations.length > 0 && (
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 px-2">
-                                <div className="h-2 w-2 rounded-full bg-amber-500" />
-                                <h2 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Planned Reservations (Future)</h2>
-                            </div>
-                            <PendingRequestsTable requests={futureReservations} onRefresh={refresh} />
-                        </div>
-                    )}
+            {/* ── Error ── */}
+            {error && (
+                <div className="mb-4 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold">
+                    Failed to load requests: {error}
                 </div>
             )}
 
-            {/* Quick Advisory */}
-            <div className="bg-blue-900/5 backdrop-blur-md border border-blue-100/50 rounded-2xl p-4 flex items-center gap-4">
-                <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-200">
-                    <ClipboardList className="h-5 w-5 text-white" />
+            {/* ── Split-Pane Layout ── */}
+            <div className="flex-1 overflow-hidden grid grid-cols-12 gap-6">
+
+                {/* LEFT: Ledger List (5 cols) */}
+                <div className="col-span-5 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                    {/* Subheader */}
+                    <div className="px-5 py-3.5 border-b border-slate-50 bg-slate-50/50 flex items-center gap-2">
+                        <div className={`h-1.5 w-1.5 rounded-full ${currentView === 'immediate' ? 'bg-blue-500 animate-pulse' : 'bg-amber-500'}`} />
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.18em]">
+                            {currentView === 'immediate' ? 'Current Requests' : 'Future Reservations'}
+                        </span>
+                        <span className="ml-auto text-[10px] font-black text-slate-400">
+                            {displayRequests.length} {displayRequests.length === 1 ? 'item' : 'items'}
+                        </span>
+                    </div>
+                    {/* Scrollable list */}
+                    <div className="flex-1 overflow-y-auto">
+                        <RequestLedgerList
+                            requests={displayRequests}
+                            selectedId={selectedRequest?.id ?? null}
+                            onSelect={setSelectedRequest}
+                        />
+                    </div>
                 </div>
-                <div>
-                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Tactical Protocol</h4>
-                    <p className="text-[10px] text-slate-600 leading-relaxed max-w-2xl mt-0.5">
-                        Authorization locks the inventory for the responder. Direct Handoff immediately activates the borrow log for field use.
-                    </p>
+
+                {/* RIGHT: Dossier (7 cols) */}
+                <div className="col-span-7 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                    {selectedRequest ? (
+                        <RequestDossier
+                            key={selectedRequest.id}
+                            request={selectedRequest}
+                            staffName={staffName}
+                            isReservationView={currentView === 'reserved'}
+                            onActionComplete={handleActionComplete}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-12">
+                            <div className="h-16 w-16 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-5 shadow-inner">
+                                <ClipboardList className="h-8 w-8 text-slate-200" strokeWidth={1} />
+                            </div>
+                            <p className="text-sm font-bold text-slate-700 mb-1">Select a request</p>
+                            <p className="text-xs text-slate-400 max-w-[220px]">
+                                Click any item from the list on the left to view its full details here.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
+
         </div>
     )
 }

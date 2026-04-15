@@ -7,4 +7,7 @@ class Environment {
   static const String inventoryTable = 'inventory';
   static const String transactionsTable = 'transactions';
   static const String userProfilesTable = 'user_profiles';
+
+  // Storage bucket names
+  static const String itemImagesBucket = 'item-images';
 }

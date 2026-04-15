@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile/src/core/networking/supabase_client.dart';
-import 'package:mobile/src/features/auth/models/user_model.dart';
+import '../domain/models/user_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Auth state notifier for professional session management

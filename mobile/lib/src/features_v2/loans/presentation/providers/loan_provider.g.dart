@@ -21,7 +21,58 @@ final loanRepositoryProvider = AutoDisposeProvider<ILoanRepository>.internal(
 );
 
 typedef LoanRepositoryRef = AutoDisposeProviderRef<ILoanRepository>;
-String _$filteredLoansHash() => r'995c1507916ac6ec87de28bad74ab89f1f023517';
+String _$managerPendingQueueHash() =>
+    r'4c9bc4a62782de5e699f53539e6ae07f4812a942';
+
+/// 📋 Manager Queue Filters (Checklist 1.0)
+///
+/// Copied from [managerPendingQueue].
+@ProviderFor(managerPendingQueue)
+final managerPendingQueueProvider =
+    AutoDisposeProvider<List<LoanItem>>.internal(
+  managerPendingQueue,
+  name: r'managerPendingQueueProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$managerPendingQueueHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef ManagerPendingQueueRef = AutoDisposeProviderRef<List<LoanItem>>;
+String _$managerStagedQueueHash() =>
+    r'e7e3d1a9c30406f89fc855b9c4f69ee36f2d63b1';
+
+/// See also [managerStagedQueue].
+@ProviderFor(managerStagedQueue)
+final managerStagedQueueProvider = AutoDisposeProvider<List<LoanItem>>.internal(
+  managerStagedQueue,
+  name: r'managerStagedQueueProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$managerStagedQueueHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef ManagerStagedQueueRef = AutoDisposeProviderRef<List<LoanItem>>;
+String _$managerActiveQueueHash() =>
+    r'2b1ebbe0ac2d4c16e22271beada466406a735651';
+
+/// See also [managerActiveQueue].
+@ProviderFor(managerActiveQueue)
+final managerActiveQueueProvider = AutoDisposeProvider<List<LoanItem>>.internal(
+  managerActiveQueue,
+  name: r'managerActiveQueueProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$managerActiveQueueHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef ManagerActiveQueueRef = AutoDisposeProviderRef<List<LoanItem>>;
+String _$filteredLoansHash() => r'fed498b99bb863e90798321c3e9e0c51ba5d2999';
 
 /// See also [filteredLoans].
 @ProviderFor(filteredLoans)
@@ -36,7 +87,7 @@ final filteredLoansProvider = AutoDisposeProvider<List<LoanItem>>.internal(
 );
 
 typedef FilteredLoansRef = AutoDisposeProviderRef<List<LoanItem>>;
-String _$myPendingItemsHash() => r'e651ce752a218fc01a1c91f733ff67bf6ea3064b';
+String _$myPendingItemsHash() => r'fbd325d4b012eb836b7aa070d58207406628c9a3';
 
 /// Filtered and Status-Split Providers
 ///
@@ -98,7 +149,7 @@ final myReturnedHistoryProvider = AutoDisposeProvider<List<LoanItem>>.internal(
 );
 
 typedef MyReturnedHistoryRef = AutoDisposeProviderRef<List<LoanItem>>;
-String _$myLoansNotifierHash() => r'5f9f3efc123a88a7896288c1359e89a090fc8be4';
+String _$myLoansNotifierHash() => r'001c62f4b643c870794584e2c47c93ed8b28bb41';
 
 /// Reactive Loan List Provider
 ///
@@ -116,6 +167,26 @@ final myLoansNotifierProvider =
 );
 
 typedef _$MyLoansNotifier = AutoDisposeStreamNotifier<List<LoanItem>>;
+String _$managerLoansNotifierHash() =>
+    r'be7660244b0ca468bd7383f5100f5d8f02230378';
+
+/// 🏢 MANAGER-LEVEL PROVIDER (WMS Checklist 1.0)
+/// Provides a high-density stream of ALL requests for situational awareness.
+///
+/// Copied from [ManagerLoansNotifier].
+@ProviderFor(ManagerLoansNotifier)
+final managerLoansNotifierProvider = AutoDisposeStreamNotifierProvider<
+    ManagerLoansNotifier, List<LoanItem>>.internal(
+  ManagerLoansNotifier.new,
+  name: r'managerLoansNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$managerLoansNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ManagerLoansNotifier = AutoDisposeStreamNotifier<List<LoanItem>>;
 String _$loanSearchQueryHash() => r'd0af16477369ad88e28907df82b6101f620a745b';
 
 /// See also [LoanSearchQuery].

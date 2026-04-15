@@ -7,9 +7,9 @@ import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mobile/src/core/design_system/app_theme.dart';
-import 'package:mobile/src/core/design_system/widgets/atmospheric_background.dart';
 import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
 import 'package:mobile/src/core/design_system/widgets/ligtas_error_state.dart';
+import 'package:mobile/src/features/dashboard/widgets/dashboard_background.dart';
 import '../../domain/entities/loan_item.dart';
 import '../providers/loan_provider.dart';
 import '../widgets/loan_card_glass.dart';
@@ -35,7 +35,7 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
     super.initState();
     _tabController = TabController(length: 4, vsync: this, initialIndex: ref.read(loanSelectedTabIndexProvider));
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
+      if (!_tabController.indexIsChanging && _tabController.index != ref.read(loanSelectedTabIndexProvider)) {
         ref.read(loanSelectedTabIndexProvider.notifier).update(_tabController.index);
       }
     });
@@ -50,47 +50,47 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
 
   @override
   Widget build(BuildContext context) {
-    // Watch Enterprise Providers
-    final filteredItems = ref.watch(filteredLoansProvider);
     final selectedTabIndex = ref.watch(loanSelectedTabIndexProvider);
     final sortBy = ref.watch(loanSortByProvider);
+    final sentinel = Theme.of(context).sentinel;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: sentinel.surface,
       body: Stack(
         children: [
-          const AtmosphericBackground(),
-          RefreshIndicator(
-            onRefresh: () async => ref.read(myLoansNotifierProvider.notifier).refresh(),
-            displacement: 100,
-            color: AppTheme.primaryBlue,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 64, 24, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Text(
-                      'My Items',
-                      style: TextStyle(
-                        fontFamily: 'SF Pro Display',
-                        fontWeight: FontWeight.w900,
-                        fontSize: 34,
-                        color: const Color(0xFF0F172A),
-                        letterSpacing: -1.5,
-                      ),
-                    ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0),
+          const DashboardBackground(),
+          SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(myPendingItemsProvider);
+                ref.invalidate(myActiveItemsProvider);
+                ref.invalidate(myOverdueItemsProvider);
+                ref.invalidate(myReturnedHistoryProvider);
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        'My Items',
+                        style: GoogleFonts.lexend(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 30,
+                          color: sentinel.navy,
+                          letterSpacing: -0.5,
+                        ),
+                      ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0),
+                    ),
                   ),
-                ),
-
-                _buildTabSection(selectedTabIndex),
-
-                _buildFilterSection(sortBy),
-
-                _buildSectionHeader(filteredItems, selectedTabIndex),
-
-                _buildSliverLoanList(filteredItems, selectedTabIndex),
-              ],
+                  _buildTabSection(selectedTabIndex),
+                  _buildFilterSection(sortBy),
+                  const SliverGap(16),
+                  _buildSliverLoanList(ref.watch(filteredLoansProvider), selectedTabIndex),
+                  const SliverGap(100),
+                ],
+              ),
             ),
           ),
         ],
@@ -99,133 +99,138 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
   }
 
   Widget _buildTabSection(int selectedTabIndex) {
-    final pendingCount = ref.watch(myPendingItemsProvider).length;
-    final activeCount = ref.watch(myActiveItemsProvider).length;
-    final overdueCount = ref.watch(myOverdueItemsProvider).length;
-    final historyCount = ref.watch(myReturnedHistoryProvider).length;
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isCompact = screenWidth < 400;
+    final sentinel = Theme.of(context).sentinel;
+    final tabs = ['Requests', 'Active', 'Overdue', 'History'];
+    final counts = [
+      ref.watch(myPendingItemsProvider).length,
+      ref.watch(myActiveItemsProvider).length,
+      ref.watch(myOverdueItemsProvider).length,
+      ref.watch(myReturnedHistoryProvider).length,
+    ];
 
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Container(
-              height: 54,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9), // 🛡️ Premium Soft Background
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 15,
-                    offset: const Offset(0, 4), // 🛡️ Tactical Soft Neumorphism
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          height: 58,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: sentinel.containerLow,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: sentinel.tactile.recessed,
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final tabWidth = (constraints.maxWidth) / 4;
+              return Stack(
+                children: [
+                  // ── Neuromorphic Floating Pill ──
+                  AnimatedPositioned(
+                    duration: 250.ms,
+                    curve: Curves.easeOutCubic,
+                    left: selectedTabIndex * tabWidth,
+                    width: tabWidth,
+                    height: 46,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: sentinel.containerLowest,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: sentinel.tactile.raised,
+                      ),
+                    ),
+                  ),
+                  
+                  // ── Tab Buttons ──
+                  Row(
+                    children: List.generate(tabs.length, (index) {
+                      final isSelected = selectedTabIndex == index;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _tabController.index = index;
+                            ref.read(loanSelectedTabIndexProvider.notifier).update(index);
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  tabs[index],
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 12,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                    color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant.withOpacity(0.6),
+                                  ),
+                                ),
+                                if (counts[index] > 0)
+                                  Text(
+                                    '${counts[index]}',
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected ? sentinel.navy.withOpacity(0.5) : sentinel.onSurfaceVariant.withOpacity(0.3),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ),
                 ],
-              ),
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: false, // 🛡️ Step 1.3: Force Full Width Alignment
-                tabAlignment: TabAlignment.fill,
-                indicator: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: Colors.black,
-                unselectedLabelColor: Colors.grey[600],
-                labelStyle: GoogleFonts.inter( // 🛡️ Rule #2: Tactical Typography
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                  letterSpacing: -0.2,
-                ),
-                dividerColor: Colors.transparent,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                tabs: [
-                  _buildTab('Requests', pendingCount, 0, AppTheme.warningAmber, selectedTabIndex, isCompact),
-                  _buildTab('Active', activeCount, 1, AppTheme.primaryBlue, selectedTabIndex, isCompact),
-                  _buildTab('Overdue', overdueCount, 2, AppTheme.errorRed, selectedTabIndex, isCompact),
-                  _buildTab('History', historyCount, 3, AppTheme.neutralGray600, selectedTabIndex, isCompact),
-                ],
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTab(String label, int count, int index, Color badgeColor, int selectedIndex, bool isCompact) {
-    final isSelected = selectedIndex == index;
+  Widget _buildTab(String label, int count, int index, int selectedIndex) {
     return Tab(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(label),
-            ),
-          ),
-          if (count > 0) ...[
-            const Gap(4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: badgeColor.withOpacity(isSelected ? 1.0 : 0.6),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '$count',
-                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
-              ),
-            ),
-          ],
-        ],
-      ),
+      child: Text(label),
     );
   }
 
   Widget _buildFilterSection(String sortBy) {
+    final sentinel = Theme.of(context).sentinel;
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       sliver: SliverToBoxAdapter(
         child: Row(
           children: [
+            // ── Neuromorphic Search Input ──
             Expanded(
               child: Container(
-                height: 48,
+                height: 58,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.8)),
+                  color: sentinel.containerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: sentinel.tactile.recessed,
                 ),
                 child: TextField(
                   controller: _searchController,
                   onChanged: (val) => ref.read(loanSearchQueryProvider.notifier).update(val),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                  style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w500, color: sentinel.navy),
                   decoration: InputDecoration(
                     hintText: 'Search items...',
-                    hintStyle: TextStyle(color: const Color(0xFF64748B).withOpacity(0.6), fontSize: 13),
-                    prefixIcon: Icon(Icons.search_rounded, color: const Color(0xFF64748B).withOpacity(0.6), size: 18),
+                    hintStyle: GoogleFonts.lexend(color: sentinel.onSurfaceVariant.withOpacity(0.4), fontSize: 13),
+                    prefixIcon: Container(
+                      padding: const EdgeInsets.only(left: 16, right: 12),
+                      child: Icon(Icons.search_rounded, color: sentinel.onSurfaceVariant.withOpacity(0.5), size: 22),
+                    ),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 18),
                   ),
                 ),
               ),
             ),
-            const Gap(10),
+            const Gap(12),
+            // ── Raised Tactile Sort Pill ──
             _buildSortPill(sortBy),
           ],
         ),
@@ -234,29 +239,35 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
   }
 
   Widget _buildSortPill(String sortBy) {
+    final sentinel = Theme.of(context).sentinel;
     return PopupMenuButton<String>(
-      onSelected: (val) => ref.read(loanSortByProvider.notifier).update(val),
+      onSelected: (val) {
+        HapticFeedback.lightImpact();
+        ref.read(loanSortByProvider.notifier).update(val);
+      },
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'newest', child: Text('Newest First')),
         const PopupMenuItem(value: 'oldest', child: Text('Oldest First')),
         const PopupMenuItem(value: 'alphabetical', child: Text('Alphabetical')),
       ],
+      offset: const Offset(0, 64),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.8)),
+          color: sentinel.containerLowest,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: sentinel.tactile.raised,
         ),
         child: Row(
           children: [
-            const Icon(Icons.sort_rounded, size: 16, color: AppTheme.primaryBlue),
-            const Gap(8),
             Text(
-              sortBy.toUpperCase(),
-              style: const TextStyle(color: AppTheme.primaryBlue, fontSize: 10, fontWeight: FontWeight.w900),
+              sortBy == 'newest' ? 'Newest' : sortBy.toUpperCase(),
+              style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w600, color: sentinel.navy),
             ),
+            const Gap(6),
+            Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: sentinel.navy),
           ],
         ),
       ),
@@ -326,7 +337,7 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => LoanDetailsSheet(loan: loan),
+      builder: (_) => LoanDetailsSheet(loan: loan, readOnly: true),
     );
     ref.read(isDockSuppressedProvider.notifier).state = false;
   }
@@ -365,46 +376,38 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
 
   Widget _buildSectionHeader(List<LoanItem> items, int selectedTabIndex) {
     final type = ['pending', 'active', 'overdue', 'history'][selectedTabIndex];
+    final sentinel = Theme.of(context).sentinel;
     
-    String label = 'CURRENT STATUS';
-    if (type == 'pending') label = 'PENDING APPROVAL';
-    if (type == 'active') label = 'ACTIVE DEPLOYMENTS';
-    if (type == 'overdue') label = 'URGENT ATTENTION';
-    if (type == 'history') label = 'TRANSACTION LOGS';
+    String label = 'Current Status';
+    if (type == 'pending') label = 'Pending Approval';
+    if (type == 'active') label = 'Active Deployments';
+    if (type == 'overdue') label = 'Urgent Attention';
+    if (type == 'history') label = 'Transaction Logs';
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       sliver: SliverToBoxAdapter(
         child: Row(
           children: [
             Container(
-              width: 4,
-              height: 16,
+              width: 6,
+              height: 6,
               decoration: BoxDecoration(
-                color: AppTheme.primaryBlue,
-                borderRadius: BorderRadius.circular(2),
+                color: Theme.of(context).colorScheme.primaryContainer,
+                shape: BoxShape.circle,
               ),
             ),
             const Gap(12),
             Flexible(
               child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.neutralGray900.withOpacity(0.6),
-                  letterSpacing: 0.5,
+                '$label (${items.length} Items)',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: sentinel.onSurfaceVariant.withOpacity(0.5),
+                  letterSpacing: 1.0,
                 ),
                 overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Gap(8),
-            Text(
-              '${items.length} ITEMS',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.neutralGray900.withOpacity(0.4),
               ),
             ),
           ],

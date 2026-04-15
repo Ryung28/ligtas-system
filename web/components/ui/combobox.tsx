@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Check, ChevronsUpDown, Search } from 'lucide-react'
+import { Check, ChevronsUpDown, Search, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -15,6 +15,7 @@ export interface ComboboxOption {
     value: string
     label: string
     description?: string
+    imageUrl?: string
     metadata?: Record<string, any>
 }
 
@@ -126,14 +127,24 @@ export function Combobox({
                                 >
                                     <Check
                                         className={cn(
-                                            'mr-2 h-4 w-4',
+                                            'mr-2 h-4 w-4 shrink-0',
                                             value === option.value ? 'opacity-100' : 'opacity-0'
                                         )}
                                     />
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">{option.label}</span>
+                                    
+                                    {/* Equipment Thumbnail */}
+                                    <div className="mr-3 h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center relative">
+                                        <ImageWithFallback 
+                                            src={option.imageUrl} 
+                                            alt={option.label}
+                                            fallback={<Package className="h-5 w-5 text-slate-300" />}
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-medium truncate">{option.label}</span>
                                         {option.description && (
-                                            <span className="text-xs text-gray-500">
+                                            <span className="text-[10px] text-gray-500 truncate">
                                                 {option.description}
                                             </span>
                                         )}
@@ -145,5 +156,24 @@ export function Combobox({
                 </div>
             </PopoverContent>
         </Popover>
+    )
+}
+
+function ImageWithFallback({ src, alt, fallback }: { src?: string, alt: string, fallback: React.ReactNode }) {
+    const [error, setError] = React.useState(false)
+
+    if (!src || error) {
+        return <>{fallback}</>
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-opacity duration-300 ease-in-out"
+            onError={() => setError(true)}
+        />
     )
 }

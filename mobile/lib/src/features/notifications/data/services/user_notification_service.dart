@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile/src/core/navigation/navigator_key.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 enum SyncStatus { success, failing, retrying }
 
@@ -51,6 +52,8 @@ class UserNotificationService {
   
   // 🛡️ TACTICAL GUARD: Reference to the active stream to prevent leaks
   StreamSubscription<RemoteMessage>? _messagingSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _realtimeSubscription;
+  DateTime _lastPlayTime = DateTime.fromMillisecondsSinceEpoch(0);
   
   static final StreamController<String> _navStream = StreamController<String>.broadcast();
   static Stream<String> get navigationStream => _navStream.stream;
@@ -152,6 +155,37 @@ class UserNotificationService {
       // TACTICAL GUARD: Ensure only one listener represents the doorman.
       await _messagingSubscription?.cancel();
       _messagingSubscription = FirebaseMessaging.onMessage.listen((message) => _showRichNotification(message));
+      
+      // ── 🛰️ FOREGROUND REALTIME PULSE: The Unified Acoustic Dispatcher ──
+      // Catch 'system_notifications' Sink and play audio instantly if the app is in the foreground.
+      await _realtimeSubscription?.cancel();
+      _realtimeSubscription = _supabase
+          .from('system_notifications')
+          .stream(primaryKey: ['id'])
+          .order('created_at', ascending: false)
+          .limit(1)
+          .listen((data) {
+        if (data.isEmpty) return;
+        final latest = data.first;
+        final createdAt = DateTime.parse(latest['created_at']);
+        
+        // 🛡️ FRESHNESS GUARD: Only play for events that happened in the last 10 seconds
+        if (DateTime.now().difference(createdAt).inSeconds > 10) return;
+
+        // 🛡️ ACOUSTIC DEBOUNCE: Prevent "Machine Gun" audio during bulk sync
+        if (DateTime.now().difference(_lastPlayTime).inSeconds < 3) return;
+        _lastPlayTime = DateTime.now();
+
+        final type = latest['type'] as String;
+        final player = AudioPlayer();
+
+        // 🏗️ TACTICAL ACOUSTIC MAPPING
+        if (['borrow_request', 'security_trigger', 'stock_out'].contains(type)) {
+          player.play(AssetSource('sounds/critical_alarm.mp3'));
+        } else {
+          player.play(AssetSource('sounds/notification.mp3'));
+        }
+      });
       
       // Handle taps when app is in background
       FirebaseMessaging.onMessageOpenedApp.listen((message) {

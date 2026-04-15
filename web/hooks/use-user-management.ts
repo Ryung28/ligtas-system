@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { toast } from 'sonner'
+import useSWR from 'swr'
 import { updateUserRole as updateUserRoleAction } from '@/app/actions/user-management'
 import {
     approveUserAction,
@@ -40,80 +41,59 @@ export interface AccessRequest {
     status: 'pending' | 'approved' | 'rejected'
 }
 
+// 🛡️ Browser client: READ-ONLY usage (SELECT)
+const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 // Exported fetch functions for cache warming
+export const USER_PROFILES_KEY = 'user_profiles'
+export const AUTHORIZED_EMAILS_KEY = 'authorized_emails'
+export const PENDING_USER_REQUESTS_KEY = 'pending_user_requests'
+
 export const fetchUsers = async () => {
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    const { data } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false })
-    return data || []
+    const { data, error } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false })
+    if (error) throw error
+    return (data as UserProfile[]) || []
 }
 
 export const fetchAuthorizedEmails = async () => {
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    const { data } = await supabase.from('authorized_emails').select('*')
+    const { data, error } = await supabase.from('authorized_emails').select('*')
+    if (error) throw error
     return data || []
 }
 
+export const fetchPendingUserRequests = async () => {
+    const { data, error } = await supabase
+        .from('access_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false })
+    if (error) throw error
+    return (data as AccessRequest[]) || []
+}
+
 export function useUserManagement() {
-    const [users, setUsers] = useState<UserProfile[]>([])
-    const [pendingRequests, setPendingRequests] = useState<AccessRequest[]>([])
-    const [authorizedEmails, setAuthorizedEmails] = useState<Record<string, unknown>[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [isValidating, setIsValidating] = useState(false)
+    // 🛰️ SWR TRACKS
+    const { data: users = [], mutate: mutateUsers, isLoading: usersLoading, isValidating: usersValidating } = useSWR(USER_PROFILES_KEY, fetchUsers, { revalidateOnFocus: false })
+    const { data: authorizedEmails = [], mutate: mutateWhitelist, isLoading: whitelistLoading } = useSWR(AUTHORIZED_EMAILS_KEY, fetchAuthorizedEmails, { revalidateOnFocus: false })
+    const { data: pendingRequests = [], mutate: mutateRequests, isLoading: requestsLoading } = useSWR(PENDING_USER_REQUESTS_KEY, fetchPendingUserRequests, { revalidateOnFocus: false })
 
-    // 🛡️ Browser client: READ-ONLY usage (SELECT + realtime subscriptions)
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const isLoading = usersLoading || whitelistLoading || requestsLoading
+    const isValidating = usersValidating
 
-    const fetchData = async () => {
-        try {
-            setIsValidating(true)
-
-            const { data: profiles, error: profileError } = await supabase
-                .from('user_profiles')
-                .select('*')
-                .order('created_at', { ascending: false })
-
-            const { data: requests } = await supabase
-                .from('access_requests')
-                .select('*')
-                .eq('status', 'pending')
-                .order('requested_at', { ascending: false })
-
-            const { data: whitelist } = await supabase
-                .from('authorized_emails')
-                .select('*')
-
-            if (profileError) {
-                console.error('Error fetching profiles:', profileError)
-                toast.error('Failed to load personnel data')
-            } else {
-                setUsers((profiles as UserProfile[]) || [])
-                setPendingRequests((requests as AccessRequest[]) || [])
-                setAuthorizedEmails((whitelist as Record<string, unknown>[]) || [])
-            }
-        } catch (err) {
-            console.error(err)
-        } finally {
-            setIsLoading(false)
-            setIsValidating(false)
-        }
+    const refresh = async () => {
+        await Promise.all([mutateUsers(), mutateWhitelist(), mutateRequests()])
     }
 
-    // ── MUTATION FUNCTIONS — all delegated to Server Actions ──────────────────
+    // ── MUTATION FUNCTIONS — delegation to Server Actions ──────────────────
 
     const approveUser = async (userId: string, role: 'admin' | 'editor' | 'viewer' | 'responder' = 'responder') => {
         const result = await approveUserAction(userId, role)
         if (result.success) {
             toast.success(result.message)
-            await fetchData()
+            await refresh()
             return true
         }
         toast.error('Failed to approve user: ' + result.message)
@@ -124,7 +104,7 @@ export function useUserManagement() {
         const result = await rejectUserAction(userId)
         if (result.success) {
             toast.success(result.message)
-            await fetchData()
+            await refresh()
             return true
         }
         toast.error('Failed to reject user: ' + result.message)
@@ -132,30 +112,17 @@ export function useUserManagement() {
     }
 
     const suspendUser = async (userId: string) => {
-        // Pending invites route to unauthorize (synthetic ID)
         if (userId.startsWith('pending-')) {
             const email = userId.replace('pending-', '')
             return unauthorizeUser(email)
         }
 
-        // UUID validation guard
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!uuidRegex.test(userId)) {
-            toast.error('Tactical Error: Invalid Account Signature (UUID)')
-            return false
-        }
-
-        // Optimistic UI update
-        setUsers(prev => prev.filter(u => u.id !== userId))
-
         const result = await suspendUserAction(userId)
         if (result.success) {
             toast.success(result.message)
-            await fetchData()
+            await refresh()
             return true
         }
-        // Revert optimistic update on failure
-        await fetchData()
         toast.error(result.message)
         return false
     }
@@ -164,7 +131,7 @@ export function useUserManagement() {
         const result = await reactivateUserAction(userId)
         if (result.success) {
             toast.success(result.message)
-            await fetchData()
+            await refresh()
             return true
         }
         toast.error('Failed to reactivate user: ' + result.message)
@@ -174,11 +141,11 @@ export function useUserManagement() {
     const updateUserRole = async (userId: string, newRole: 'admin' | 'editor') => {
         const result = await updateUserRoleAction(userId, newRole)
         if (result.success) {
-            toast.success(result.message || `User ${newRole}ed successfully`)
-            await fetchData()
+            toast.success(result.message || `User role updated successfully`)
+            await refresh()
             return true
         }
-        toast.error(result.error || `Failed to ${newRole === 'admin' ? 'promote' : 'demote'} user`)
+        toast.error(result.error || `Failed to update user role`)
         return false
     }
 
@@ -186,7 +153,7 @@ export function useUserManagement() {
         const result = await authorizeUserAction(email, role)
         if (result.success) {
             toast.success(result.message)
-            await fetchData()
+            await refresh()
             return true
         }
         toast.error('Failed to authorize email: ' + result.message)
@@ -197,7 +164,7 @@ export function useUserManagement() {
         const result = await unauthorizeUserAction(email)
         if (result.success) {
             toast.success(result.message)
-            await fetchData()
+            await refresh()
             return true
         }
         toast.error(result.message)
@@ -214,7 +181,7 @@ export function useUserManagement() {
             if (error) throw error
 
             toast.success(warehouse ? `Warehouse assigned: ${warehouse}` : 'Warehouse assignment removed')
-            await fetchData()
+            await refresh()
             return true
         } catch (err: any) {
             toast.error('Failed to assign warehouse: ' + err.message)
@@ -222,26 +189,19 @@ export function useUserManagement() {
         }
     }
 
-    // ── REALTIME SUBSCRIPTIONS & EFFECTS ─────────────────────────────────────
+    // ── REALTIME SUBSCRIPTIONS ─────────────────────────────────────
 
     useEffect(() => {
-        fetchData()
-
         const profilesChannel = supabase
             .channel('user-profiles-sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => fetchData())
-            .subscribe()
-
-        const requestsChannel = supabase
-            .channel('access-requests-sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'access_requests' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => mutateUsers())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'access_requests' }, () => mutateRequests())
             .subscribe()
 
         return () => {
             supabase.removeChannel(profilesChannel)
-            supabase.removeChannel(requestsChannel)
         }
-    }, [])
+    }, [mutateUsers, mutateRequests])
 
     const stats = useMemo(() => {
         const activeUsers = users.filter(u => u.status === 'active')
@@ -263,7 +223,7 @@ export function useUserManagement() {
         stats,
         isLoading,
         isValidating,
-        refresh: fetchData,
+        refresh,
         approveUser,
         rejectUser,
         suspendUser,

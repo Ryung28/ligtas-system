@@ -30,7 +30,14 @@ mixin _$InventoryItem {
   String get unit => throw _privateConstructorUsedError;
   String? get imageUrl => throw _privateConstructorUsedError;
   DateTime? get lastUpdated => throw _privateConstructorUsedError;
-  bool get isPendingSync => throw _privateConstructorUsedError;
+  bool get isPendingSync =>
+      throw _privateConstructorUsedError; // Hierarchical Location Support
+  int? get parentId => throw _privateConstructorUsedError;
+  int get aggregateTotal => throw _privateConstructorUsedError;
+  int get aggregateAvailable => throw _privateConstructorUsedError;
+  int? get locationRegistryId =>
+      throw _privateConstructorUsedError; // MASTER IDENTITY ANCHOR
+  List<InventoryVariant> get variants => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $InventoryItemCopyWith<InventoryItem> get copyWith =>
@@ -58,7 +65,12 @@ abstract class $InventoryItemCopyWith<$Res> {
       String unit,
       String? imageUrl,
       DateTime? lastUpdated,
-      bool isPendingSync});
+      bool isPendingSync,
+      int? parentId,
+      int aggregateTotal,
+      int aggregateAvailable,
+      int? locationRegistryId,
+      List<InventoryVariant> variants});
 }
 
 /// @nodoc
@@ -89,6 +101,11 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
     Object? imageUrl = freezed,
     Object? lastUpdated = freezed,
     Object? isPendingSync = null,
+    Object? parentId = freezed,
+    Object? aggregateTotal = null,
+    Object? aggregateAvailable = null,
+    Object? locationRegistryId = freezed,
+    Object? variants = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -151,6 +168,26 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
               as bool,
+      parentId: freezed == parentId
+          ? _value.parentId
+          : parentId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      aggregateTotal: null == aggregateTotal
+          ? _value.aggregateTotal
+          : aggregateTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      aggregateAvailable: null == aggregateAvailable
+          ? _value.aggregateAvailable
+          : aggregateAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      locationRegistryId: freezed == locationRegistryId
+          ? _value.locationRegistryId
+          : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      variants: null == variants
+          ? _value.variants
+          : variants // ignore: cast_nullable_to_non_nullable
+              as List<InventoryVariant>,
     ) as $Val);
   }
 }
@@ -178,7 +215,12 @@ abstract class _$$InventoryItemImplCopyWith<$Res>
       String unit,
       String? imageUrl,
       DateTime? lastUpdated,
-      bool isPendingSync});
+      bool isPendingSync,
+      int? parentId,
+      int aggregateTotal,
+      int aggregateAvailable,
+      int? locationRegistryId,
+      List<InventoryVariant> variants});
 }
 
 /// @nodoc
@@ -207,6 +249,11 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
     Object? imageUrl = freezed,
     Object? lastUpdated = freezed,
     Object? isPendingSync = null,
+    Object? parentId = freezed,
+    Object? aggregateTotal = null,
+    Object? aggregateAvailable = null,
+    Object? locationRegistryId = freezed,
+    Object? variants = null,
   }) {
     return _then(_$InventoryItemImpl(
       id: null == id
@@ -269,6 +316,26 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
               as bool,
+      parentId: freezed == parentId
+          ? _value.parentId
+          : parentId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      aggregateTotal: null == aggregateTotal
+          ? _value.aggregateTotal
+          : aggregateTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      aggregateAvailable: null == aggregateAvailable
+          ? _value.aggregateAvailable
+          : aggregateAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      locationRegistryId: freezed == locationRegistryId
+          ? _value.locationRegistryId
+          : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      variants: null == variants
+          ? _value._variants
+          : variants // ignore: cast_nullable_to_non_nullable
+              as List<InventoryVariant>,
     ));
   }
 }
@@ -291,8 +358,14 @@ class _$InventoryItemImpl extends _InventoryItem {
       this.unit = 'pcs',
       this.imageUrl,
       this.lastUpdated,
-      this.isPendingSync = false})
-      : super._();
+      this.isPendingSync = false,
+      this.parentId,
+      this.aggregateTotal = 0,
+      this.aggregateAvailable = 0,
+      this.locationRegistryId,
+      final List<InventoryVariant> variants = const []})
+      : _variants = variants,
+        super._();
 
   @override
   final int id;
@@ -334,10 +407,31 @@ class _$InventoryItemImpl extends _InventoryItem {
   @override
   @JsonKey()
   final bool isPendingSync;
+// Hierarchical Location Support
+  @override
+  final int? parentId;
+  @override
+  @JsonKey()
+  final int aggregateTotal;
+  @override
+  @JsonKey()
+  final int aggregateAvailable;
+  @override
+  final int? locationRegistryId;
+// MASTER IDENTITY ANCHOR
+  final List<InventoryVariant> _variants;
+// MASTER IDENTITY ANCHOR
+  @override
+  @JsonKey()
+  List<InventoryVariant> get variants {
+    if (_variants is EqualUnmodifiableListView) return _variants;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_variants);
+  }
 
   @override
   String toString() {
-    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, minStockLevel: $minStockLevel, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, isPendingSync: $isPendingSync)';
+    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, minStockLevel: $minStockLevel, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, isPendingSync: $isPendingSync, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
   }
 
   @override
@@ -368,27 +462,42 @@ class _$InventoryItemImpl extends _InventoryItem {
             (identical(other.lastUpdated, lastUpdated) ||
                 other.lastUpdated == lastUpdated) &&
             (identical(other.isPendingSync, isPendingSync) ||
-                other.isPendingSync == isPendingSync));
+                other.isPendingSync == isPendingSync) &&
+            (identical(other.parentId, parentId) ||
+                other.parentId == parentId) &&
+            (identical(other.aggregateTotal, aggregateTotal) ||
+                other.aggregateTotal == aggregateTotal) &&
+            (identical(other.aggregateAvailable, aggregateAvailable) ||
+                other.aggregateAvailable == aggregateAvailable) &&
+            (identical(other.locationRegistryId, locationRegistryId) ||
+                other.locationRegistryId == locationRegistryId) &&
+            const DeepCollectionEquality().equals(other._variants, _variants));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      name,
-      description,
-      category,
-      totalStock,
-      availableStock,
-      location,
-      qrCode,
-      status,
-      code,
-      minStockLevel,
-      unit,
-      imageUrl,
-      lastUpdated,
-      isPendingSync);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        name,
+        description,
+        category,
+        totalStock,
+        availableStock,
+        location,
+        qrCode,
+        status,
+        code,
+        minStockLevel,
+        unit,
+        imageUrl,
+        lastUpdated,
+        isPendingSync,
+        parentId,
+        aggregateTotal,
+        aggregateAvailable,
+        locationRegistryId,
+        const DeepCollectionEquality().hash(_variants)
+      ]);
 
   @JsonKey(ignore: true)
   @override
@@ -413,7 +522,12 @@ abstract class _InventoryItem extends InventoryItem {
       final String unit,
       final String? imageUrl,
       final DateTime? lastUpdated,
-      final bool isPendingSync}) = _$InventoryItemImpl;
+      final bool isPendingSync,
+      final int? parentId,
+      final int aggregateTotal,
+      final int aggregateAvailable,
+      final int? locationRegistryId,
+      final List<InventoryVariant> variants}) = _$InventoryItemImpl;
   const _InventoryItem._() : super._();
 
   @override
@@ -446,8 +560,245 @@ abstract class _InventoryItem extends InventoryItem {
   DateTime? get lastUpdated;
   @override
   bool get isPendingSync;
+  @override // Hierarchical Location Support
+  int? get parentId;
+  @override
+  int get aggregateTotal;
+  @override
+  int get aggregateAvailable;
+  @override
+  int? get locationRegistryId;
+  @override // MASTER IDENTITY ANCHOR
+  List<InventoryVariant> get variants;
   @override
   @JsonKey(ignore: true)
   _$$InventoryItemImplCopyWith<_$InventoryItemImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$InventoryVariant {
+  int get id => throw _privateConstructorUsedError;
+  String get location => throw _privateConstructorUsedError;
+  int get stockAvailable => throw _privateConstructorUsedError;
+  int get stockTotal => throw _privateConstructorUsedError;
+  String get status => throw _privateConstructorUsedError;
+  int? get locationRegistryId => throw _privateConstructorUsedError;
+
+  @JsonKey(ignore: true)
+  $InventoryVariantCopyWith<InventoryVariant> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $InventoryVariantCopyWith<$Res> {
+  factory $InventoryVariantCopyWith(
+          InventoryVariant value, $Res Function(InventoryVariant) then) =
+      _$InventoryVariantCopyWithImpl<$Res, InventoryVariant>;
+  @useResult
+  $Res call(
+      {int id,
+      String location,
+      int stockAvailable,
+      int stockTotal,
+      String status,
+      int? locationRegistryId});
+}
+
+/// @nodoc
+class _$InventoryVariantCopyWithImpl<$Res, $Val extends InventoryVariant>
+    implements $InventoryVariantCopyWith<$Res> {
+  _$InventoryVariantCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? location = null,
+    Object? stockAvailable = null,
+    Object? stockTotal = null,
+    Object? status = null,
+    Object? locationRegistryId = freezed,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      location: null == location
+          ? _value.location
+          : location // ignore: cast_nullable_to_non_nullable
+              as String,
+      stockAvailable: null == stockAvailable
+          ? _value.stockAvailable
+          : stockAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      stockTotal: null == stockTotal
+          ? _value.stockTotal
+          : stockTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      locationRegistryId: freezed == locationRegistryId
+          ? _value.locationRegistryId
+          : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$InventoryVariantImplCopyWith<$Res>
+    implements $InventoryVariantCopyWith<$Res> {
+  factory _$$InventoryVariantImplCopyWith(_$InventoryVariantImpl value,
+          $Res Function(_$InventoryVariantImpl) then) =
+      __$$InventoryVariantImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {int id,
+      String location,
+      int stockAvailable,
+      int stockTotal,
+      String status,
+      int? locationRegistryId});
+}
+
+/// @nodoc
+class __$$InventoryVariantImplCopyWithImpl<$Res>
+    extends _$InventoryVariantCopyWithImpl<$Res, _$InventoryVariantImpl>
+    implements _$$InventoryVariantImplCopyWith<$Res> {
+  __$$InventoryVariantImplCopyWithImpl(_$InventoryVariantImpl _value,
+      $Res Function(_$InventoryVariantImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? location = null,
+    Object? stockAvailable = null,
+    Object? stockTotal = null,
+    Object? status = null,
+    Object? locationRegistryId = freezed,
+  }) {
+    return _then(_$InventoryVariantImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as int,
+      location: null == location
+          ? _value.location
+          : location // ignore: cast_nullable_to_non_nullable
+              as String,
+      stockAvailable: null == stockAvailable
+          ? _value.stockAvailable
+          : stockAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      stockTotal: null == stockTotal
+          ? _value.stockTotal
+          : stockTotal // ignore: cast_nullable_to_non_nullable
+              as int,
+      status: null == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      locationRegistryId: freezed == locationRegistryId
+          ? _value.locationRegistryId
+          : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$InventoryVariantImpl implements _InventoryVariant {
+  const _$InventoryVariantImpl(
+      {required this.id,
+      required this.location,
+      required this.stockAvailable,
+      required this.stockTotal,
+      required this.status,
+      this.locationRegistryId});
+
+  @override
+  final int id;
+  @override
+  final String location;
+  @override
+  final int stockAvailable;
+  @override
+  final int stockTotal;
+  @override
+  final String status;
+  @override
+  final int? locationRegistryId;
+
+  @override
+  String toString() {
+    return 'InventoryVariant(id: $id, location: $location, stockAvailable: $stockAvailable, stockTotal: $stockTotal, status: $status, locationRegistryId: $locationRegistryId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$InventoryVariantImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.location, location) ||
+                other.location == location) &&
+            (identical(other.stockAvailable, stockAvailable) ||
+                other.stockAvailable == stockAvailable) &&
+            (identical(other.stockTotal, stockTotal) ||
+                other.stockTotal == stockTotal) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.locationRegistryId, locationRegistryId) ||
+                other.locationRegistryId == locationRegistryId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, id, location, stockAvailable,
+      stockTotal, status, locationRegistryId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$InventoryVariantImplCopyWith<_$InventoryVariantImpl> get copyWith =>
+      __$$InventoryVariantImplCopyWithImpl<_$InventoryVariantImpl>(
+          this, _$identity);
+}
+
+abstract class _InventoryVariant implements InventoryVariant {
+  const factory _InventoryVariant(
+      {required final int id,
+      required final String location,
+      required final int stockAvailable,
+      required final int stockTotal,
+      required final String status,
+      final int? locationRegistryId}) = _$InventoryVariantImpl;
+
+  @override
+  int get id;
+  @override
+  String get location;
+  @override
+  int get stockAvailable;
+  @override
+  int get stockTotal;
+  @override
+  String get status;
+  @override
+  int? get locationRegistryId;
+  @override
+  @JsonKey(ignore: true)
+  _$$InventoryVariantImplCopyWith<_$InventoryVariantImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

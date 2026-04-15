@@ -18,7 +18,7 @@ class SupabaseLoanRepository implements ILoanRepository {
     try {
       final response = await _client
           .from('borrow_logs')
-          .select('*')
+          .select('*, inventory:inventory_id(image_url)')
           .eq('borrowed_by', userId) // Strict Tenant Isolation
           .order('borrow_date', ascending: false);
       
@@ -35,7 +35,10 @@ class SupabaseLoanRepository implements ILoanRepository {
     }
   }
 
-  Stream<List<LoanItem>> watchLoans() {
+  Stream<List<LoanItem>> watchLoans({bool isManager = false}) {
+    if (isManager) {
+      return _local.watchAllLoans();
+    }
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const Stream.empty();
     return _local.watchLoans(userId);
@@ -57,10 +60,11 @@ class SupabaseLoanRepository implements ILoanRepository {
         'quantity_borrowed': request.quantityBorrowed, 
         'transaction_type': 'borrow', // REQUIRED FOR STOCK TRIGGER
         'expected_return_date': request.expectedReturnDate.toIso8601String(),
+        'pickup_scheduled_at': request.pickupScheduledAt?.toIso8601String(),
         'notes': request.notes,
         'status': 'pending',
         'borrowed_by': userId, // Ensure current user owns the log
-      }).select().single();
+      }).select('*, inventory:inventory_id(image_url)').single();
 
       final newLoan = _mapJsonToEntity(response);
       _local.saveLoans([newLoan]);
@@ -104,18 +108,87 @@ class SupabaseLoanRepository implements ILoanRepository {
   }
 
   @override
-  Stream<void> watchRemote() {
+  Stream<void> watchRemote({String? warehouseId}) {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const Stream.empty();
 
-    return _client
-        .from('borrow_logs')
-        .stream(primaryKey: ['id'])
-        .eq('borrowed_by', userId) // Realtime Tenant Isolation
-        .map((data) {
-          final loans = data.map((json) => _mapJsonToEntity(json)).toList();
-          _local.saveLoans(loans);
-        });
+    final query = (warehouseId != null && warehouseId != 'ALL')
+        ? _client.from('borrow_logs').stream(primaryKey: ['id']).eq('warehouse_id', warehouseId)
+        : _client.from('borrow_logs').stream(primaryKey: ['id']).eq('borrowed_by', userId);
+
+    return query.asyncMap((data) async {
+      final loans = data.map((json) => _mapJsonToEntity(json)).toList();
+      await _local.saveLoans(loans);
+    });
+  }
+
+  // --- Manager Operations (WMS Checklist Implementation) ---
+
+  @override
+  Future<List<LoanItem>> fetchWarehouseRequests(String? warehouseId) async {
+    try {
+      var query = _client.from('borrow_logs').select('*, inventory:inventory_id(image_url)');
+      
+      if (warehouseId != null && warehouseId != 'ALL') {
+        query = query.eq('warehouse_id', warehouseId);
+      }
+
+      final response = await query.order('created_at', ascending: false);
+      
+      final List<dynamic> data = response;
+      final loans = data.map((json) => _mapJsonToEntity(json)).toList();
+      _local.saveLoans(loans);
+      return loans;
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
+    }
+  }
+
+  @override
+  Future<void> approveLoan(String loanId, String managerName) async {
+    try {
+      await _client.from('borrow_logs').update({
+        'status': 'approved',
+        'approved_by': managerName,
+        'approved_at': DateTime.now().toIso8601String(),
+      }).eq('id', loanId);
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
+    }
+  }
+
+  @override
+  Future<void> confirmHandoff(String loanId, String staffName) async {
+    try {
+      await _client.from('borrow_logs').update({
+        'status': 'borrowed',
+        'handed_by': staffName,
+        'handed_at': DateTime.now().toIso8601String(),
+        'borrow_date': DateTime.now().toIso8601String(),
+      }).eq('id', loanId);
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
+    }
+  }
+
+  @override
+  Future<void> confirmReturn(String loanId, {
+    required String staffName,
+    required String condition,
+    String? notes,
+  }) async {
+    try {
+      await _client.from('borrow_logs').update({
+        'status': 'returned',
+        'actual_return_date': DateTime.now().toIso8601String(),
+        'received_by_name': staffName,
+        'received_by_user_id': _client.auth.currentUser?.id,
+        'return_condition': condition,
+        'return_notes': notes,
+      }).eq('id', loanId);
+    } catch (e) {
+      throw ExceptionHandler.fromException(e);
+    }
   }
 
   /// Mapping Logic
@@ -132,6 +205,8 @@ class SupabaseLoanRepository implements ILoanRepository {
       finalStatus = LoanStatus.cancelled;
     } else if (rawStatus == 'pending') {
       finalStatus = LoanStatus.pending;
+    } else if (rawStatus == 'staged') {
+      finalStatus = LoanStatus.staged;
     } else {
       finalStatus = LoanStatus.active;
     }
@@ -144,8 +219,8 @@ class SupabaseLoanRepository implements ILoanRepository {
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
     final now = DateTime.now();
 
-    // 🚀 Dynamic Overdue Logic: If it's borrowed OR pending but the date has passed, it IS overdue in the UI
-    if ((finalStatus == LoanStatus.active || finalStatus == LoanStatus.pending) && expectedReturnDate.isBefore(now)) {
+    // 🚀 Dynamic Overdue Logic: If it's borrowed OR pending OR staged but the date has passed, it IS overdue in the UI
+    if ((finalStatus == LoanStatus.active || finalStatus == LoanStatus.pending || finalStatus == LoanStatus.staged) && expectedReturnDate.isBefore(now)) {
       finalStatus = LoanStatus.overdue;
     }
 
@@ -153,6 +228,25 @@ class SupabaseLoanRepository implements ILoanRepository {
     final dbDaysOverdue = expectedReturnDate.isBefore(now) ? now.difference(expectedReturnDate).inDays : 0;
 
     final borrowedByUid = (data['borrowed_by'] ?? data['borrower_user_id'] ?? '').toString();
+
+    // 🛡️ RELATIONAL EXTRACTION: Support both Map and List join formats
+    String? imageUrl;
+    final inventoryData = data['inventory'];
+    if (inventoryData != null) {
+      if (inventoryData is Map) {
+        imageUrl = _sanitizeUrl(inventoryData['image_url'] as String?);
+      } else if (inventoryData is List && inventoryData.isNotEmpty) {
+        final firstItem = inventoryData.first;
+        if (firstItem is Map) {
+          imageUrl = _sanitizeUrl(firstItem['image_url'] as String?);
+        }
+      }
+    }
+
+    // Secondary fallback check for direct inventory_id join
+    if (imageUrl == null && data['inventory_id'] != null && data['inventory_id'] is Map) {
+      imageUrl = _sanitizeUrl(data['inventory_id']['image_url'] as String?);
+    }
 
     return LoanItem(
       id: data['id'].toString(),
@@ -162,6 +256,7 @@ class SupabaseLoanRepository implements ILoanRepository {
       itemCode: data['item_code'] as String? ?? '',
       borrowerName: data['borrower_name'] as String? ?? 'Unknown',
       borrowerContact: data['borrower_contact'] as String? ?? '',
+      borrowerOrganization: data['borrower_organization'] as String? ?? '',
       borrowerEmail: data['borrower_email'] as String? ?? '',
       purpose: data['purpose'] as String? ?? '',
       quantityBorrowed: (data['quantity_borrowed'] ?? 1) is int 
@@ -175,9 +270,32 @@ class SupabaseLoanRepository implements ILoanRepository {
       returnNotes: data['return_notes'] as String?,
       borrowedBy: borrowedByUid,
       returnedBy: data['returned_by']?.toString(),
+      
+      // Audit & Accountability fields (Checklist 2.0 Mapping)
+      approvedBy: data['approved_by'] as String?,
+      approvedAt: data['approved_at'] != null ? DateTime.parse(data['approved_at']).toLocal() : null,
+      handedBy: data['handed_by'] as String?,
+      handedAt: data['handed_at'] != null ? DateTime.parse(data['handed_at']).toLocal() : null,
+      receivedByName: data['received_by_name'] as String?,
+      receivedByUserId: data['received_by_user_id'] as String?,
+      returnCondition: data['return_condition'] as String?,
+      pickupScheduledAt: data['pickup_scheduled_at'] != null ? DateTime.parse(data['pickup_scheduled_at']).toLocal() : null,
+
       daysBorrowed: dbDaysBorrowed,
       daysOverdue: dbDaysOverdue,
       isPendingSync: data['is_pending_sync'] as bool? ?? false,
+      imageUrl: imageUrl,
     );
+  }
+
+  String? _sanitizeUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.isEmpty) return null;
+    if (rawUrl.contains('/storage/v1/object/sign/')) {
+      return rawUrl
+          .replaceAll('/storage/v1/object/sign/', '/storage/v1/object/public/')
+          .split('?token=')[0]
+          .split('&token=')[0];
+    }
+    return rawUrl;
   }
 }

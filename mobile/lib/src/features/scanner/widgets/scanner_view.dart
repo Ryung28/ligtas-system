@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import '../../../core/design_system/app_theme.dart';
 
@@ -44,19 +45,14 @@ class _ScannerViewState extends State<ScannerView> {
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
     
-    // PRECISION TACTICAL CONTAINMENT: Verify if the barcode is within the central scan window
-    // Note: MobileScanner 4.0+ handles scanWindow natively if provided to the controller,
-    // but we add a secondary check here for maximum reliability.
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
       if (barcode.rawValue != null) {
-        // Immediate physical feedback
         HapticFeedback.heavyImpact();
         
         setState(() => _isProcessing = true);
         widget.onQrCodeDetected(barcode.rawValue!);
         
-        // Reset processing state after a delay
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
             setState(() => _isProcessing = false);
@@ -79,52 +75,49 @@ class _ScannerViewState extends State<ScannerView> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. Camera Feed with Precision Tactical Window
+          // 1. Camera Feed
           MobileScanner(
             controller: controller,
             onDetect: _onDetect,
-            scanWindow: Rect.fromCenter(
-              center: Offset(
-                MediaQuery.of(context).size.width / 2,
-                MediaQuery.of(context).size.height / 2,
-              ),
-              width: 280,
-              height: 280,
-            ),
+            // 🛡️ SIMPLICITY: Scan full viewport to prevent aspect-ratio blindness
           ),
           
-          // 2. Dark Overlay with Cutout
+          // 2. Sentinel Overlay
           CustomPaint(
-            painter: _ScannerOverlayPainter(
-              borderColor: AppTheme.primaryBlue,
-              borderRadius: 24,
-              borderLength: 40,
+            painter: _SentinelOverlayPainter(
+              borderColor: const Color(0xFF001A33), // Stitch Navy
+              borderRadius: 32,
+              borderLength: 48,
               cutOutSize: 280,
-              overlayColor: Colors.black.withOpacity(0.7),
+              overlayColor: Colors.black.withOpacity(0.75),
             ),
             child: Container(),
           ),
           
-          // 3. Animated "Laser" Pulse
+          // 3. Kinetic Laser Pulse
           Center(
             child: Container(
               width: 280,
-              height: 120, // Height for the fade
+              height: 2,
               decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF001A33).withOpacity(0.8),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  ),
+                ],
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
                   colors: [
-                    AppTheme.primaryBlue.withOpacity(0),
-                    AppTheme.primaryBlue.withOpacity(0.5),
-                    AppTheme.primaryBlue.withOpacity(0),
+                    const Color(0xFF001A33).withOpacity(0),
+                    const Color(0xFF001A33),
+                    const Color(0xFF001A33).withOpacity(0),
                   ],
-                  stops: const [0.0, 0.5, 1.0],
                 ),
               ),
             )
             .animate(onPlay: (controller) => controller.repeat())
-            .moveY(begin: -140, end: 140, duration: 2.5.seconds, curve: Curves.easeInOut)
+            .moveY(begin: -140, end: 140, duration: 2.seconds, curve: Curves.easeInOut)
             .fadeIn(duration: 300.ms),
           ),
           
@@ -135,11 +128,11 @@ class _ScannerViewState extends State<ScannerView> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _GlassIconButton(
+                  _SentinelGlassButton(
                     icon: Icons.close_rounded,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
-                  _GlassIconButton(
+                  _SentinelGlassButton(
                     icon: _isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
                     color: _isTorchOn ? AppTheme.warningAmber : Colors.white,
                     onPressed: _toggleTorch,
@@ -149,69 +142,58 @@ class _ScannerViewState extends State<ScannerView> {
             ),
           ),
           
-          // 5. Bottom Instructions (Glass Pill)
+          // 5. Tactical Instructions (Glass Pill)
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 100),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+              child: _SentinelGlassPill(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.overlayText?.toUpperCase() ?? 'EQUIPMENT SCANNER',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 2.0,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.overlayText ?? 'Scan Equipment Label',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const Gap(4),
-                        Text(
-                          'Align code within the frame',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
+                    const Gap(6),
+                    Text(
+                      'STATIONARY ALIGNMENT REQUIRED',
+                      style: GoogleFonts.lexend(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.0,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
-          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
+          ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
           
-          // 6. Processing Overlay (Glass Dialog)
+          // 6. Softdepth Processing Bridge
           if (_isProcessing)
             Container(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withOpacity(0.4),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: const Color(0xFFF7F9FD), // surface
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryBlue.withOpacity(0.2),
-                          blurRadius: 32,
-                          spreadRadius: 8,
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 40,
+                          offset: const Offset(0, 20),
                         ),
                       ],
                     ),
@@ -219,35 +201,36 @@ class _ScannerViewState extends State<ScannerView> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(
-                          width: 40,
-                          height: 40,
+                          width: 48,
+                          height: 48,
                           child: CircularProgressIndicator(
-                            color: AppTheme.primaryBlue,
-                            strokeWidth: 3,
+                            color: Color(0xFF001A33),
+                            strokeWidth: 4,
+                            strokeCap: StrokeCap.round,
                           ),
                         ),
                         const Gap(24),
-                        const Text(
-                          'Identifying...',
-                          style: TextStyle(
-                            color: AppTheme.neutralGray900,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
+                        Text(
+                          'IDENTIFYING',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF191C1F), // on_surface
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
                           ),
                         ),
-                        const Gap(8),
+                        const Gap(4),
                         Text(
-                          'Verifying equipment details',
-                          style: TextStyle(
-                            color: AppTheme.neutralGray600,
-                            fontSize: 14,
+                          'ENCRYPTED SYSTEM LINK',
+                          style: GoogleFonts.lexend(
+                            color: const Color(0xFF43474D), // on_surface_variant
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                  ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack),
+                  ).animate().scale(duration: 400.ms, curve: Curves.easeOutCubic),
                 ),
               ),
             ),
@@ -257,12 +240,12 @@ class _ScannerViewState extends State<ScannerView> {
   }
 }
 
-class _GlassIconButton extends StatelessWidget {
+class _SentinelGlassButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final Color color;
 
-  const _GlassIconButton({
+  const _SentinelGlassButton({
     required this.icon,
     required this.onPressed,
     this.color = Colors.white,
@@ -273,18 +256,26 @@ class _GlassIconButton extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: GestureDetector(
           onTap: onPressed,
           child: Container(
-            width: 50,
-            height: 50,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1,
+              ),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Stack(
+              children: [
+                // 🛡️ STABILITY: Removed non-uniform border that caused crash
+                Center(child: Icon(icon, color: color, size: 26)),
+              ],
+            ),
           ),
         ),
       ),
@@ -292,8 +283,47 @@ class _GlassIconButton extends StatelessWidget {
   }
 }
 
-// Custom Painter for the Corner Brackets
-class _ScannerOverlayPainter extends CustomPainter {
+class _SentinelGlassPill extends StatelessWidget {
+  final Widget child;
+
+  const _SentinelGlassPill({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(32),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: Colors.white.withOpacity(0.15)),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border(
+                      top: BorderSide(color: Colors.white.withOpacity(0.2), width: 1),
+                      left: BorderSide(color: Colors.white.withOpacity(0.2), width: 1),
+                    ),
+                  ),
+                ),
+              ),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SentinelOverlayPainter extends CustomPainter {
   final Color borderColor;
   final double borderWidth;
   final Color overlayColor;
@@ -301,9 +331,9 @@ class _ScannerOverlayPainter extends CustomPainter {
   final double borderLength;
   final double cutOutSize;
 
-  _ScannerOverlayPainter({
+  _SentinelOverlayPainter({
     required this.borderColor,
-    this.borderWidth = 4.0,
+    this.borderWidth = 3.0,
     required this.overlayColor,
     required this.borderRadius,
     required this.borderLength,
@@ -314,7 +344,6 @@ class _ScannerOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final width = size.width;
     final height = size.height;
-    final rect = Rect.fromLTWH(0, 0, width, height);
     
     final cutoutRect = Rect.fromCenter(
       center: Offset(width / 2, height / 2),
@@ -322,64 +351,59 @@ class _ScannerOverlayPainter extends CustomPainter {
       height: cutOutSize,
     );
 
-    // 1. Draw Semi-Transparent Overlay with Cutout
-    final overlayPaint = Paint()
-      ..color = overlayColor
-      ..style = PaintingStyle.fill;
-
+    // 1. Draw Tactical Dark Overlay
+    final overlayPaint = Paint()..color = overlayColor;
     canvas.drawPath(
       Path.combine(
         PathOperation.difference,
-        Path()..addRect(rect),
-        Path()
-          ..addRRect(RRect.fromRectAndRadius(cutoutRect, Radius.circular(borderRadius))),
+        Path()..addRect(Rect.fromLTWH(0, 0, width, height)),
+        Path()..addRRect(RRect.fromRectAndRadius(cutoutRect, Radius.circular(borderRadius))),
       ),
       overlayPaint,
     );
 
-    // 2. Draw Glowing Corner Brackets
+    // 2. Draw Precision Brackets (Navy Contrast)
     final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = borderWidth
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.square;
 
-    final glowPaint = Paint()
-      ..color = borderColor.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = borderWidth + 4
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-    // Draw corners (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
     final path = Path();
     
+    // Custom Bracket Shape (Not standard rounded corners)
     // Top-Left
     path.moveTo(cutoutRect.left, cutoutRect.top + borderLength);
-    path.lineTo(cutoutRect.left, cutoutRect.top + borderRadius);
-    path.quadraticBezierTo(cutoutRect.left, cutoutRect.top, cutoutRect.left + borderRadius, cutoutRect.top);
+    path.lineTo(cutoutRect.left, cutoutRect.top);
     path.lineTo(cutoutRect.left + borderLength, cutoutRect.top);
 
     // Top-Right
     path.moveTo(cutoutRect.right - borderLength, cutoutRect.top);
-    path.lineTo(cutoutRect.right - borderRadius, cutoutRect.top);
-    path.quadraticBezierTo(cutoutRect.right, cutoutRect.top, cutoutRect.right, cutoutRect.top + borderRadius);
+    path.lineTo(cutoutRect.right, cutoutRect.top);
     path.lineTo(cutoutRect.right, cutoutRect.top + borderLength);
 
     // Bottom-Right
     path.moveTo(cutoutRect.right, cutoutRect.bottom - borderLength);
-    path.lineTo(cutoutRect.right, cutoutRect.bottom - borderRadius);
-    path.quadraticBezierTo(cutoutRect.right, cutoutRect.bottom, cutoutRect.right - borderRadius, cutoutRect.bottom);
+    path.lineTo(cutoutRect.right, cutoutRect.bottom);
     path.lineTo(cutoutRect.right - borderLength, cutoutRect.bottom);
 
     // Bottom-Left
     path.moveTo(cutoutRect.left + borderLength, cutoutRect.bottom);
-    path.lineTo(cutoutRect.left + borderRadius, cutoutRect.bottom);
-    path.quadraticBezierTo(cutoutRect.left, cutoutRect.bottom, cutoutRect.left, cutoutRect.bottom - borderRadius);
+    path.lineTo(cutoutRect.left, cutoutRect.bottom);
     path.lineTo(cutoutRect.left, cutoutRect.bottom - borderLength);
 
-    // Draw Glow then Border
-    canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, borderPaint);
+    
+    // Add inner white indicators for high precision
+    final innerPaint = Paint()
+      ..color = Colors.white.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(cutoutRect.inflate(1), Radius.circular(borderRadius)), 
+      innerPaint
+    );
   }
 
   @override

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, Warehouse } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 import { toast } from 'sonner'
-import { STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
+import { STORAGE_LOCATION_LABELS, StorageLocation, getInventoryImageUrl } from '@/lib/supabase'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -464,6 +464,7 @@ export function BorrowItemDialog() {
                                     options={availableItems.map(item => ({
                                         value: item.id.toString(),
                                         label: item.item_name,
+                                        imageUrl: getInventoryImageUrl(item.image_url) || undefined,
                                         description: `${item.aggregate_available} units City-wide • ${item.category}${item.variants?.length ? ` • [${item.variants.length + 1} Sites]` : ''}`,
                                     }))}
                                     value={selectedItem?.id.toString()}

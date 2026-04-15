@@ -1,0 +1,6 @@
+{
+    "java.project.sourcePaths": [
+        "web"
+    ],
+    "typescript.autoClosingTags": false
+}

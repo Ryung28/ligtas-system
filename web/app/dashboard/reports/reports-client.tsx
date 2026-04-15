@@ -7,6 +7,8 @@ import { RecommendedReports } from '@/components/reports/recommended-reports'
 import { ReportSections } from '@/components/reports/report-sections'
 import { RecentReports } from '@/components/reports/recent-reports'
 import { ReportConfigDialog } from '@/components/reports/report-config-dialog'
+import useSWR from 'swr'
+import { getReportStatsAction } from '@/app/actions/report-actions'
 import type { ReportType, ReportStats } from '@/components/reports/types'
 
 interface ReportsClientProps {
@@ -14,7 +16,16 @@ interface ReportsClientProps {
 }
 
 export function ReportsClient({ initialStats }: ReportsClientProps) {
-    const stats = initialStats
+    const { data: statsResponse, isLoading } = useSWR('report_stats_aggregator', async () => {
+        const res = await getReportStatsAction()
+        return res.data
+    }, {
+        fallbackData: initialStats || undefined,
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true
+    })
+
+    const stats = statsResponse || null
     const [selectedReport, setSelectedReport] = useState<ReportType | null>(null)
     const [showConfig, setShowConfig] = useState(false)
 

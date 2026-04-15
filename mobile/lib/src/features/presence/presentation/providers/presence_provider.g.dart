@@ -24,12 +24,12 @@ final presenceRepositoryProvider =
 
 typedef PresenceRepositoryRef = AutoDisposeProviderRef<IPresenceRepository>;
 String _$presenceControllerHash() =>
-    r'374845c16bf7e0bd4cb95b5f4d8c3eecfc16d41d';
+    r'b271a6745cb9f65aa9c126254e02c6da2ffbb5d5';
 
 /// See also [PresenceController].
 @ProviderFor(PresenceController)
 final presenceControllerProvider =
-    AutoDisposeNotifierProvider<PresenceController, bool>.internal(
+    NotifierProvider<PresenceController, bool>.internal(
   PresenceController.new,
   name: r'presenceControllerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -39,6 +39,6 @@ final presenceControllerProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$PresenceController = AutoDisposeNotifier<bool>;
+typedef _$PresenceController = Notifier<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

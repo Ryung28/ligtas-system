@@ -4,14 +4,11 @@ import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/design_system/app_spacing.dart';
 import '../../../core/design_system/app_theme.dart';
+import '../../../core/design_system/widgets/tactical_notice.dart';
 import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
-import '../widgets/login_background_pattern.dart';
-import '../../../core/design_system/widgets/atmospheric_background.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -26,8 +23,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
-  
-  // For the shake effect on validation error
   int _shakeCount = 0;
 
   @override
@@ -38,17 +33,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('remembered_email') ?? '';
-    final rememberMe = prefs.getBool('remember_me') ?? false;
-
-    if (mounted) {
-      setState(() {
-        _rememberMe = rememberMe;
-        if (_rememberMe && savedEmail.isNotEmpty) {
-          _emailController.text = savedEmail;
-        }
-      });
-    }
+    setState(() {
+      _rememberMe = prefs.getBool('remember_me') ?? false;
+      if (_rememberMe) {
+        _emailController.text = prefs.getString('remembered_email') ?? '';
+      }
+    });
   }
 
   Future<void> _saveCredentials() async {
@@ -77,41 +67,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _passwordController.text.trim(),
           );
     } else {
-      setState(() {
-        _shakeCount++;
-      });
+      setState(() => _shakeCount++);
     }
+  }
+
+  // 🛡️ TACTICAL GUARD: Separate Google trigger to prevent UI focus jitter
+  void _submitWithGoogle() async {
+    final auth = ref.read(authControllerProvider);
+    if (auth.isLoading) return; // Prevent double-triggering
+
+    debugPrint('📡 [Login-UI] Dispatching Google Handshake...');
+    await ref.read(authControllerProvider.notifier).signInWithGoogle(_rememberMe);
   }
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).extension<LigtasColors>()!;
+    
+    // ── AUTHENTICATION LIFECYCLE LISTENER ──
     ref.listen(authControllerProvider, (previous, next) {
       next.whenData((authState) {
         authState.mapOrNull(
-          authenticated: (state) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Access Granted: Welcome, ${state.user.displayName ?? 'Personnel'}'),
-                backgroundColor: AppTheme.successGreen,
-              ),
-            );
+          authenticated: (user) {
+            // 🛡️ ARCHITECT'S NOTE: Manual context.go('/') removed. 
+            // We now rely on GoRouter behavior to trigger redirects automatically 
+            // via the authRepository/authController subscription defined in app.dart.
           },
-          pendingApproval: (state) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('PENDING APPROVAL: Welcome, ${state.user.displayName ?? 'Personnel'}. Deployment access restricted.', 
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-                backgroundColor: AppTheme.warningOrange,
-                duration: const Duration(seconds: 5),
-              ),
-            );
+          pendingApproval: (user) {
+            context.push('/pending-approval');
           },
           error: (state) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppTheme.errorRed,
-              ),
+            TacticalNotice.show(
+              context,
+              message: state.message,
+              type: NoticeType.error,
             );
           },
         );
@@ -121,349 +110,373 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.maybeWhen(
       data: (s) => s.maybeWhen(loading: () => true, orElse: () => false),
+      loading: () => true, // Handle Riverpod's native loading state
       orElse: () => false,
     );
 
-    final size = MediaQuery.of(context).size;
-    final isSmallScreen = size.width < 380;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const AtmosphericBackground(), 
-          const LoginBackgroundPattern().animate().fadeIn(duration: 800.ms),
-          
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                      maxWidth: size.width,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                        child: Column(
-                          children: [
-                            const Spacer(flex: 2),
-                            
-                            // ── Logo Header ──
-                            Hero(
-                              tag: 'app_logo',
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(100),
-                                  child: Image.asset(
-                                    'assets/cdrrmo_logo.png',
-                                    width: isSmallScreen ? 80 : 95,
-                                    height: isSmallScreen ? 80 : 95,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      width: 95,
-                                      height: 95,
-                                      color: const Color(0xFFF1F5F9),
-                                      child: const Icon(Icons.shield_rounded, size: 40, color: AppTheme.primaryBlue),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack),
-                            
-                            const Gap(24),
-                            
-                            Text(
-                              context.l10n.appTitle,
-                              style: GoogleFonts.outfit(
-                                fontSize: isSmallScreen ? 22 : 26,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF0F172A),
-                                letterSpacing: -0.5,
-                              ),
-                            ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-                            
-                            const Gap(8),
-                            
-                            Text(
-                              context.l10n.loginGateway,
-                              style: GoogleFonts.inter(
-                                fontSize: isSmallScreen ? 11 : 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF64748B),
-                                letterSpacing: 1.5,
-                              ),
-                            ).animate().fadeIn(delay: 400.ms),
-                            
-                            const Gap(40),
-
-                            // ── Login Card with Shake Interaction ──
-                            Animate(
-                              key: ValueKey(_shakeCount),
-                              effects: _shakeCount > 0 ? [ShakeEffect(duration: 400.ms, hz: 4, offset: const Offset(8, 0))] : [],
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isSmallScreen ? 20 : 24, 
-                                  vertical: isSmallScreen ? 30 : 40
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.85),
-                                  borderRadius: BorderRadius.circular(40),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
-                                      blurRadius: 30,
-                                      offset: const Offset(0, 15),
-                                    ),
-                                  ],
-                                  border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
-                                ),
-                                child: Form(
-                                  key: _formKey,
-                                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                                  child: Column(
-                                    children: [
-                                      _buildInputField(
-                                        controller: _emailController,
-                                        label: context.l10n.emailLabel,
-                                        hint: context.l10n.emailHint,
-                                        icon: Icons.email_rounded,
-                                        keyboardType: TextInputType.emailAddress,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) return 'Email is required';
-                                          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                                          if (!emailRegex.hasMatch(value)) return 'Valid email required';
-                                          return null;
-                                        },
-                                      ),
-                                      
-                                      const Gap(20),
-                                      
-                                      _buildInputField(
-                                        controller: _passwordController,
-                                        label: context.l10n.passwordLabel,
-                                        hint: context.l10n.passwordHint,
-                                        icon: Icons.lock_rounded,
-                                        isPassword: true,
-                                        isVisible: _isPasswordVisible,
-                                        onVisibilityToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
-                                        validator: (value) => (value == null || value.length < 6) ? 'Min 6 characters' : null,
-                                      ),
-                                      
-                                      const Gap(16),
-
-                                      // ── Remember Me Checkbox ──
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            height: 24,
-                                            width: 24,
-                                            child: Checkbox(
-                                              value: _rememberMe,
-                                              onChanged: (value) => setState(() => _rememberMe = value ?? false),
-                                              activeColor: AppTheme.primaryBlue,
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                              side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-                                            ),
-                                          ),
-                                          const Gap(10),
-                                          GestureDetector(
-                                            onTap: () => setState(() => _rememberMe = !_rememberMe),
-                                            child: Text(
-                                              'Stay signed in on this device',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                                color: const Color(0xFF64748B),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ).animate().fadeIn(delay: 650.ms),
-                                      
-                                      const Gap(32),
-
-                                      // Login Action
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: AppSizing.buttonXl,
-                                        child: ElevatedButton(
-                                          onPressed: isLoading ? null : _submit,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppTheme.primaryBlue,
-                                            foregroundColor: Colors.white,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                          ),
-                                          child: isLoading
-                                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                              : Text(context.l10n.signInButton, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                                        ),
-                                      ),
-
-                                      const Gap(24),
-                                      
-                                      Row(
-                                        children: [
-                                          const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                                            child: Text('OR', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF94A3B8))),
-                                          ),
-                                          const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-                                        ],
-                                      ),
-
-                                      const Gap(24),
-
-                                      // Google Action
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: AppSizing.buttonXl,
-                                        child: OutlinedButton(
-                                          onPressed: isLoading ? null : () => ref.read(authControllerProvider.notifier).signInWithGoogle(_rememberMe),
-                                          style: OutlinedButton.styleFrom(
-                                            side: const BorderSide(color: Color(0xFFE2E8F0)),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                            backgroundColor: Colors.white,
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              CachedNetworkImage(
-                                                imageUrl: 'https://img.icons8.com/color/48/000000/google-logo.png',
-                                                height: 24,
-                                                memCacheHeight: 48,
-                                                memCacheWidth: 48,
-                                                placeholder: (context, url) => const SizedBox(width: 24, height: 24),
-                                                errorWidget: (context, url, error) => const Icon(Icons.g_mobiledata, size: 30),
-                                              ),
-                                              const Gap(12),
-                                              Flexible(
-                                                child: FittedBox(
-                                                  fit: BoxFit.scaleDown,
-                                                  child: Text(
-                                                    context.l10n.googleSignInButton,
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: const Color(0xFF1E293B),
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ).animate().fadeIn(duration: 600.ms, delay: 500.ms).slideY(begin: 0.1),
-                            
-                            const Spacer(flex: 1),
-                            
-                            Column(
-                              children: [
-                                Text('Need assistance?', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13)),
-                                const Gap(4),
-                                GestureDetector(
-                                  onTap: () {},
-                                  child: Text('CONTACT IT CHATS', style: GoogleFonts.outfit(color: AppTheme.primaryBlue, fontSize: 13, fontWeight: FontWeight.bold)),
-                                ),
-                                const Gap(24),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text("Don't have an account? ", style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 13)),
-                                    GestureDetector(
-                                      onTap: () => context.push('/register'),
-                                      child: Text('Create Account', style: GoogleFonts.outfit(color: AppTheme.primaryBlue, fontWeight: FontWeight.w700, fontSize: 13)),
-                                    ),
-                                  ],
-                                ),
-                                const Gap(32),
-                                Text('© 2026 CDRRMO RESOURCE NETWORK', style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.0)),
-                              ],
-                            ).animate().fadeIn(delay: 800.ms),
-                            
-                            const Gap(20),
-                          ],
-                        ),
+      backgroundColor: sentinel.containerLowest,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Gap(40),
+                
+                // ── BRANDING HUD ──
+                Center(
+                  child: Hero(
+                    tag: 'app_logo',
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: sentinel.tactile.card,
+                      ),
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white,
+                        child: Image.asset('assets/cdrrmo_logo.png', height: 60),
                       ),
                     ),
                   ),
-                );
-              },
+                ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+
+                const Gap(24),
+                
+                // ── SYSTEM TITLE ──
+                Column(
+                  children: [
+                    Text(
+                      'LIGTAS',
+                      style: GoogleFonts.lexend(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: sentinel.navy,
+                        letterSpacing: -1.0,
+                      ),
+                    ),
+                    const Gap(4),
+                    Text(
+                      'LOGISTICS COMMAND',
+                      style: GoogleFonts.lexend(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: sentinel.navy.withOpacity(0.4),
+                        letterSpacing: 2.5,
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 200.ms),
+
+                const Gap(40),
+
+                // ── AUTHENTICATION CARD ──
+                Animate(
+                  key: ValueKey(_shakeCount),
+                  effects: _shakeCount > 0 ? [ShakeEffect(duration: 400.ms)] : [],
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: sentinel.tactile.card,
+                      border: Border.all(color: sentinel.navy.withOpacity(0.05)),
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          _buildInputField(
+                            sentinel: sentinel,
+                            controller: _emailController,
+                            label: 'EMAIL ADDRESS',
+                            hint: 'your@email.com',
+                            icon: Icons.alternate_email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: [AutofillHints.email],
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Email is required';
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return 'Enter a valid email';
+                              return null;
+                            },
+                          ),
+                          const Gap(24),
+                          _buildInputField(
+                            sentinel: sentinel,
+                            controller: _passwordController,
+                            label: 'SECURE PASSWORD',
+                            hint: 'Enter your password',
+                            icon: Icons.lock_outline_rounded,
+                            isPassword: true,
+                            isVisible: _isPasswordVisible,
+                            onToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _submit(),
+                            autofillHints: [AutofillHints.password],
+                            validator: (value) => value == null || value.isEmpty ? 'Password is required' : null,
+                          ),
+                          const Gap(20),
+                          
+                          Row(
+                            children: [
+                              SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                                  activeColor: sentinel.navy,
+                                  side: BorderSide(color: sentinel.navy.withOpacity(0.2)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                ),
+                              ),
+                              const Gap(12),
+                              Text(
+                                'Remember this device',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: sentinel.navy.withOpacity(0.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const Gap(32),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: isLoading ? null : _submit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: sentinel.navy,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              child: isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      'SIGN IN',
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                            ),
+                          ),
+
+                          const Gap(24),
+
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: sentinel.navy.withOpacity(0.05))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'OR',
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: sentinel.navy.withOpacity(0.2),
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: sentinel.navy.withOpacity(0.05))),
+                            ],
+                          ),
+
+                          const Gap(24),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: OutlinedButton(
+                              onPressed: isLoading ? null : _submitWithGoogle,
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                side: BorderSide(color: sentinel.navy.withOpacity(0.05)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 0,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (isLoading)
+                                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                  else ...[
+                                    Image.asset('assets/gmail_logo.png', height: 18),
+                                    const Gap(12),
+                                    Text(
+                                      'Sign in with Gmail',
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: sentinel.navy,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ).animate().fadeIn(duration: 500.ms, delay: 300.ms),
+
+                const Gap(24),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: TextButton(
+                    onPressed: () => context.go('/dashboard'),
+                    style: TextButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_search_rounded, size: 20, color: sentinel.navy.withOpacity(0.4)),
+                        const Gap(12),
+                        Text(
+                          'CONTINUE AS GUEST',
+                          style: GoogleFonts.lexend(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: sentinel.navy.withOpacity(0.4),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 500.ms),
+                ),
+
+                const Gap(32),
+
+                Column(
+                  children: [
+                    Text(
+                      'SYSTEM OS V1.0.0',
+                      style: GoogleFonts.lexend(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: sentinel.navy.withOpacity(0.2),
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const Gap(12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Need an account?',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: sentinel.navy.withOpacity(0.4),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/register'),
+                          child: Text(
+                            'REGISTER',
+                            style: GoogleFonts.lexend(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: sentinel.navy,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 600.ms),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildInputField({
+    required LigtasColors sentinel,
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
-    TextInputType? keyboardType,
     bool isPassword = false,
     bool isVisible = false,
-    VoidCallback? onVisibilityToggle,
+    VoidCallback? onToggle,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
     String? Function(String?)? validator,
+    void Function(String)? onFieldSubmitted,
+    Iterable<String>? autofillHints,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(label.toUpperCase(), style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF64748B), letterSpacing: 1.0)),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: sentinel.navy.withOpacity(0.5),
+            letterSpacing: 1.0,
+          ),
         ),
+        const Gap(8),
         TextFormField(
           controller: controller,
           obscureText: isPassword && !isVisible,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
           validator: validator,
-          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+          onFieldSubmitted: onFieldSubmitted,
+          autofillHints: autofillHints,
+          autocorrect: false,
+          enableSuggestions: !isPassword,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: sentinel.navy,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(color: const Color(0xFF94A3B8)),
-            prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
+            hintStyle: GoogleFonts.plusJakartaSans(color: sentinel.navy.withOpacity(0.2), fontWeight: FontWeight.w400),
+            prefixIcon: Icon(icon, color: sentinel.navy.withOpacity(0.3), size: 18),
             suffixIcon: isPassword
                 ? IconButton(
-                    icon: Icon(isVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: const Color(0xFF94A3B8), size: 20),
-                    onPressed: onVisibilityToggle,
+                    icon: Icon(isVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: sentinel.navy.withOpacity(0.3), size: 18),
+                    onPressed: onToggle,
                   )
                 : null,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: const Color(0xFFF1F5F9),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 2)),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: AppTheme.errorRed, width: 1.5)),
-            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: AppTheme.errorRed, width: 2)),
-            errorStyle: GoogleFonts.inter(color: AppTheme.errorRed, fontSize: 12, fontWeight: FontWeight.w500),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: sentinel.navy.withOpacity(0.12))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: sentinel.navy, width: 1.5)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.errorRed, width: 1)),
+            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.errorRed, width: 1.5)),
+            errorStyle: GoogleFonts.plusJakartaSans(color: AppTheme.errorRed, fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ),
       ],

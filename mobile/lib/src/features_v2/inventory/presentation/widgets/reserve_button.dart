@@ -8,33 +8,37 @@ class ReserveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+    
     return Container(
       decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            sentinel.onPrimaryFixedVariant, // Deep Navy Sheen
+            sentinel.navy, // Deep Navy Base
+          ],
+        ),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Material(
-          color: AppTheme.primaryBlue,
-          child: InkWell(
-            onTap: onTap,
-            splashColor: Colors.white.withOpacity(0.2),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Text(
-                'Request',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: 0.2,
-                ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          splashColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.transparent,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Text(
+              'Request',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                letterSpacing: 0.5,
               ),
             ),
           ),

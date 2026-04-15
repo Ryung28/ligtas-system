@@ -2,11 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/networking/supabase_client.dart';
 import '../../../core/errors/app_exceptions.dart';
-import '../models/user_model.dart';
+import '../domain/models/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 class AuthRepository {
   final SupabaseClient _supabase;
+
+  // 🛡️ THE SINGLETON DOORMAN
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: '135620164017-ql5vhj0rmgqrpaqffavphqr6heodeu9u.apps.googleusercontent.com',
+    scopes: ['email', 'profile', 'openid'],
+  );
 
   AuthRepository(this._supabase);
 
@@ -39,28 +47,30 @@ class AuthRepository {
     return UserModel.fromSupabase(profileData);
   }
 
-  // Google Sign In
-  Future<void> signInWithGoogle({bool rememberMe = false}) async {
-    // 🛡️ CRITICAL: Use the WEB CLIENT ID here, even for Android!
-    // This allows Supabase to receive the 'idToken' for verification.
-    const webClientId = '135620164017-ql5vhj0rmgqrpaqffavphqr6heodeu9u.apps.googleusercontent.com';
-
-    // Set this to null if not using iOS yet to prevent initialization errors
-    const String? iosClientId = null; 
-
-    final googleSignIn = GoogleSignIn(
-      clientId: iosClientId,
-      serverClientId: webClientId,
-    );
-
-    // Force account choice if 'Remember Me' is NOT checked
-    if (!rememberMe) {
-      await googleSignIn.signOut();
-    }
+  // 🛡️ THE SMOKING GUN RECOVERY: Added return type to detect cancellation
+  Future<GoogleSignInAccount?> signInWithGoogle({bool rememberMe = false}) async {
+    debugPrint('📡 [Auth-Guard] Initiating Recovery Handshake...');
 
     try {
-      final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) throw 'Sign in cancelled by user';
+      // 1. Silent Attempt (Bypasses the "unclickable" picker if user has ever signed in)
+      GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+      
+      // 2. Interactive Picker (If silent fails)
+      if (googleUser == null) {
+        debugPrint('📡 [Auth-Guard] Silent failed. Launching Interactive Picker...');
+        
+        // 🛡️ RESET: Clear existing state to prevent focus-lock
+        await _googleSignIn.signOut().catchError((_) => null);
+        
+        googleUser = await _googleSignIn.signIn();
+      }
+      
+      if (googleUser == null) {
+        debugPrint('📡 [Auth-Guard] Picker cancelled by user.');
+        return null; 
+      }
+
+      debugPrint('📡 [Auth-Guard] ✅ Account selected: ${googleUser.email}');
 
       final googleAuth = await googleUser.authentication;
       final accessToken = googleAuth.accessToken;
@@ -74,10 +84,17 @@ class AuthRepository {
         idToken: idToken,
         accessToken: accessToken,
       );
+
+      debugPrint('📡 [Auth-Guard] 🏆 Session Established.');
+      return googleUser;
+
+    } on PlatformException catch (e) {
+      debugPrint('🚨 [Auth-Guard] NATIVE_ERROR: Code: ${e.code} | Msg: ${e.message}');
+      await _googleSignIn.signOut().catchError((_) => null);
+      rethrow;
     } catch (e) {
-      // Ensure we sign out of Google if Supabase login fails or is cancelled
-      // This allows the user to try again cleanly
-      await googleSignIn.signOut();
+      debugPrint('🚨 [Auth-Guard] FATAL_ERROR: $e');
+      await _googleSignIn.signOut().catchError((_) => null);
       rethrow;
     }
   }
@@ -92,7 +109,6 @@ class AuthRepository {
   }
 
   // Standard Sign Up
-  /// Returns [true] if user is auto-logged in, [false] if email verification is needed.
   Future<bool> signUp({
     required String email, 
     required String password, 
@@ -110,9 +126,6 @@ class AuthRepository {
           'organization': organization,
         },
       );
-      
-      // 🛡️ TACTICAL SHIFT: Email Confirmation is handle manually via Admin Approval
-      // We always return true if the user record was successfully provisioned.
       return response.user != null;
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -122,10 +135,7 @@ class AuthRepository {
   // Sign Out (Handles both Supabase and Google)
   Future<void> signOut() async {
     try {
-      final googleSignIn = GoogleSignIn();
-      if (await googleSignIn.isSignedIn()) {
-        await googleSignIn.signOut();
-      }
+      await _googleSignIn.signOut().catchError((_) => null);
       await _supabase.auth.signOut();
     } catch (e) {
       throw ExceptionHandler.fromException(e);

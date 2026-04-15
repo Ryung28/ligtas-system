@@ -4,23 +4,28 @@ import 'package:mobile/src/core/networking/supabase_client.dart';
 import 'package:mobile/src/core/errors/app_exceptions.dart';
 import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 part 'auth_repository.g.dart';
 
 class AuthRepository {
   final SupabaseClient _supabase;
 
+  // 🛡️ THE SINGLETON DOORMAN: Explicitly targeting Web Client ID
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: '135620164017-ql5vhj0rmgqrpaqffavphqr6heodeu9u.apps.googleusercontent.com',
+    scopes: ['email', 'profile', 'openid'],
+  );
+
   AuthRepository(this._supabase);
 
-  // Get current user session
   Session? get currentSession => _supabase.auth.currentSession;
   
-  // Get current user data mapped to UserModel
   Future<UserModel?> getCurrentUser() async {
     final authUser = _supabase.auth.currentUser;
     if (authUser == null) return null;
     
-    // Fetch profile data from user_profiles
     final profileData = await _supabase
         .from('user_profiles')
         .select()
@@ -28,60 +33,63 @@ class AuthRepository {
         .maybeSingle();
 
     if (profileData == null) {
-      // Fallback to basic metadata if profile doesn't exist yet
       return UserModel(
         id: authUser.id,
         email: authUser.email,
         displayName: authUser.userMetadata?['full_name'] as String? ?? authUser.userMetadata?['name'] as String?,
         phoneNumber: authUser.userMetadata?['phone_number'] as String?,
         organization: authUser.userMetadata?['organization'] as String?,
+        role: 'loading',
       );
     }
-
     return UserModel.fromSupabase(profileData);
   }
 
-  // Google Sign In
-  Future<void> signInWithGoogle({bool rememberMe = false}) async {
-    // 🛡️ CRITICAL: Use the WEB CLIENT ID here, even for Android!
-    const webClientId = '135620164017-ql5vhj0rmgqrpaqffavphqr6heodeu9u.apps.googleusercontent.com';
-
-    // Set this to null if not using iOS yet to prevent initialization errors
-    const String? iosClientId = null; 
-
-    final googleSignIn = GoogleSignIn(
-      clientId: iosClientId,
-      serverClientId: webClientId,
-    );
-
-    // Force account choice if 'Remember Me' is NOT checked
-    if (!rememberMe) {
-      await googleSignIn.signOut();
-    }
+  // 🛡️ THE SMOKING GUN RECOVERY: Simplified flow with return type to detect cancellation
+  Future<GoogleSignInAccount?> signInWithGoogle({bool rememberMe = false}) async {
+    debugPrint('📡 [Auth-Guard] Initiating Recovery Handshake...');
 
     try {
-      final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) throw 'Sign in cancelled by user';
+      // 1. Silent Attempt (Bypasses picker if already signed in)
+      GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+      
+      // 2. Interactive Picker (Only if silent fails)
+      if (googleUser == null) {
+        debugPrint('📡 [Auth-Guard] Launching Interactive Picker...');
+        googleUser = await _googleSignIn.signIn();
+      }
+      
+      if (googleUser == null) {
+        debugPrint('📡 [Auth-Guard] Picker closed or cancelled by user.');
+        return null; // Exit gracefully so the controller can reset state
+      }
 
+      debugPrint('📡 [Auth-Guard] ✅ Account selected: ${googleUser.email}');
       final googleAuth = await googleUser.authentication;
-      final accessToken = googleAuth.accessToken;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) throw 'Google authentication failed: Missing ID Token';
       
-      // Sign in with Supabase using the ID Token flow
       await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
-        accessToken: accessToken,
+        accessToken: googleAuth.accessToken,
       );
+
+      debugPrint('📡 [Auth-Guard] 🏆 Session Established.');
+      return googleUser;
+
+    } on PlatformException catch (e) {
+      debugPrint('🚨 [Auth-Guard] NATIVE_ERROR: ${e.code}');
+      // Clear state on error to allow retry
+      await _googleSignIn.signOut().catchError((_) => null);
+      rethrow;
     } catch (e) {
-      await googleSignIn.signOut();
+      debugPrint('🚨 [Auth-Guard] FATAL_ERROR: $e');
       rethrow;
     }
   }
 
-  // Standard Sign In
   Future<void> signIn({required String email, required String password}) async {
     try {
       await _supabase.auth.signInWithPassword(email: email, password: password);
@@ -90,7 +98,6 @@ class AuthRepository {
     }
   }
 
-  // Standard Sign Up
   Future<bool> signUp({
     required String email, 
     required String password, 
@@ -102,26 +109,17 @@ class AuthRepository {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': name,
-          'phone_number': phone,
-          'organization': organization,
-        },
+        data: {'full_name': name, 'phone_number': phone, 'organization': organization},
       );
-      
       return response.user != null;
     } catch (e) {
       throw ExceptionHandler.fromException(e);
     }
   }
 
-  // Sign Out
   Future<void> signOut() async {
     try {
-      final googleSignIn = GoogleSignIn();
-      if (await googleSignIn.isSignedIn()) {
-        await googleSignIn.signOut();
-      }
+      await _googleSignIn.signOut().catchError((_) => null);
       await _supabase.auth.signOut();
     } catch (e) {
       throw ExceptionHandler.fromException(e);

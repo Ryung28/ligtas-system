@@ -12,38 +12,20 @@ import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TACTICAL_THEME } from '@/lib/theme-config'
 import { preload } from 'swr'
+import { useUser } from '@/providers/auth-provider'
 
 interface SidebarProps {
     className?: string
     onNavigate?: () => void
-    user: any // 🛡️ Senior Dev: Typed from RSC Handshake
 }
 
-export function Sidebar({ className, onNavigate, user }: SidebarProps) {
+export function Sidebar({ className, onNavigate }: SidebarProps) {
+    const { user } = useUser()
     const pathname = usePathname()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-    useEffect(() => {
-        // TIER-1 OPTIMIZATION: Background Hydration
-        // Quietly fetch data for other pages while the user is looking at the current one
-        const hydrateCache = async () => {
-            try {
-                // Pre-fetch Logs
-                const { LOGS_CACHE_KEY, fetchLogs } = await import('@/hooks/use-borrow-logs')
-                preload(LOGS_CACHE_KEY, fetchLogs)
-
-                // Pre-fetch Inventory
-                const { INVENTORY_CACHE_KEY, fetchInventory } = await import('@/hooks/use-inventory')
-                preload(INVENTORY_CACHE_KEY, fetchInventory)
-            } catch (e) {
-                console.warn('Hydration failed:', e)
-            }
-        }
-
-        // Use a small delay to ensure initial page load isn't blocked
-        const timer = setTimeout(hydrateCache, 1500)
-        return () => clearTimeout(timer)
-    }, [])
+    // 🛡️ SIMPLICITY PROTOCOL: We removed the dynamic pre-hydration block.
+    // The global Providers and Next.js prefetching handle data warming efficiently.
 
     const isActive = (href: string): boolean => {
         if (href === '/dashboard') {
@@ -215,61 +197,54 @@ function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: bool
     const pendingCount = item.label === 'Pending Requests' ? requests.length : 0
     const isMessages = item.label === 'Messages'
 
+    const handleInternalNavigate = () => {
+        if (onNavigate) onNavigate()
+    }
+
     return (
         <Link
             href={item.href}
-            onClick={onNavigate}
+            onClick={handleInternalNavigate}
             prefetch={true}
-            onMouseEnter={() => {
-                if (item.href === '/dashboard/logs') {
-                    import('@/hooks/use-borrow-logs').then((mod) => {
-                        preload(mod.LOGS_CACHE_KEY, mod.fetchLogs)
-                    })
-                }
-                if (item.href === '/dashboard/inventory') {
-                    import('@/hooks/use-inventory').then((mod) => {
-                        preload(mod.INVENTORY_CACHE_KEY, mod.fetchInventory)
-                    })
-                }
-            }}
-            style={active ? { borderRadius: TACTICAL_THEME.borderRadius.asymmetric } : {}}
             className={cn(
-                'flex items-center gap-3 px-3 py-2 14in:py-2.5 text-xs 14in:text-sm transition-all duration-300 group relative',
+                'flex items-center gap-3 px-3 py-2 14in:py-2.5 text-xs 14in:text-sm transition-all duration-300 group relative active:scale-[0.98]',
                 active
-                    ? 'bg-blue-600 text-white font-semibold shadow-lg'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium rounded-xl'
+                    ? 'bg-blue-50/60 text-blue-900 font-bold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium'
             )}
         >
-            <Icon className={cn('h-4 w-4 14in:h-5 14in:w-5 flex-shrink-0 transition-colors', active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600')} />
-            <span className="truncate">{item.label}</span>
+            {/* 📍 Left-Side Accent Bar (The Professional Standard) */}
+            {active && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full shadow-[2px_0_8px_rgba(37,99,235,0.4)]" />
+            )}
 
-            {/* LIVE NOTIFICATION BADGE (Pending Requests) - Ops Domain (Indigo) */}
-            {/* Active Concealment: Hides the big pill when already on the page, replacing with an ambient glow */}
+            <div className="relative">
+                <item.icon className={cn('h-5 w-5 shrink-0 transition-colors duration-300', active ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600')} />
+            </div>
+            
+            <span className={cn('truncate transition-all', active ? 'translate-x-0.5' : '')}>{item.label}</span>
+
+            {/* LIVE NOTIFICATION BADGE (Pending Requests) */}
             {pendingCount > 0 && !active && (
-                <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(79,70,229,0.4)] border-2 border-white/95 ring-1 ring-slate-900/5 transition-all duration-300 hover:scale-110 hover:shadow-[0_6px_16px_rgba(79,70,229,0.6)] animate-in zoom-in-75 fade-in duration-500">
+                <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm">
                     {pendingCount > 99 ? '99+' : pendingCount}
                 </span>
             )}
             
-            {/* Active Radiant Glow for Ops Domain when hiding the pill */}
+            {/* Active Indicator for Pending Items */}
             {item.label === 'Pending Requests' && pendingCount > 0 && active && (
-                <div className="absolute right-3 h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_12px_4px_rgba(99,102,241,0.5)] animate-pulse" />
+                <div className="absolute right-3 h-2 w-2 rounded-full bg-blue-600 ring-4 ring-blue-100" />
             )}
 
-            {/* LIVE NOTIFICATION BADGE (Unread Chat) - Comms Domain (Rose) */}
+            {/* Messages Badge */}
             {isMessages && unreadCount > 0 && !active && (
-                <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(244,63,94,0.4)] border-2 border-white/95 ring-1 ring-slate-900/5 transition-all duration-300 hover:scale-110 hover:shadow-[0_6px_16px_rgba(244,63,94,0.6)] animate-in zoom-in-75 fade-in duration-500">
+                <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm">
                     {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
             )}
 
             {isMessages && unreadCount > 0 && active && (
-                <div className="absolute right-3 h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_12px_4px_rgba(244,63,94,0.5)] animate-pulse" />
-            )}
-
-            {/* Subtle Active Indicator when no notifications exist */}
-            {active && (!isMessages || unreadCount === 0) && pendingCount === 0 && (
-                <div className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white/40 blur-[1px]" />
+                <div className="absolute right-3 h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-100" />
             )}
         </Link>
     )

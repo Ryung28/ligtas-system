@@ -37,16 +37,14 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  String? _effectiveRoomId; // ── The Real UUID resolved at Runtime ──
-
   @override
   void initState() {
     super.initState();
-    _resolveEffectiveId();
-    // 📡 PRESENCE ELEVATION: Delegate heartbeat ownership to PresenceController.
-    // ChatScreen only requests an immediate pulse. The provider manages the Timer.
+    // 🛡️ PRESENCE ELEVATION: Delegate heartbeat ownership to PresenceController.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(presenceControllerProvider.notifier).triggerChatPulse();
+      // Mark as Read immediately on entry
+      ref.read(chatSessionProvider(widget.roomId).notifier).markAsRead();
     });
   }
 
@@ -57,49 +55,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _resolveEffectiveId() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    
-    // 🛡️ TACTICAL CHECK: Is this a Virtual ID (User ID)?
-    if (user != null && widget.roomId == user.id) {
-      try {
-        debugPrint('[Chat-ID] Detected Virtual ID. Resolving Physical Registry...');
-        final realId = await ref.read(chatRepositoryProvider).getSupportRoomId();
-        
-        if (mounted && realId != null) {
-          debugPrint('[Chat-ID] Resolution Success: $realId');
-          setState(() => _effectiveRoomId = realId);
-          
-          // Mark as Read on the REAL room
-          ref.read(chatSessionProvider(realId).notifier).markAsRead();
-        }
-      } catch (e) {
-        debugPrint('[Chat-ID] Resolution Failed: $e');
-        // Fallback to avoid dead-end
-        if (mounted) setState(() => _effectiveRoomId = widget.roomId);
-      }
-    } else {
-      // It's already a Physical ID (UUID)
-      if (mounted) {
-        setState(() => _effectiveRoomId = widget.roomId);
-        
-        // Mark as Read immediately
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ref.read(chatSessionProvider(widget.roomId).notifier).markAsRead();
-        });
-      }
-    }
-  }
-
   void _sendMessage() {
-    if (_controller.text.trim().isEmpty || _effectiveRoomId == null) return;
-    ref.read(chatSessionProvider(_effectiveRoomId!).notifier).sendMessage(_controller.text.trim());
+    if (_controller.text.trim().isEmpty) return;
+    ref.read(chatSessionProvider(widget.roomId).notifier).sendMessage(_controller.text.trim());
     _controller.clear();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          0, // Index 0 is the bottom! 🛡️
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -109,17 +73,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🛡️ Guard: Wait for ID Resolution (User ID to UUID Handshake)
-    if (_effectiveRoomId == null) {
-      return const GhostLoading();
-    }
-
-    final activeRoomId = _effectiveRoomId!;
+    final activeRoomId = widget.roomId;
     final messages = ref.watch(chatSessionProvider(activeRoomId));
     ref.watch(presenceControllerProvider);
     final syncStatus = ref.watch(chatSyncStreamProvider(activeRoomId));
 
-    // ✅ CONSOLIDATED SNAPSHOT: Single-query identity (replaces old fan-out pattern)
+    // ✅ CONSOLIDATED SNAPSHOT: Single-query identity
     final partnerMeta = ref.watch(partnerMetadataProvider(activeRoomId));
     final partnerName = partnerMeta.valueOrNull?['full_name'] as String? ?? 'LIGTAS Admin';
     final partnerId = partnerMeta.valueOrNull?['id'] as String?;
@@ -138,7 +97,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       (partnerId == null && id != myId)
     ) ?? false;
 
-    // 🔊 ACOUSTIC GUARD: Isolated listener — no identity invalidation
+    // 🔊 ACOUSTIC GUARD: Isolated listener
     ref.listen(chatSyncStreamProvider(activeRoomId), (previous, next) {
       if (!next.hasValue) return;
       final msgs = next.value!;

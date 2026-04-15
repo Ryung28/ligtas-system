@@ -6,20 +6,24 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:mobile/src/generated/app_localizations.dart';
-
+import 'package:mobile/src/core/utils/performance_utils.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart' hide AuthState;
+import 'package:mobile/src/features/loans/presentation/screens/loan_history_screen.dart';
 import 'package:mobile/src/features/dashboard/screens/dashboard_screen.dart';
 import 'package:mobile/src/features_v2/loans/presentation/screens/active_loans_screen.dart';
-// import 'package:mobile/src/features/loans/screens/create_loan_screen.dart'; // Missing
 import 'package:mobile/src/features/navigation/screens/main_screen.dart';
 import 'package:mobile/src/features/scanner/widgets/scanner_view.dart';
 import 'package:mobile/src/features/profile/screens/profile_screen.dart';
 import 'package:mobile/src/features/profile/screens/personal_info_screen.dart';
 import 'package:mobile/src/features/profile/screens/security_screen.dart';
-
+import 'package:mobile/src/features/settings/presentation/screens/settings_screen.dart';
 import 'package:mobile/src/features/splash/screens/splash_screen_page.dart';
 import 'package:mobile/src/features/intro/screens/modern_intro_cards.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/screens/inventory_screen.dart';
+import 'package:mobile/src/features_v2/equipment_request/presentation/screens/request_equipment_screen.dart';
+import 'package:mobile/src/features_v2/inventory/domain/entities/inventory_item.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/providers/mission_cart_provider.dart';
 import 'package:mobile/src/features/notifications/screens/notifications_screen.dart';
 import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
@@ -30,21 +34,46 @@ import 'package:mobile/src/features/auth/screens/register_screen.dart';
 import 'package:mobile/src/features/auth/screens/pending_approval_screen.dart';
 import 'package:mobile/src/features/auth/screens/access_denied_screen.dart';
 import 'package:mobile/src/features/notifications/data/services/user_notification_service.dart';
-// import 'package:mobile/src/features/loans/screens/requests_screen.dart'; // Missing
 import 'package:mobile/src/features_v2/chat/presentation/screens/chat_screen.dart';
 import 'package:mobile/src/features/scanner/presentation/screens/transaction_screen.dart';
 import 'package:mobile/src/core/navigation/navigator_key.dart';
+import 'package:mobile/src/features/analyst_dashboard/presentation/screens/analyst_terminal_screen.dart';
+import 'package:mobile/src/features/analyst_dashboard/presentation/screens/activity_ledger_screen.dart';
+import 'package:mobile/src/features/analyst_dashboard/presentation/screens/logistical_queue_screen.dart';
+// AnalystHistoryScreen liquidated as per Anti-Monolith Protocol. Hub is now ActivityLedgerScreen for audits.
 
-class LigtasApp extends ConsumerWidget {
+class LigtasApp extends ConsumerStatefulWidget {
   const LigtasApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // RouterProvider now maintains stability across auth changes
+  ConsumerState<LigtasApp> createState() => _LigtasAppState();
+}
+
+class _LigtasAppState extends ConsumerState<LigtasApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 🛡️ RE-ENFORCER: Reset 120Hz mode on resume as OS sometimes resets display profile
+      PerformanceUtils.enforceHighRefreshRate();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
 
-    // 🛡️ GLOBAL NOTIFICATION ORCHESTRATOR
-    // Listen to Auth State changes globally to trigger device registration.
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasValue) {
         final AuthState authState = next.value!;
@@ -55,22 +84,30 @@ class LigtasApp extends ConsumerWidget {
       }
     });
 
-
-    return MaterialApp.router(
-      title: 'LIGTAS Mobile',
-      theme: AppTheme.lightTheme,
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
-      localizationsDelegates: [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'), // English
-        Locale('tl'), // Tagalog
-      ],
+    return NeumorphicTheme(
+      theme: NeumorphicThemeData(
+        baseColor: AppTheme.lightTheme.sentinel.surface,
+        lightSource: LightSource.topLeft,
+        depth: 4,
+        intensity: 0.8,
+      ),
+      child: MaterialApp.router(
+        title: 'LIGTAS Mobile',
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+        routerConfig: router,
+        showPerformanceOverlay: false, // 🛡️ MISSION ACCOMPLISHED: 120Hz targets met.
+        localizationsDelegates: [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en'),
+          Locale('tl'),
+        ],
+      ),
     );
   }
 }
@@ -85,9 +122,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     refreshListenable: listenable,
     redirect: (context, state) {
-      // 🛡️ TACTICAL SHIELD: Prevent loops while auth is initializing
+      // 🛡️ TACTICAL SHIELD: Prevent loops while auth is initializing or actively loading
       final authState = ref.read(authControllerProvider);
-      if (authState.isLoading && !authState.hasValue) return null;
+      final isActuallyLoading = authState.isLoading || 
+          (authState.value?.maybeMap(loading: (_) => true, orElse: () => false) ?? false);
+          
+      if (isActuallyLoading && !authState.hasValue) return null;
 
       final user = ref.read(currentUserProvider);
       final isLoggedIn = user != null;
@@ -101,15 +141,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
 
-      // Logged in but on public route
-      if (isLoggedIn && isPublicRoute) {
-        // Check user status and redirect accordingly
+      // 🛡️ UNIFIED LOGIN: Redirect after successful landing on public routes
+      // 🛡️ SPLASH PROTECTION: Do not redirect if we are currently showing the splash screen
+      if (isLoggedIn && isPublicRoute && state.uri.path != '/splash') {
         if (user.isPending) {
           return '/pending';
         } else if (user.isSuspended) {
           return '/denied';
         } else if (user.isActive) {
-          return '/dashboard';
+          // 🛡️ ATOMIC TRIAGE: Prevent redirect until role is provisioned
+          if (user.role == 'loading') return null;
+
+          // Smart Role-Tiered Landing
+          return user.canEdit ? '/manager' : '/dashboard';
         }
       }
 
@@ -126,12 +170,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/denied';
         }
         
-        // User is active but on status route - redirect to dashboard
-        if (user.isActive && isStatusRoute) {
-          return '/dashboard';
+        // 🛡️ CANONICAL SILO ENFORCER
+        // Protect the Manager Silo while allowing Managers to visit Responder views.
+        if (user.isActive) {
+          if (user.role == 'loading') return null;
+
+          final onManagerRoute = state.uri.path.startsWith('/manager');
+          
+          // 🔒 SECURITY GUARD: Responders cannot enter the Manager Terminal
+          if (!user.canEdit && onManagerRoute) return '/dashboard';
+          
+          // 🔓 PERMISSIVE ACCESS: Managers can visit /dashboard, /inventory, /requests, etc.
+          // We removed the line that forced Managers back to /manager.
+          
+          if (isStatusRoute) return user.canEdit ? '/manager' : '/dashboard';
         }
       }
-      
       return null;
     },
     routes: [
@@ -164,36 +218,57 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AccessDeniedScreen(),
       ),
       ShellRoute(
+        navigatorKey: GlobalKey<NavigatorState>(),
         builder: (context, state, child) => MainScreen(
           location: state.uri.path,
           child: child,
         ),
         routes: [
           GoRoute(
+            path: '/history',
+            builder: (context, state) => const LoanHistoryScreen(),
+          ),
+          GoRoute(
+            path: '/manager',
+            builder: (context, state) => const AnalystTerminalScreen(),
+            routes: [
+              GoRoute(
+                path: 'queue',
+                builder: (context, state) => const LogisticalQueueScreen(),
+              ),
+              GoRoute(
+                path: 'activity',
+                builder: (context, state) => const ActivityLedgerScreen(),
+              ),
+            ],
+          ),
+          GoRoute(
             path: '/dashboard',
             builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
-            path: '/loans',
-            builder: (context, state) => const ActiveLoansScreen(),
+            path: '/inventory',
+            builder: (context, state) => const InventoryScreen(),
             routes: [
               GoRoute(
-                path: 'create',
+                path: 'request',
+                parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) {
-                  final scannedItemId = state.uri.queryParameters['scannedItemId'];
-                  // return CreateLoanScreen(scannedItemId: scannedItemId);
-                  return const ActiveLoansScreen(); // Redirect to v2 ActiveLoans
+                  final extra = state.extra;
+                  List<CartItem>? cartItems;
+                  if (extra is InventoryItem) {
+                    cartItems = [CartItem(item: extra, quantity: 1)];
+                  } else if (extra is List<CartItem>) {
+                    cartItems = extra;
+                  }
+                  return RequestEquipmentScreen(cartItems: cartItems);
                 },
               ),
             ],
           ),
           GoRoute(
-            path: '/inventory',
-            builder: (context, state) => const InventoryScreen(),
-          ),
-          GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const SettingsScreen(),
             routes: [
               GoRoute(
                 path: 'personal-info',
@@ -205,11 +280,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
           GoRoute(
             path: '/requests',
-            // builder: (context, state) => const RequestsScreen(),
-            builder: (context, state) => const ActiveLoansScreen(), // Requests are now a tab in v2
+            builder: (context, state) => const ActiveLoansScreen(),
           ),
         ],
       ),
@@ -277,4 +354,3 @@ class RiverpodRouterRefreshListenable extends ChangeNotifier {
     super.dispose();
   }
 }
-

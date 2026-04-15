@@ -2,13 +2,15 @@
 
 import { Menu, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from './sidebar'
 import { NotificationBellV2 } from './notification-bell-v2'
 import { SmartScanner } from './smart-scanner'
 import { useState } from 'react'
+import { useUser } from '@/providers/auth-provider'
 
-export function Header({ user }: { user: any }) {
+export function Header() {
+    const { user } = useUser()
     const [open, setOpen] = useState(false)
 
     return (
@@ -22,7 +24,9 @@ export function Header({ user }: { user: any }) {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-64">
-                    <Sidebar user={user} onNavigate={() => setOpen(false)} />
+                    <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Access different sections of the LIGTAS dashboard.</SheetDescription>
+                    <Sidebar onNavigate={() => setOpen(false)} />
                 </SheetContent>
             </Sheet>
 

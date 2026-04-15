@@ -55,8 +55,14 @@ class AuthController extends AsyncNotifier<AuthState> {
 
     try {
       final repo = ref.read(authRepositoryProvider);
-      await repo.signInWithGoogle(rememberMe: rememberMe);
+      final googleUser = await repo.signInWithGoogle(rememberMe: rememberMe);
       
+      // 🛡️ RECOVERY: If user closed the picker, reset UI to initial clickable state
+      if (googleUser == null) {
+        state = const AsyncValue.data(AuthState.initial());
+        return;
+      }
+
       final user = await repo.getCurrentUser();
       if (user != null) {
         if (user.status == 'active') {

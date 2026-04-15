@@ -17,15 +17,18 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$BorrowRequestState {
   BorrowStep get currentStep => throw _privateConstructorUsedError;
-  InventoryItem? get selectedItem => throw _privateConstructorUsedError;
+  List<CartItem> get cartItems => throw _privateConstructorUsedError;
   String get borrowerName => throw _privateConstructorUsedError;
   String get borrowerContact => throw _privateConstructorUsedError;
   String get borrowerEmail => throw _privateConstructorUsedError;
   String get borrowerOrganization => throw _privateConstructorUsedError;
   String get purpose => throw _privateConstructorUsedError;
-  int get quantity => throw _privateConstructorUsedError;
   String get notes => throw _privateConstructorUsedError;
   DateTime? get expectedReturnDate => throw _privateConstructorUsedError;
+  Map<String, DateTime> get itemReturnDates =>
+      throw _privateConstructorUsedError;
+  Map<String, DateTime> get itemPickupDates =>
+      throw _privateConstructorUsedError;
   bool get isSubmitting => throw _privateConstructorUsedError;
   String? get submissionError => throw _privateConstructorUsedError;
   bool get isSuccess => throw _privateConstructorUsedError;
@@ -43,20 +46,19 @@ abstract class $BorrowRequestStateCopyWith<$Res> {
   @useResult
   $Res call(
       {BorrowStep currentStep,
-      InventoryItem? selectedItem,
+      List<CartItem> cartItems,
       String borrowerName,
       String borrowerContact,
       String borrowerEmail,
       String borrowerOrganization,
       String purpose,
-      int quantity,
       String notes,
       DateTime? expectedReturnDate,
+      Map<String, DateTime> itemReturnDates,
+      Map<String, DateTime> itemPickupDates,
       bool isSubmitting,
       String? submissionError,
       bool isSuccess});
-
-  $InventoryItemCopyWith<$Res>? get selectedItem;
 }
 
 /// @nodoc
@@ -73,15 +75,16 @@ class _$BorrowRequestStateCopyWithImpl<$Res, $Val extends BorrowRequestState>
   @override
   $Res call({
     Object? currentStep = null,
-    Object? selectedItem = freezed,
+    Object? cartItems = null,
     Object? borrowerName = null,
     Object? borrowerContact = null,
     Object? borrowerEmail = null,
     Object? borrowerOrganization = null,
     Object? purpose = null,
-    Object? quantity = null,
     Object? notes = null,
     Object? expectedReturnDate = freezed,
+    Object? itemReturnDates = null,
+    Object? itemPickupDates = null,
     Object? isSubmitting = null,
     Object? submissionError = freezed,
     Object? isSuccess = null,
@@ -91,10 +94,10 @@ class _$BorrowRequestStateCopyWithImpl<$Res, $Val extends BorrowRequestState>
           ? _value.currentStep
           : currentStep // ignore: cast_nullable_to_non_nullable
               as BorrowStep,
-      selectedItem: freezed == selectedItem
-          ? _value.selectedItem
-          : selectedItem // ignore: cast_nullable_to_non_nullable
-              as InventoryItem?,
+      cartItems: null == cartItems
+          ? _value.cartItems
+          : cartItems // ignore: cast_nullable_to_non_nullable
+              as List<CartItem>,
       borrowerName: null == borrowerName
           ? _value.borrowerName
           : borrowerName // ignore: cast_nullable_to_non_nullable
@@ -115,10 +118,6 @@ class _$BorrowRequestStateCopyWithImpl<$Res, $Val extends BorrowRequestState>
           ? _value.purpose
           : purpose // ignore: cast_nullable_to_non_nullable
               as String,
-      quantity: null == quantity
-          ? _value.quantity
-          : quantity // ignore: cast_nullable_to_non_nullable
-              as int,
       notes: null == notes
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
@@ -127,6 +126,14 @@ class _$BorrowRequestStateCopyWithImpl<$Res, $Val extends BorrowRequestState>
           ? _value.expectedReturnDate
           : expectedReturnDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      itemReturnDates: null == itemReturnDates
+          ? _value.itemReturnDates
+          : itemReturnDates // ignore: cast_nullable_to_non_nullable
+              as Map<String, DateTime>,
+      itemPickupDates: null == itemPickupDates
+          ? _value.itemPickupDates
+          : itemPickupDates // ignore: cast_nullable_to_non_nullable
+              as Map<String, DateTime>,
       isSubmitting: null == isSubmitting
           ? _value.isSubmitting
           : isSubmitting // ignore: cast_nullable_to_non_nullable
@@ -141,18 +148,6 @@ class _$BorrowRequestStateCopyWithImpl<$Res, $Val extends BorrowRequestState>
               as bool,
     ) as $Val);
   }
-
-  @override
-  @pragma('vm:prefer-inline')
-  $InventoryItemCopyWith<$Res>? get selectedItem {
-    if (_value.selectedItem == null) {
-      return null;
-    }
-
-    return $InventoryItemCopyWith<$Res>(_value.selectedItem!, (value) {
-      return _then(_value.copyWith(selectedItem: value) as $Val);
-    });
-  }
 }
 
 /// @nodoc
@@ -165,21 +160,19 @@ abstract class _$$BorrowRequestStateImplCopyWith<$Res>
   @useResult
   $Res call(
       {BorrowStep currentStep,
-      InventoryItem? selectedItem,
+      List<CartItem> cartItems,
       String borrowerName,
       String borrowerContact,
       String borrowerEmail,
       String borrowerOrganization,
       String purpose,
-      int quantity,
       String notes,
       DateTime? expectedReturnDate,
+      Map<String, DateTime> itemReturnDates,
+      Map<String, DateTime> itemPickupDates,
       bool isSubmitting,
       String? submissionError,
       bool isSuccess});
-
-  @override
-  $InventoryItemCopyWith<$Res>? get selectedItem;
 }
 
 /// @nodoc
@@ -194,15 +187,16 @@ class __$$BorrowRequestStateImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? currentStep = null,
-    Object? selectedItem = freezed,
+    Object? cartItems = null,
     Object? borrowerName = null,
     Object? borrowerContact = null,
     Object? borrowerEmail = null,
     Object? borrowerOrganization = null,
     Object? purpose = null,
-    Object? quantity = null,
     Object? notes = null,
     Object? expectedReturnDate = freezed,
+    Object? itemReturnDates = null,
+    Object? itemPickupDates = null,
     Object? isSubmitting = null,
     Object? submissionError = freezed,
     Object? isSuccess = null,
@@ -212,10 +206,10 @@ class __$$BorrowRequestStateImplCopyWithImpl<$Res>
           ? _value.currentStep
           : currentStep // ignore: cast_nullable_to_non_nullable
               as BorrowStep,
-      selectedItem: freezed == selectedItem
-          ? _value.selectedItem
-          : selectedItem // ignore: cast_nullable_to_non_nullable
-              as InventoryItem?,
+      cartItems: null == cartItems
+          ? _value._cartItems
+          : cartItems // ignore: cast_nullable_to_non_nullable
+              as List<CartItem>,
       borrowerName: null == borrowerName
           ? _value.borrowerName
           : borrowerName // ignore: cast_nullable_to_non_nullable
@@ -236,10 +230,6 @@ class __$$BorrowRequestStateImplCopyWithImpl<$Res>
           ? _value.purpose
           : purpose // ignore: cast_nullable_to_non_nullable
               as String,
-      quantity: null == quantity
-          ? _value.quantity
-          : quantity // ignore: cast_nullable_to_non_nullable
-              as int,
       notes: null == notes
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
@@ -248,6 +238,14 @@ class __$$BorrowRequestStateImplCopyWithImpl<$Res>
           ? _value.expectedReturnDate
           : expectedReturnDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      itemReturnDates: null == itemReturnDates
+          ? _value._itemReturnDates
+          : itemReturnDates // ignore: cast_nullable_to_non_nullable
+              as Map<String, DateTime>,
+      itemPickupDates: null == itemPickupDates
+          ? _value._itemPickupDates
+          : itemPickupDates // ignore: cast_nullable_to_non_nullable
+              as Map<String, DateTime>,
       isSubmitting: null == isSubmitting
           ? _value.isSubmitting
           : isSubmitting // ignore: cast_nullable_to_non_nullable
@@ -269,24 +267,35 @@ class __$$BorrowRequestStateImplCopyWithImpl<$Res>
 class _$BorrowRequestStateImpl implements _BorrowRequestState {
   const _$BorrowRequestStateImpl(
       {this.currentStep = BorrowStep.form,
-      this.selectedItem,
+      final List<CartItem> cartItems = const [],
       this.borrowerName = '',
       this.borrowerContact = '',
       this.borrowerEmail = '',
       this.borrowerOrganization = '',
       this.purpose = '',
-      this.quantity = 1,
       this.notes = '',
       this.expectedReturnDate,
+      final Map<String, DateTime> itemReturnDates = const {},
+      final Map<String, DateTime> itemPickupDates = const {},
       this.isSubmitting = false,
       this.submissionError,
-      this.isSuccess = false});
+      this.isSuccess = false})
+      : _cartItems = cartItems,
+        _itemReturnDates = itemReturnDates,
+        _itemPickupDates = itemPickupDates;
 
   @override
   @JsonKey()
   final BorrowStep currentStep;
+  final List<CartItem> _cartItems;
   @override
-  final InventoryItem? selectedItem;
+  @JsonKey()
+  List<CartItem> get cartItems {
+    if (_cartItems is EqualUnmodifiableListView) return _cartItems;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_cartItems);
+  }
+
   @override
   @JsonKey()
   final String borrowerName;
@@ -304,12 +313,27 @@ class _$BorrowRequestStateImpl implements _BorrowRequestState {
   final String purpose;
   @override
   @JsonKey()
-  final int quantity;
-  @override
-  @JsonKey()
   final String notes;
   @override
   final DateTime? expectedReturnDate;
+  final Map<String, DateTime> _itemReturnDates;
+  @override
+  @JsonKey()
+  Map<String, DateTime> get itemReturnDates {
+    if (_itemReturnDates is EqualUnmodifiableMapView) return _itemReturnDates;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_itemReturnDates);
+  }
+
+  final Map<String, DateTime> _itemPickupDates;
+  @override
+  @JsonKey()
+  Map<String, DateTime> get itemPickupDates {
+    if (_itemPickupDates is EqualUnmodifiableMapView) return _itemPickupDates;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_itemPickupDates);
+  }
+
   @override
   @JsonKey()
   final bool isSubmitting;
@@ -321,7 +345,7 @@ class _$BorrowRequestStateImpl implements _BorrowRequestState {
 
   @override
   String toString() {
-    return 'BorrowRequestState(currentStep: $currentStep, selectedItem: $selectedItem, borrowerName: $borrowerName, borrowerContact: $borrowerContact, borrowerEmail: $borrowerEmail, borrowerOrganization: $borrowerOrganization, purpose: $purpose, quantity: $quantity, notes: $notes, expectedReturnDate: $expectedReturnDate, isSubmitting: $isSubmitting, submissionError: $submissionError, isSuccess: $isSuccess)';
+    return 'BorrowRequestState(currentStep: $currentStep, cartItems: $cartItems, borrowerName: $borrowerName, borrowerContact: $borrowerContact, borrowerEmail: $borrowerEmail, borrowerOrganization: $borrowerOrganization, purpose: $purpose, notes: $notes, expectedReturnDate: $expectedReturnDate, itemReturnDates: $itemReturnDates, itemPickupDates: $itemPickupDates, isSubmitting: $isSubmitting, submissionError: $submissionError, isSuccess: $isSuccess)';
   }
 
   @override
@@ -331,8 +355,8 @@ class _$BorrowRequestStateImpl implements _BorrowRequestState {
             other is _$BorrowRequestStateImpl &&
             (identical(other.currentStep, currentStep) ||
                 other.currentStep == currentStep) &&
-            (identical(other.selectedItem, selectedItem) ||
-                other.selectedItem == selectedItem) &&
+            const DeepCollectionEquality()
+                .equals(other._cartItems, _cartItems) &&
             (identical(other.borrowerName, borrowerName) ||
                 other.borrowerName == borrowerName) &&
             (identical(other.borrowerContact, borrowerContact) ||
@@ -342,11 +366,13 @@ class _$BorrowRequestStateImpl implements _BorrowRequestState {
             (identical(other.borrowerOrganization, borrowerOrganization) ||
                 other.borrowerOrganization == borrowerOrganization) &&
             (identical(other.purpose, purpose) || other.purpose == purpose) &&
-            (identical(other.quantity, quantity) ||
-                other.quantity == quantity) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.expectedReturnDate, expectedReturnDate) ||
                 other.expectedReturnDate == expectedReturnDate) &&
+            const DeepCollectionEquality()
+                .equals(other._itemReturnDates, _itemReturnDates) &&
+            const DeepCollectionEquality()
+                .equals(other._itemPickupDates, _itemPickupDates) &&
             (identical(other.isSubmitting, isSubmitting) ||
                 other.isSubmitting == isSubmitting) &&
             (identical(other.submissionError, submissionError) ||
@@ -359,15 +385,16 @@ class _$BorrowRequestStateImpl implements _BorrowRequestState {
   int get hashCode => Object.hash(
       runtimeType,
       currentStep,
-      selectedItem,
+      const DeepCollectionEquality().hash(_cartItems),
       borrowerName,
       borrowerContact,
       borrowerEmail,
       borrowerOrganization,
       purpose,
-      quantity,
       notes,
       expectedReturnDate,
+      const DeepCollectionEquality().hash(_itemReturnDates),
+      const DeepCollectionEquality().hash(_itemPickupDates),
       isSubmitting,
       submissionError,
       isSuccess);
@@ -383,15 +410,16 @@ class _$BorrowRequestStateImpl implements _BorrowRequestState {
 abstract class _BorrowRequestState implements BorrowRequestState {
   const factory _BorrowRequestState(
       {final BorrowStep currentStep,
-      final InventoryItem? selectedItem,
+      final List<CartItem> cartItems,
       final String borrowerName,
       final String borrowerContact,
       final String borrowerEmail,
       final String borrowerOrganization,
       final String purpose,
-      final int quantity,
       final String notes,
       final DateTime? expectedReturnDate,
+      final Map<String, DateTime> itemReturnDates,
+      final Map<String, DateTime> itemPickupDates,
       final bool isSubmitting,
       final String? submissionError,
       final bool isSuccess}) = _$BorrowRequestStateImpl;
@@ -399,7 +427,7 @@ abstract class _BorrowRequestState implements BorrowRequestState {
   @override
   BorrowStep get currentStep;
   @override
-  InventoryItem? get selectedItem;
+  List<CartItem> get cartItems;
   @override
   String get borrowerName;
   @override
@@ -411,11 +439,13 @@ abstract class _BorrowRequestState implements BorrowRequestState {
   @override
   String get purpose;
   @override
-  int get quantity;
-  @override
   String get notes;
   @override
   DateTime? get expectedReturnDate;
+  @override
+  Map<String, DateTime> get itemReturnDates;
+  @override
+  Map<String, DateTime> get itemPickupDates;
   @override
   bool get isSubmitting;
   @override

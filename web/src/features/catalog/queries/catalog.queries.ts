@@ -1,6 +1,4 @@
-'use server'
-
-import { supabase } from '@/lib/supabase'
+import { supabase, getInventoryImageUrl } from '@/lib/supabase'
 
 /**
  * CATALOG DOMAIN - Query Actions
@@ -61,24 +59,28 @@ export async function getInventoryItems(options: {
  */
 export async function getAvailableItems() {
     try {
+        // 🚀 LIGTAS TACTICAL OPTIMIZATION: High-speed fetch
         const { data, error } = await supabase
             .from('inventory_catalog')
-            .select('id, item_name, aggregate_available, aggregate_total, variants, category, status, item_type')
+            .select(`
+                id, 
+                item_name, 
+                aggregate_available, 
+                category, 
+                item_type,
+                image_url
+            `)
             .gt('aggregate_available', 0)
             .order('item_name')
 
         if (error) throw error
-
-        return {
-            success: true,
-            data: data || [],
-        }
-    } catch (error) {
-        console.error('Error fetching items:', error)
+        return { success: true, data: data || [] }
+    } catch (error: any) {
+        console.error('Catalog Sync Error:', error)
         return {
             success: false,
             data: [],
-            error: 'Failed to fetch available items',
+            error: error.message || 'Operational Timeout',
         }
     }
 }

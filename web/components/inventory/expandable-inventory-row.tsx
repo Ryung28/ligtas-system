@@ -7,7 +7,7 @@ import { TableCell, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Edit2, Trash2, Maximize2, Package, ChevronDown, Warehouse, ArrowRightLeft } from 'lucide-react'
-import { InventoryItem } from '@/lib/supabase'
+import { InventoryItem, getInventoryImageUrl } from '@/lib/supabase'
 import { QRDialog } from './qr-dialog'
 import { EditableStorageLocation } from './editable-storage-location'
 import { getPendingRequestsByItemId, type PendingRequest } from '@/src/features/transactions'
@@ -59,6 +59,9 @@ export function ExpandableInventoryRow({
     const [imgError, setImgError] = useState(false)
     const [isImgLoading, setIsImgLoading] = useState(true)
 
+    // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
+    const imageUrl = item.image_url ? getInventoryImageUrl(item.image_url) : null;
+
     // 🏛️ SENIOR GEOGRAPHIC DETECTOR: Consolidated variants list
     // The first item in group.variants is the Primary Site. Everyone else is a Remote Site.
     const allSites = item.variants || []
@@ -100,23 +103,23 @@ export function ExpandableInventoryRow({
                 style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'backwards' }}
             >
                 {showCheckbox && (
-                    <TableCell className="pl-4 14in:pl-6 pr-3 py-5 w-12">
+                    <TableCell className="pl-3 14in:pl-4 pr-2 py-5 w-12">
                         <input type="checkbox" checked={isSelected} onChange={onSelect} onClick={(e) => e.stopPropagation()} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                     </TableCell>
                 )}
-                <TableCell className="pl-4 14in:pl-6 pr-3 py-5">
+                <TableCell className="pl-3 14in:pl-4 pr-2 py-5">
                     <div className="flex items-center gap-3">
-                        <div className="h-14 w-14 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-pointer transition-all hover:border-gray-300" onClick={(e) => { e.stopPropagation(); if (item.image_url && !imgError) onImageClick(item.image_url, item.item_name); }}>
-                            {item.image_url && !imgError ? (
+                        <div className="h-14 w-14 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-pointer transition-all hover:border-gray-300" onClick={(e) => { e.stopPropagation(); if (imageUrl && !imgError) onImageClick(imageUrl, item.item_name); }}>
+                            {imageUrl && !imgError ? (
                                 <>
                                     {isImgLoading && <div className="absolute inset-0 bg-gray-50 animate-pulse flex items-center justify-center"><Package className="h-6 w-6 text-gray-200" strokeWidth={1} /></div>}
-                                    <Image src={item.image_url} alt={item.item_name} fill unoptimized className={`object-contain p-2 transition-all duration-500 ${isImgLoading ? 'scale-90 blur-sm opacity-0' : 'scale-100 opacity-100'}`} onLoadingComplete={() => setIsImgLoading(false)} onError={() => setImgError(true)} />
+                                    <Image src={imageUrl} alt={item.item_name} fill unoptimized className={`object-contain p-2 transition-all duration-500 ${isImgLoading ? 'scale-90 blur-sm opacity-0' : 'scale-100 opacity-100'}`} onLoadingComplete={() => setIsImgLoading(false)} onError={() => setImgError(true)} />
                                     <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center ${isImgLoading ? 'hidden' : ''}`}><Maximize2 className="h-4 w-4 text-white" /></div>
                                 </>
                             ) : <div className="absolute inset-0 bg-slate-50 flex items-center justify-center"><Package className="h-7 w-7 text-slate-200" strokeWidth={1} /></div>}
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <span className="text-[16px] font-black text-gray-950 truncate leading-tight tracking-tight mb-1">{item.item_name}</span>
+                            <span className="text-[14px] 14in:text-[15px] font-black text-gray-950 truncate leading-tight tracking-tight mb-1">{item.item_name}</span>
                             <div className="flex items-center gap-1.5 ml-0.5">
                                 {(() => {
                                     const CategoryIcon = getCategoryIcon(item.category)
@@ -153,9 +156,9 @@ export function ExpandableInventoryRow({
                 </TableCell>
 
                 <TableCell className="px-3 py-5 text-right">
-                    <div className="flex items-center justify-end gap-12">
+                    <div className="flex items-center justify-end gap-6 14in:gap-8">
                          {/* HEALTH MATRIX */}
-                         <div className="flex flex-col gap-2 flex-1 max-w-[200px]">
+                         <div className="flex flex-col gap-2 flex-1 max-w-[160px] 14in:max-w-[180px]">
                             <CompositeStockBar 
                                 item={item} 
                                 pendingCount={pendingCount} 
@@ -168,7 +171,7 @@ export function ExpandableInventoryRow({
                          </div>
 
                          {/* STOCK CONTEXT */}
-                         <div className="flex flex-col items-end gap-1 min-w-[100px]">
+                         <div className="flex flex-col items-end gap-1 min-w-[80px] 14in:min-w-[90px]">
                               <div className="flex items-center gap-2">
                                  {isProblematic && (
                                      <Badge className={cn(
@@ -189,7 +192,7 @@ export function ExpandableInventoryRow({
                     </div>
                 </TableCell>
 
-                <TableCell className="pl-3 pr-4 14in:pr-6 py-5 text-right">
+                <TableCell className="pl-2 pr-3 14in:pr-4 py-5 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
 
                         <QRDialog item={item} />

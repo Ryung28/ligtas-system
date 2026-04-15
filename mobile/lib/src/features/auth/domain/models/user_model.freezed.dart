@@ -29,7 +29,9 @@ mixin _$UserModel {
       throw _privateConstructorUsedError; // admin, editor, viewer
   String get status =>
       throw _privateConstructorUsedError; // pending, active, suspended
-  List<String> get providers => throw _privateConstructorUsedError;
+  List<String> get providers =>
+      throw _privateConstructorUsedError; // ['email', 'google', etc]
+  String? get assignedWarehouse => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -50,7 +52,8 @@ abstract class $UserModelCopyWith<$Res> {
       String? organization,
       String role,
       String status,
-      List<String> providers});
+      List<String> providers,
+      String? assignedWarehouse});
 }
 
 /// @nodoc
@@ -74,6 +77,7 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? role = null,
     Object? status = null,
     Object? providers = null,
+    Object? assignedWarehouse = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -108,6 +112,10 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
           ? _value.providers
           : providers // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      assignedWarehouse: freezed == assignedWarehouse
+          ? _value.assignedWarehouse
+          : assignedWarehouse // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -128,7 +136,8 @@ abstract class _$$UserModelImplCopyWith<$Res>
       String? organization,
       String role,
       String status,
-      List<String> providers});
+      List<String> providers,
+      String? assignedWarehouse});
 }
 
 /// @nodoc
@@ -150,6 +159,7 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? role = null,
     Object? status = null,
     Object? providers = null,
+    Object? assignedWarehouse = freezed,
   }) {
     return _then(_$UserModelImpl(
       id: null == id
@@ -184,6 +194,10 @@ class __$$UserModelImplCopyWithImpl<$Res>
           ? _value._providers
           : providers // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      assignedWarehouse: freezed == assignedWarehouse
+          ? _value.assignedWarehouse
+          : assignedWarehouse // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -200,7 +214,8 @@ class _$UserModelImpl extends _UserModel {
       this.organization,
       this.role = 'viewer',
       this.status = 'pending',
-      final List<String> providers = const []})
+      final List<String> providers = const [],
+      this.assignedWarehouse})
       : _providers = providers,
         super._();
 
@@ -235,9 +250,13 @@ class _$UserModelImpl extends _UserModel {
     return EqualUnmodifiableListView(_providers);
   }
 
+// ['email', 'google', etc]
+  @override
+  final String? assignedWarehouse;
+
   @override
   String toString() {
-    return 'UserModel(id: $id, email: $email, displayName: $displayName, phoneNumber: $phoneNumber, organization: $organization, role: $role, status: $status, providers: $providers)';
+    return 'UserModel(id: $id, email: $email, displayName: $displayName, phoneNumber: $phoneNumber, organization: $organization, role: $role, status: $status, providers: $providers, assignedWarehouse: $assignedWarehouse)';
   }
 
   @override
@@ -256,7 +275,9 @@ class _$UserModelImpl extends _UserModel {
             (identical(other.role, role) || other.role == role) &&
             (identical(other.status, status) || other.status == status) &&
             const DeepCollectionEquality()
-                .equals(other._providers, _providers));
+                .equals(other._providers, _providers) &&
+            (identical(other.assignedWarehouse, assignedWarehouse) ||
+                other.assignedWarehouse == assignedWarehouse));
   }
 
   @JsonKey(ignore: true)
@@ -270,7 +291,8 @@ class _$UserModelImpl extends _UserModel {
       organization,
       role,
       status,
-      const DeepCollectionEquality().hash(_providers));
+      const DeepCollectionEquality().hash(_providers),
+      assignedWarehouse);
 
   @JsonKey(ignore: true)
   @override
@@ -295,7 +317,8 @@ abstract class _UserModel extends UserModel {
       final String? organization,
       final String role,
       final String status,
-      final List<String> providers}) = _$UserModelImpl;
+      final List<String> providers,
+      final String? assignedWarehouse}) = _$UserModelImpl;
   const _UserModel._() : super._();
 
   factory _UserModel.fromJson(Map<String, dynamic> json) =
@@ -317,6 +340,8 @@ abstract class _UserModel extends UserModel {
   String get status;
   @override // pending, active, suspended
   List<String> get providers;
+  @override // ['email', 'google', etc]
+  String? get assignedWarehouse;
   @override
   @JsonKey(ignore: true)
   _$$UserModelImplCopyWith<_$UserModelImpl> get copyWith =>

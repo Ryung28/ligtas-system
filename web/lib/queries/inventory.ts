@@ -36,6 +36,16 @@ export async function getInventoryWithAvailability() {
     }))
 }
 
+/**
+ * 🛰️ TACTICAL FETCH: Hydrated Inventory with Resolved Assets
+ * This is the master fetcher used by the Global Inventory Provider.
+ */
+export async function fetchInventory() {
+    // 1. Get raw inventory with pending status
+    // 2. No signing needed for public buckets—components handle URLs directly
+    return await getInventoryWithAvailability()
+}
+
 export async function getInventoryStats() {
     const inventory = await getInventory()
     

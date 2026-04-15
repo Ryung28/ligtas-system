@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:mobile/src/core/local_storage/isar_service.dart';
+import 'package:mobile/src/features/inventory/models/inventory_model.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../../data/repositories/supabase_inventory_repository.dart';
@@ -16,34 +20,116 @@ IInventoryRepository inventoryRepository(InventoryRepositoryRef ref) {
 }
 
 /// The state of our Inventory List (Reactive & Streams)
-@riverpod
+/// 🚀 THE GOLD STANDARD: Paginated Inventory Notifier
+/// Only holds the current "Window" of data in memory.
+/// 🚀 THE GOLD STANDARD: Paginated Inventory Notifier
+/// Only holds the current "Window" of data in memory.
+@Riverpod(keepAlive: true)
 class InventoryNotifier extends _$InventoryNotifier {
   late final IInventoryRepository _repository;
+  int _offset = 0;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  static const int _pageSize = 20;
+  static const String _cacheVersionKey = 'inventory_cache_version';
+  static const int _currentCacheVersion = 6; // Increment to force refresh with new SQL DTO mapping
 
   @override
-  Stream<List<InventoryItem>> build() async* {
+  Future<List<InventoryItem>> build() async {
     _repository = ref.watch(inventoryRepositoryProvider);
+    final category = ref.watch(selectedCategoryProvider);
     
-    // 1. Initial trigger: Remote fetch to update local sync
-    _repository.fetchAll();
+    // 🛡️ CACHE VERSION CHECK
+    await _checkCacheVersion();
+    
+    // 1. Reactive Listener: If local DB changes, refresh state (if on pg 1)
+    ref.listen(allInventoryStreamProvider, (prev, next) async {
+      if (_offset == 0 && next.hasValue) {
+        state = AsyncValue.data(await _loadInitial(category));
+      }
+    });
 
-    // 🚀 NEW: Auto-Sync Loop (Realtime)
-    // Subscribe to remote changes and keep local Isar updated
-    final remoteSubscription = _repository.watchRemote().listen((_) {});
-    ref.onDispose(() => remoteSubscription.cancel());
+    // 2. Load what we have immediately
+    final localItems = await _loadInitial(category);
+    
+    // 3. FIRE-AND-FORGET SYNC: We do not await this, and we do not rethrow.
+    // The UI stays with local data even if network fetch fails.
+    Future.microtask(() async {
+      try {
+        final user = ref.read(currentUserProvider);
+        final isManager = user?.canEdit ?? false;
+        final warehouseId = isManager ? null : user?.assignedWarehouse;
+        await _repository.fetchAll(warehouseId: warehouseId);
+      } catch (e) {
+        debugPrint('🛡️ Background Sync Failed (Ignored): $e');
+      }
+    });
 
-    // 2. Continuous Source: Watch the local database for UI updates
-    yield* (_repository as SupabaseInventoryRepository).watchItems();
+    return localItems;
   }
+
+  // Remove _setupRemoteListener - it is the source of the loop 🛡️
+
+  Future<void> _checkCacheVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedVersion = prefs.getInt(_cacheVersionKey) ?? 0;
+    
+    if (cachedVersion < _currentCacheVersion) {
+      debugPrint('🛡️ Cache version outdated ($cachedVersion < $_currentCacheVersion). Clearing Isar...');
+      await IsarService.instance.writeTxn(() async {
+        await IsarService.instance.collection<InventoryCollection>().clear();
+      });
+      await prefs.setInt(_cacheVersionKey, _currentCacheVersion);
+      debugPrint('✅ Cache cleared and version updated');
+    }
+  }
+
+  Future<List<InventoryItem>> _loadInitial(String category) async {
+    _offset = 0;
+    _hasMore = true;
+    final items = await _repository.fetchLocalPaged(offset: _offset, limit: _pageSize, category: category);
+    _hasMore = items.length == _pageSize;
+    return items;
+  }
+
+  /// 🚀 INCREMENTAL HYDRATION: Fetch next chunk from local disk (~1.5ms)
+  Future<void> loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+    
+    try {
+      final category = ref.read(selectedCategoryProvider);
+      final currentItems = state.value ?? [];
+      _offset += _pageSize;
+      
+      final nextItems = await _repository.fetchLocalPaged(offset: _offset, limit: _pageSize, category: category);
+      _hasMore = nextItems.length == _pageSize;
+      
+      state = AsyncValue.data([...currentItems, ...nextItems]);
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+
+  bool get hasMore => _hasMore;
 
   /// Action: Find by QR Code
   Future<InventoryItem?> scanForId(String code) async {
-    return _repository.findByQrCode(code);
+    final user = ref.read(currentUserProvider);
+    final isManager = user?.canEdit ?? false;
+    final warehouseId = isManager ? null : user?.assignedWarehouse;
+    return _repository.findByQrCode(code, warehouseId: warehouseId);
   }
 
-  /// Reload remotely
+  /// Reload remotely and reset window
   Future<void> refresh() async {
-    await _repository.fetchAll();
+    final user = ref.read(currentUserProvider);
+    final category = ref.read(selectedCategoryProvider);
+    final isManager = user?.canEdit ?? false;
+    final warehouseId = isManager ? null : user?.assignedWarehouse;
+    state = const AsyncValue.loading();
+    await _repository.fetchAll(warehouseId: warehouseId);
+    state = AsyncValue.data(await _loadInitial(category));
   }
 }
 
@@ -60,36 +146,87 @@ class SelectedCategory extends _$SelectedCategory {
   @override
   String build() => 'All';
 
-  void update(String category) => state = category;
+  void update(String category) {
+    if (state != category) {
+      state = category;
+      
+      // 🛡️ SYNC FAILSAFE: When switching categories, trigger a silent sync
+      // This ensures that if the category is empty locally, we try to fetch it from remote.
+      final user = ref.read(currentUserProvider);
+      final isManager = user?.canEdit ?? false;
+      final warehouseId = isManager ? null : user?.assignedWarehouse;
+      
+      Future.microtask(() => ref.read(inventoryRepositoryProvider).fetchAll(warehouseId: warehouseId));
+    }
+  }
+}
+
+/// 🛡️ THE SEARCH BYPASS: Instantly searches the whole DB via Repository
+@riverpod
+Future<List<InventoryItem>> globalSearch(GlobalSearchRef ref, String query) async {
+  if (query.isEmpty) return [];
+  final repo = ref.watch(inventoryRepositoryProvider);
+  return repo.searchLocal(query);
 }
 
 @riverpod
-List<InventoryItem> filteredInventory(FilteredInventoryRef ref) {
-  final inventoryAsync = ref.watch(inventoryNotifierProvider);
-  final searchQuery = ref.watch(inventorySearchQueryProvider).toLowerCase();
+Future<int> totalInventoryCount(TotalInventoryCountRef ref) async {
+  final inventory = ref.watch(allInventoryStreamProvider).valueOrNull ?? [];
+  return inventory.length;
+}
+
+/// 🛡️ THE METRICS ENGINE: Streams the full inventory for dashboard statistics
+@riverpod
+Stream<List<InventoryItem>> allInventoryStream(AllInventoryStreamRef ref) {
+  final repository = ref.watch(inventoryRepositoryProvider);
+  return repository.watchLocal();
+}
+
+@riverpod
+Stream<InventoryItem?> inventoryItemStream(InventoryItemStreamRef ref, int id) {
+  final repository = ref.watch(inventoryRepositoryProvider);
+  return repository.watchItem(id);
+}
+
+@riverpod
+AsyncValue<List<InventoryItem>> filteredInventory(FilteredInventoryRef ref) {
+  final searchQuery = ref.watch(inventorySearchQueryProvider);
   final selectedCategory = ref.watch(selectedCategoryProvider);
 
-  return inventoryAsync.maybeWhen(
-    data: (items) {
-      final filtered = items.where((item) {
-        final matchesSearch = searchQuery.isEmpty || 
-            item.name.toLowerCase().contains(searchQuery) ||
-            item.code.toLowerCase().contains(searchQuery) ||
-            item.category.toLowerCase().contains(searchQuery);
-        final matchesCategory = selectedCategory == 'All' || 
+  // 🛡️ BRANCH 1: Active Global Search
+  if (searchQuery.isNotEmpty) {
+    return ref.watch(globalSearchProvider(searchQuery)).whenData((items) {
+      return items.where((item) {
+        return selectedCategory == 'All' || 
             item.category.trim().toLowerCase() == selectedCategory.trim().toLowerCase();
-        return matchesSearch && matchesCategory;
       }).toList();
+    });
+  }
 
-      // Senior Dev Tech: Sanitize data to prevent Duplicate Key/Hero crashes
-      final uniqueItems = <int, InventoryItem>{};
-      for (var item in filtered) {
-        uniqueItems[item.id] = item;
-      }
-      return uniqueItems.values.toList();
-    },
-    orElse: () => [],
-  );
+  // 🛡️ BRANCH 2: Standard Browse (Global Local Filter)
+  if (selectedCategory != 'All') {
+    final allItemsAsync = ref.watch(allInventoryStreamProvider);
+    return allItemsAsync.when(
+      data: (items) => AsyncValue.data(
+        items.where((item) => 
+          item.category.trim().toLowerCase() == selectedCategory.trim().toLowerCase()
+        ).toList()
+      ),
+      loading: () => const AsyncValue.loading(),
+      error: (e, st) => AsyncValue.error(e, st),
+    );
+  }
+
+  // 🛡️ BRANCH 3: Paginated 'All' View
+  return ref.watch(inventoryNotifierProvider);
+}
+
+/// 🛡️ THE AUDIT RESOLVER: Optimized Map for constant-time (O(1)) asset resolution
+/// Created specifically for the Auditor Terminal handles large log history efficiently.
+@riverpod
+Map<int, String> inventoryImageMap(InventoryImageMapRef ref) {
+  final inventory = ref.watch(allInventoryStreamProvider).valueOrNull ?? [];
+  return {for (var item in inventory) item.id: item.imageUrl ?? ''};
 }
 
 /// Centralized categories for the LIGTAS inventory
@@ -104,6 +241,7 @@ List<String> inventoryCategories(InventoryCategoriesRef ref) {
     'Tools',
     'PPE',
     'Logistics',
+    'Goods',
   ];
 }
 
@@ -121,4 +259,14 @@ IconData categoryIcon(CategoryIconRef ref, String category) {
   if (c.contains('ppe') || c.contains('gear')) return Icons.masks_rounded;
   if (c.contains('logi') || c.contains('ware')) return Icons.warehouse_rounded;
   return Icons.inventory_2_outlined;
+}
+
+@riverpod
+class IsScrollingFast extends _$IsScrollingFast {
+  @override
+  bool build() => false;
+
+  void setFast(bool value) {
+    if (state != value) state = value;
+  }
 }

@@ -110,12 +110,15 @@ class QuickBorrowService {
     required int itemId,
     required String itemName,
     int quantity = 1,
+    String? borrowerName,
+    String? borrowerContact,
+    String? borrowerOrganization,
+    String? purpose,
+    int durationDays = 7,
   }) async {
     try {
       final user = _supabase.auth.currentUser;
-      // Skip auth check for dev/offline mode - rely on RLS/Backend to handle or accept 'anon'
-      // if (user == null) { ... }
-
+      
       // Step 1: Check inventory availability first (safety check)
       final inventoryResponse = await _supabase
           .from('inventory')
@@ -132,25 +135,23 @@ class QuickBorrowService {
       }
 
       // Step 2: Create the borrow log
-      // We use the authenticated user's email/ID for the borrow log.
-      // Note: We match the column names from your web 'borrow_logs' table.
       final logResponse = await _supabase.from('borrow_logs').insert({
         'inventory_id': itemId,
         'inventory_item_id': itemId.toString(), // For compatibility
         'item_name': itemName,
         'quantity': quantity,
         'quantity_borrowed': quantity, // For compatibility
-        'borrower_name': user?.userMetadata?['full_name'] ?? user?.email?.split('@').first ?? 'Field Staff',
+        'borrower_name': borrowerName ?? user?.userMetadata?['full_name'] ?? user?.email?.split('@').first ?? 'Field Staff',
         'borrower_email': user?.email ?? '',
-        'borrower_contact': user?.phone ?? '',
+        'borrower_contact': borrowerContact ?? user?.userMetadata?['phone_number'] ?? '',
         'borrower_user_id': user?.id, // CRUCIAL: Link log to this user
         'borrowed_by': user?.id,      // Standard field
-        'borrower_organization': 'CDRRMO Field Team', // Default for mobile app
-        'purpose': 'Field Deployment (via QR Scan)',
+        'borrower_organization': borrowerOrganization ?? 'CDRRMO Field Team',
+        'purpose': purpose ?? 'Field Deployment (via QR Scan)',
         'transaction_type': 'borrow',
         'status': 'borrowed',
         'borrow_date': DateTime.now().toUtc().toIso8601String(),
-        'expected_return_date': DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String(), // Default 1 week
+        'expected_return_date': DateTime.now().toUtc().add(Duration(days: durationDays)).toIso8601String(),
       }).select().single();
 
       return {

@@ -4,6 +4,7 @@ import '../../domain/entities/loan_item.dart';
 import '../../domain/repositories/loan_repository.dart';
 import '../../data/repositories/supabase_loan_repository.dart';
 import '../../data/sources/loan_local_source.dart';
+import 'package:mobile/src/features/auth/providers/auth_provider.dart';
 
 part 'loan_provider.g.dart';
 
@@ -15,7 +16,7 @@ ILoanRepository loanRepository(LoanRepositoryRef ref) {
 }
 
 /// Reactive Loan List Provider
-@riverpod
+  @riverpod
 class MyLoansNotifier extends _$MyLoansNotifier {
   late final ILoanRepository _repository;
 
@@ -23,8 +24,12 @@ class MyLoansNotifier extends _$MyLoansNotifier {
   Stream<List<LoanItem>> build() async* {
     _repository = ref.watch(loanRepositoryProvider);
     
-    // 1. Trigger background sync
-    _repository.fetchMyLoans();
+    // 1. Await initial sync to populate Isar
+    try {
+      await _repository.fetchMyLoans();
+    } catch (e) {
+      // Background sync failed, we'll rely on existing local data
+    }
 
     // 🚀 NEW: Auto-Sync Loop (Realtime)
     // Subscribe to remote changes and keep local Isar updated
@@ -38,6 +43,87 @@ class MyLoansNotifier extends _$MyLoansNotifier {
   Future<void> refresh() async {
     await _repository.fetchMyLoans();
   }
+
+  // User Actions
+  Future<void> returnItem(String id) async => await _repository.returnItem(id);
+  Future<void> cancelLoan(String id) async => await _repository.cancelLoan(id);
+}
+
+/// 🏢 MANAGER-LEVEL PROVIDER (WMS Checklist 1.0)
+/// Provides a high-density stream of ALL requests for situational awareness.
+@riverpod
+class ManagerLoansNotifier extends _$ManagerLoansNotifier {
+  late final ILoanRepository _repository;
+
+  @override
+  Stream<List<LoanItem>> build() async* {
+    _repository = ref.watch(loanRepositoryProvider);
+    final user = ref.watch(currentUserProvider);
+    final warehouseId = user?.assignedWarehouse;
+    
+    // 1. Trigger warehouse-wide fetch (Audit Requirement 2.1)
+    _repository.fetchWarehouseRequests(warehouseId);
+
+    // 🚀 Enable Global Realtime (Checklist 4.1)
+    final remoteSubscription = _repository.watchRemote(warehouseId: warehouseId).listen((_) {});
+    ref.onDispose(() => remoteSubscription.cancel());
+
+    // 2. Yield Local Stream from All Users
+    // This allows Managers to see "Situational Dashboard" even offline
+    yield* (_repository as SupabaseLoanRepository).watchLoans(isManager: true);
+  }
+
+  Future<void> refresh() async {
+    final user = ref.read(currentUserProvider);
+    await _repository.fetchWarehouseRequests(user?.assignedWarehouse);
+  }
+
+  /// 1.1 Pending Approvals Workflow
+  Future<void> approveRequest(String id) async {
+    final manager = ref.read(currentUserProvider);
+    final managerName = manager?.displayName ?? 'Manager';
+    await _repository.approveLoan(id, managerName);
+    await refresh();
+  }
+
+  /// 1.4 Handoff Completion Workflow
+  Future<void> confirmHandoff(String id) async {
+    final manager = ref.read(currentUserProvider);
+    final staffName = manager?.displayName ?? 'Staff';
+    await _repository.confirmHandoff(id, staffName);
+    await refresh();
+  }
+
+  /// 1.5 Returns & Condition Notes Workflow
+  Future<void> confirmReturn(String id, String condition, String? notes) async {
+    final manager = ref.read(currentUserProvider);
+    final staffName = manager?.displayName ?? 'Staff';
+    await _repository.confirmReturn(id, staffName: staffName, condition: condition, notes: notes);
+    await refresh();
+  }
+}
+
+/// 📋 Manager Queue Filters (Checklist 1.0)
+@riverpod
+List<LoanItem> managerPendingQueue(ManagerPendingQueueRef ref) {
+  final loans = ref.watch(managerLoansNotifierProvider).valueOrNull ?? [];
+  return loans.where((l) => l.status == LoanStatus.pending).toList();
+}
+
+@riverpod
+List<LoanItem> managerStagedQueue(ManagerStagedQueueRef ref) {
+  final loans = ref.watch(managerLoansNotifierProvider).valueOrNull ?? [];
+  // Status is approved but not yet 'active/borrowed'
+  return loans.where((l) => 
+    l.status.name.toLowerCase() == 'approved' || 
+    (l.status == LoanStatus.active && l.handedBy == null)
+  ).toList();
+}
+
+@riverpod
+List<LoanItem> managerActiveQueue(ManagerActiveQueueRef ref) {
+  final loans = ref.watch(managerLoansNotifierProvider).valueOrNull ?? [];
+  return loans.where((l) => l.status == LoanStatus.active && l.handedBy != null).toList();
 }
 
 @riverpod
@@ -85,7 +171,12 @@ List<LoanItem> filteredLoans(FilteredLoansRef ref) {
   return loansAsync.maybeWhen(
     data: (loans) {
       // 1. Filter by Status
-      var filtered = loans.where((l) => l.status == targetStatus).toList();
+      var filtered = loans.where((l) {
+        if (targetStatus == LoanStatus.pending) {
+          return l.status == LoanStatus.pending || l.status == LoanStatus.staged;
+        }
+        return l.status == targetStatus;
+      }).toList();
 
       // 2. Search
       if (searchQuery.isNotEmpty) {
@@ -111,7 +202,7 @@ List<LoanItem> filteredLoans(FilteredLoansRef ref) {
 @riverpod
 List<LoanItem> myPendingItems(MyPendingItemsRef ref) {
   final loans = ref.watch(myLoansNotifierProvider).value ?? [];
-  return loans.where((l) => l.status == LoanStatus.pending).toList();
+  return loans.where((l) => l.status == LoanStatus.pending || l.status == LoanStatus.staged).toList();
 }
 
 @riverpod

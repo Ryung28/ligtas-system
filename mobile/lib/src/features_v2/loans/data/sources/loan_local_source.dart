@@ -7,9 +7,18 @@ class LoanLocalDataSource {
   final Isar _isar = IsarService.instance;
 
   Stream<List<LoanItem>> watchLoans(String userId) {
+    final sanitizedId = userId.trim();
     return _isar.loanCollections
         .filter()
-        .borrowedByEqualTo(userId)
+        .borrowedByEqualTo(sanitizedId)
+        .watch(fireImmediately: true)
+        .map((list) => list.map((e) => _mapCollectionToEntity(e)).toList());
+  }
+
+  // 🛡️ TACTICAL VIEW: Manager global oversight
+  Stream<List<LoanItem>> watchAllLoans() {
+    return _isar.loanCollections
+        .where()
         .watch(fireImmediately: true)
         .map((list) => list.map((e) => _mapCollectionToEntity(e)).toList());
   }
@@ -23,7 +32,14 @@ class LoanLocalDataSource {
             .findFirst();
         
         final col = _mapEntityToCollection(loan);
-        if (existing != null) col.id = existing.id;
+        if (existing != null) {
+          col.id = existing.id;
+          // 🛡️ PRESERVATION: If stream update is null, keep the existing image
+          if ((col.imageUrl == null || col.imageUrl!.isEmpty) && 
+              (existing.imageUrl != null && existing.imageUrl!.isNotEmpty)) {
+            col.imageUrl = existing.imageUrl;
+          }
+        }
         
         await _isar.loanCollections.put(col);
       }
@@ -50,9 +66,17 @@ class LoanLocalDataSource {
       returnNotes: col.returnNotes,
       borrowedBy: col.borrowedBy,
       returnedBy: col.returnedBy,
+      approvedBy: col.approvedBy,
+      approvedAt: col.approvedAt,
+      handedBy: col.handedBy,
+      handedAt: col.handedAt,
+      receivedByName: col.receivedByName,
+      receivedByUserId: col.receivedByUserId,
+      returnCondition: col.returnCondition,
       daysOverdue: col.daysOverdue,
       daysBorrowed: col.daysBorrowed,
       isPendingSync: col.isPendingSync,
+      imageUrl: col.imageUrl,
     );
   }
 
@@ -75,9 +99,17 @@ class LoanLocalDataSource {
       ..returnNotes = item.returnNotes
       ..borrowedBy = item.borrowedBy
       ..returnedBy = item.returnedBy
+      ..approvedBy = item.approvedBy
+      ..approvedAt = item.approvedAt
+      ..handedBy = item.handedBy
+      ..handedAt = item.handedAt
+      ..receivedByName = item.receivedByName
+      ..receivedByUserId = item.receivedByUserId
+      ..returnCondition = item.returnCondition
       ..daysOverdue = item.daysOverdue
       ..daysBorrowed = item.daysBorrowed
-      ..isPendingSync = item.isPendingSync;
+      ..isPendingSync = item.isPendingSync
+      ..imageUrl = item.imageUrl;
     
     return col;
   }

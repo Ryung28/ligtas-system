@@ -1,5 +1,6 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart'; // [Trigger: Finalizing Schema]
 import '../../../../features_v2/inventory/domain/entities/inventory_item.dart';
+import '../../../../features_v2/inventory/presentation/providers/mission_cart_provider.dart';
 
 part 'borrow_request_state.freezed.dart';
 
@@ -7,15 +8,16 @@ part 'borrow_request_state.freezed.dart';
 class BorrowRequestState with _$BorrowRequestState {
   const factory BorrowRequestState({
     @Default(BorrowStep.form) BorrowStep currentStep,
-    InventoryItem? selectedItem,
+    @Default([]) List<CartItem> cartItems,
     @Default('') String borrowerName,
     @Default('') String borrowerContact,
     @Default('') String borrowerEmail,
     @Default('') String borrowerOrganization,
     @Default('') String purpose,
-    @Default(1) int quantity,
     @Default('') String notes,
     DateTime? expectedReturnDate,
+    @Default({}) Map<String, DateTime> itemReturnDates,
+    @Default({}) Map<String, DateTime> itemPickupDates,
     @Default(false) bool isSubmitting,
     String? submissionError,
     @Default(false) bool isSuccess,

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:gap/gap.dart';
 import '../../domain/entities/loan_item.dart';
 import '../../../../core/design_system/app_theme.dart';
+import '../../../../core/design_system/widgets/tactical_image_viewer.dart';
+import '../../../../core/design_system/widgets/tactical_forensic_card.dart';
 
+/// 🛡️ LOAN CARD: MISSION LOADOUT MANIFEST (V4)
+/// A high-density forensic row representing an active equipment assignment.
+/// Refactored to use the unified TacticalForensicCard component.
 class LoanCardGlass extends StatelessWidget {
   final LoanItem loan;
   final VoidCallback onTap;
@@ -17,191 +24,153 @@ class LoanCardGlass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine Status colors and labels matching V1 exactly
-    Color accentColor = const Color(0xFF3B82F6); // Active Blue
-    String statusLabel = 'Active';
+    // 🎨 ACCENT LOGIC: Mapping status to tactical colors
+    Color accentColor = AppTheme.primaryBlue;
+    String statusLabel = 'ACTIVE';
+    String timeLabel = 'ISSUED';
 
     if (loan.status == LoanStatus.returned) {
-      accentColor = const Color(0xFF10B981); // Emerald
-      statusLabel = 'Returned';
+      accentColor = AppTheme.emeraldGreen;
+      statusLabel = 'RETURNED';
+      timeLabel = 'RETURNED';
     } else if (loan.status == LoanStatus.pending) {
-      accentColor = const Color(0xFFF59E0B); // Amber
-      statusLabel = 'Pending';
+      accentColor = AppTheme.warningOrange;
+      statusLabel = 'PENDING';
+      timeLabel = 'REQUESTED';
     } else if (loan.status == LoanStatus.overdue) {
-      accentColor = const Color(0xFFEF4444); // Red
-      statusLabel = 'Overdue';
+      accentColor = AppTheme.errorRed;
+      statusLabel = 'OVERDUE';
+      timeLabel = 'ISSUED';
     } else if (loan.status == LoanStatus.cancelled) {
-      accentColor = const Color(0xFF64748B); // Slate
-      statusLabel = 'Cancelled';
+      accentColor = AppTheme.neutralGray500;
+      statusLabel = 'CANCELLED';
+      timeLabel = 'LOGGED';
+    }
+
+    return TacticalForensicCard(
+      id: loan.id,
+      title: loan.itemName,
+      referenceId: loan.id,
+      statusLabel: statusLabel,
+      accentColor: accentColor,
+      imageUrl: loan.imageUrl,
+      timestampLabel: timeLabel,
+      timestampValue: _calculateDeploymentText(loan.borrowDate),
+      secondaryLabel: 'QUANTITY',
+      secondaryValue: '${loan.quantityBorrowed} UNITS',
+      onTap: onTap,
+      onThumbnailTap: loan.imageUrl != null && loan.imageUrl!.isNotEmpty
+          ? () => TacticalImageViewer.show(
+                context,
+                url: loan.imageUrl!,
+                title: loan.itemName,
+                heroTag: 'loan_icon_${loan.id}',
+              )
+          : null,
+      onActionTap: onReturn != null && (loan.status == LoanStatus.active || loan.status == LoanStatus.overdue)
+          ? onReturn
+          : null,
+      actionLabel: 'RETURN',
+      heroTagPrefix: 'inv',
+      decisionHub: _buildDecisionHub(context),
+    );
+  }
+
+  Widget _buildDecisionHub(BuildContext context) {
+    final bool isPending = loan.status == LoanStatus.pending;
+    final bool isRejected = loan.status == LoanStatus.cancelled;
+    final bool isStaged = loan.status == LoanStatus.staged;
+    final bool isApprovedReady = isStaged || (loan.status == LoanStatus.active && loan.handedBy == null);
+
+    // 🛡️ RECLAIM SPACE: Pending status is now handled by the top-right tag
+    if (isPending || (!isRejected && !isApprovedReady)) return const SizedBox.shrink();
+
+    Color stripColor = AppTheme.warningOrange;
+    String label = 'ACTION REQUIRED';
+    String subtext = '';
+    IconData icon = Icons.timer_outlined;
+
+    if (isRejected) {
+      stripColor = AppTheme.errorRed;
+      label = 'NOT APPROVED';
+      subtext = 'Item unavailable at this time';
+      icon = Icons.info_outline_rounded;
+    } else if (isApprovedReady) {
+      stripColor = AppTheme.emeraldGreen;
+      label = 'READY FOR PICKUP';
+      subtext = loan.pickupScheduledAt != null 
+          ? 'SCHEDULED: ${DateFormat('MMM dd, hh:mm a').format(loan.pickupScheduledAt!)}'
+          : 'You can now claim this equipment';
+      icon = Icons.check_circle_outline_rounded;
     }
 
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        color: stripColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: stripColor.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: stripColor),
+          const Gap(10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.lexend(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: stripColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  subtext,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: stripColor.withOpacity(0.8),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isPending)
+            _buildPulseIndicator(stripColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPulseIndicator(Color color) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: color.withOpacity(0.4),
+            blurRadius: 4,
+            spreadRadius: 2,
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  // 1. Icon Container with Hero parity
-                  Hero(
-                    tag: 'loan_icon_${loan.id}',
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.06),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: accentColor.withOpacity(0.08)),
-                      ),
-                      child: Center(
-                        child: _getSmartIcon(loan.itemName, accentColor),
-                      ),
-                    ),
-                  ),
-                  const Gap(16),
-                  
-                  // 2. Main Content with Hero parity
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Hero(
-                          tag: 'loan_title_${loan.id}',
-                          child: Material(
-                            color: Colors.transparent,
-                            child: Text(
-                              loan.itemName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontFamily: 'SF Pro Display',
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
-                                letterSpacing: -0.6,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const Gap(2),
-                        Text(
-                          '${loan.status == LoanStatus.pending ? 'Requested' : 'Due ${_calculateDueDays(loan.expectedReturnDate)}'}  •  ${loan.quantityBorrowed} Items',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
-                            letterSpacing: -0.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-  
-                  // 3. Status or Action Area
-                  const Gap(12),
-                  if (onReturn != null && (loan.status == LoanStatus.active || loan.status == LoanStatus.overdue))
-                    _buildGlassReturnButton(accentColor)
-                  else
-                    // 4. Status Pill (Fallback)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(color: accentColor.withOpacity(0.15)),
-                      ),
-                      child: Text(
-                        statusLabel.toUpperCase(),
-                        style: TextStyle(
-                          color: accentColor,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildGlassReturnButton(Color accentColor) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onReturn,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: accentColor.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentColor.withOpacity(0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.assignment_return_rounded, size: 14, color: accentColor),
-              const Gap(6),
-              Text(
-                'RETURN',
-                style: TextStyle(
-                  color: accentColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _calculateDueDays(DateTime dueDate) {
-    final diff = dueDate.difference(DateTime.now()).inDays;
-    if (diff < 0) return '${diff.abs()} days ago';
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Tomorrow';
-    return '$diff days';
-  }
-
-  Widget _getSmartIcon(String name, [Color? activeColor]) {
-    IconData iconData = Icons.inventory_2_outlined;
-    Color color = activeColor ?? Colors.grey[700]!;
-
-    final n = name.toLowerCase();
-    if (n.contains('radio') || n.contains('comms')) {
-      iconData = Icons.settings_input_antenna_rounded;
-    } else if (n.contains('bolt') || n.contains('power') || n.contains('gen')) {
-      iconData = Icons.bolt_rounded;
-    } else if (n.contains('drone') || n.contains('fly')) {
-      iconData = Icons.flight_takeoff_rounded;
-    } else if (n.contains('med') || n.contains('aid')) {
-      iconData = Icons.medical_services_rounded;
-    }
-
-    return Icon(iconData, color: color, size: 28);
+  String _calculateDeploymentText(DateTime borrowDate) {
+    final diff = DateTime.now().difference(borrowDate);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'Just now';
   }
 }

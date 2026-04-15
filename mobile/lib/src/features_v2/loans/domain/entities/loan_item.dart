@@ -8,6 +8,8 @@ enum LoanStatus {
   returned,
   cancelled,
   pending,
+  staged,
+  reserved,
 }
 
 @freezed
@@ -21,6 +23,7 @@ class LoanItem with _$LoanItem {
     required String itemCode,
     required String borrowerName,
     required String borrowerContact,
+    @Default('') String borrowerOrganization,
     @Default('') String borrowerEmail,
     required String purpose,
     required int quantityBorrowed,
@@ -32,9 +35,21 @@ class LoanItem with _$LoanItem {
     String? returnNotes,
     required String borrowedBy,
     String? returnedBy,
+    
+    // Audit & Accountability fields (Checklist 2.0)
+    @JsonKey(name: 'approved_by') String? approvedBy,
+    @JsonKey(name: 'approved_at') DateTime? approvedAt,
+    @JsonKey(name: 'handed_by') String? handedBy,
+    @JsonKey(name: 'handed_at') DateTime? handedAt,
+    @JsonKey(name: 'received_by_name') String? receivedByName,
+    @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
+    @JsonKey(name: 'return_condition') String? returnCondition,
+    @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+    
     @Default(0) int daysOverdue,
     @Default(0) int daysBorrowed,
     @Default(false) bool isPendingSync,
+    String? imageUrl, // Field-Ready Visual Metadata
   }) = _LoanItem;
 
   // Domain logic

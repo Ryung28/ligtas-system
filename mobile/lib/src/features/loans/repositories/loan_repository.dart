@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile/src/features/loans/models/loan_model.dart';
 import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
+import 'package:mobile/src/core/utils/storage_utils.dart';
 
 abstract class LoanRepository {
   Future<List<LoanModel>> fetchMyLoans();
@@ -45,7 +46,7 @@ class SupabaseLoanRepository implements LoanRepository {
       debugPrint('🚀 SupabaseLoanRepository: Fetching logs for user $userId from "borrow_logs" table...');
       final response = await _client
           .from('borrow_logs')
-          .select('*')
+          .select('*, inventory:inventory_id(image_url)')
           .eq('borrowed_by', userId) // Strict Tenant Isolation
           .order('borrow_date', ascending: false);
       
@@ -167,6 +168,25 @@ class SupabaseLoanRepository implements LoanRepository {
     final dbDaysBorrowed = now.difference(borrowDate).inDays;
     final dbDaysOverdue = expectedReturnDate.isBefore(now) ? now.difference(expectedReturnDate).inDays : 0;
 
+    // 🛡️ RELATIONAL EXTRACTION: Support both Map and List join formats
+    String? imageUrl;
+    final inventoryData = data['inventory'];
+    if (inventoryData != null) {
+      if (inventoryData is Map) {
+        imageUrl = StorageUtils.resolveAssetUrl(inventoryData['image_url'] as String?);
+      } else if (inventoryData is List && inventoryData.isNotEmpty) {
+        final firstItem = inventoryData.first;
+        if (firstItem is Map) {
+          imageUrl = StorageUtils.resolveAssetUrl(firstItem['image_url'] as String?);
+        }
+      }
+    }
+
+    // Secondary fallback check for direct inventory_id join
+    if (imageUrl == null && data['inventory_id'] != null && data['inventory_id'] is Map) {
+      imageUrl = StorageUtils.resolveAssetUrl(data['inventory_id']['image_url'] as String?);
+    }
+
     return LoanModel(
       id: data['id'].toString(),
       inventoryItemId: (data['inventory_item_id'] ?? data['inventory_id'] ?? '').toString(),
@@ -187,8 +207,21 @@ class SupabaseLoanRepository implements LoanRepository {
       returnNotes: data['return_notes'] as String?,
       borrowedBy: (data['borrowed_by'] ?? data['borrower_user_id'] ?? '').toString(),
       returnedBy: data['returned_by']?.toString(),
+      
+      // Audit & Accountability fields (Checklist 2.0 Mapping)
+      approvedBy: data['approved_by'] as String?,
+      approvedAt: data['approved_at'] != null ? DateTime.parse(data['approved_at']).toLocal() : null,
+      handedBy: data['handed_by'] as String?,
+      handedAt: data['handed_at'] != null ? DateTime.parse(data['handed_at']).toLocal() : null,
+      receivedByName: data['received_by_name'] as String?,
+      receivedByUserId: data['received_by_user_id'] as String?,
+      returnCondition: data['return_condition'] as String?,
+      pickupScheduledAt: data['pickup_scheduled_at'] != null ? DateTime.parse(data['pickup_scheduled_at']).toLocal() : null,
+
       daysBorrowed: dbDaysBorrowed,
       daysOverdue: dbDaysOverdue,
+      imageUrl: imageUrl ?? StorageUtils.resolveAssetUrl(data['image_url'] as String?),
     );
   }
+
 }

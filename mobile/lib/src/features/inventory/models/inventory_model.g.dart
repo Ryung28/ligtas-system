@@ -18,93 +18,108 @@ const InventoryCollectionSchema = CollectionSchema(
   name: r'InventoryCollection',
   id: -7881780186662757636,
   properties: {
-    r'available': PropertySchema(
+    r'aggregateAvailable': PropertySchema(
       id: 0,
+      name: r'aggregateAvailable',
+      type: IsarType.long,
+    ),
+    r'aggregateTotal': PropertySchema(
+      id: 1,
+      name: r'aggregateTotal',
+      type: IsarType.long,
+    ),
+    r'available': PropertySchema(
+      id: 2,
       name: r'available',
       type: IsarType.long,
     ),
     r'category': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'category',
       type: IsarType.string,
     ),
     r'code': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'code',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'description': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'description',
       type: IsarType.string,
     ),
     r'imageUrl': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'imageUrl',
       type: IsarType.string,
     ),
     r'location': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'location',
       type: IsarType.string,
     ),
+    r'locationRegistryId': PropertySchema(
+      id: 9,
+      name: r'locationRegistryId',
+      type: IsarType.long,
+    ),
     r'minStockLevel': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'minStockLevel',
       type: IsarType.long,
     ),
     r'name': PropertySchema(
-      id: 8,
+      id: 11,
       name: r'name',
       type: IsarType.string,
     ),
     r'notes': PropertySchema(
-      id: 9,
+      id: 12,
       name: r'notes',
       type: IsarType.string,
     ),
     r'originalId': PropertySchema(
-      id: 10,
+      id: 13,
       name: r'originalId',
       type: IsarType.long,
     ),
     r'qrCode': PropertySchema(
-      id: 11,
+      id: 14,
       name: r'qrCode',
       type: IsarType.string,
     ),
     r'quantity': PropertySchema(
-      id: 12,
+      id: 15,
       name: r'quantity',
       type: IsarType.long,
     ),
     r'status': PropertySchema(
-      id: 13,
+      id: 16,
       name: r'status',
       type: IsarType.string,
     ),
     r'supplier': PropertySchema(
-      id: 14,
+      id: 17,
       name: r'supplier',
       type: IsarType.string,
     ),
     r'supplierContact': PropertySchema(
-      id: 15,
+      id: 18,
       name: r'supplierContact',
       type: IsarType.string,
     ),
     r'unit': PropertySchema(
-      id: 16,
+      id: 19,
       name: r'unit',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 17,
+      id: 20,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -125,6 +140,19 @@ const InventoryCollectionSchema = CollectionSchema(
           name: r'originalId',
           type: IndexType.value,
           caseSensitive: false,
+        )
+      ],
+    ),
+    r'category': IndexSchema(
+      id: -7560358558326323820,
+      name: r'category',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'category',
+          type: IndexType.hash,
+          caseSensitive: true,
         )
       ],
     )
@@ -204,24 +232,27 @@ void _inventoryCollectionSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeLong(offsets[0], object.available);
-  writer.writeString(offsets[1], object.category);
-  writer.writeString(offsets[2], object.code);
-  writer.writeDateTime(offsets[3], object.createdAt);
-  writer.writeString(offsets[4], object.description);
-  writer.writeString(offsets[5], object.imageUrl);
-  writer.writeString(offsets[6], object.location);
-  writer.writeLong(offsets[7], object.minStockLevel);
-  writer.writeString(offsets[8], object.name);
-  writer.writeString(offsets[9], object.notes);
-  writer.writeLong(offsets[10], object.originalId);
-  writer.writeString(offsets[11], object.qrCode);
-  writer.writeLong(offsets[12], object.quantity);
-  writer.writeString(offsets[13], object.status);
-  writer.writeString(offsets[14], object.supplier);
-  writer.writeString(offsets[15], object.supplierContact);
-  writer.writeString(offsets[16], object.unit);
-  writer.writeDateTime(offsets[17], object.updatedAt);
+  writer.writeLong(offsets[0], object.aggregateAvailable);
+  writer.writeLong(offsets[1], object.aggregateTotal);
+  writer.writeLong(offsets[2], object.available);
+  writer.writeString(offsets[3], object.category);
+  writer.writeString(offsets[4], object.code);
+  writer.writeDateTime(offsets[5], object.createdAt);
+  writer.writeString(offsets[6], object.description);
+  writer.writeString(offsets[7], object.imageUrl);
+  writer.writeString(offsets[8], object.location);
+  writer.writeLong(offsets[9], object.locationRegistryId);
+  writer.writeLong(offsets[10], object.minStockLevel);
+  writer.writeString(offsets[11], object.name);
+  writer.writeString(offsets[12], object.notes);
+  writer.writeLong(offsets[13], object.originalId);
+  writer.writeString(offsets[14], object.qrCode);
+  writer.writeLong(offsets[15], object.quantity);
+  writer.writeString(offsets[16], object.status);
+  writer.writeString(offsets[17], object.supplier);
+  writer.writeString(offsets[18], object.supplierContact);
+  writer.writeString(offsets[19], object.unit);
+  writer.writeDateTime(offsets[20], object.updatedAt);
 }
 
 InventoryCollection _inventoryCollectionDeserialize(
@@ -231,25 +262,28 @@ InventoryCollection _inventoryCollectionDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = InventoryCollection();
-  object.available = reader.readLong(offsets[0]);
-  object.category = reader.readString(offsets[1]);
-  object.code = reader.readStringOrNull(offsets[2]);
-  object.createdAt = reader.readDateTimeOrNull(offsets[3]);
-  object.description = reader.readStringOrNull(offsets[4]);
+  object.aggregateAvailable = reader.readLongOrNull(offsets[0]);
+  object.aggregateTotal = reader.readLongOrNull(offsets[1]);
+  object.available = reader.readLong(offsets[2]);
+  object.category = reader.readString(offsets[3]);
+  object.code = reader.readStringOrNull(offsets[4]);
+  object.createdAt = reader.readDateTimeOrNull(offsets[5]);
+  object.description = reader.readStringOrNull(offsets[6]);
   object.id = id;
-  object.imageUrl = reader.readStringOrNull(offsets[5]);
-  object.location = reader.readStringOrNull(offsets[6]);
-  object.minStockLevel = reader.readLongOrNull(offsets[7]);
-  object.name = reader.readString(offsets[8]);
-  object.notes = reader.readStringOrNull(offsets[9]);
-  object.originalId = reader.readLongOrNull(offsets[10]);
-  object.qrCode = reader.readString(offsets[11]);
-  object.quantity = reader.readLong(offsets[12]);
-  object.status = reader.readString(offsets[13]);
-  object.supplier = reader.readStringOrNull(offsets[14]);
-  object.supplierContact = reader.readStringOrNull(offsets[15]);
-  object.unit = reader.readStringOrNull(offsets[16]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[17]);
+  object.imageUrl = reader.readStringOrNull(offsets[7]);
+  object.location = reader.readStringOrNull(offsets[8]);
+  object.locationRegistryId = reader.readLongOrNull(offsets[9]);
+  object.minStockLevel = reader.readLongOrNull(offsets[10]);
+  object.name = reader.readString(offsets[11]);
+  object.notes = reader.readStringOrNull(offsets[12]);
+  object.originalId = reader.readLongOrNull(offsets[13]);
+  object.qrCode = reader.readString(offsets[14]);
+  object.quantity = reader.readLong(offsets[15]);
+  object.status = reader.readString(offsets[16]);
+  object.supplier = reader.readStringOrNull(offsets[17]);
+  object.supplierContact = reader.readStringOrNull(offsets[18]);
+  object.unit = reader.readStringOrNull(offsets[19]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[20]);
   return object;
 }
 
@@ -261,40 +295,46 @@ P _inventoryCollectionDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readLong(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 2:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readLongOrNull(offset)) as P;
-    case 8:
-      return (reader.readString(offset)) as P;
-    case 9:
       return (reader.readStringOrNull(offset)) as P;
+    case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
+      return (reader.readLongOrNull(offset)) as P;
     case 10:
       return (reader.readLongOrNull(offset)) as P;
     case 11:
       return (reader.readString(offset)) as P;
     case 12:
-      return (reader.readLong(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 13:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 14:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 15:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 16:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 17:
+      return (reader.readStringOrNull(offset)) as P;
+    case 18:
+      return (reader.readStringOrNull(offset)) as P;
+    case 19:
+      return (reader.readStringOrNull(offset)) as P;
+    case 20:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -574,10 +614,203 @@ extension InventoryCollectionQueryWhere
       ));
     });
   }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterWhereClause>
+      categoryEqualTo(String category) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'category',
+        value: [category],
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterWhereClause>
+      categoryNotEqualTo(String category) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'category',
+              lower: [],
+              upper: [category],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'category',
+              lower: [category],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'category',
+              lower: [category],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'category',
+              lower: [],
+              upper: [category],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension InventoryCollectionQueryFilter on QueryBuilder<InventoryCollection,
     InventoryCollection, QFilterCondition> {
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateAvailableIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'aggregateAvailable',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateAvailableIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'aggregateAvailable',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateAvailableEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'aggregateAvailable',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateAvailableGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'aggregateAvailable',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateAvailableLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'aggregateAvailable',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateAvailableBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'aggregateAvailable',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateTotalIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'aggregateTotal',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateTotalIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'aggregateTotal',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateTotalEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'aggregateTotal',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateTotalGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'aggregateTotal',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateTotalLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'aggregateTotal',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      aggregateTotalBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'aggregateTotal',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
       availableEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
@@ -1512,6 +1745,80 @@ extension InventoryCollectionQueryFilter on QueryBuilder<InventoryCollection,
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'location',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      locationRegistryIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'locationRegistryId',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      locationRegistryIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'locationRegistryId',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      locationRegistryIdEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'locationRegistryId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      locationRegistryIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'locationRegistryId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      locationRegistryIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'locationRegistryId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      locationRegistryIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'locationRegistryId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -2828,6 +3135,34 @@ extension InventoryCollectionQueryLinks on QueryBuilder<InventoryCollection,
 extension InventoryCollectionQuerySortBy
     on QueryBuilder<InventoryCollection, InventoryCollection, QSortBy> {
   QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByAggregateAvailable() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateAvailable', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByAggregateAvailableDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateAvailable', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByAggregateTotal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateTotal', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByAggregateTotalDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateTotal', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
       sortByAvailable() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'available', Sort.asc);
@@ -2922,6 +3257,20 @@ extension InventoryCollectionQuerySortBy
       sortByLocationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'location', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByLocationRegistryId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationRegistryId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByLocationRegistryIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationRegistryId', Sort.desc);
     });
   }
 
@@ -3083,6 +3432,34 @@ extension InventoryCollectionQuerySortBy
 extension InventoryCollectionQuerySortThenBy
     on QueryBuilder<InventoryCollection, InventoryCollection, QSortThenBy> {
   QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByAggregateAvailable() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateAvailable', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByAggregateAvailableDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateAvailable', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByAggregateTotal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateTotal', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByAggregateTotalDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'aggregateTotal', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
       thenByAvailable() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'available', Sort.asc);
@@ -3191,6 +3568,20 @@ extension InventoryCollectionQuerySortThenBy
       thenByLocationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'location', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByLocationRegistryId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationRegistryId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByLocationRegistryIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationRegistryId', Sort.desc);
     });
   }
 
@@ -3352,6 +3743,20 @@ extension InventoryCollectionQuerySortThenBy
 extension InventoryCollectionQueryWhereDistinct
     on QueryBuilder<InventoryCollection, InventoryCollection, QDistinct> {
   QueryBuilder<InventoryCollection, InventoryCollection, QDistinct>
+      distinctByAggregateAvailable() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'aggregateAvailable');
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QDistinct>
+      distinctByAggregateTotal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'aggregateTotal');
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QDistinct>
       distinctByAvailable() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'available');
@@ -3397,6 +3802,13 @@ extension InventoryCollectionQueryWhereDistinct
       distinctByLocation({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'location', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QDistinct>
+      distinctByLocationRegistryId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'locationRegistryId');
     });
   }
 
@@ -3487,6 +3899,20 @@ extension InventoryCollectionQueryProperty
     });
   }
 
+  QueryBuilder<InventoryCollection, int?, QQueryOperations>
+      aggregateAvailableProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'aggregateAvailable');
+    });
+  }
+
+  QueryBuilder<InventoryCollection, int?, QQueryOperations>
+      aggregateTotalProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'aggregateTotal');
+    });
+  }
+
   QueryBuilder<InventoryCollection, int, QQueryOperations> availableProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'available');
@@ -3531,6 +3957,13 @@ extension InventoryCollectionQueryProperty
       locationProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'location');
+    });
+  }
+
+  QueryBuilder<InventoryCollection, int?, QQueryOperations>
+      locationRegistryIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'locationRegistryId');
     });
   }
 
@@ -3616,8 +4049,8 @@ _$InventoryModelImpl _$$InventoryModelImplFromJson(Map<String, dynamic> json) =>
       name: json['item_name'] as String,
       description: json['description'] as String? ?? '',
       category: json['category'] as String,
-      quantity: (json['stock_total'] as num).toInt(),
-      available: (json['stock_available'] as num).toInt(),
+      quantity: (json['stock_total'] as num?)?.toInt() ?? 0,
+      available: (json['stock_available'] as num?)?.toInt() ?? 0,
       location: json['location'] as String? ?? '',
       qrCode: json['qrCode'] as String? ?? '',
       status: json['status'] as String? ?? 'Good',
@@ -3634,6 +4067,15 @@ _$InventoryModelImpl _$$InventoryModelImplFromJson(Map<String, dynamic> json) =>
       supplierContact: json['supplierContact'] as String? ?? '',
       notes: json['notes'] as String? ?? '',
       imageUrl: json['image_url'] as String? ?? '',
+      aggregateTotal: (json['aggregate_total'] as num?)?.toInt() ?? 0,
+      aggregateAvailable: (json['aggregate_available'] as num?)?.toInt() ?? 0,
+      primaryLocation: json['primary_location'] as String?,
+      primaryAvailable: (json['primary_stock_available'] as num?)?.toInt() ?? 0,
+      locationRegistryId: (json['location_registry_id'] as num?)?.toInt(),
+      variants: (json['variants'] as List<dynamic>?)
+              ?.map((e) => e as Map<String, dynamic>)
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$$InventoryModelImplToJson(
@@ -3657,4 +4099,10 @@ Map<String, dynamic> _$$InventoryModelImplToJson(
       'supplierContact': instance.supplierContact,
       'notes': instance.notes,
       'image_url': instance.imageUrl,
+      'aggregate_total': instance.aggregateTotal,
+      'aggregate_available': instance.aggregateAvailable,
+      'primary_location': instance.primaryLocation,
+      'primary_stock_available': instance.primaryAvailable,
+      'location_registry_id': instance.locationRegistryId,
+      'variants': instance.variants,
     };

@@ -4,35 +4,93 @@ import '../../../../features/inventory/models/inventory_model.dart'; // Reuse fo
 import '../../domain/entities/inventory_item.dart';
 
 class InventoryLocalDataSource {
-  final Isar _isar = IsarService.instance;
+  /// 🛡️ THE VAULT: Access through late-initialized Isar instance
+  Isar get _isar => IsarService.instance;
 
   /// Watch the inventory for real-time UI updates even while offline
   Stream<List<InventoryItem>> watchItems() {
-    return _isar.inventoryCollections
+    return _isar.collection<InventoryCollection>()
         .where()
+        .sortByOriginalId() // Keep reliable order
         .watch(fireImmediately: true)
         .map((list) => list.map((e) => _mapCollectionToEntity(e)).toList());
+  }
+
+  /// 📡 ATOMIC OBSERVATION: Watch a single row for instant UI reactivity
+  Stream<InventoryItem?> watchItem(int originalId) {
+    // 🛡️ Note: We watch by the domain ID (originalId) which is stored in the collection.
+    // Querying by originalId ensures consistency across local instances.
+    return _isar.collection<InventoryCollection>()
+        .filter()
+        .originalIdEqualTo(originalId)
+        .watch(fireImmediately: true)
+        .map((list) => list.isNotEmpty ? _mapCollectionToEntity(list.first) : null);
+  }
+
+  /// 🛡️ METRICS: Direct Isar count
+  Future<int> countItems() async {
+    return _isar.collection<InventoryCollection>().where().count();
+  }
+
+  /// 🚀 THE GOLD STANDARD: Pull specific chunks from disk
+  Future<List<InventoryItem>> fetchPagedItems(int offset, int limit, {String? category}) async {
+    final List<InventoryCollection> list;
+    
+    if (category != null && category != 'All') {
+      // 🛡️ Path A: Category-specific view (Uses Category Index)
+      list = await _isar.collection<InventoryCollection>()
+          .filter()
+          .categoryEqualTo(category, caseSensitive: false)
+          .sortByOriginalId()
+          .offset(offset)
+          .limit(limit)
+          .findAll();
+    } else {
+      // 🛡️ Path B: Global view (Uses Primary ID Index)
+      list = await _isar.collection<InventoryCollection>()
+          .where()
+          .sortByOriginalId()
+          .offset(offset)
+          .limit(limit)
+          .findAll();
+    }
+    
+    return list.map((e) => _mapCollectionToEntity(e)).toList();
+  }
+
+  /// 🛡️ SEARCH BYPASS: Direct disk-level search
+  Future<List<InventoryItem>> searchLocal(String query) async {
+    final list = await _isar.collection<InventoryCollection>()
+        .filter()
+        .nameContains(query, caseSensitive: false)
+        .or()
+        .codeContains(query, caseSensitive: false)
+        .or()
+        .categoryContains(query, caseSensitive: false)
+        .findAll();
+    return list.map((e) => _mapCollectionToEntity(e)).toList();
   }
 
   /// Bulk save items from Supabase to Isar
   Future<void> saveAll(List<InventoryItem> items) async {
     await _isar.writeTxn(() async {
       for (final item in items) {
-        final existing = await _isar.inventoryCollections
-            .filter()
+        // 🛡️ PERFORMANCE: Use 'where' (indexed) instead of 'filter'
+        final existing = await _isar.collection<InventoryCollection>()
+            .where()
             .originalIdEqualTo(item.id)
             .findFirst();
         
         final collection = _mapEntityToCollection(item);
         if (existing != null) collection.id = existing.id;
         
-        await _isar.inventoryCollections.put(collection);
+        await _isar.collection<InventoryCollection>().put(collection);
       }
     });
   }
 
   Future<InventoryItem?> findByQrCode(String qrCode) async {
-    final collection = await _isar.inventoryCollections
+    final collection = await _isar.collection<InventoryCollection>()
         .filter()
         .qrCodeEqualTo(qrCode)
         .findFirst();
@@ -57,6 +115,11 @@ class InventoryLocalDataSource {
       unit: col.unit ?? 'pcs',
       lastUpdated: col.updatedAt,
       imageUrl: col.imageUrl,
+      
+      // Multi-location fields
+      aggregateTotal: col.aggregateTotal ?? 0,
+      aggregateAvailable: col.aggregateAvailable ?? 0,
+      variants: [], // Don't cache variants offline for now
     );
   }
 
@@ -75,6 +138,8 @@ class InventoryLocalDataSource {
       ..minStockLevel = item.minStockLevel
       ..unit = item.unit
       ..imageUrl = item.imageUrl
-      ..updatedAt = item.lastUpdated;
+      ..updatedAt = item.lastUpdated
+      ..aggregateTotal = item.aggregateTotal
+      ..aggregateAvailable = item.aggregateAvailable;
   }
 }

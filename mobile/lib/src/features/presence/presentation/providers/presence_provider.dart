@@ -15,7 +15,7 @@ IPresenceRepository presenceRepository(PresenceRepositoryRef ref) {
   );
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class PresenceController extends _$PresenceController {
   Timer? _heartbeatTimer;
   static const _heartbeatInterval = Duration(minutes: 2);
