@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import Image from 'next/image'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
@@ -12,17 +11,13 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2, Wrench, Cross, Shield, Box, Warehouse, Plus } from 'lucide-react'
-import {
-    Dialog as ShadinDialog,
-    DialogContent as ShadinDialogContent,
-    DialogHeader as ShadinDialogHeader,
-    DialogTitle as ShadinDialogTitle
-} from '@/components/ui/dialog'
 import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
+import { isLowStock, getStockStatusLabel } from '@/lib/inventory-utils'
 import { QRDialog } from './qr-dialog'
 import { FilterTabs } from '@/components/ui/filter-tabs'
 import { ExpandableInventoryRow } from './expandable-inventory-row'
 import { CategoryManager } from './advanced-query-builder'
+import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
 
 interface InventoryTableProps {
     items: InventoryItem[]
@@ -109,17 +104,14 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
             // 3. Pending/Alert count
             const hasPending = (item as any).stock_pending > 0
-            const anchor = (item as any).target_stock || item.stock_total || 0
-            const threshold = (item as any).low_stock_threshold || 20
-            const dangerLine = anchor * (threshold / 100)
-            const isLowStock = item.stock_available > 0 && item.stock_available <= dangerLine
+            const isLowStockItem = isLowStock(item)
             const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
             const expiry = (item as any).expiry_date
             const isExpiring = expiry
                 ? (new Date(expiry).getTime() - now) / (1000 * 60 * 60 * 24) <= 30
                 : false
 
-            if (hasPending || isLowStock || hasHealthIssues || isExpiring) pendingCount++
+            if (hasPending || isLowStockItem || hasHealthIssues || isExpiring) pendingCount++
         }
 
         const sortedCategories = [...Object.keys(categoryCounts)]
@@ -181,10 +173,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             let matchesStatus = true
             if (statusFilter === 'pending') {
                 const hasPending = (item as any).stock_pending > 0
-                const anchor = (item as any).target_stock || item.stock_total || 0
-                const threshold = (item as any).low_stock_threshold || 20
-                const dangerLine = anchor * (threshold / 100)
-                const isLowStock = item.stock_available > 0 && item.stock_available <= dangerLine
+                const isLowStockItem = isLowStock(item)
                 const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
                 
                 let isExpiring = false
@@ -194,7 +183,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                     isExpiring = diff <= 30
                 }
 
-                matchesStatus = hasPending || isLowStock || hasHealthIssues || isExpiring
+                matchesStatus = hasPending || isLowStockItem || hasHealthIssues || isExpiring
             }
 
             let matchesLocation = true
@@ -328,13 +317,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     }
 
     const getStockDisplay = (item: InventoryItem) => {
-        const anchor = (item as any).target_stock || item.stock_total || 0
-        const threshold = (item as any).low_stock_threshold || 20
-        const dangerLine = anchor * (threshold / 100)
-        
-        if (item.stock_available === 0) return { label: 'OUT OF STOCK' }
-        if (item.stock_available <= dangerLine) return { label: 'LOW STOCK' }
-        return { label: 'IN STOCK' }
+        return { label: getStockStatusLabel(item) }
     }
 
     const getConditionDot = (status: string) => {
@@ -538,26 +521,10 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                 </CardFooter>
             )}
 
-            <ShadinDialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
-                <ShadinDialogContent className="max-w-3xl border-none bg-black/95 p-0 overflow-hidden rounded-2xl shadow-2xl [&>button]:text-white [&>button]:opacity-100">
-                    <ShadinDialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
-                        <ShadinDialogTitle className="text-white text-sm font-medium bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg">
-                            {expandedImage?.name}
-                        </ShadinDialogTitle>
-                    </ShadinDialogHeader>
-                    <div className="relative w-full aspect-square md:aspect-video flex items-center justify-center p-8">
-                        {expandedImage && (
-                            <Image
-                                src={expandedImage.url}
-                                alt={expandedImage.name}
-                                fill
-                                unoptimized
-                                className="object-contain rounded-lg animate-in zoom-in-95 duration-300"
-                            />
-                        )}
-                    </div>
-                </ShadinDialogContent>
-            </ShadinDialog>
+            <InventoryImagePreviewDialog
+                image={expandedImage}
+                onOpenChange={(open) => !open && setExpandedImage(null)}
+            />
         </Card>
     )
 }

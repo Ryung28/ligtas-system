@@ -12,7 +12,6 @@ import 'package:mobile/src/features/dashboard/providers/dashboard_provider.dart'
 import 'package:mobile/src/features/loans/providers/loan_providers.dart';
 import 'package:mobile/src/features/loans/models/loan_model.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart' hide LoanStatus;
-import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 import 'package:mobile/src/core/design_system/widgets/shimmer_skeleton.dart';
 
 /// Small horizontal ribbon for equipment categories - iOS Glass Style

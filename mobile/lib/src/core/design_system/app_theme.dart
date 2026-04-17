@@ -247,26 +247,29 @@ class AppTheme {
   static const Color neutralGray800 = Color(0xFF424242);
   static const Color neutralGray900 = Color(0xFF212121);
   
-  // Tactical Semantic Colors
   static const Color amberAccent = Color(0xFFF59E0B);
   static const Color scaffoldBackground = Color(0xFFF8FAFC);
 
-  static TextTheme get textTheme => GoogleFonts.robotoTextTheme().copyWith(
-    displayLarge: GoogleFonts.roboto(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: neutralGray900),
-    displayMedium: GoogleFonts.roboto(fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: -0.25, color: neutralGray900),
-    displaySmall: GoogleFonts.roboto(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: 0, color: neutralGray900),
-    headlineLarge: GoogleFonts.roboto(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: 0, color: neutralGray900),
-    headlineMedium: GoogleFonts.roboto(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: neutralGray900),
-    headlineSmall: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: neutralGray900),
-    titleLarge: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.15, color: neutralGray900),
-    titleMedium: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: neutralGray900),
-    titleSmall: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: neutralGray700),
-    bodyLarge: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0.5, color: neutralGray800),
-    bodyMedium: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0.25, color: neutralGray800),
-    bodySmall: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.4, color: neutralGray600),
-    labelLarge: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1, color: neutralGray700),
-    labelMedium: GoogleFonts.roboto(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: neutralGray700),
-    labelSmall: GoogleFonts.roboto(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 0.5, color: neutralGray600),
+  // 🛡️ TACTICAL INK PALETTE (Not all black)
+  static const Color onyxBlack = Color(0xFF0F172A); // 90% Midnight Onyx
+  static const Color carbonGray = Color(0xFF475569); // 70% Slate Carbon
+
+  static TextTheme get textTheme => GoogleFonts.plusJakartaSansTextTheme().copyWith(
+    displayLarge: GoogleFonts.lexend(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -1.0, color: onyxBlack),
+    displayMedium: GoogleFonts.lexend(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: onyxBlack),
+    displaySmall: GoogleFonts.lexend(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.25, color: onyxBlack),
+    headlineLarge: GoogleFonts.lexend(fontSize: 20, fontWeight: FontWeight.w800, color: onyxBlack),
+    headlineMedium: GoogleFonts.lexend(fontSize: 18, fontWeight: FontWeight.w800, color: onyxBlack),
+    headlineSmall: GoogleFonts.lexend(fontSize: 16, fontWeight: FontWeight.w800, color: onyxBlack),
+    titleLarge: GoogleFonts.lexend(fontSize: 16, fontWeight: FontWeight.w700, color: onyxBlack),
+    titleMedium: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w700, color: onyxBlack),
+    titleSmall: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700, color: carbonGray),
+    bodyLarge: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w500, color: onyxBlack),
+    bodyMedium: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: carbonGray),
+    bodySmall: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, color: carbonGray.withOpacity(0.8)),
+    labelLarge: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600, color: carbonGray),
+    labelMedium: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w600, color: carbonGray),
+    labelSmall: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: carbonGray),
   );
 
   static ThemeData get lightTheme => ThemeData(

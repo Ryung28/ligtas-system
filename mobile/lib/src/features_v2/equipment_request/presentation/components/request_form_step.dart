@@ -7,8 +7,6 @@ import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/src/features_v2/loans/presentation/providers/borrow_request_state.dart';
 import 'package:mobile/src/features_v2/loans/presentation/providers/borrow_request_provider.dart';
-import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/tactile_buttons.dart';
-import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/tactile_input_card.dart';
 import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/recessed_hub_card.dart';
 import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/tactile_mission_progress.dart';
 import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/tactile_quantity_stepper.dart';

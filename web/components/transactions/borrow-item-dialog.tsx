@@ -36,6 +36,7 @@ interface AvailableItem {
     id: number
     item_name: string
     category: string
+    image_url?: string | null
     item_type?: 'equipment' | 'consumable'
     primary_location?: string
     primary_stock_available: number

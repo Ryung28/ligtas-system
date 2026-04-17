@@ -52,18 +52,12 @@ class AuthRepository {
     debugPrint('📡 [Auth-Guard] Initiating Recovery Handshake...');
 
     try {
-      // 1. Silent Attempt (Bypasses the "unclickable" picker if user has ever signed in)
-      GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+      // 🛡️ RESET: Clear existing state to prevent focus-lock and force account selection
+      await _googleSignIn.signOut().catchError((_) => null);
       
-      // 2. Interactive Picker (If silent fails)
-      if (googleUser == null) {
-        debugPrint('📡 [Auth-Guard] Silent failed. Launching Interactive Picker...');
-        
-        // 🛡️ RESET: Clear existing state to prevent focus-lock
-        await _googleSignIn.signOut().catchError((_) => null);
-        
-        googleUser = await _googleSignIn.signIn();
-      }
+      // Interactive Picker: Always force selection when this method is called manually
+      debugPrint('📡 [Auth-Guard] Launching Interactive Picker...');
+      final googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
         debugPrint('📡 [Auth-Guard] Picker cancelled by user.');

@@ -168,7 +168,7 @@ final myLoansNotifierProvider =
 
 typedef _$MyLoansNotifier = AutoDisposeStreamNotifier<List<LoanItem>>;
 String _$managerLoansNotifierHash() =>
-    r'be7660244b0ca468bd7383f5100f5d8f02230378';
+    r'2958ae7b89df5a011aaa7e59b22821eff8754efe';
 
 /// 🏢 MANAGER-LEVEL PROVIDER (WMS Checklist 1.0)
 /// Provides a high-density stream of ALL requests for situational awareness.

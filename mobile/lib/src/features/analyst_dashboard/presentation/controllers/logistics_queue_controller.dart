@@ -32,11 +32,54 @@ class LogisticsQueueController extends _$LogisticsQueueController {
         forensicNote: forensicNote,
         forensicImageUrl: forensicImageUrl,
       );
-      // Refresh the queue after resolution
       return repository.getLogisticsQueue(warehouseId: user?.assignedWarehouse);
     });
     
-    // Refresh the master dashboard to reflect changes in metrics/activity
+    ref.read(analystDashboardControllerProvider.notifier).refresh();
+  }
+
+  Future<void> approveBorrow(String logId, {bool isInstant = false}) async {
+    final repository = ref.read(analystRepositoryProvider);
+    final user = ref.read(currentUserProvider);
+    final userName = user?.fullName ?? 'SYSTEM ANALYST';
+
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await repository.approveRequest(
+        logId: logId,
+        approvedBy: userName,
+        isInstant: isInstant,
+      );
+      return repository.getLogisticsQueue(warehouseId: user?.assignedWarehouse);
+    });
+    ref.read(analystDashboardControllerProvider.notifier).refresh();
+  }
+
+  Future<void> rejectBorrow(String logId) async {
+    final repository = ref.read(analystRepositoryProvider);
+    final user = ref.read(currentUserProvider);
+
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await repository.rejectRequest(logId: logId);
+      return repository.getLogisticsQueue(warehouseId: user?.assignedWarehouse);
+    });
+    ref.read(analystDashboardControllerProvider.notifier).refresh();
+  }
+
+  Future<void> completeHandoffBorrow(String logId) async {
+    final repository = ref.read(analystRepositoryProvider);
+    final user = ref.read(currentUserProvider);
+    final userName = user?.fullName ?? 'SYSTEM ANALYST';
+
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await repository.completeHandoff(
+        logId: logId,
+        handedBy: userName,
+      );
+      return repository.getLogisticsQueue(warehouseId: user?.assignedWarehouse);
+    });
     ref.read(analystDashboardControllerProvider.notifier).refresh();
   }
 

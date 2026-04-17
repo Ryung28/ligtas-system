@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile/src/features/loans/models/loan_model.dart';
-import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 import 'package:mobile/src/core/utils/storage_utils.dart';
 
 abstract class LoanRepository {

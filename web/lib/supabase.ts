@@ -21,6 +21,11 @@ export interface InventoryVariant {
     stock_available: number
     stock_total: number
     status: string
+    location_registry_id?: number | null
+    qty_good?: number
+    qty_damaged?: number
+    qty_maintenance?: number
+    qty_lost?: number
 }
 
 export interface InventoryItem {
@@ -52,6 +57,7 @@ export interface InventoryItem {
     expiry_date?: string
     target_stock?: number
     low_stock_threshold?: number
+    restock_alert_enabled?: boolean
     created_at?: string
     updated_at?: string
 }

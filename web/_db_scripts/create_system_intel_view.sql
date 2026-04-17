@@ -1,8 +1,9 @@
 -- ============================================================================
--- THE UNIFIED INTEL COMMAND CENTER (V3 - HIGH SIGNAL)
+-- THE UNIFIED INTEL COMMAND CENTER (V3.2 - LOW STOCK SSOT)
 -- Creates a "Single Pane of Glass" view for all system anomalies.
--- Refactored for High-Signal Titling: Item Names are now primary titles.
--- Supports Warehouse Scoping for Silo Integrity.
+-- INVENTORY branch: aligns with mobile + web "low stock" (absolute < 5 OR at/below
+-- effective threshold). Removed stock_available < stock_total so 1/1 and 2/2
+-- caps still surface when units are critically low.
 -- ============================================================================
 
 -- Drop the view if it exists so we can safely recreate it
@@ -25,12 +26,21 @@ SELECT
         'item_id', i.id, 
         'item_name', i.item_name, 
         'stock_available', i.stock_available,
+        'stock_total', i.stock_total,
+        'low_stock_threshold', i.low_stock_threshold,
+        'restock_alert_enabled', i.restock_alert_enabled,
         'search_query', i.item_name
     ) as metadata,
     i.updated_at as created_at,
-    NULL as warehouse_id
+    i.storage_location as warehouse_id
 FROM public.inventory i
-WHERE i.stock_available < 5
+WHERE i.deleted_at IS NULL
+  AND COALESCE(i.restock_alert_enabled, true) = true
+  AND LOWER(COALESCE(i.status, '')) NOT IN ('damaged', 'lost', 'deleted')
+  AND (
+    i.stock_available < 5
+    OR i.stock_available <= COALESCE(NULLIF(i.low_stock_threshold, 0), 10)
+  )
 
 UNION ALL
 
@@ -80,7 +90,7 @@ SELECT
         'search_query', borrower_name
     ) as metadata,
     expected_return_date as created_at,
-    NULL as warehouse_id
+    warehouse_id
 FROM public.borrow_logs
 WHERE status = 'borrowed' AND expected_return_date < NOW()
 
@@ -109,3 +119,4 @@ WHERE status = 'pending';
 -- Grant permissions
 GRANT SELECT ON public.system_intel TO authenticated;
 GRANT SELECT ON public.system_intel TO anon;
+GRANT SELECT ON public.system_intel TO service_role;

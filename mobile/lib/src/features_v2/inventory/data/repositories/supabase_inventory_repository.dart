@@ -93,17 +93,26 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   @override
   Future<void> archiveItem(String id) async {
     try {
-      debugPrint('[LIGTAS-Security] 🛡️ Soft-Deleting Item: $id');
+      debugPrint('[LIGTAS-Security] 🛡️ Hard-Deleting Item: $id');
       
+      // 1. Check for active borrows
+      final activeBorrows = await _client
+          .from('borrow_logs')
+          .select('id')
+          .eq('inventory_id', id)
+          .eq('status', 'borrowed');
+          
+      if ((activeBorrows as List).isNotEmpty) {
+        throw Exception('⚠️ STRATEGIC BLOCK: Cannot archive resource. Resolve active borrows (Mark as Returned or Lost) first.');
+      }
+      
+      // 2. Hard Delete
       await _client
           .from('inventory')
-          .update({
-            'deleted_at': DateTime.now().toUtc().toIso8601String(),
-            'status': 'archived'
-          })
+          .delete()
           .eq('id', id);
 
-      // Local update
+      // 3. Local update
       final items = await _local.watchItems().first;
       final updatedItems = items.where((i) => i.id.toString() != id).toList();
       _local.saveAll(updatedItems);
@@ -142,21 +151,21 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       qrCode: model.qrCode,
       status: model.status,
       code: model.code,
+      modelNumber: model.modelNumber ?? '',
       minStockLevel: model.minStockLevel,
+      targetStock: model.targetStock ?? 0,
       unit: model.unit,
       imageUrl: StorageUtils.resolveAssetUrl(model.imageUrl),
+      restockAlertEnabled: model.restockAlertEnabled,
       lastUpdated: model.updatedAt,
-      
+      qtyGood: model.qtyGood,
+      qtyDamaged: model.qtyDamaged,
+      qtyMaintenance: model.qtyMaintenance,
+      qtyLost: model.qtyLost,
       // Multi-location fields
       aggregateTotal: model.aggregateTotal,
       aggregateAvailable: model.aggregateAvailable,
-      variants: model.variants.map((v) => InventoryVariant(
-        id: v['id'] as int,
-        location: v['location'] as String? ?? 'Unknown',
-        stockAvailable: v['stock_available'] as int? ?? 0,
-        stockTotal: v['stock_total'] as int? ?? 0,
-        status: v['status'] as String? ?? 'Good',
-      )).toList(),
+      variants: model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
     );
   }
   
@@ -304,12 +313,11 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       // 1. Check stock availability
       final itemData = await _client
           .from('inventory')
-          .select('item_name, stock_available, quantity, item_type')
+          .select('item_name, stock_available, stock_total, item_type')
           .eq('id', itemId)
           .single();
       
       final currentAvailable = (itemData['stock_available'] ?? 0) as int;
-      final currentTotal = (itemData['quantity'] ?? 0) as int;
       final isConsumable = (itemData['item_type'] == 'consumable');
 
       if (currentAvailable < quantity) {
@@ -319,7 +327,8 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       final now = DateTime.now().toUtc().toIso8601String();
 
       // 2. Insert into borrow_logs
-      // 🛡️ LOGIC: If scheduled, status is 'staged' and borrow_date is null
+      // 🛡️ TACTICAL ALIGNMENT: Match web parity for status and transaction types.
+      // Database triggers handle the stock math automatically upon insertion.
       await _client.from('borrow_logs').insert({
         'inventory_id': itemId,
         'inventory_item_id': itemId.toString(),
@@ -335,21 +344,17 @@ class SupabaseInventoryRepository implements IInventoryRepository {
         'released_by_user_id': user?.id,
         'borrowed_by': user?.id,
         'transaction_type': isConsumable ? 'dispense' : 'borrow',
-        'status': isConsumable ? 'dispensed' : (isScheduled ? 'staged' : 'borrowed'),
+        'status': isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
         'borrow_date': isScheduled ? null : now,
         'pickup_scheduled_at': pickupScheduledAt?.toUtc().toIso8601String(),
         'actual_return_date': isConsumable ? now : null,
         'expected_return_date': isConsumable ? null : expectedReturnDate?.toUtc().toIso8601String(),
         'warehouse_id': warehouseId,
         'created_at': now,
+        'platform_origin': 'Mobile',
+        'created_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       });
-
-      // 3. TACTICAL SYNC: Decrement stock
-      await _client.from('inventory').update({
-        'stock_available': currentAvailable - quantity,
-        // Only decrement total stock for consumables or immediate dispatches
-        if (isConsumable) 'quantity': currentTotal - quantity,
-      }).eq('id', itemId);
 
       // 4. Local Refresh
       await fetchAll(warehouseId: warehouseId);
@@ -453,12 +458,80 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       borrowedBy: (data['borrowed_by'] ?? '').toString(),
     );
   }
+  @override
+  Future<void> updateItemMetadata({
+    required int itemId,
+    required String name,
+    required String category,
+    String? brand,
+    String? equipmentType,
+    String? serialNumber,
+    String? modelNumber,
+    String? expiryDate,
+    int? targetStock,
+    int? lowStockThreshold,
+    String? imageUrl,
+  }) async {
+    try {
+      // 🔒 IDENTITY LOCK: Update base metadata
+      await _client.from('inventory').update({
+        'item_name': name,
+        'category': category,
+        if (brand != null) 'brand': brand,
+        if (equipmentType != null) 'equipment_type': equipmentType,
+        if (serialNumber != null) 'serial_number': serialNumber,
+        if (modelNumber != null) 'model_number': modelNumber,
+        if (expiryDate != null) 'expiry_date': expiryDate,
+        if (targetStock != null) 'target_stock': targetStock,
+        if (lowStockThreshold != null) 'low_stock_threshold': lowStockThreshold,
+        if (imageUrl != null) 'image_url': imageUrl,
+      }).eq('id', itemId);
+
+      // Refresh local cache
+      await fetchAll();
+    } catch (e) {
+      throw Exception('Failed to update metadata: $e');
+    }
+  }
+
+  @override
+  Future<void> releaseReservedItem(int logId) async {
+    try {
+      final user = _client.auth.currentUser;
+      final userName = user?.userMetadata?['full_name'] ?? user?.email ?? 'Authorized Staff';
+      final now = DateTime.now().toUtc().toIso8601String();
+      
+      await _client.from('borrow_logs').update({
+        'status': 'borrowed',
+        'borrow_date': now,
+        'released_by_user_id': user?.id,
+        'released_by_name': userName,
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
+      }).eq('id', logId);
+
+      // Refresh local cache 
+      // (Optionally sync transactions if we have a separate transaction repo. Parity forces full fetch.)
+      await fetchAll();
+    } catch (e) {
+      throw Exception('Failed to release reserved item: $e');
+    }
+  }
 }
 
 /// 🛡️ GLOBAL ISOLATE WORKER: Parses and maps inventory items off the main thread.
 List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
-  return data.map((json) {
+  return data.map((raw) {
+    final json = raw as Map<String, dynamic>;
     final model = InventoryModel.fromJson(json);
+
+    final qtyGood        = model.qtyGood;
+    final qtyDamaged     = model.qtyDamaged;
+    final qtyMaintenance = model.qtyMaintenance;
+    final qtyLost        = model.qtyLost;
+    final expiryRaw      = json['expiry_date'] as String?;
+    final expiryDate     = expiryRaw != null ? DateTime.tryParse(expiryRaw) : null;
+
     return InventoryItem(
       id: model.id,
       name: model.name,
@@ -470,21 +543,23 @@ List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
       qrCode: model.qrCode,
       status: model.status,
       code: model.code,
+      modelNumber: model.modelNumber ?? '',
       minStockLevel: model.minStockLevel,
+      targetStock: model.targetStock ?? 0,
       unit: model.unit,
       imageUrl: StorageUtils.resolveAssetUrl(model.imageUrl),
+      restockAlertEnabled: model.restockAlertEnabled,
       lastUpdated: model.updatedAt,
+      expiryDate: expiryDate,
+      qtyGood: qtyGood,
+      qtyDamaged: qtyDamaged,
+      qtyMaintenance: qtyMaintenance,
+      qtyLost: qtyLost,
       
       // Multi-location fields
       aggregateTotal: model.aggregateTotal,
       aggregateAvailable: model.aggregateAvailable,
-      variants: model.variants.map((v) => InventoryVariant(
-        id: v['id'] as int,
-        location: v['location'] as String? ?? 'Unknown',
-        stockAvailable: v['stock_available'] as int? ?? 0,
-        stockTotal: v['stock_total'] as int? ?? 0,
-        status: v['status'] as String? ?? 'Good',
-      )).toList(),
+      variants: model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
     );
   }).toList();
 }

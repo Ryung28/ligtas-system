@@ -29,7 +29,6 @@ export function formatContextualTimestamp(dateStr: string | Date | null | undefi
             hour12: true
         }).format(date)
     }
-
     if (isYesterday(date)) {
         return 'Yesterday'
     }

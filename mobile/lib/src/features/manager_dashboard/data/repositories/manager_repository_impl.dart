@@ -42,7 +42,7 @@ class ManagerRepositoryImpl implements IManagerRepository {
   }
 
   @override
-  Future<List<ResourceAnomaly>> getAnomalies({int limit = 10}) async {
+  Future<List<ResourceAnomaly>> getAnomalies({int limit = 200}) async {
     try {
       // 1. 🛡️ UNIFIED SYSTEM INTEL (The Single Pane of Glass)
       // This ensures 1:1 parity with the Web dashboard alerts, querying the new system_intel view.
@@ -52,11 +52,26 @@ class ManagerRepositoryImpl implements IManagerRepository {
           .order('created_at', ascending: false)
           .limit(limit);
 
+      // Re-sort in Dart: CRITICAL=1, WARNING=2, INFO=3 — mirrors Web dashboard logic
+      final List<dynamic> sorted = List.from(systemData as List);
+      final priorityRank = {'CRITICAL': 1, 'WARNING': 2, 'INFO': 3};
+      sorted.sort((a, b) {
+        final rankA = priorityRank[a['priority']] ?? 4;
+        final rankB = priorityRank[b['priority']] ?? 4;
+        if (rankA != rankB) return rankA.compareTo(rankB);
+        final dateA = DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(2000);
+        final dateB = DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
+
       final List<ResourceAnomaly> anomalies = [];
 
-      for (var item in systemData as List) {
+      for (var item in sorted) {
         final metadata = item['metadata'] as Map<String, dynamic>? ?? {};
         
+        final rawTh = (metadata['low_stock_threshold'] as num?)?.toInt();
+        final effTh = (rawTh != null && rawTh > 0) ? rawTh : 10;
+
         anomalies.add(ResourceAnomaly(
           id: item['id'].toString(),
           itemName: item['title']?.toString() ?? 'System Alert',
@@ -64,7 +79,7 @@ class ManagerRepositoryImpl implements IManagerRepository {
           type: _mapCategoryToType(item['category'] as String?),
           severity: _mapSeverity(item['priority'] as String?),
           currentStock: (metadata['stock_available'] as num?)?.toInt() ?? 0,
-          threshold: 5, // Defaulting based on the SQL view logic
+          threshold: effTh,
           detectedAt: item['created_at'] != null 
               ? DateTime.parse(item['created_at']) 
               : DateTime.now(),

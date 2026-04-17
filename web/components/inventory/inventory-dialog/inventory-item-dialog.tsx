@@ -65,6 +65,7 @@ export function InventoryItemDialog({
         stockTotalValue,
         targetStock,
         lowStockThreshold,
+        restockAlertEnabled,
         qtyGood,
         qtyDamaged,
         qtyMaintenance,
@@ -93,6 +94,7 @@ export function InventoryItemDialog({
         setCustomVariant,
         setTargetStock,
         setLowStockThreshold,
+        setRestockAlertEnabled,
     } = useInventoryForm({
         existingItem,
         isOpen: isOpen ?? false,
@@ -186,6 +188,8 @@ export function InventoryItemDialog({
                                     onTargetStockChange={setTargetStock}
                                     lowStockThreshold={lowStockThreshold}
                                     onThresholdChange={setLowStockThreshold}
+                                    restockAlertEnabled={restockAlertEnabled}
+                                    onRestockAlertEnabledChange={setRestockAlertEnabled}
                                 />
                             </div>
                         </div>

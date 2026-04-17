@@ -94,9 +94,9 @@ class _QuickActionChip extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 label,
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.lexend(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.neutralGray800,
                 ),
                 textAlign: TextAlign.center,

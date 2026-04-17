@@ -62,9 +62,9 @@ class _ActivityStreamListState extends State<ActivityStreamList>
           children: [
             Text(
               'Data Activity Stream',
-              style: GoogleFonts.roboto(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: AppTheme.neutralGray900,
               ),
             ),
@@ -93,9 +93,9 @@ class _ActivityStreamListState extends State<ActivityStreamList>
             ),
             labelColor: Colors.white,
             unselectedLabelColor: AppTheme.neutralGray600,
-            labelStyle: GoogleFonts.roboto(
+            labelStyle: GoogleFonts.lexend(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
             tabs: const [
               Tab(text: 'LIVE'),
@@ -139,7 +139,7 @@ class _ActivityStreamListState extends State<ActivityStreamList>
               padding: const EdgeInsets.all(24),
               child: Text(
                 'No activity events',
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   color: AppTheme.neutralGray500,
                 ),
@@ -165,7 +165,7 @@ class _ActivityStreamListState extends State<ActivityStreamList>
               onPressed: widget.onLoadMore,
               child: Text(
                 'LOAD PREVIOUS ENTRIES',
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.lexend(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -207,9 +207,9 @@ class _FilterChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: GoogleFonts.roboto(
+          style: GoogleFonts.lexend(
             fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: isSelected ? Colors.white : AppTheme.neutralGray700,
           ),
         ),

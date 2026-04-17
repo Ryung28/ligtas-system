@@ -210,7 +210,8 @@ export function DispatchCommandSheet() {
             }
         }
 
-        if (selectedQuantity > maxAvailable) {
+        const selectedQuantityNumber = Number(selectedQuantity) || 0
+        if (selectedQuantityNumber > maxAvailable) {
             toast.error(`Only ${maxAvailable} units available`);
             return;
         }

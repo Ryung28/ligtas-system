@@ -14,6 +14,10 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
+LoanItem _$LoanItemFromJson(Map<String, dynamic> json) {
+  return _LoanItem.fromJson(json);
+}
+
 /// @nodoc
 mixin _$LoanItem {
   String get id => throw _privateConstructorUsedError;
@@ -54,11 +58,14 @@ mixin _$LoanItem {
   String? get returnCondition => throw _privateConstructorUsedError;
   @JsonKey(name: 'pickup_scheduled_at')
   DateTime? get pickupScheduledAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'platform_origin')
+  String? get platformOrigin => throw _privateConstructorUsedError;
   int get daysOverdue => throw _privateConstructorUsedError;
   int get daysBorrowed => throw _privateConstructorUsedError;
   bool get isPendingSync => throw _privateConstructorUsedError;
   String? get imageUrl => throw _privateConstructorUsedError;
 
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
   $LoanItemCopyWith<LoanItem> get copyWith =>
       throw _privateConstructorUsedError;
@@ -97,6 +104,7 @@ abstract class $LoanItemCopyWith<$Res> {
       @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
       @JsonKey(name: 'return_condition') String? returnCondition,
       @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+      @JsonKey(name: 'platform_origin') String? platformOrigin,
       int daysOverdue,
       int daysBorrowed,
       bool isPendingSync,
@@ -143,6 +151,7 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
     Object? receivedByUserId = freezed,
     Object? returnCondition = freezed,
     Object? pickupScheduledAt = freezed,
+    Object? platformOrigin = freezed,
     Object? daysOverdue = null,
     Object? daysBorrowed = null,
     Object? isPendingSync = null,
@@ -257,6 +266,10 @@ class _$LoanItemCopyWithImpl<$Res, $Val extends LoanItem>
           ? _value.pickupScheduledAt
           : pickupScheduledAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      platformOrigin: freezed == platformOrigin
+          ? _value.platformOrigin
+          : platformOrigin // ignore: cast_nullable_to_non_nullable
+              as String?,
       daysOverdue: null == daysOverdue
           ? _value.daysOverdue
           : daysOverdue // ignore: cast_nullable_to_non_nullable
@@ -313,6 +326,7 @@ abstract class _$$LoanItemImplCopyWith<$Res>
       @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
       @JsonKey(name: 'return_condition') String? returnCondition,
       @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+      @JsonKey(name: 'platform_origin') String? platformOrigin,
       int daysOverdue,
       int daysBorrowed,
       bool isPendingSync,
@@ -357,6 +371,7 @@ class __$$LoanItemImplCopyWithImpl<$Res>
     Object? receivedByUserId = freezed,
     Object? returnCondition = freezed,
     Object? pickupScheduledAt = freezed,
+    Object? platformOrigin = freezed,
     Object? daysOverdue = null,
     Object? daysBorrowed = null,
     Object? isPendingSync = null,
@@ -471,6 +486,10 @@ class __$$LoanItemImplCopyWithImpl<$Res>
           ? _value.pickupScheduledAt
           : pickupScheduledAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      platformOrigin: freezed == platformOrigin
+          ? _value.platformOrigin
+          : platformOrigin // ignore: cast_nullable_to_non_nullable
+              as String?,
       daysOverdue: null == daysOverdue
           ? _value.daysOverdue
           : daysOverdue // ignore: cast_nullable_to_non_nullable
@@ -492,7 +511,7 @@ class __$$LoanItemImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-
+@JsonSerializable()
 class _$LoanItemImpl extends _LoanItem {
   const _$LoanItemImpl(
       {required this.id,
@@ -522,11 +541,15 @@ class _$LoanItemImpl extends _LoanItem {
       @JsonKey(name: 'received_by_user_id') this.receivedByUserId,
       @JsonKey(name: 'return_condition') this.returnCondition,
       @JsonKey(name: 'pickup_scheduled_at') this.pickupScheduledAt,
+      @JsonKey(name: 'platform_origin') this.platformOrigin,
       this.daysOverdue = 0,
       this.daysBorrowed = 0,
       this.isPendingSync = false,
       this.imageUrl})
       : super._();
+
+  factory _$LoanItemImpl.fromJson(Map<String, dynamic> json) =>
+      _$$LoanItemImplFromJson(json);
 
   @override
   final String id;
@@ -597,6 +620,9 @@ class _$LoanItemImpl extends _LoanItem {
   @JsonKey(name: 'pickup_scheduled_at')
   final DateTime? pickupScheduledAt;
   @override
+  @JsonKey(name: 'platform_origin')
+  final String? platformOrigin;
+  @override
   @JsonKey()
   final int daysOverdue;
   @override
@@ -610,7 +636,7 @@ class _$LoanItemImpl extends _LoanItem {
 
   @override
   String toString() {
-    return 'LoanItem(id: $id, userId: $userId, inventoryItemId: $inventoryItemId, itemName: $itemName, itemCode: $itemCode, borrowerName: $borrowerName, borrowerContact: $borrowerContact, borrowerOrganization: $borrowerOrganization, borrowerEmail: $borrowerEmail, purpose: $purpose, quantityBorrowed: $quantityBorrowed, borrowDate: $borrowDate, expectedReturnDate: $expectedReturnDate, actualReturnDate: $actualReturnDate, status: $status, notes: $notes, returnNotes: $returnNotes, borrowedBy: $borrowedBy, returnedBy: $returnedBy, approvedBy: $approvedBy, approvedAt: $approvedAt, handedBy: $handedBy, handedAt: $handedAt, receivedByName: $receivedByName, receivedByUserId: $receivedByUserId, returnCondition: $returnCondition, pickupScheduledAt: $pickupScheduledAt, daysOverdue: $daysOverdue, daysBorrowed: $daysBorrowed, isPendingSync: $isPendingSync, imageUrl: $imageUrl)';
+    return 'LoanItem(id: $id, userId: $userId, inventoryItemId: $inventoryItemId, itemName: $itemName, itemCode: $itemCode, borrowerName: $borrowerName, borrowerContact: $borrowerContact, borrowerOrganization: $borrowerOrganization, borrowerEmail: $borrowerEmail, purpose: $purpose, quantityBorrowed: $quantityBorrowed, borrowDate: $borrowDate, expectedReturnDate: $expectedReturnDate, actualReturnDate: $actualReturnDate, status: $status, notes: $notes, returnNotes: $returnNotes, borrowedBy: $borrowedBy, returnedBy: $returnedBy, approvedBy: $approvedBy, approvedAt: $approvedAt, handedBy: $handedBy, handedAt: $handedAt, receivedByName: $receivedByName, receivedByUserId: $receivedByUserId, returnCondition: $returnCondition, pickupScheduledAt: $pickupScheduledAt, platformOrigin: $platformOrigin, daysOverdue: $daysOverdue, daysBorrowed: $daysBorrowed, isPendingSync: $isPendingSync, imageUrl: $imageUrl)';
   }
 
   @override
@@ -667,6 +693,8 @@ class _$LoanItemImpl extends _LoanItem {
                 other.returnCondition == returnCondition) &&
             (identical(other.pickupScheduledAt, pickupScheduledAt) ||
                 other.pickupScheduledAt == pickupScheduledAt) &&
+            (identical(other.platformOrigin, platformOrigin) ||
+                other.platformOrigin == platformOrigin) &&
             (identical(other.daysOverdue, daysOverdue) ||
                 other.daysOverdue == daysOverdue) &&
             (identical(other.daysBorrowed, daysBorrowed) ||
@@ -677,6 +705,7 @@ class _$LoanItemImpl extends _LoanItem {
                 other.imageUrl == imageUrl));
   }
 
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hashAll([
         runtimeType,
@@ -707,6 +736,7 @@ class _$LoanItemImpl extends _LoanItem {
         receivedByUserId,
         returnCondition,
         pickupScheduledAt,
+        platformOrigin,
         daysOverdue,
         daysBorrowed,
         isPendingSync,
@@ -718,6 +748,13 @@ class _$LoanItemImpl extends _LoanItem {
   @pragma('vm:prefer-inline')
   _$$LoanItemImplCopyWith<_$LoanItemImpl> get copyWith =>
       __$$LoanItemImplCopyWithImpl<_$LoanItemImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$LoanItemImplToJson(
+      this,
+    );
+  }
 }
 
 abstract class _LoanItem extends LoanItem {
@@ -749,11 +786,15 @@ abstract class _LoanItem extends LoanItem {
       @JsonKey(name: 'received_by_user_id') final String? receivedByUserId,
       @JsonKey(name: 'return_condition') final String? returnCondition,
       @JsonKey(name: 'pickup_scheduled_at') final DateTime? pickupScheduledAt,
+      @JsonKey(name: 'platform_origin') final String? platformOrigin,
       final int daysOverdue,
       final int daysBorrowed,
       final bool isPendingSync,
       final String? imageUrl}) = _$LoanItemImpl;
   const _LoanItem._() : super._();
+
+  factory _LoanItem.fromJson(Map<String, dynamic> json) =
+      _$LoanItemImpl.fromJson;
 
   @override
   String get id;
@@ -818,6 +859,9 @@ abstract class _LoanItem extends LoanItem {
   @override
   @JsonKey(name: 'pickup_scheduled_at')
   DateTime? get pickupScheduledAt;
+  @override
+  @JsonKey(name: 'platform_origin')
+  String? get platformOrigin;
   @override
   int get daysOverdue;
   @override

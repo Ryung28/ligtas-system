@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -59,9 +58,35 @@ class TacticalAssetImage extends ConsumerWidget {
       return _buildPlaceholder();
     }
 
+    final w = width ?? size;
+    final h = height ?? size;
+    final flat = borderRadius <= 0;
+
+    // Full-bleed tile (e.g. alert cards): no inner rounded gray frame — parent clips.
+    if (flat) {
+      return SizedBox(
+        width: w,
+        height: h,
+        child: ClipRect(
+          child: CachedNetworkImage(
+            imageUrl: finalUrl,
+            fit: fit,
+            memCacheWidth: w.isFinite ? (w * 2).toInt() : null,
+            memCacheHeight: h.isFinite ? (h * 2).toInt() : null,
+            placeholder: (context, url) => Shimmer.fromColors(
+              baseColor: const Color(0xFFE2E8F0),
+              highlightColor: Colors.white,
+              child: Container(color: const Color(0xFFF1F4F9)),
+            ),
+            errorWidget: (context, url, error) => _buildPlaceholder(),
+          ),
+        ),
+      );
+    }
+
     return Container(
-      width: width ?? size,
-      height: height ?? size,
+      width: w,
+      height: h,
       decoration: BoxDecoration(
         color: const Color(0xFFF1F4F9),
         borderRadius: BorderRadius.circular(borderRadius),
@@ -79,7 +104,7 @@ class TacticalAssetImage extends ConsumerWidget {
         child: CachedNetworkImage(
           imageUrl: finalUrl,
           fit: fit,
-          memCacheWidth: ((width ?? size) * 2).toInt(),
+          memCacheWidth: w.isFinite ? (w * 2).toInt() : null,
           placeholder: (context, url) => Shimmer.fromColors(
             baseColor: const Color(0xFFE2E8F0),
             highlightColor: Colors.white,
@@ -118,21 +143,26 @@ class TacticalAssetImage extends ConsumerWidget {
   }
 
   Widget _buildPlaceholder() {
-    final bgColor = fallbackColor?.withOpacity(0.12) ?? AppTheme.neutralGray100;
-    final iconColor = fallbackColor ?? AppTheme.neutralGray400;
+    final displayWidth = width ?? size;
+    final displayHeight = height ?? size;
+    final flat = borderRadius <= 0;
+    final iconDim = displayHeight == double.infinity
+        ? size * 0.45
+        : (displayHeight * 0.45).clamp(20.0, 48.0);
 
     return Container(
-      width: size,
-      height: size,
+      width: displayWidth,
+      height: displayHeight,
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(borderRadius),
+        color: flat ? const Color(0xFFF1F4F9) : Colors.white,
+        borderRadius: flat ? BorderRadius.zero : BorderRadius.circular(borderRadius),
+        border: flat ? null : Border.all(color: AppTheme.neutralGray200, width: 1),
       ),
       child: Center(
         child: Icon(
-          fallbackIcon ?? Icons.inventory_2_rounded, 
-          size: size * 0.45, 
-          color: iconColor
+          Icons.category_rounded, // High-Contrast Ghost
+          size: iconDim,
+          color: Colors.black, // Solid Black
         ),
       ),
     );

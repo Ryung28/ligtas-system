@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import '../../domain/entities/resource_anomaly.dart';
 import '../../../../core/design_system/app_theme.dart';
 
@@ -79,21 +80,33 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
 
     final isSystemicFailure = anomaly.category != AnomalyCategory.depletion;
     
-    // 🎨 Theme Selection
+    // 🎨 CATEGORY-FIRST THEME: Mirrors Web Action Center palette
+    // Amber=Inventory, Blue=Logistics, Red=Overdue/Operational, Purple=Access/Security
+    Color categoryColor;
+    switch (anomaly.categoryTheme) {
+      case AnomalyCategoryTheme.amber:  categoryColor = AppTheme.warningOrange; break;
+      case AnomalyCategoryTheme.blue:   categoryColor = AppTheme.primaryBlue; break;
+      case AnomalyCategoryTheme.red:    categoryColor = AppTheme.errorRed; break;
+      case AnomalyCategoryTheme.purple: categoryColor = const Color(0xFF7C3AED); break;
+    }
+
+    // Severity still governs the progress bar fill (stock level)
     Color severityColor;
     switch (anomaly.severity) {
       case AnomalySeverity.critical: severityColor = AppTheme.errorRed; break;
-      case AnomalySeverity.warning: severityColor = AppTheme.warningOrange; break;
-      default: severityColor = AppTheme.primaryBlue;
+      case AnomalySeverity.warning:  severityColor = AppTheme.warningOrange; break;
+      default:                       severityColor = AppTheme.primaryBlue;
     }
 
     IconData categoryIcon;
     switch (anomaly.category) {
-      case AnomalyCategory.depletion: categoryIcon = Icons.inventory_2_rounded; break;
+      case AnomalyCategory.depletion:   categoryIcon = Icons.inventory_2_rounded; break;
+      case AnomalyCategory.logistics:   categoryIcon = Icons.local_shipping_rounded; break;
+      case AnomalyCategory.overdue:     categoryIcon = Icons.schedule_rounded; break;
+      case AnomalyCategory.access:      categoryIcon = Icons.person_add_alt_1_rounded; break;
       case AnomalyCategory.operational: categoryIcon = Icons.build_circle_rounded; break;
-      case AnomalyCategory.security: categoryIcon = Icons.policy_rounded; break;
-      case AnomalyCategory.logistics: categoryIcon = Icons.local_shipping_rounded; break;
-      case AnomalyCategory.stagnation: categoryIcon = Icons.hourglass_empty_rounded; break;
+      case AnomalyCategory.security:    categoryIcon = Icons.policy_rounded; break;
+      case AnomalyCategory.stagnation:  categoryIcon = Icons.hourglass_empty_rounded; break;
     }
 
     return SlideTransition(
@@ -106,7 +119,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFF1F3F6), width: 1),
+            border: Border.all(color: categoryColor.withOpacity(0.15), width: 1),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF001A33).withOpacity(0.04),
@@ -125,10 +138,10 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                     Container(
                       width: 44, height: 44,
                       decoration: BoxDecoration(
-                        color: severityColor.withOpacity(0.08),
+                        color: categoryColor.withOpacity(0.10),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Center(child: Icon(categoryIcon, size: 20, color: severityColor)),
+                      child: Center(child: Icon(categoryIcon, size: 20, color: categoryColor)),
                     ),
                     const Gap(12),
                     Expanded(
@@ -141,10 +154,11 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                               color: AppTheme.neutralGray900, letterSpacing: -0.4,
                             ),
                           ),
-                          Text(anomaly.serviceStatus.toUpperCase(),
+                          Text(
+                            '${anomaly.serviceStatus.toUpperCase()} · ${_alertRelativeTime(anomaly.detectedAt)}',
                             style: GoogleFonts.lexend(
                               fontSize: 9, fontWeight: FontWeight.w800,
-                              color: severityColor, letterSpacing: 0.8,
+                              color: categoryColor, letterSpacing: 0.8,
                             ),
                           ),
                         ],
@@ -154,18 +168,18 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: severityColor.withOpacity(0.08),
+                          color: categoryColor.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text('STOCK ALERT',
                           style: GoogleFonts.lexend(
                             fontSize: 10, fontWeight: FontWeight.w800,
-                            color: severityColor,
+                            color: categoryColor,
                           ),
                         ),
                       )
                     else
-                      _buildPulseBadge(severityColor),
+                      _buildPulseBadge(categoryColor),
                   ],
                 ),
                 Column(
@@ -197,7 +211,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                         ],
                       ),
                     ] else ...[
-                      _buildOperationalWarning(anomaly.reason, severityColor),
+                      _buildOperationalWarning(anomaly.reason, categoryColor),
                     ],
                   ],
                 ),
@@ -270,7 +284,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
             ),
             TextSpan(
               text: ' / $total UNITS AVAILABLE',
-              style: GoogleFonts.roboto(
+              style: GoogleFonts.lexend(
                 fontSize: 11, fontWeight: FontWeight.w600,
                 color: AppTheme.neutralGray500,
               ),
@@ -295,4 +309,9 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
       ),
     );
   }
+}
+
+String _alertRelativeTime(DateTime? t) {
+  if (t == null) return 'NOW';
+  return timeago.format(t, allowFromNow: true, locale: 'en_short');
 }

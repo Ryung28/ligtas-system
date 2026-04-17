@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,16 +8,12 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/chat_providers.dart';
 import '../../domain/entities/chat_message.dart';
-import 'package:mobile/src/features_v2/chat/data/repositories/chat_repository.dart';
 import 'package:mobile/src/core/utils/date_formatter.dart';
 import 'package:mobile/src/features/presence/presentation/providers/presence_provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:mobile/src/features_v2/chat/presentation/_components/presence_indicator.dart';
-import 'package:mobile/src/features_v2/chat/presentation/_components/pulsing_dot.dart';
 import 'package:mobile/src/features_v2/chat/presentation/_components/chat_bubble.dart';
-import 'package:mobile/src/features_v2/chat/presentation/_components/ghost_loading.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String roomId;

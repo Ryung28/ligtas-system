@@ -17,6 +17,13 @@ interface StatusFieldsProps {
     setTargetStock: (val: number | string) => void
     lowStockThreshold: number | string
     setLowStockThreshold: (val: number | string) => void
+    restockAlertEnabled: boolean
+    setRestockAlertEnabled: (val: boolean) => void
+    policyErrors?: {
+        ready?: string
+        target?: string
+        threshold?: string
+    }
 }
 
 /**
@@ -29,7 +36,9 @@ export function V2StatusFields({
     qtyMaintenance, setQtyMaintenance,
     qtyLost, setQtyLost,
     targetStock, setTargetStock,
-    lowStockThreshold, setLowStockThreshold
+    lowStockThreshold, setLowStockThreshold,
+    restockAlertEnabled, setRestockAlertEnabled,
+    policyErrors
 }: StatusFieldsProps) {
     
     const targetNum = Number(targetStock) || 0
@@ -49,8 +58,13 @@ export function V2StatusFields({
                     <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Ready to Use</Label>
                     <Input 
                         type="number" value={qtyGood} onChange={(e) => setQtyGood(e.target.value)}
-                        className="h-9 rounded-lg border-none font-black text-emerald-600 text-lg bg-emerald-50/10 p-0 focus-visible:ring-0" 
+                        className={`h-9 rounded-lg font-black text-emerald-600 text-lg bg-emerald-50/10 p-0 focus-visible:ring-0 ${
+                            policyErrors?.ready ? 'border-red-400 ring-2 ring-red-200' : 'border-none'
+                        }`} 
                     />
+                    {policyErrors?.ready ? (
+                        <p className="text-[10px] font-bold text-red-600 mt-1">{policyErrors.ready}</p>
+                    ) : null}
                 </div>
                 <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
                     <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Damaged</Label>
@@ -91,9 +105,15 @@ export function V2StatusFields({
                             <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Max Stock Goal</Label>
                         </div>
                         <Input 
+                            data-restock-input="target"
                             type="number" value={targetStock} onChange={(e) => setTargetStock(e.target.value)}
-                            className="h-10 rounded-2xl border-slate-200 font-bold text-slate-900 shadow-inner" 
+                            className={`h-10 rounded-2xl font-bold text-slate-900 shadow-inner ${
+                                policyErrors?.target ? 'border-red-400 ring-2 ring-red-200' : 'border-slate-200'
+                            }`} 
                         />
+                        {policyErrors?.target ? (
+                            <p className="text-[10px] font-bold text-red-600 mt-1">{policyErrors.target}</p>
+                        ) : null}
                     </div>
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 opacity-70">
@@ -101,11 +121,26 @@ export function V2StatusFields({
                             <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Warn at (%)</Label>
                         </div>
                         <Input 
+                            data-restock-input="threshold"
                             type="number" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)}
-                            className="h-10 rounded-2xl border-slate-200 font-bold text-slate-900 shadow-inner" 
+                            className={`h-10 rounded-2xl font-bold text-slate-900 shadow-inner ${
+                                policyErrors?.threshold ? 'border-red-400 ring-2 ring-red-200' : 'border-slate-200'
+                            }`} 
                         />
+                        {policyErrors?.threshold ? (
+                            <p className="text-[10px] font-bold text-red-600 mt-1">{policyErrors.threshold}</p>
+                        ) : null}
                     </div>
                 </div>
+                <label className="flex items-center gap-2 mt-3 text-[11px] font-bold text-slate-700">
+                    <input
+                        type="checkbox"
+                        checked={restockAlertEnabled}
+                        onChange={(e) => setRestockAlertEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300"
+                    />
+                    Include this item in low-stock alerts
+                </label>
             </div>
 
             {/* Smart Footer - Reverted to Clean Blue */}

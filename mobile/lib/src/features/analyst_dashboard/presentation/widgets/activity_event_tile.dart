@@ -49,6 +49,8 @@ class ActivityEventTile extends StatelessWidget {
         return Icons.build_rounded;
       case EventType.requisitionDenied:
         return Icons.block_rounded;
+      case EventType.mixed:
+        return Icons.sync_problem_rounded;
     }
   }
 
@@ -91,7 +93,7 @@ class ActivityEventTile extends StatelessWidget {
                 children: [
                   Text(
                     event.title,
-                    style: GoogleFonts.roboto(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.neutralGray900,
@@ -101,7 +103,7 @@ class ActivityEventTile extends StatelessWidget {
                     const Gap(2),
                     Text(
                       event.subtitle!,
-                      style: GoogleFonts.roboto(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w400,
                         color: AppTheme.neutralGray600,
@@ -114,9 +116,9 @@ class ActivityEventTile extends StatelessWidget {
                       children: [
                         Text(
                           'APPROVED BY',
-                          style: GoogleFonts.roboto(
+                          style: GoogleFonts.lexend(
                             fontSize: 9,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                             color: AppTheme.neutralGray500,
                           ),
@@ -124,7 +126,7 @@ class ActivityEventTile extends StatelessWidget {
                         const Gap(4),
                         Text(
                           event.approvedBy!,
-                          style: GoogleFonts.roboto(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: AppTheme.neutralGray700,
@@ -144,7 +146,7 @@ class ActivityEventTile extends StatelessWidget {
               children: [
                 Text(
                   event.timeDisplay,
-                  style: GoogleFonts.roboto(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: AppTheme.neutralGray500,
@@ -162,7 +164,7 @@ class ActivityEventTile extends StatelessWidget {
                   ),
                   child: Text(
                     event.status.name.toUpperCase(),
-                    style: GoogleFonts.roboto(
+                    style: GoogleFonts.lexend(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
@@ -183,7 +185,7 @@ class ActivityEventTile extends StatelessWidget {
                     ),
                     child: Text(
                       event.priority!,
-                      style: GoogleFonts.roboto(
+                      style: GoogleFonts.lexend(
                         fontSize: 8,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,

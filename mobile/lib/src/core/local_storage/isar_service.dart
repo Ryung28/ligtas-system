@@ -7,6 +7,7 @@ import 'package:mobile/src/features_v2/chat/data/models/chat_isar_model.dart';
 import 'package:mobile/src/features/presence/data/models/presence_model.dart';
 import 'package:mobile/src/features/weather/data/models/weather_isar_model.dart';
 import 'package:mobile/src/features/notifications/data/models/notification_config_model.dart';
+import 'package:mobile/src/features/notifications/data/models/notification_model.dart';
 
 class IsarService {
   static late Isar _isar;
@@ -22,6 +23,7 @@ class IsarService {
         PresenceCollectionSchema,
         WeatherIsarSchema,
         NotificationConfigSchema,
+        NotificationCollectionSchema,
       ],
       directory: dir.path,
     );
@@ -118,4 +120,7 @@ class IsarService {
   static Future<void> clearAll() async {
     await _isar.writeTxn(() => _isar.clear());
   }
+
+  // Notification Items accessor
+  static IsarCollection<NotificationCollection> get notificationItems => _isar.collection<NotificationCollection>();
 }

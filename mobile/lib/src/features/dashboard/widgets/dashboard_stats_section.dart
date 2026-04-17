@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../providers/dashboard_provider.dart';
 
@@ -14,9 +15,9 @@ class DashboardStatsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Stats',
-          style: TextStyle(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: AppTheme.neutralGray800,
@@ -136,7 +137,7 @@ class _GlassStatCard extends StatelessWidget {
                 const Gap(8),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: GoogleFonts.lexend(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.neutralGray800,
@@ -164,9 +165,9 @@ class _GlassStatCard extends StatelessWidget {
               ),
               child: Text(
                 value,
-                style: const TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
               ),

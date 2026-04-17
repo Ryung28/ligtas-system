@@ -26,7 +26,7 @@ abstract class IInventoryRepository {
   /// 🛡️ SEARCH BYPASS: Instantly search the entire local DB matching a query
   Future<List<InventoryItem>> searchLocal(String query);
 
-  /// 🛡️ STEEL CAGE: Soft-delete (archive) an item by ID
+  /// 🛡️ THE HARD STOP: Permanently delete an item, blocking if currently borrowed.
   Future<void> archiveItem(String id);
 
   /// Watch local storage for real-time reactivity (Full List)
@@ -88,4 +88,22 @@ abstract class IInventoryRepository {
     int? locationRegistryId,
     required String forensicNote,
   });
+
+  /// 🛠️ ADMIN METADATA EDIT: Update Name, Brand, Expiry, Serial, and Image
+  Future<void> updateItemMetadata({
+    required int itemId,
+    required String name,
+    required String category,
+    String? brand,
+    String? equipmentType,
+    String? serialNumber,
+    String? modelNumber,
+    String? expiryDate,
+    int? targetStock,
+    int? lowStockThreshold,
+    String? imageUrl,
+  });
+
+  /// 🔄 HANDOVER: Convert a 'reserved' log into an active 'borrowed' status
+  Future<void> releaseReservedItem(int logId);
 }

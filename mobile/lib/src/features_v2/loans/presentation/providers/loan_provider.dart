@@ -5,6 +5,7 @@ import '../../domain/repositories/loan_repository.dart';
 import '../../data/repositories/supabase_loan_repository.dart';
 import '../../data/sources/loan_local_source.dart';
 import 'package:mobile/src/features/auth/providers/auth_provider.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/providers/inventory_provider.dart';
 
 part 'loan_provider.g.dart';
 
@@ -99,6 +100,13 @@ class ManagerLoansNotifier extends _$ManagerLoansNotifier {
     final manager = ref.read(currentUserProvider);
     final staffName = manager?.displayName ?? 'Staff';
     await _repository.confirmReturn(id, staffName: staffName, condition: condition, notes: notes);
+    await refresh();
+  }
+
+  /// 1.6 Release Reservation Workflow (Reserve-to-Borrow Handover)
+  Future<void> releaseReservation(int logId) async {
+    final inventoryRepo = ref.read(inventoryRepositoryProvider);
+    await inventoryRepo.releaseReservedItem(logId);
     await refresh();
   }
 }

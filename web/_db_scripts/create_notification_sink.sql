@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS system_notifications (
     title TEXT NOT NULL,
     message TEXT NOT NULL,
     reference_id TEXT,                      -- Links to inventory_id, chat_room_id, etc.
-    is_read BOOLEAN DEFAULT false,
+    metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -41,32 +41,36 @@ WITH CHECK (true);
 -- 🏗️ TRIGGER ENGINES: The Automated Dispatcher
 
 -- A. 🛡️ INVENTORY TRIAGE (Low Stock Alerts)
-CREATE OR REPLACE FUNCTION trg_handle_stock_alerts()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION public.trg_handle_stock_alerts()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 BEGIN
     -- 🚨 BRANCH A: THE ALARM (When stock drops below thresholds)
     
     -- 1. Threshold: Low Stock (Below 10)
     IF (OLD.stock_available >= 10 AND NEW.stock_available < 10 AND NEW.stock_available > 0) THEN
-        INSERT INTO system_notifications (type, title, message, reference_id, metadata)
+        INSERT INTO public.system_notifications (type, title, message, reference_id, metadata)
         VALUES (
             'stock_low', 
             'LOW STOCK ALERT', 
             'Resource depletion: ' || NEW.item_name || ' (Available: ' || NEW.stock_available || ')', 
             NEW.id::TEXT, 
-            jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name)
+            jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name, 'audience_role', 'manager')
         );
     END IF;
 
     -- 2. Threshold: Stock Depleted (= 0)
     IF (OLD.stock_available > 0 AND NEW.stock_available = 0) THEN
-        INSERT INTO system_notifications (type, title, message, reference_id, metadata)
+        INSERT INTO public.system_notifications (type, title, message, reference_id, metadata)
         VALUES (
             'stock_out', 
             'RESOURCES DEPLETED', 
             'Supply chain break: ' || NEW.item_name || ' is out of stock.', 
             NEW.id::TEXT, 
-            jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name)
+            jsonb_build_object('search_query', NEW.item_name, 'item_name', NEW.item_name, 'audience_role', 'manager')
         );
     END IF;
 
@@ -82,13 +86,15 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
-DROP TRIGGER IF EXISTS trg_stock_intel ON inventory;
+REVOKE ALL ON FUNCTION public.trg_handle_stock_alerts() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS trg_stock_intel ON public.inventory;
 CREATE TRIGGER trg_stock_intel
-AFTER UPDATE ON inventory
+AFTER UPDATE ON public.inventory
 FOR EACH ROW
-EXECUTE FUNCTION trg_handle_stock_alerts();
+EXECUTE FUNCTION public.trg_handle_stock_alerts();
 
 
 -- B. 🛡️ RECOGNITION TRIAGE (New User Pending Status)
@@ -97,7 +103,13 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (NEW.status = 'pending') THEN
         INSERT INTO system_notifications (type, title, message, reference_id, metadata)
-        VALUES ('user_pending', 'NEW ACCESS REQUEST', NEW.full_name || ' is requesting system credentials.', NEW.id::TEXT, jsonb_build_object('search_query', NEW.full_name, 'borrower_name', NEW.full_name));
+        VALUES (
+            'user_pending',
+            'NEW ACCESS REQUEST',
+            NEW.full_name || ' is requesting system credentials.',
+            NEW.id::TEXT,
+            jsonb_build_object('search_query', NEW.full_name, 'borrower_name', NEW.full_name, 'audience_role', 'manager')
+        );
     END IF;
     RETURN NEW;
 END;
@@ -126,7 +138,13 @@ BEGIN
     -- Skip notifications for direct borrows (status = 'borrowed')
     IF NEW.status = 'pending' THEN
         INSERT INTO system_notifications (type, title, message, reference_id, metadata)
-        VALUES ('borrow_request', 'LOGISTICS ALERT', 'New borrow request from ' || NEW.borrower_name || ' (Qty: ' || NEW.quantity || ')', NEW.id::TEXT, jsonb_build_object('search_query', NEW.borrower_name, 'borrower_name', NEW.borrower_name, 'item_name', NEW.item_name));
+        VALUES (
+            'borrow_request',
+            'LOGISTICS ALERT',
+            'New borrow request from ' || NEW.borrower_name || ' (Qty: ' || NEW.quantity || ')',
+            NEW.id::TEXT,
+            jsonb_build_object('search_query', NEW.borrower_name, 'borrower_name', NEW.borrower_name, 'item_name', NEW.item_name, 'audience_role', 'manager')
+        );
     END IF;
     RETURN NEW;
 END;

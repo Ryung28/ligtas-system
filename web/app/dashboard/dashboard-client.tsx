@@ -15,6 +15,7 @@ import { LogisticsIntelQueue } from '@/components/dashboard/logistics-intel-queu
 import { TrendingInventoryChart } from '@/components/dashboard/trending-inventory-chart'
 import { DeploymentClustersChart } from '@/components/dashboard/deployment-clusters-chart'
 import { OperationalControls } from '@/components/dashboard/operational-controls'
+import { StrategyTriageBar } from '@/components/dashboard/strategy-triage-bar'
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,6 +69,9 @@ export default function DashboardClient() {
                     </Button>
                 </div>
             </header>
+
+            {/* Strategic Decision Layer */}
+            <StrategyTriageBar />
 
             {/* KPI Cards */}
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

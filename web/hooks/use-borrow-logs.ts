@@ -65,7 +65,11 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                 log.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 log.borrower_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 log.borrower_organization?.toLowerCase().includes(searchQuery.toLowerCase())
-            const matchesStatus = statusFilter === 'all' || log.status === statusFilter
+            const matchesStatus = statusFilter === 'all' 
+                ? true 
+                : statusFilter === 'overdue'
+                    ? (log.status === 'borrowed' && log.expected_return_date && new Date(log.expected_return_date) < new Date())
+                    : log.status === statusFilter
             let matchesDate = true
             if (dateFilter) {
                 const logDate = new Date(log.borrow_date || log.created_at).toISOString().split('T')[0]
@@ -119,6 +123,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                     approved_by_name: log.approved_by_name,
                     released_by_name: log.released_by_name,
                     pickup_scheduled_at: log.pickup_scheduled_at,
+                    platform_origin: log.platform_origin,
                     created_at: log.created_at
                 }
                 sessionsList.push(currentSession)
@@ -130,15 +135,22 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         )
     }, [filteredLogs])
 
-    const stats: LogStats = useMemo(() => ({
-        total: logs.length,
-        borrowed: logs.filter(l => l.status === 'borrowed').length,
-        returned: logs.filter(l => l.status === 'returned').length,
-        overdue: logs.filter(l => l.status === 'overdue').length,
-        pending: logs.filter(l => l.status === 'pending').length,
-        staged: logs.filter(l => l.status === 'staged').length,
-        reserved: logs.filter(l => l.status === 'reserved').length,
-    }), [logs])
+    const stats: LogStats = useMemo(() => {
+        const now = new Date();
+        return {
+            total: logs.length,
+            borrowed: logs.filter(l => l.status === 'borrowed').length,
+            returned: logs.filter(l => l.status === 'returned').length,
+            overdue: logs.filter(l => 
+                l.status === 'borrowed' && 
+                l.expected_return_date && 
+                new Date(l.expected_return_date) < now
+            ).length,
+            pending: logs.filter(l => l.status === 'pending').length,
+            staged: logs.filter(l => l.status === 'staged').length,
+            reserved: logs.filter(l => l.status === 'reserved').length,
+        };
+    }, [logs])
 
     const paginatedSessions = useMemo(() => {
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE

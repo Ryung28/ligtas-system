@@ -64,7 +64,7 @@ final analystMetricsProvider =
 
 typedef AnalystMetricsRef = AutoDisposeFutureProviderRef<AnalystMetrics>;
 String _$watchResourceAnomaliesHash() =>
-    r'458b5e8134fd68ea9cadaab56e3d3509353171cc';
+    r'bb7381b924f1369b5550f797b13cdc9bc9af85d8';
 
 /// See also [watchResourceAnomalies].
 @ProviderFor(watchResourceAnomalies)
@@ -81,7 +81,7 @@ final watchResourceAnomaliesProvider =
 
 typedef WatchResourceAnomaliesRef
     = AutoDisposeStreamProviderRef<List<ResourceAnomaly>>;
-String _$resourceAnomaliesHash() => r'5faf7ce3c277eea7af732d150ef26634cbba6452';
+String _$resourceAnomaliesHash() => r'a2d2b4d0ecb153521cb09e57bc79a54932ff3183';
 
 /// See also [resourceAnomalies].
 @ProviderFor(resourceAnomalies)
@@ -267,8 +267,167 @@ final analystRepositoryProvider =
 );
 
 typedef AnalystRepositoryRef = AutoDisposeProviderRef<IAnalystRepository>;
+String _$hubStockSnapshotHash() => r'20c3b7d3fb08d36d872142d55aaf4f050e72f2ab';
+
+/// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
+///
+/// Copied from [hubStockSnapshot].
+@ProviderFor(hubStockSnapshot)
+const hubStockSnapshotProvider = HubStockSnapshotFamily();
+
+/// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
+///
+/// Copied from [hubStockSnapshot].
+class HubStockSnapshotFamily extends Family<AsyncValue<Map<String, int>>> {
+  /// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
+  ///
+  /// Copied from [hubStockSnapshot].
+  const HubStockSnapshotFamily();
+
+  /// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
+  ///
+  /// Copied from [hubStockSnapshot].
+  HubStockSnapshotProvider call({
+    required int itemId,
+    required int warehouseId,
+  }) {
+    return HubStockSnapshotProvider(
+      itemId: itemId,
+      warehouseId: warehouseId,
+    );
+  }
+
+  @override
+  HubStockSnapshotProvider getProviderOverride(
+    covariant HubStockSnapshotProvider provider,
+  ) {
+    return call(
+      itemId: provider.itemId,
+      warehouseId: provider.warehouseId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'hubStockSnapshotProvider';
+}
+
+/// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
+///
+/// Copied from [hubStockSnapshot].
+class HubStockSnapshotProvider
+    extends AutoDisposeFutureProvider<Map<String, int>> {
+  /// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
+  ///
+  /// Copied from [hubStockSnapshot].
+  HubStockSnapshotProvider({
+    required int itemId,
+    required int warehouseId,
+  }) : this._internal(
+          (ref) => hubStockSnapshot(
+            ref as HubStockSnapshotRef,
+            itemId: itemId,
+            warehouseId: warehouseId,
+          ),
+          from: hubStockSnapshotProvider,
+          name: r'hubStockSnapshotProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$hubStockSnapshotHash,
+          dependencies: HubStockSnapshotFamily._dependencies,
+          allTransitiveDependencies:
+              HubStockSnapshotFamily._allTransitiveDependencies,
+          itemId: itemId,
+          warehouseId: warehouseId,
+        );
+
+  HubStockSnapshotProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.itemId,
+    required this.warehouseId,
+  }) : super.internal();
+
+  final int itemId;
+  final int warehouseId;
+
+  @override
+  Override overrideWith(
+    FutureOr<Map<String, int>> Function(HubStockSnapshotRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: HubStockSnapshotProvider._internal(
+        (ref) => create(ref as HubStockSnapshotRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        itemId: itemId,
+        warehouseId: warehouseId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<Map<String, int>> createElement() {
+    return _HubStockSnapshotProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HubStockSnapshotProvider &&
+        other.itemId == itemId &&
+        other.warehouseId == warehouseId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, itemId.hashCode);
+    hash = _SystemHash.combine(hash, warehouseId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin HubStockSnapshotRef on AutoDisposeFutureProviderRef<Map<String, int>> {
+  /// The parameter `itemId` of this provider.
+  int get itemId;
+
+  /// The parameter `warehouseId` of this provider.
+  int get warehouseId;
+}
+
+class _HubStockSnapshotProviderElement
+    extends AutoDisposeFutureProviderElement<Map<String, int>>
+    with HubStockSnapshotRef {
+  _HubStockSnapshotProviderElement(super.provider);
+
+  @override
+  int get itemId => (origin as HubStockSnapshotProvider).itemId;
+  @override
+  int get warehouseId => (origin as HubStockSnapshotProvider).warehouseId;
+}
+
 String _$analystDashboardControllerHash() =>
-    r'5191730fd7522c7deffcd173460a14b8258d1702';
+    r'9a06f90d046340a4b5d786b9a681c6739049cd4f';
 
 /// Master Controller: Aggregates all analyst dashboard data
 /// Updated for Sentinel Real-Time Logistical Reactivity

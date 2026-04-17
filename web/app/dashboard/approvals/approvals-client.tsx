@@ -71,7 +71,7 @@ export function ApprovalsClient({ initialRequests }: ApprovalsClientProps) {
         } else {
             setSelectedRequest(null)
         }
-    }, [currentView, displayRequests.length])
+    }, [displayRequests, selectedRequest?.id])
 
     const handleActionComplete = useCallback(() => {
         setSelectedRequest(null)

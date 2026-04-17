@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import { Check, ChevronsUpDown, Search, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -167,11 +168,11 @@ function ImageWithFallback({ src, alt, fallback }: { src?: string, alt: string, 
     }
 
     return (
-        <img
+        <Image
             src={src}
             alt={alt}
-            loading="lazy"
-            decoding="async"
+            fill
+            sizes="40px"
             className="h-full w-full object-cover transition-opacity duration-300 ease-in-out"
             onError={() => setError(true)}
         />

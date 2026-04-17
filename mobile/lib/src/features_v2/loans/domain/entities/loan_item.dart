@@ -1,6 +1,8 @@
+// ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'loan_item.freezed.dart';
+part 'loan_item.g.dart';
 
 enum LoanStatus {
   active,
@@ -46,11 +48,14 @@ class LoanItem with _$LoanItem {
     @JsonKey(name: 'return_condition') String? returnCondition,
     @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
     
+    @JsonKey(name: 'platform_origin') String? platformOrigin,
     @Default(0) int daysOverdue,
     @Default(0) int daysBorrowed,
     @Default(false) bool isPendingSync,
     String? imageUrl, // Field-Ready Visual Metadata
   }) = _LoanItem;
+
+  factory LoanItem.fromJson(Map<String, dynamic> json) => _$LoanItemFromJson(json);
 
   // Domain logic
   bool get isOverdue => status == LoanStatus.overdue || (actualReturnDate == null && DateTime.now().isAfter(expectedReturnDate));

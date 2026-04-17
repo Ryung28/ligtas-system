@@ -45,8 +45,9 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
     const [parentItems, setParentItems] = useState<any[]>([])
     const [isLoadingParents, setIsLoadingParents] = useState(false)
     const [itemNameValue, setItemNameValue] = useState<string>(existingItem?.item_name || '')
-    const [targetStock, setTargetStock] = useState<number | string>(existingItem?.target_stock || 0)
-    const [lowStockThreshold, setLowStockThreshold] = useState<number | string>(existingItem?.low_stock_threshold || 20)
+    const [targetStock, setTargetStock] = useState<number | string>(existingItem?.target_stock ?? 0)
+    const [lowStockThreshold, setLowStockThreshold] = useState<number | string>(existingItem?.low_stock_threshold ?? 20)
+    const [restockAlertEnabled, setRestockAlertEnabled] = useState<boolean>(existingItem?.restock_alert_enabled ?? true)
     
     // 🏛️ STATE-BASED ALLOCATION: Distribution across multiple sites
     const [siteDistributions, setSiteDistributions] = useState<any[]>([])
@@ -131,8 +132,9 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
 
         if (existingItem) {
             setItemNameValue(existingItem.item_name || '')
-            setTargetStock(existingItem.target_stock || 0)
-            setLowStockThreshold(existingItem.low_stock_threshold || 20)
+            setTargetStock(existingItem.target_stock ?? 0)
+            setLowStockThreshold(existingItem.low_stock_threshold ?? 20)
+            setRestockAlertEnabled(existingItem.restock_alert_enabled ?? true)
             setCategoryId(existingItem.category || '')
             setItemType((existingItem as any).item_type || 'equipment')
             
@@ -197,6 +199,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
             setItemNameValue('')
             setTargetStock(0)
             setLowStockThreshold(20)
+            setRestockAlertEnabled(true)
             setItemType('equipment')
             setStorageLocation('lower_warehouse')
             setSiteDistributions([{
@@ -311,6 +314,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         formData.set('qty_lost', qtyLost.toString())
         formData.set('target_stock', targetStock.toString())
         formData.set('low_stock_threshold', lowStockThreshold.toString())
+        formData.set('restock_alert_enabled', String(restockAlertEnabled))
         formData.set('stock_total', stockTotalValue.toString())
         formData.set('stock_available', qtyGood.toString())
 
@@ -489,6 +493,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         stockTotalValue,
         targetStock,
         lowStockThreshold,
+        restockAlertEnabled,
         
         // Refs
         fileInputRef,
@@ -513,6 +518,7 @@ export function useInventoryForm({ existingItem, isOpen, onClose, onSuccess }: U
         setItemNameValue,
         setTargetStock,
         setLowStockThreshold,
+        setRestockAlertEnabled,
 
         // Site Allocation
         siteDistributions,

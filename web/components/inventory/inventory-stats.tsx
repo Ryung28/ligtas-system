@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
+import { isLowStock } from '@/lib/inventory-utils'
 import { Package, Layers, AlertTriangle, XCircle, Warehouse } from 'lucide-react'
 
 interface InventoryStatsProps {
@@ -14,10 +15,10 @@ export function InventoryStats({ items, onLocationFilter, activeLocation }: Inve
     const stats = useMemo(() => {
         const totalItems = items.length
         // Use aggregate values for city-wide health stats
-        const lowStockItems = items.filter(item => {
-            const available = item.aggregate_available ?? item.stock_available
-            return available > 0 && available < (item.low_stock_threshold || 5)
-        }).length
+        const lowStockItems = items.filter(item => isLowStock({
+            ...item,
+            stock_available: item.aggregate_available ?? item.stock_available
+        })).length
         
         const outOfStockItems = items.filter(item => {
             const available = item.aggregate_available ?? item.stock_available

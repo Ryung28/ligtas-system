@@ -21,9 +21,11 @@ export const addItemSchema = z.object({
     storage_location: z.string().optional().nullable(),
     location_id: z.coerce.number().optional().nullable(),
     brand: z.string().optional().nullable(),
+    model_number: z.string().optional().nullable(),
     expiry_date: z.string().optional().nullable(),
     parent_id: z.coerce.number().optional().nullable(),
     variant_label: z.string().optional().nullable(),
+    target_stock: z.coerce.number().min(0).default(0),
     low_stock_threshold: z.coerce.number().min(0).max(100).default(20),
     // Enterprise Status Buckets
     qty_good: z.coerce.number().min(0).default(0),

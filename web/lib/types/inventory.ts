@@ -24,6 +24,9 @@ export interface BorrowLog {
     return_condition?: string | null;
     return_notes?: string | null;
     pickup_scheduled_at?: string | null;
+    platform_origin?: 'Web' | 'Mobile';
+    created_origin?: 'Web' | 'Mobile' | null;
+    last_updated_origin?: 'Web' | 'Mobile' | null;
     created_at: string;
 }
 
@@ -38,6 +41,9 @@ export interface BorrowSession {
     approved_by_name?: string | null;
     released_by_name?: string | null;
     pickup_scheduled_at?: string | null;
+    platform_origin?: 'Web' | 'Mobile';
+    created_origin?: 'Web' | 'Mobile' | null;
+    last_updated_origin?: 'Web' | 'Mobile' | null;
     created_at: string;
 }
 

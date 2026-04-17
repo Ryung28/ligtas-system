@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:isar/isar.dart';
 import '../../../../core/local_storage/isar_service.dart';
 import '../../../../features/inventory/models/inventory_model.dart'; // Reuse for Collection Schema
@@ -6,6 +8,40 @@ import '../../domain/entities/inventory_item.dart';
 class InventoryLocalDataSource {
   /// 🛡️ THE VAULT: Access through late-initialized Isar instance
   Isar get _isar => IsarService.instance;
+
+  static String? _encodeVariantsForIsar(List<InventoryVariant> variants) {
+    if (variants.isEmpty) return null;
+    return jsonEncode(
+      variants
+          .map(
+            (e) => <String, dynamic>{
+              'id': e.id,
+              'location': e.location,
+              'location_registry_id': e.locationRegistryId,
+              'stock_available': e.stockAvailable,
+              'stock_total': e.stockTotal,
+              'status': e.status,
+              'qty_good': e.qtyGood,
+              'qty_damaged': e.qtyDamaged,
+              'qty_maintenance': e.qtyMaintenance,
+              'qty_lost': e.qtyLost,
+            },
+          )
+          .toList(),
+    );
+  }
+
+  static List<InventoryVariant> _decodeVariantsFromIsar(String? raw) {
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => inventoryVariantFromJsonMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
 
   /// Watch the inventory for real-time UI updates even while offline
   Stream<List<InventoryItem>> watchItems() {
@@ -112,14 +148,19 @@ class InventoryLocalDataSource {
       status: col.status,
       code: col.code ?? '',
       minStockLevel: col.minStockLevel ?? 10,
+      targetStock: col.targetStock ?? 0,
       unit: col.unit ?? 'pcs',
       lastUpdated: col.updatedAt,
       imageUrl: col.imageUrl,
-      
+      restockAlertEnabled: col.restockAlertEnabled,
+      qtyGood: col.qtyGood,
+      qtyDamaged: col.qtyDamaged,
+      qtyMaintenance: col.qtyMaintenance,
+      qtyLost: col.qtyLost,
       // Multi-location fields
       aggregateTotal: col.aggregateTotal ?? 0,
       aggregateAvailable: col.aggregateAvailable ?? 0,
-      variants: [], // Don't cache variants offline for now
+      variants: _decodeVariantsFromIsar(col.variantsJson),
     );
   }
 
@@ -136,10 +177,17 @@ class InventoryLocalDataSource {
       ..status = item.status
       ..code = item.code
       ..minStockLevel = item.minStockLevel
+      ..targetStock = item.targetStock
       ..unit = item.unit
       ..imageUrl = item.imageUrl
       ..updatedAt = item.lastUpdated
+      ..restockAlertEnabled = item.restockAlertEnabled
       ..aggregateTotal = item.aggregateTotal
-      ..aggregateAvailable = item.aggregateAvailable;
+      ..aggregateAvailable = item.aggregateAvailable
+      ..qtyGood = item.qtyGood
+      ..qtyDamaged = item.qtyDamaged
+      ..qtyMaintenance = item.qtyMaintenance
+      ..qtyLost = item.qtyLost
+      ..variantsJson = _encodeVariantsForIsar(item.variants);
   }
 }

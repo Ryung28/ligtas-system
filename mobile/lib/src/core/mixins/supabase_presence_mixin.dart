@@ -21,7 +21,7 @@ mixin SupabasePresenceMixin {
               if (controller != null && !controller.isClosed) {
                 final state = channel!.presenceState();
                 
-                final List<String> userIds = (state as List<SinglePresenceState>).expand((SinglePresenceState sps) {
+                final List<String> userIds = (state).expand((SinglePresenceState sps) {
                   return sps.presences;
                 }).map((Presence p) {
                   return p.payload['user_id'] as String?;

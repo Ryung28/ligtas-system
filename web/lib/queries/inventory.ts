@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isLowStock } from '@/lib/inventory-utils'
 
 /**
  * Centralized inventory queries
@@ -52,12 +53,7 @@ export async function getInventoryStats() {
     return {
         totalItems: inventory.length,
         totalStock: inventory.reduce((sum, item) => sum + (item.stock_available || 0), 0),
-        lowStockCount: inventory.filter(item => {
-            const available = item.stock_available || 0
-            const total = item.stock_total || 1
-            const threshold = total * 0.5
-            return available > 0 && available < threshold
-        }).length,
+        lowStockCount: inventory.filter(item => isLowStock(item)).length,
         outOfStockCount: inventory.filter(item => (item.stock_available || 0) === 0).length,
         damagedCount: inventory.filter(item =>
             ['Maintenance', 'Damaged', 'Lost'].includes(item.status || '')

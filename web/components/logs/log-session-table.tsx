@@ -21,7 +21,9 @@ import {
     Maximize2,
     ShieldCheck,
     Clock,
-    Calendar
+    Calendar,
+    Monitor,
+    Smartphone
 } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -32,12 +34,7 @@ import { ReturnCommandSheet } from '@/src/features/transactions/v2/return-comman
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { bulkReturnItems, revertReturnItem, releaseReservedItem } from '@/src/features/transactions'
-import { 
-    Dialog as ShadinDialog, 
-    DialogContent as ShadinDialogContent, 
-    DialogHeader as ShadinDialogHeader, 
-    DialogTitle as ShadinDialogTitle 
-} from '@/components/ui/dialog'
+import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
 import { toast } from 'sonner'
 
 interface LogSessionTableProps {
@@ -164,6 +161,17 @@ export function LogSessionTable({
         })
     }
 
+    const formatDateTime = (dateString: string | null) => {
+        if (!dateString) return 'N/A'
+        return new Date(dateString).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+        })
+    }
+
     return (
         <Card className="bg-white/95 backdrop-blur-xl border border-zinc-200/60 rounded-2xl overflow-hidden flex flex-col shadow-[0_8px_40px_rgb(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.8)]">
             <CardHeader className="border-b border-zinc-100/80 p-3 14in:p-4 bg-white/50">
@@ -244,8 +252,9 @@ export function LogSessionTable({
                                         session={session}
                                         isExpanded={expandedSessions.has(session.key)}
                                         onToggleExpand={() => toggleSessionExpansion(session.key)}
-                                        onImageClick={(url, name) => setExpandedImage({ url, name })}
+                                        onImageClick={(url: string, name: string) => setExpandedImage({ url, name })}
                                         formatDate={formatDate}
+                                        formatDateTime={formatDateTime}
                                         getUrgencyColor={getUrgencyColor}
                                         getStatusBadge={getStatusBadge}
                                         isHighlighted={highlightedName === session.borrower_name}
@@ -336,27 +345,10 @@ export function LogSessionTable({
                     </div>
                 </div>
             )}
-            {/* ── Image Preview Dialog ── */}
-            <ShadinDialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
-                <ShadinDialogContent className="max-w-3xl border-none bg-black/95 p-0 overflow-hidden rounded-2xl shadow-2xl [&>button]:text-white [&>button]:opacity-100">
-                    <ShadinDialogHeader className="absolute top-4 left-4 z-50 pointer-events-none">
-                        <ShadinDialogTitle className="text-white text-[10px] font-black uppercase tracking-widest bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                            {expandedImage?.name}
-                        </ShadinDialogTitle>
-                    </ShadinDialogHeader>
-                    <div className="relative w-full aspect-square md:aspect-video flex items-center justify-center p-8">
-                        {expandedImage && (
-                            <Image
-                                src={expandedImage.url}
-                                alt={expandedImage.name}
-                                fill
-                                unoptimized
-                                className="object-contain rounded-lg animate-in zoom-in-95 duration-300"
-                            />
-                        )}
-                    </div>
-                </ShadinDialogContent>
-            </ShadinDialog>
+            <InventoryImagePreviewDialog
+                image={expandedImage}
+                onOpenChange={(open) => !open && setExpandedImage(null)}
+            />
         </Card>
     )
 }
@@ -367,6 +359,7 @@ function LogSessionRow({
     onToggleExpand,
     onImageClick,
     formatDate,
+    formatDateTime,
     getUrgencyColor,
     getStatusBadge,
     isHighlighted,
@@ -382,6 +375,7 @@ function LogSessionRow({
     const hasReturnable = returnableItems.length > 0
     const allItemsSelected = hasReturnable && returnableItems.every((i: any) => selectedLogIds.has(i.id))
     const someItemsSelected = hasReturnable && returnableItems.some((i: any) => selectedLogIds.has(i.id)) && !allItemsSelected
+    const selectedSessionItems = session.items.filter((i: any) => selectedLogIds.has(i.id) && i.status !== 'returned')
 
     return (
         <React.Fragment>
@@ -418,7 +412,14 @@ function LogSessionRow({
                     <div className="flex items-center gap-1.5">
                         <InitialsAvatar name={session.borrower_name} size={7} />
                         <div className="flex flex-col min-w-0">
-                            <span className="text-[13px] font-bold text-gray-900 truncate tracking-tight leading-none mb-0.5">{session.borrower_name}</span>
+                            <div className="flex items-center gap-1">
+                                <span className="text-[13px] font-bold text-gray-900 truncate tracking-tight leading-none mb-0.5">{session.borrower_name}</span>
+                                {(session.created_origin ?? session.platform_origin) === 'Web' ? (
+                                    <Monitor className="h-2.5 w-2.5 text-blue-400" />
+                                ) : (session.created_origin ?? session.platform_origin) === 'Mobile' ? (
+                                    <Smartphone className="h-2.5 w-2.5 text-orange-400" />
+                                ) : null}
+                            </div>
                             <span className="text-[10px] text-gray-400 truncate leading-none uppercase font-bold">{session.borrower_organization}</span>
                         </div>
                     </div>
@@ -474,6 +475,9 @@ function LogSessionRow({
                                 <span className="text-[12px] font-bold text-emerald-900 tracking-tight leading-none">
                                     {lastReturnDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </span>
+                                <span className="text-[10px] font-bold text-emerald-500 uppercase leading-none mt-0.5">
+                                    {lastReturnDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </span>
                             </div>
                         );
                     })() : (
@@ -482,7 +486,12 @@ function LogSessionRow({
                 </TableCell>
                 <TableCell className="pl-1.5 pr-4 14in:pr-6 py-1.5 text-right">
                     <div className="flex justify-end">
-                        {getStatusBadge(session.status)}
+                        {(() => {
+                            const isLiveOverdue = session.status === 'borrowed' && session.items.some((item: any) => 
+                                item.expected_return_date && new Date(item.expected_return_date) < new Date()
+                            );
+                            return getStatusBadge(isLiveOverdue ? 'overdue' : session.status);
+                        })()}
                     </div>
                 </TableCell>
             </TableRow>
@@ -492,10 +501,10 @@ function LogSessionRow({
                     <TableRow className="bg-slate-50/10 hover:bg-slate-50/10 border-none overflow-hidden">
                         <TableCell colSpan={9} className="p-0 border-b border-zinc-100 overflow-hidden">
                             <motion.div 
-                                initial={{ height: 0, opacity: 0, scaleY: 0.95 }}
-                                animate={{ height: 'auto', opacity: 1, scaleY: 1 }}
-                                exit={{ height: 0, opacity: 0, scaleY: 0.95 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }} // smooth circOut easing
                                 className="overflow-hidden"
                             >
                                 <div className="px-6 py-5 flex gap-8">
@@ -508,7 +517,14 @@ function LogSessionRow({
                                                 <div className="flex items-center gap-3">
                                                     <InitialsAvatar name={session.borrower_name} size={10} />
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-black text-slate-900 leading-tight truncate">{session.borrower_name}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-sm font-black text-slate-900 leading-tight truncate">{session.borrower_name}</p>
+                                            {(session.created_origin ?? session.platform_origin) === 'Web' ? (
+                                                <Monitor className="h-2.5 w-2.5 text-blue-400" />
+                                            ) : (session.created_origin ?? session.platform_origin) === 'Mobile' ? (
+                                                <Smartphone className="h-2.5 w-2.5 text-orange-400" />
+                                            ) : null}
+                                                        </div>
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">{session.borrower_organization || 'External Member'}</p>
                                                     </div>
                                                 </div>
@@ -560,7 +576,9 @@ function LogSessionRow({
 
                                     {/* Main Content: Equipment List */}
                                     <div className="flex-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Equipment List ({session.items.length})</p>
+                                        <div className="mb-3 flex items-center justify-between gap-3">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Equipment List ({session.items.length})</p>
+                                        </div>
                                         <div className="space-y-3">
                                             {session.items.map((item: BorrowLog) => {
                                                 const isReturned = item.status === 'returned'
@@ -571,14 +589,29 @@ function LogSessionRow({
                                                     <div 
                                                         key={item.id} 
                                                         className={cn(
-                                                            "bg-white rounded-2xl border p-4 flex items-center gap-5 transition-all shadow-sm",
-                                                            selectedLogIds.has(item.id) ? "border-blue-200 bg-blue-50/20" : "border-slate-100"
+                                                            "relative overflow-hidden bg-white rounded-2xl border p-4 flex items-center gap-5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] shadow-sm",
+                                                            selectedLogIds.has(item.id)
+                                                                ? "border-slate-300 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] -translate-y-[2px] scale-[1.004] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-slate-700/80"
+                                                                : "border-slate-100"
                                                         )}
                                                     >
+                                                        {/* Explicit per-item selector (expanded view) */}
+                                                        {!isReturned ? (
+                                                            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                <Checkbox
+                                                                    checked={selectedLogIds.has(item.id)}
+                                                                    onCheckedChange={() => toggleLogId(item.id)}
+                                                                    className="h-4 w-4 border-zinc-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-4 h-4 shrink-0" />
+                                                        )}
+
                                                         {/* Item Image with Preview */}
                                                         <div 
                                                             onClick={(e) => { e.stopPropagation(); if (imageUrl) onImageClick(imageUrl, item.item_name); }}
-                                                            className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 relative group cursor-pointer hover:border-blue-300 transition-all"
+                                                            className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 relative group cursor-pointer hover:border-blue-300 transition-all flex items-center justify-center"
                                                         >
                                                             {imageUrl ? (
                                                                 <>
@@ -599,7 +632,7 @@ function LogSessionRow({
                                                                 <div className={cn(
                                                                     "text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-tighter border",
                                                                     isReturned ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                                                                    isOverdue ? "bg-rose-50 text-rose-600 border-rose-100 animate-pulse" :
+                                                                    isOverdue ? "bg-rose-50 text-rose-600 border-rose-100" :
                                                                     "bg-blue-50 text-blue-600 border-blue-100"
                                                                 )}>
                                                                     {isReturned ? 'Returned' : 'Borrowed'}
@@ -616,7 +649,7 @@ function LogSessionRow({
                                                                         "text-[11px] font-bold",
                                                                         isOverdue ? "text-rose-600" : "text-slate-500"
                                                                     )}>
-                                                                        {isReturned ? `Returned: ${formatDate(item.actual_return_date)}` : `Due: ${formatDate(item.expected_return_date)}`}
+                                                                        {isReturned ? `Returned: ${formatDateTime(item.actual_return_date)}` : `Due: ${formatDate(item.expected_return_date)}`}
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -640,7 +673,7 @@ function LogSessionRow({
                                                                     }}
                                                                     disabled={isPending}
                                                                     className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600"
-                                                                >
+                                                                 >
                                                                     {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                                                                 </Button>
                                                             ) : (item.status === 'reserved' || item.status === 'staged') ? (
@@ -673,6 +706,26 @@ function LogSessionRow({
                                                 )
                                             })}
                                         </div>
+
+                                        {selectedSessionItems.length > 0 && (
+                                            <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 flex items-center justify-between shadow-[0_4px_14px_rgba(15,23,42,0.06)]">
+                                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                                    Selected: {selectedSessionItems.length} item{selectedSessionItems.length > 1 ? 's' : ''}
+                                                </span>
+                                                <ReturnCommandSheet
+                                                    borrowerName={session.borrower_name}
+                                                    items={selectedSessionItems.map((item: any) => ({
+                                                        logId: item.id,
+                                                        itemName: item.item_name,
+                                                        quantity: item.quantity,
+                                                        inventoryId: item.inventory_id,
+                                                        imageUrl: getInventoryImageUrl((item as any).inventory?.image_url),
+                                                    }))}
+                                                    triggerLabel={`Return Selected (${selectedSessionItems.length})`}
+                                                    triggerClassName="h-8 bg-slate-900 text-white hover:bg-black hover:text-white border-slate-900"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </motion.div>

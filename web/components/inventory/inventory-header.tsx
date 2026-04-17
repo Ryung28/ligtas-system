@@ -7,7 +7,7 @@ import { BulkAddDialog } from './bulk-add-dialog'
 import { InventoryPrintCatalog } from './inventory-print-catalog'
 import { LocationManagerDialog } from './location-manager-dialog'
 import { InventoryItem } from '@/lib/supabase'
-import { SelectionToolbar } from './selection-toolbar'
+import { isLowStock } from '@/lib/inventory-utils'
 import { DispatchCommandSheet } from '@/src/features/transactions/v2/dispatch-command-sheet'
 
 interface InventoryHeaderProps {
@@ -25,14 +25,7 @@ interface InventoryHeaderProps {
 export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode, onAddItem }: InventoryHeaderProps) {
     const stats = useMemo(() => {
         const totalItems = items.length
-        const lowStockItems = items.filter(item => {
-            const hasStock = item.stock_available > 0
-            const anchor = item.target_stock || item.stock_total || 0
-            const threshold = item.low_stock_threshold || 20
-            const dangerLine = anchor * (threshold / 100)
-            
-            return hasStock && item.stock_available <= dangerLine
-        }).length
+        const lowStockItems = items.filter(item => isLowStock(item)).length
         const outOfStockItems = items.filter(item => item.stock_available === 0).length
         const totalStock = items.reduce((sum, item) => sum + item.stock_available, 0)
         return { totalItems, lowStockItems, outOfStockItems, totalStock }

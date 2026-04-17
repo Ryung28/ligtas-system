@@ -86,7 +86,7 @@ export function BorrowerDossier({ borrower, onRefresh }: BorrowerDossierProps) {
         } finally {
             setLoading(false)
         }
-    }, [borrower?.borrower_user_id, borrower?.borrower_name])
+    }, [borrower])
 
     useEffect(() => {
         if (borrower) loadHistory()

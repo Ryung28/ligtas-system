@@ -1,4 +1,3 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -162,6 +161,7 @@ class UserNotificationService {
       _realtimeSubscription = _supabase
           .from('system_notifications')
           .stream(primaryKey: ['id'])
+          .eq('user_id', _supabase.auth.currentUser?.id ?? '')
           .order('created_at', ascending: false)
           .limit(1)
           .listen((data) {
@@ -336,11 +336,6 @@ class UserNotificationService {
     final title = notification?.title ?? data['title'] ?? data['sender_name'] ?? 'LIGTAS Alert';
     final body = notification?.body ?? data['body'] ?? data['message'] ?? 'Check your dashboard for updates.';
     
-    final senderName = data['sender_name'] ?? 'LIGTAS Operator';
-    
-    // 3. Determine Messaging Style
-    final isChat = data['type'] == 'CHAT' || roomId != null;
-
     // 🛡️ DETERMINISTIC ID: Calculate a stable ID based on RoomID
     // This forces Android to overwrite old notifications for the same room.
     final int notificationId = roomId?.hashCode ?? message.hashCode;
@@ -401,6 +396,7 @@ class UserNotificationService {
   /// Prevents memory leaks and dangling subscriptions
   void dispose() {
     _messagingSubscription?.cancel();
+    _realtimeSubscription?.cancel();
     _lifecycleListener?.dispose();
     debugPrint('📡 [ENTERPRISE-DISPATCHER]: 💀 System Offline: Pipeline disassembled.');
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/src/features_v2/loans/presentation/providers/loan_provider.dart';
 import 'package:mobile/src/core/design_system/widgets/tactical_forensic_detail_sheet.dart';
+import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
 import '../../domain/entities/loan_item.dart';
 import '../../../../core/design_system/app_theme.dart';
 import 'package:gap/gap.dart';
@@ -12,10 +13,31 @@ class LoanDetailsSheet extends ConsumerWidget {
   final bool readOnly;
 
   const LoanDetailsSheet({
-    super.key, 
+    super.key,
     required this.loan,
     this.readOnly = true, 
   });
+
+  /// 🛡️ PROTECTED INVOCATION: Orchestrates dock suppression for loan forensics.
+  static Future<T?> show<T>({
+    required BuildContext context,
+    required WidgetRef ref,
+    required LoanItem loan,
+    bool readOnly = true,
+  }) async {
+    ref.read(isDockSuppressedProvider.notifier).state = true;
+    
+    final result = await showModalBottomSheet<T>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LoanDetailsSheet(loan: loan, readOnly: readOnly),
+    );
+
+    ref.read(isDockSuppressedProvider.notifier).state = false;
+    return result;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,11 +74,11 @@ class LoanDetailsSheet extends ConsumerWidget {
           value: _formatDate(loan.expectedReturnDate),
         ),
       ],
-      actionHub: _buildActionHub(context, ref, isPending, isApproved),
+      actionHub: _buildActionHub(context, ref, isPending, isApproved, loan.status == LoanStatus.staged),
     );
   }
 
-  Widget _buildActionHub(BuildContext context, WidgetRef ref, bool isPending, bool isApproved) {
+  Widget _buildActionHub(BuildContext context, WidgetRef ref, bool isPending, bool isApproved, bool isStaged) {
     if (!readOnly && isPending) {
       return Row(
         children: [
@@ -89,6 +111,24 @@ class LoanDetailsSheet extends ConsumerWidget {
             ),
           ),
         ],
+      );
+    } else if (!readOnly && isStaged) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            await ref.read(managerLoansNotifierProvider.notifier).releaseReservation(int.parse(loan.id));
+            if (context.mounted) Navigator.pop(context);
+          },
+          icon: const Icon(Icons.handshake_rounded),
+          label: const Text('RELEASE TO PERSONNEL', style: TextStyle(fontWeight: FontWeight.w700)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
       );
     } else if (!readOnly && isApproved) {
       return SizedBox(
@@ -179,7 +219,7 @@ class LoanDetailsSheet extends ConsumerWidget {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('MMMM dd, yyyy').format(date).toUpperCase();
+    return DateFormat('MMMM dd, yyyy, hh:mm a').format(date).toUpperCase();
   }
 }
 

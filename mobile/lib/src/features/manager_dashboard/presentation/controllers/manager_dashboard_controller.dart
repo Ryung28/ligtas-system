@@ -16,7 +16,7 @@ class ManagerDashboardController extends _$ManagerDashboardController {
     // Parallel fetch for speed & performance (The LIGTAS Standard)
     final results = await Future.wait([
       repository.getMetrics(),
-      repository.getAnomalies(limit: 10),
+      repository.getAnomalies(limit: 200),
       repository.getActivityStream(limit: 50),
     ]);
 

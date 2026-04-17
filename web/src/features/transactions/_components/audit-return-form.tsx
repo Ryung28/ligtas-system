@@ -49,7 +49,7 @@ export function AuditReturnForm({ defaultValues, onChange }: AuditReturnFormProp
     const valuesString = JSON.stringify(values);
 
     React.useEffect(() => {
-        onChange(values, isValid);
+        onChange(JSON.parse(valuesString) as ReturnAuditFormValues, isValid);
     }, [valuesString, isValid, onChange]);
 
     return (

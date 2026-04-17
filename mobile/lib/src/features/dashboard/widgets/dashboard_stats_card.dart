@@ -36,9 +36,9 @@ class DashboardStatsCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 'Overview',
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.lexend(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.neutralGray900,
                   letterSpacing: 0.2,
                 ),
@@ -132,7 +132,7 @@ class _StatTile extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 value,
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: color,
@@ -142,9 +142,9 @@ class _StatTile extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.lexend(
                   fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: AppTheme.neutralGray600,
                 ),
                 maxLines: 1,

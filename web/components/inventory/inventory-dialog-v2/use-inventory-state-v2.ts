@@ -19,15 +19,12 @@ export function useInventoryStateV2(initialItem?: any) {
     const [brand, setBrand] = useState(initialItem?.brand || '')
     const [expiryDate, setExpiryDate] = useState(initialItem?.expiry_date ? new Date(initialItem.expiry_date).toISOString().split('T')[0] : '')
 
-    // 3. Variation State (Size, Color, etc.)
-    const [isSpecial, setIsSpecial] = useState(!!initialItem?.parent_id)
-    const [parentId, setParentId] = useState<string>(initialItem?.parent_id?.toString() || 'new')
-    const [variantLabel, setVariantLabel] = useState<string>(initialItem?.variant_label || 'size')
-    const [customVariant, setCustomVariant] = useState(initialItem?.variant_label || '')
+    // Variation State has been permanently REMOVED to maintain flat-hierarchy parity with Mobile Tactical Terminal.
 
     // 4. Planning Thresholds
-    const [targetStock, setTargetStock] = useState<number | string>(initialItem?.target_stock || 0)
-    const [lowStockThreshold, setLowStockThreshold] = useState<number | string>(initialItem?.low_stock_threshold || 20)
+    const [targetStock, setTargetStock] = useState<number | string>(initialItem?.target_stock ?? 0)
+    const [lowStockThreshold, setLowStockThreshold] = useState<number | string>(initialItem?.low_stock_threshold ?? 20)
+    const [restockAlertEnabled, setRestockAlertEnabled] = useState<boolean>(initialItem?.restock_alert_enabled ?? true)
 
     // 5. Logistics Distribution Matrix
     const [distributions, setDistributions] = useState<any[]>(() => {
@@ -91,8 +88,8 @@ export function useInventoryStateV2(initialItem?: any) {
         name, setName, categoryId, setCategoryId, description, setDescription, itemType, setItemType,
         serialNumber, setSerialNumber, modelNumber, setModelNumber,
         brand, setBrand, expiryDate, setExpiryDate,
-        isSpecial, setIsSpecial, parentId, setParentId, variantLabel, setVariantLabel, customVariant, setCustomVariant,
         targetStock, setTargetStock, lowStockThreshold, setLowStockThreshold,
+        restockAlertEnabled, setRestockAlertEnabled,
         distributions, updateSiteQty, totals,
         addDistribution, removeDistribution
     }

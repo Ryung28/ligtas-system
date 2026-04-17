@@ -18,7 +18,21 @@ RETURNS TABLE (
     created_at TIMESTAMPTZ,
     is_read BOOLEAN
 ) AS $$
+DECLARE
+    v_role TEXT;
+    v_audience TEXT;
 BEGIN
+    SELECT up.role
+    INTO v_role
+    FROM public.user_profiles up
+    WHERE up.id = auth.uid();
+
+    v_audience := CASE
+        WHEN COALESCE(LOWER(v_role), 'viewer') IN ('admin', 'editor', 'manager', 'inventory_manager', 'inventory manager')
+            THEN 'manager'
+        ELSE 'user'
+    END;
+
     RETURN QUERY
     SELECT 
         sn.id,
@@ -34,8 +48,13 @@ BEGIN
     -- 🛡️ TACTICAL SILO: Left join only on the CURRENT user's read receipts
     LEFT JOIN public.notification_reads nr 
         ON sn.id = nr.notification_id AND nr.user_id = auth.uid()
-    -- 🛡️ BROADCAST RECOVERY: Include direct targets OR system-wide nulls
-    WHERE sn.user_id = auth.uid() OR sn.user_id IS NULL
+    -- 🛡️ ROLE-AWARE BROADCAST: users only see their lane
+    WHERE
+        sn.user_id = auth.uid()
+        OR (
+            sn.user_id IS NULL
+            AND COALESCE(sn.metadata->>'audience_role', 'manager') IN ('all', v_audience)
+        )
     ORDER BY sn.created_at DESC
     LIMIT p_limit;
 END;

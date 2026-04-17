@@ -1,6 +1,8 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:mobile/src/features/analyst_dashboard/domain/entities/activity_event.dart';
 import 'analyst_dashboard_controller.dart';
+import '../widgets/models/activity_session.dart';
 import '../../../auth/providers/auth_provider.dart';
 
 part 'activity_ledger_controller.g.dart';
@@ -78,3 +80,14 @@ Future<List<ActivityEvent>> itemForensics(ItemForensicsRef ref, String itemId) a
   );
   return events;
 }
+
+// 🛡️ MANUAL OVERRIDE: Using standard syntax to bypass build_runner generation lag.
+final groupedActivityHistoryProvider = Provider.autoDispose<AsyncValue<Map<String, List<ActivitySession>>>>((ref) {
+  final ledgerState = ref.watch(activityLedgerProvider);
+  
+  return ledgerState.whenData((logs) {
+    // 🛡️ Optimized Transformation: No cap for the full history view.
+    final sessions = buildActivitySessions(logs, cap: null);
+    return groupSessionsByDate(sessions);
+  });
+});

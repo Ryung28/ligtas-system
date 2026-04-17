@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 import { useMemo, useEffect } from 'react'
 import { supabase, type InventoryItem } from '@/lib/supabase'
+import { isLowStock } from '@/lib/inventory-utils'
 
 import { getInventory } from '@/lib/queries/inventory'
 
@@ -49,12 +50,7 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
 
     const totalItems = inventoryItems?.length || 0
     const totalStock = inventoryItems?.reduce((sum, item) => sum + (item.stock_available || 0), 0) || 0
-    const lowStockCount = inventoryItems?.filter(item => {
-        const available = item.stock_available || 0
-        const total = (item as any).stock_total || 1
-        const threshold = total * 0.5
-        return available > 0 && available < threshold
-    }).length || 0
+    const lowStockCount = inventoryItems?.filter(item => isLowStock(item)).length || 0
     const outOfStockCount = inventoryItems?.filter(item => (item.stock_available || 0) === 0).length || 0
     const damagedCount = inventoryItems?.filter(item =>
         ['Maintenance', 'Damaged', 'Lost'].includes(item.status || '')

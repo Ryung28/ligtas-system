@@ -10,8 +10,9 @@ import '../../../../core/design_system/widgets/atmospheric_background.dart';
 import '../../../dashboard/widgets/dashboard_background.dart';
 import '../../domain/entities/activity_event.dart';
 import '../_components/audit_vault_components.dart';
+import '../_components/session_card.dart';
 import '../controllers/activity_ledger_controller.dart';
-import '../widgets/activity_event_tile.dart';
+import '../widgets/models/activity_session.dart';
 import 'package:flutter_inset_shadow/flutter_inset_shadow.dart' as inset;
 import 'package:flutter/services.dart';
 
@@ -43,15 +44,6 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       ref.read(activityLedgerProvider.notifier).loadMore();
     }
-  }
-
-  bool _isNewDay(List<ActivityEvent> events, int index) {
-    if (index == 0) return true;
-    final current = events[index].timestamp;
-    final previous = events[index - 1].timestamp;
-    return current.year != previous.year || 
-           current.month != previous.month || 
-           current.day != previous.day;
   }
 
   @override
@@ -88,7 +80,7 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
                     ),
                   ),
                   title: Text(
-                    'SYSTEM AUDIT LEDGER',
+                    'ACTIVITY HISTORY',
                     style: GoogleFonts.lexend(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
@@ -127,7 +119,7 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
                               controller: _searchController,
                               onChanged: (val) => ref.read(activityLedgerProvider.notifier).search(val),
                               decoration: InputDecoration(
-                                hintText: 'Search audit trail...',
+                                hintText: 'Search activity...',
                                 hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8), fontSize: 14),
                                 border: InputBorder.none,
                               ),
@@ -160,7 +152,7 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                       child: Row(
-                        children: [
+                         children: [
                           _FilterChip(
                             label: 'All Activity',
                             value: 'all',
@@ -213,149 +205,114 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
                 const SliverGap(12),
 
                 // ── 3. DATA VIRTUALIZATION ENGINE ──
-                ledgerState.when(
-                  data: (logs) => SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          if (index == logs.length) {
-                             return const Padding(
-                               padding: EdgeInsets.symmetric(vertical: 20),
-                               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                             );
-                          }
-                          final event = logs[index];
-                          final showHeader = _isNewDay(logs, index);
+                ref.watch(groupedActivityHistoryProvider).when(
+                  data: (grouped) {
+                    if (grouped.isEmpty) {
+                      return SliverFillRemaining(
+                        child: Center(
+                          child: Text(
+                            'No activity found',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: AppTheme.neutralGray400,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
 
-                          return Stack(
-                            children: [
-                              // ── VERTICAL TIMELINE THREAD ──
-                              Positioned(
-                                left: 24,
-                                top: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 2,
-                                  color: const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              
-                              Column(
+                    final entries = grouped.entries.toList();
+                    final isLoading = ref.watch(activityLedgerProvider).isLoading;
+
+                    return SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, dateIndex) {
+                            if (dateIndex == entries.length) {
+                               return isLoading 
+                                 ? const Padding(
+                                     padding: EdgeInsets.symmetric(vertical: 20),
+                                     child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                   )
+                                 : const SizedBox.shrink();
+                            }
+
+                            final entry = entries[dateIndex];
+                            final dateLabel = entry.key;
+                            final dateSessions = entry.value;
+
+                            return RepaintBoundary(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (showHeader)
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 48),
-                                      child: _DateSeparator(date: event.timestamp),
-                                    ),
-                                  
+                                  // Date Header
                                   Padding(
-                                    key: ValueKey(event.id ?? index),
-                                    padding: const EdgeInsets.only(left: 48, bottom: 12),
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        // ── NODE INDICATOR ──
-                                        Positioned(
-                                          left: -31,
-                                          top: 24,
-                                          child: Container(
-                                            width: 14,
-                                            height: 14,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: _getEventColor(event.type),
-                                                width: 3,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: _getEventColor(event.type).withOpacity(0.2),
-                                                  blurRadius: 6,
-                                                  spreadRadius: 2,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        
-                                        AuditLedgerRow(
-                                          event: event,
-                                          sentinel: sentinel,
+                                    padding: EdgeInsets.only(left: 4, bottom: 10, top: dateIndex == 0 ? 0 : 20),
+                                    child: Text(
+                                      dateLabel,
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF475569),
+                                        letterSpacing: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                  // Session Card Container
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.035),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 8),
                                         ),
                                       ],
                                     ),
-                                  ).animate().fadeIn(delay: (index % 10 * 50).ms).slideX(begin: 0.1, end: 0),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Column(
+                                        children: dateSessions.asMap().entries.map((e) {
+                                          final isLast = e.key == dateSessions.length - 1;
+                                          return Column(
+                                            children: [
+                                              SessionCard(session: e.value),
+                                              if (!isLast)
+                                                Container(
+                                                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                                                  height: 1,
+                                                  color: const Color(0xFFF1F5F9),
+                                                ),
+                                            ],
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ).animate().fadeIn(delay: (dateIndex * 50).ms).slideY(begin: 0.05, end: 0),
                                 ],
                               ),
-                            ],
-                          );
-                        },
-                        childCount: logs.length + (ledgerState.isLoading ? 1 : 0),
+                            );
+                          },
+                          childCount: entries.length + 1, // +1 for the loading indicator
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                   loading: () => const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator(color: AppTheme.primaryBlue)),
                   ),
                   error: (err, _) => SliverFillRemaining(
-                    child: Center(child: Text('Vault Access Denied: $err')),
+                     child: Center(child: Text('Vault Access Denied: $err', style: const TextStyle(color: Colors.red))),
                   ),
                 ),
 
                 const SliverGap(60),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getEventColor(EventType type) {
-    switch (type) {
-      case EventType.securityTrigger:
-        return AppTheme.errorRed;
-      case EventType.assetOut:
-      case EventType.assetIn:
-        return AppTheme.primaryBlue;
-      case EventType.requisitionApproved:
-        return AppTheme.emeraldGreen;
-      case EventType.requisitionRejected:
-      case EventType.requisitionDenied:
-        return AppTheme.warningOrange;
-      default:
-        return const Color(0xFF94A3B8);
-    }
-  }
-}
-
-class _DateSeparator extends StatelessWidget {
-  final DateTime date;
-  const _DateSeparator({required this.date});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
-      child: Row(
-        children: [
-          Text(
-            DateFormat('MMMM dd, yyyy').format(date).toUpperCase(),
-            style: GoogleFonts.lexend(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF64748B),
-              letterSpacing: 1.5,
-            ),
-          ),
-          const Gap(12),
-          Expanded(
-            child: Container(
-              height: 1,
-              color: const Color(0xFFE2E8F0),
             ),
           ),
         ],

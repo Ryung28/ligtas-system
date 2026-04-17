@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/design_system/app_theme.dart';
 
 class QuickScanHero extends StatelessWidget {
@@ -49,7 +50,7 @@ class QuickScanHero extends StatelessWidget {
                     children: [
                       Text(
                         'Quick Scan',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.neutralGray900.withOpacity(0.9),
@@ -59,7 +60,7 @@ class QuickScanHero extends StatelessWidget {
                       const Gap(8),
                       Text(
                         'Tap to scan equipment\nQR codes instantly',
-                        style: TextStyle(
+                        style: GoogleFonts.lexend(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: AppTheme.neutralGray600,

@@ -32,7 +32,7 @@ class InventoryNotifier extends _$InventoryNotifier {
   bool _isLoadingMore = false;
   static const int _pageSize = 20;
   static const String _cacheVersionKey = 'inventory_cache_version';
-  static const int _currentCacheVersion = 6; // Increment to force refresh with new SQL DTO mapping
+  static const int _currentCacheVersion = 8; // v8: active_inventory variants + qty_* per site; parent bucket columns
 
   @override
   Future<List<InventoryItem>> build() async {
@@ -249,16 +249,17 @@ List<String> inventoryCategories(InventoryCategoriesRef ref) {
 @riverpod
 IconData categoryIcon(CategoryIconRef ref, String category) {
   final c = category.toLowerCase();
+  
+  if (c.contains('med')) return Icons.medical_services_rounded; // Web: Cross
+  if (c.contains('tool')) return Icons.construction_rounded; // Web: Wrench
+  if (c.contains('resc') || c.contains('safe') || c.contains('ppe') || c.contains('gear')) {
+    return Icons.security_rounded; // Web: Shield
+  }
   if (c.contains('comms') || c.contains('radio')) return Icons.settings_input_antenna_rounded;
-  if (c.contains('bolt') || c.contains('power') || c.contains('gen')) return Icons.bolt_rounded;
-  if (c.contains('med') || c.contains('aid')) return Icons.medical_services_rounded;
-  if (c.contains('dron') || c.contains('fly')) return Icons.flight_takeoff_rounded;
-  if (c.contains('resc') || c.contains('life') || c.contains('safe')) return Icons.health_and_safety_rounded;
-  if (c.contains('tool') || c.contains('work')) return Icons.construction_rounded;
   if (c.contains('vehi') || c.contains('truck')) return Icons.local_shipping_rounded;
-  if (c.contains('ppe') || c.contains('gear')) return Icons.masks_rounded;
   if (c.contains('logi') || c.contains('ware')) return Icons.warehouse_rounded;
-  return Icons.inventory_2_outlined;
+  
+  return Icons.inventory_2_outlined; // Web: Box
 }
 
 @riverpod
@@ -270,3 +271,28 @@ class IsScrollingFast extends _$IsScrollingFast {
     if (state != value) state = value;
   }
 }
+
+/// 🛡️ THE DISTRIBUTED LOGISTICS ENGINE
+/// Fetches the live registry of all valid Storage Hubs / Warehouses
+class StorageHub {
+  final int id;
+  final String name;
+
+  const StorageHub({
+    required this.id,
+    required this.name,
+  });
+}
+
+final storageHubsProvider = FutureProvider<List<StorageHub>>((ref) async {
+  final client = Supabase.instance.client;
+  final response = await client
+      .from('storage_locations')
+      .select('id, location_name')
+      .order('location_name');
+      
+  return (response as List).map((e) => StorageHub(
+    id: e['id'] as int,
+    name: e['location_name'] as String,
+  )).toList();
+});

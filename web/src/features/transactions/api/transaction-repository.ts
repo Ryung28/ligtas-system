@@ -57,13 +57,14 @@ export async function createBatchBorrow(logs: any[]): Promise<TransactionResult>
  */
 export async function finalizeReturn(logId: number, audit: any, quantity: number, inventoryId: number): Promise<TransactionResult> {
     const supabase = await createSupabaseServer();
+    const returnedAt = new Date().toISOString();
     
     // 1. Update the log status
     const { error: updateError } = await supabase
         .from('borrow_logs')
         .update({
             status: 'returned',
-            actual_return_date: new Date().toISOString(),
+            actual_return_date: returnedAt,
             ...audit
         })
         .eq('id', logId);
@@ -89,7 +90,7 @@ export async function finalizeReturn(logId: number, audit: any, quantity: number
     revalidatePath('/dashboard/logs');
     revalidatePath('/dashboard/inventory');
 
-    return { success: true, message: 'Item successfully restored to inventory.' };
+    return { success: true, message: 'Item successfully restored to inventory.', data: { returnedAt } };
 }
 
 /**

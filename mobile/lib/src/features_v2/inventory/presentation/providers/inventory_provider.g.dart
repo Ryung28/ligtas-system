@@ -407,7 +407,7 @@ final inventoryCategoriesProvider = AutoDisposeProvider<List<String>>.internal(
 );
 
 typedef InventoryCategoriesRef = AutoDisposeProviderRef<List<String>>;
-String _$categoryIconHash() => r'8cc107260b4e926555b7959d613f6e3c364d0747';
+String _$categoryIconHash() => r'950df07d60fa984a0687a1c217d1fc1562fdf74b';
 
 /// Dynamic Icon mapping for categories
 ///
@@ -547,7 +547,7 @@ class _CategoryIconProviderElement extends AutoDisposeProviderElement<IconData>
   String get category => (origin as CategoryIconProvider).category;
 }
 
-String _$inventoryNotifierHash() => r'd7d1aaec06830d3becf71bbfb1d265394f31531a';
+String _$inventoryNotifierHash() => r'5165bf28f2483d57551778dd36e20304ec6829dd';
 
 /// The state of our Inventory List (Reactive & Streams)
 /// 🚀 THE GOLD STANDARD: Paginated Inventory Notifier

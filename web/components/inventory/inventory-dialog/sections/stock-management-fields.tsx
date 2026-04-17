@@ -16,6 +16,8 @@ interface StockManagementFieldsProps {
     onTargetStockChange: (value: number | string) => void
     lowStockThreshold: number | string
     onThresholdChange: (value: number | string) => void
+    restockAlertEnabled: boolean
+    onRestockAlertEnabledChange: (value: boolean) => void
 }
 
 export function StockManagementFields({
@@ -32,6 +34,8 @@ export function StockManagementFields({
     onTargetStockChange,
     lowStockThreshold,
     onThresholdChange,
+    restockAlertEnabled,
+    onRestockAlertEnabledChange,
 }: StockManagementFieldsProps) {
     const thresholdNum = Number(lowStockThreshold) || 0
     const targetNum = Number(targetStock) || 0
@@ -153,6 +157,15 @@ export function StockManagementFields({
                                 />
                             </div>
                         </div>
+                        <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-700">
+                            <input
+                                type="checkbox"
+                                checked={restockAlertEnabled}
+                                onChange={(e) => onRestockAlertEnabledChange(e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-300"
+                            />
+                            Include this item in low-stock alerts
+                        </label>
                     </div>
                 </div>
             </div>

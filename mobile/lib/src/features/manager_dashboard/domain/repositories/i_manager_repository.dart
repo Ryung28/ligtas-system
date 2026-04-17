@@ -9,7 +9,7 @@ abstract class IManagerRepository {
   Future<ManagerMetrics> getMetrics();
 
   /// Fetch equipment anomalies (low stock thresholds & overdue items)
-  Future<List<ResourceAnomaly>> getAnomalies({int limit = 10});
+  Future<List<ResourceAnomaly>> getAnomalies({int limit = 200});
 
   /// Fetch activity stream events (borrows, returns, system updates)
   Future<List<ActivityEvent>> getActivityStream({

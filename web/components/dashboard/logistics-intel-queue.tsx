@@ -30,7 +30,7 @@ const fetchIntel = async (): Promise<SystemIntel[]> => {
         .order('priority', { ascending: true }) // CRITICAL < INFO, but we'll sort custom below if needed. Actually it's text.
         // Let's just order by created_at DESC for a feed
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(500)
 
     if (error) {
         console.error('Error fetching system intel:', error)

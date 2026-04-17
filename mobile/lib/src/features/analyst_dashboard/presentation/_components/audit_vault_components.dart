@@ -38,8 +38,8 @@ class AuditLedgerRow extends ConsumerWidget {
     final iconColor = _getStatusColor(event.type);
     final quantityColor = _getQuantityColor(event.type);
     
-    // 🛡️ IMAGE RESOLUTION: Forensic Evidence -> Inventory Reference
-    final String? resolvedPath = event.evidenceImageUrl ?? event.referenceImageUrl;
+    // 🛡️ IMAGE RESOLUTION: Forensic Evidence -> Inventory Reference (Paths only)
+    final String? resolvedPath = event.evidencePath ?? event.referencePath;
     final int? resolvedAssetId = event.assetId;
 
     return InkWell(
@@ -61,7 +61,8 @@ class AuditLedgerRow extends ConsumerWidget {
                       final storage = Supabase.instance.client.storage;
                       String viewerUrl = '';
                       if (resolvedPath != null) {
-                        viewerUrl = storage.from('item-images').getPublicUrl(resolvedPath);
+                        final bucket = event.evidencePath != null ? 'forensic-evidence' : 'item-images';
+                        viewerUrl = storage.from(bucket).getPublicUrl(resolvedPath);
                       } else if (resolvedAssetId != null) {
                          final imageMap = ref.read(inventoryImageMapProvider);
                          final catalogPath = imageMap[resolvedAssetId] ?? '';
@@ -89,8 +90,6 @@ class AuditLedgerRow extends ConsumerWidget {
                   assetId: resolvedAssetId,
                   size: 48,
                   borderRadius: 12,
-                  fallbackIcon: _getIcon(event.type),
-                  fallbackColor: iconColor,
                 ),
               ),
             ),
@@ -152,10 +151,11 @@ class AuditLedgerRow extends ConsumerWidget {
                 if (event.quantityDelta != null)
                   Text(
                     event.quantityDelta!,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
+                    style: GoogleFonts.lexend(
+                      fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: quantityColor,
+                      letterSpacing: 0.5,
                     ),
                   ),
               ],
@@ -167,16 +167,7 @@ class AuditLedgerRow extends ConsumerWidget {
   }
 
   void _showCommandDetailSheet(BuildContext context, WidgetRef ref, ActivityEvent event) async {
-    ref.read(isDockSuppressedProvider.notifier).state = true;
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CommandDetailSheet(event: event),
-    );
-    if (context.mounted) {
-      ref.read(isDockSuppressedProvider.notifier).state = false;
-    }
+    await CommandDetailSheet.show(context, ref, event);
   }
 }
 
@@ -192,6 +183,7 @@ Color _getSoftStatusColor(EventType type) {
     case EventType.systemSync: return const Color(0xFF94A3B8);
     case EventType.maintenance: return const Color(0xFFF59E0B);
     case EventType.requisitionDenied: return const Color(0xFFEF4444);
+    case EventType.mixed: return const Color(0xFF64748B);
   }
 }
 
@@ -206,6 +198,8 @@ Color _getQuantityColor(EventType type) {
       return const Color(0xFFEF4444); // Negative change (red)
     case EventType.maintenance:
       return const Color(0xFFF59E0B); // Caution/Alert (orange)
+    case EventType.mixed:
+      return const Color(0xFF64748B); // Neutral
     default:
       return AppTheme.neutralGray900;
   }
@@ -230,19 +224,21 @@ Color _getStatusColor(EventType type) {
     case EventType.systemSync: return const Color(0xFF94A3B8);
     case EventType.maintenance: return const Color(0xFFF59E0B);
     case EventType.requisitionDenied: return const Color(0xFFEF4444);
+    case EventType.mixed: return const Color(0xFF64748B);
   }
 }
 
 IconData _getIcon(EventType type) {
   switch (type) {
-    case EventType.assetOut: return Icons.settings_rounded;
-    case EventType.assetIn: return Icons.check_circle_rounded;
-    case EventType.requisitionApproved: return Icons.check_circle_rounded;
-    case EventType.systemSync: return Icons.sync_rounded;
-    case EventType.securityTrigger: return Icons.warning_rounded;
-    case EventType.requisitionRejected: return Icons.cancel_rounded;
-    case EventType.maintenance: return Icons.build_rounded;
-    case EventType.requisitionDenied: return Icons.block_rounded;
+    case EventType.assetOut: return Icons.logout_rounded;
+    case EventType.assetIn: return Icons.login_rounded;
+    case EventType.requisitionApproved: return Icons.fact_check_rounded;
+    case EventType.systemSync: return Icons.cloud_done_rounded;
+    case EventType.securityTrigger: return Icons.security_rounded;
+    case EventType.requisitionRejected: return Icons.rule_rounded;
+    case EventType.maintenance: return Icons.handyman_rounded;
+    case EventType.requisitionDenied: return Icons.gavel_rounded;
+    case EventType.mixed: return Icons.sync_problem_rounded;
   }
 }
 
@@ -256,6 +252,7 @@ String _getStatusText(EventType type) {
     case EventType.requisitionRejected: return 'REJECTED';
     case EventType.maintenance: return 'MAINTENANCE';
     case EventType.requisitionDenied: return 'DENIED';
+    case EventType.mixed: return 'MIXED';
   }
 }
 
@@ -265,32 +262,37 @@ String _getActorLabel(EventType type) {
     case EventType.requisitionRejected: return 'REJECTED BY';
     case EventType.maintenance: return 'ASSIGNEE';
     case EventType.requisitionDenied: return 'DENIED BY';
+    case EventType.mixed: return 'MULTIPLE ACTORS';
     default: return 'REQUESTER';
   }
 }
 
-/// ── RETURN ASSESSMENT DIALOG ──
+/// ── TACTICAL ASSET BLUEPRINT ──
+/// Renders a premium, minimalist "Obsidian Well" placeholder.
 class TacticalAssetBlueprint extends StatelessWidget {
   final String imageUrl;
   final SentinelColors sentinel;
+  final double size;
 
-  const TacticalAssetBlueprint({super.key, required this.imageUrl, required this.sentinel});
+  const TacticalAssetBlueprint({
+    super.key, 
+    required this.imageUrl, 
+    required this.sentinel,
+    this.size = 54,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 54,
-      height: 54,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F4F9),
+        color: Colors.white, // High-Contrast Clean White
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [
-          BoxShadow(color: sentinel.navy.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: AppTheme.neutralGray200, width: 1),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(11),
         child: imageUrl.isNotEmpty
           ? CachedNetworkImage(
               imageUrl: imageUrl,
@@ -301,7 +303,13 @@ class TacticalAssetBlueprint extends StatelessWidget {
                 child: Container(color: Colors.white),
               ),
             )
-          : Center(child: Icon(Icons.inventory_2_outlined, size: 24, color: sentinel.navy.withOpacity(0.2))),
+          : Center(
+              child: Icon(
+                Icons.category_rounded, // High-Contrast Black Ghost
+                size: size * 0.45, 
+                color: Colors.black,
+              ),
+            ),
       ),
     );
   }
@@ -312,6 +320,21 @@ class CommandDetailSheet extends ConsumerWidget {
   final ActivityEvent event;
 
   const CommandDetailSheet({super.key, required this.event});
+
+  /// 🛡️ PROTECTED INVOCATION: Orchestrates dock suppression for forensic logs.
+  static Future<T?> show<T>(BuildContext context, WidgetRef ref, ActivityEvent event) async {
+    ref.read(isDockSuppressedProvider.notifier).state = true;
+    
+    final result = await showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CommandDetailSheet(event: event),
+    );
+
+    ref.read(isDockSuppressedProvider.notifier).state = false;
+    return result;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -329,13 +352,13 @@ class CommandDetailSheet extends ConsumerWidget {
       statusLabel: statusText.toUpperCase(),
       accentColor: sentinelColor,
       statusIcon: _getIcon(event.type),
-      imageUrl: event.evidenceImageUrl ?? event.referenceImageUrl,
+      imagePath: event.evidencePath ?? event.referencePath,
       heroTagPrefix: 'audit',
       analystNotes: event.notes,
-      forensicEvidence: (event.evidenceImageUrl != null && event.referenceImageUrl != null)
+      forensicEvidence: (event.evidencePath != null && event.referencePath != null)
           ? ForensicEvidence(
-              evidenceImageUrl: event.evidenceImageUrl!,
-              referenceImageUrl: event.referenceImageUrl!,
+              evidenceImageUrl: event.evidencePath!,
+              referenceImageUrl: event.referencePath!,
             )
           : null,
       details: [
@@ -343,22 +366,59 @@ class CommandDetailSheet extends ConsumerWidget {
           icon: Icons.person_rounded,
           label: _getActorLabel(event.type),
           value: event.actorName ?? 'System Override',
+          zone: 'Personnel',
         ),
-        DetailRowData(
-          icon: Icons.map_rounded,
-          label: 'LOCATION',
-          value: '${event.locationSource ?? 'Hub'} → ${event.locationTarget ?? '??'}',
-        ),
+        if (event.borrowerOrganization != null)
+          DetailRowData(
+            icon: Icons.business_center_rounded,
+            label: 'ORGANIZATION',
+            value: event.borrowerOrganization!,
+            zone: 'Personnel',
+          ),
+        if (event.borrowerContact != null)
+          DetailRowData(
+            icon: Icons.phone_android_rounded,
+            label: 'CONTACT',
+            value: event.borrowerContact!,
+            zone: 'Personnel',
+          ),
+        if (event.approvedByName != null)
+          DetailRowData(
+            icon: Icons.gavel_rounded,
+            label: 'APPROVED BY',
+            value: event.approvedByName!,
+            zone: 'Transaction Details',
+            isHalfWidth: true,
+          ),
+        if (event.releasedByName != null)
+          DetailRowData(
+            icon: Icons.hail_rounded,
+            label: 'HANDED BY',
+            value: event.releasedByName!,
+            zone: 'Transaction Details',
+            isHalfWidth: true,
+          ),
         DetailRowData(
           icon: Icons.timer_rounded,
-          label: 'TIMESTAMP',
-          value: DateFormat('yMMMd hh:mm:ss').format(event.timestamp),
+          label: 'EVENT TIMESTAMP',
+          value: DateFormat('MMMM dd, yyyy, hh:mm a').format(event.timestamp),
+          zone: 'Transaction Details',
+          isHalfWidth: false, // Make it full width since it's long now
         ),
+        if (event.quantityDelta != null)
+          DetailRowData(
+            icon: Icons.inventory_2_rounded,
+            label: 'QUANTITY',
+            value: event.quantityDelta!,
+            zone: 'Transaction Details',
+            isHalfWidth: true,
+          ),
         if (isVerified)
           DetailRowData(
             icon: Icons.verified_user_rounded,
             label: 'AUDIT SIGN-OFF',
-            value: DateFormat('yMMMd hh:mm:ss').format(event.verifiedAt!),
+            value: DateFormat('MMMM dd, yyyy, hh:mm a').format(event.verifiedAt!),
+            zone: 'Transaction Details',
           ),
       ],
       actionHub: associatedLoan != null

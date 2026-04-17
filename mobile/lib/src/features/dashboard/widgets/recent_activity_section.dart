@@ -251,12 +251,11 @@ class ActivityPixelCard extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.heavyImpact();
-        showModalBottomSheet(
+        LoanDetailsSheet.show(
           context: context,
-          useRootNavigator: true, 
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => LoanDetailsSheet(loan: loanItem, readOnly: true),
+          ref: ref,
+          loan: loanItem,
+          readOnly: true,
         );
       },
       child: Container(

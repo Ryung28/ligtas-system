@@ -4,7 +4,6 @@ import 'package:mobile/src/features/auth/presentation/providers/auth_providers.d
 import 'package:mobile/src/features/loans/providers/loan_providers.dart';
 import 'package:mobile/src/features/inventory/providers/inventory_providers.dart';
 import 'package:mobile/src/features/loans/models/loan_model.dart';
-import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 import 'package:intl/intl.dart';
 
 /// Dashboard stats for borrower perspective
@@ -100,7 +99,15 @@ final inventorySummaryProvider = Provider<Map<String, dynamic>>((ref) {
   return inventoryAsync.when(
     data: (items) {
       final total = items.length;
-      final lowStock = items.where((i) => i.available < 5).length;
+      // SSOT: matches public.system_intel INVENTORY branch (threshold + absolute < 5)
+      final lowStock = items.where((i) {
+        final st = i.status.toLowerCase();
+        if (st == 'damaged' || st == 'lost' || st == 'deleted') return false;
+        final a = i.available;
+        final t = i.minStockLevel;
+        final eff = t > 0 ? t : 10;
+        return a < 5 || a <= eff;
+      }).length;
       
       return {
         'total_assets': total,

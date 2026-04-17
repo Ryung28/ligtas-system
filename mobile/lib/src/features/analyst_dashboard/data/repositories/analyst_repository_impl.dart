@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:async/async.dart';
+import 'package:mobile/src/core/extensions/supabase_client_extension.dart';
 import '../../domain/entities/analyst_metrics.dart';
 import '../../domain/entities/resource_anomaly.dart';
 import '../../domain/entities/activity_event.dart';
@@ -18,121 +20,146 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   @override
   Future<AnalystMetrics> getMetrics({String? warehouseId}) async {
     try {
-      final results = await Future.wait<dynamic>([
-        _inventoryQuery(warehouseId: warehouseId),
-        _borrowLogsQuery(warehouseId: warehouseId).eq('status', 'pending'),
-        _borrowLogsQuery(warehouseId: warehouseId).eq('status', 'borrowed'),
-        _borrowLogsQuery(warehouseId: warehouseId).eq('status', 'overdue'),
-      ]);
+      // 🛰️ RPC COMMAND: Offload counting logic to the database SSOT
+      final response = await _supabase.rpc(
+        'get_analyst_metrics',
+        params: {'p_warehouse_id': warehouseId},
+      );
 
-      int count(dynamic res) => res is List ? res.length : 0;
+      final data = response as Map<String, dynamic>;
 
       return AnalystMetrics(
-        totalAssets: count(results[0]),
+        totalAssets: (data['total_assets'] ?? 0) as int,
         assetsTrendPercent: 0.0,
-        pendingApprovals: count(results[1]),
-        activeLoans: count(results[2]),
+        pendingApprovals: (data['pending_approvals'] ?? 0) as int,
+        activeLoans: (data['active_loans'] ?? 0) as int,
         loansTrendPercent: 0.0,
-        overdueCount: count(results[3]),
+        overdueCount: (data['overdue_count'] ?? 0) as int,
         overdueTrendPercent: 0.0,
         anomalyCount: 0,
       );
     } catch (e) {
+      debugPrint('🚨 [AnalystRepo] RPC Metrics Error: $e');
       throw Exception('Failed to fetch analyst metrics: $e');
     }
   }
 
   @override
-  Stream<AnalystMetrics> watchMetricsStream({String? warehouseId}) {
-    final controller = StreamController<AnalystMetrics>();
-
+  Stream<AnalystMetrics> watchMetricsStream({String? warehouseId}) async* {
     int total = 0;
     int pending = 0;
     int borrowed = 0;
     int overdue = 0;
 
-    void emit() {
-      if (!controller.isClosed) {
-        controller.add(AnalystMetrics(
-          totalAssets: total,
-          assetsTrendPercent: 0.0,
-          pendingApprovals: pending,
-          activeLoans: borrowed,
-          loansTrendPercent: 0.0,
-          overdueCount: overdue,
-          overdueTrendPercent: 0.0,
-          anomalyCount: 0,
-        ));
+    AnalystMetrics currentMetrics() => AnalystMetrics(
+      totalAssets: total,
+      assetsTrendPercent: 0.0,
+      pendingApprovals: pending,
+      activeLoans: borrowed,
+      loansTrendPercent: 0.0,
+      overdueCount: overdue,
+      overdueTrendPercent: 0.0,
+      anomalyCount: 0,
+    );
+
+    int retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        await _supabase.checkConnection();
+
+        final invStream = warehouseId != null
+            ? _supabase.from('active_inventory').stream(primaryKey: ['id']).eq('assigned_warehouse', warehouseId)
+            : _supabase.from('active_inventory').stream(primaryKey: ['id']);
+
+        final logStream = warehouseId != null
+            ? _supabase.from('borrow_logs').stream(primaryKey: ['id']).eq('warehouse_id', warehouseId)
+            : _supabase.from('borrow_logs').stream(primaryKey: ['id']);
+
+        // Combined stream for metrics
+        yield* StreamGroup.merge([
+          invStream.map((data) {
+            total = data.length;
+            return currentMetrics();
+          }),
+          logStream.map((data) {
+            pending = data.where((e) => e['status'] == 'pending').length;
+            borrowed = data.where((e) {
+              final isBorrowed = e['status'] == 'borrowed';
+              final dueDateStr = e['expected_return_date'] as String?;
+              if (!isBorrowed || dueDateStr == null) return false;
+              try {
+                return DateTime.parse(dueDateStr).isAfter(DateTime.now());
+              } catch (_) { return true; }
+            }).length;
+            overdue = data.where((e) {
+              final isBorrowed = e['status'] == 'borrowed';
+              final dueDateStr = e['expected_return_date'] as String?;
+              if (!isBorrowed || dueDateStr == null) return false;
+              try {
+                return DateTime.parse(dueDateStr).isBefore(DateTime.now());
+              } catch (_) { return false; }
+            }).length;
+            return currentMetrics();
+          }),
+        ]).handleError((error) {
+          debugPrint('[Analyst-Metrics] Stream Error: $error');
+          throw error;
+        });
+
+        break;
+      } catch (e) {
+        retryCount++;
+        debugPrint('[Analyst-Metrics] Reconnecting (Attempt $retryCount/$maxRetries)...');
+        await Future.delayed(Duration(seconds: retryCount * 2));
       }
     }
-
-    final invStream = warehouseId != null
-        ? _supabase.from('active_inventory').stream(primaryKey: ['id']).eq('assigned_warehouse', warehouseId)
-        : _supabase.from('active_inventory').stream(primaryKey: ['id']);
-
-    final invSub = invStream.listen((data) {
-      total = data.length;
-      emit();
-    });
-
-    final logStream = warehouseId != null
-        ? _supabase.from('borrow_logs').stream(primaryKey: ['id']).eq('warehouse_id', warehouseId)
-        : _supabase.from('borrow_logs').stream(primaryKey: ['id']);
-
-    final logSub = logStream.listen((data) {
-      pending = data.where((e) => e['status'] == 'pending').length;
-      borrowed = data.where((e) => e['status'] == 'borrowed').length;
-      overdue = data.where((e) => e['status'] == 'overdue').length;
-      emit();
-    });
-
-    _ref.onDispose(() {
-      invSub.cancel();
-      logSub.cancel();
-      if (!controller.isClosed) controller.close();
-      debugPrint('[AnalystRepo] Realtime streams closed.');
-    });
-
-    controller.onCancel = () {
-      invSub.cancel();
-      logSub.cancel();
-      controller.close();
-    };
-
-    return controller.stream;
   }
 
   @override
-  Stream<List<ResourceAnomaly>> watchAnomalies({int limit = 10, String? warehouseId}) async* {
+  Stream<List<ResourceAnomaly>> watchAnomalies({int limit = 200, String? warehouseId}) async* {
     // 1. Initial High-Speed Fetch
     yield await getAnomalies(limit: limit, warehouseId: warehouseId);
 
-    // 2. Persistent Table Listeners
-    // We listen to BOTH inventory (for stock changes) and logistics_actions (for new triage needs)
-    final inventoryChanges = _supabase
-        .from('inventory')
-        .stream(primaryKey: ['id'])
-        .map((_) => true); // We only care THAT it changed
+    int retryCount = 0;
+    const maxRetries = 3;
 
-    final actionChanges = _supabase
-        .from('logistics_actions')
-        .stream(primaryKey: ['id'])
-        .map((_) => true);
+    while (retryCount < maxRetries) {
+      try {
+        await _supabase.checkConnection();
 
-    // 🛰️ SIGNAL RECONCILIATION: Whenever ANY table moves, we re-query the view
-    await for (final _ in inventoryChanges) {
-      yield await getAnomalies(limit: limit, warehouseId: warehouseId);
+        final inventoryChanges = _supabase
+            .from('inventory')
+            .stream(primaryKey: ['id'])
+            .map((_) => true);
+
+        final actionChanges = _supabase
+            .from('logistics_actions')
+            .stream(primaryKey: ['id'])
+            .map((_) => true);
+
+        await for (final _ in StreamGroup.merge([inventoryChanges, actionChanges])) {
+          yield await getAnomalies(limit: limit, warehouseId: warehouseId);
+        }
+        break;
+      } catch (e) {
+        retryCount++;
+        debugPrint('[Analyst-Anomalies] Reconnecting (Attempt $retryCount/$maxRetries)...');
+        await Future.delayed(Duration(seconds: retryCount * 2));
+      }
     }
   }
 
   @override
-  Future<List<ResourceAnomaly>> getAnomalies({int limit = 10, String? warehouseId}) async {
+  Future<List<ResourceAnomaly>> getAnomalies({int limit = 200, String? warehouseId}) async {
     try {
       var query = _supabase.from('system_intel').select();
       if (warehouseId != null) {
         query = query.or('warehouse_id.eq.$warehouseId,warehouse_id.is.null');
       }
 
+      // Newest signals first within the fetch window (matches alert queue / filters).
       final response = await query.order('created_at', ascending: false).limit(limit);
       final List<dynamic> data = response is List ? response : [];
 
@@ -167,9 +194,9 @@ class AnalystRepositoryImpl implements IAnalystRepository {
           anomalies.add(ResourceAnomaly(
             id: item['id'].toString(),
             inventoryId: invId,
-            itemName: liveData?['item_name']?.toString() ?? item['titletoString() ?? 'System Alert',
+            itemName: liveData?['item_name']?.toString() ?? item['title']?.toString() ?? 'System Alert',
             reason: item['message']?.toString() ?? 'Check required.',
-            imageUrl: _resolveImageUrl(liveData?['image_url'] ?? meta['image_url']),
+            imageUrl: _resolveRawPath(liveData?['image_url'] ?? meta['image_url']),
             category: _mapCategoryToType(item['category'] as String?),
             severity: _mapSeverity(item['priority'] as String?),
             currentStock: (liveData?['stock_available'] ?? meta['stock_available'] as num?)?.toInt() ?? 0,
@@ -178,6 +205,18 @@ class AnalystRepositoryImpl implements IAnalystRepository {
             detectedAt: item['created_at'] != null
                 ? DateTime.parse(item['created_at'])
                 : DateTime.now(),
+            // 🛰️ MAP OVERDUE CONTEXT (now fully enriched by system_intel view)
+            borrowId: (meta['borrow_id'] as num?)?.toInt(),
+            borrowerName: meta['borrower_name']?.toString(),
+            borrowerContact: meta['borrower_contact']?.toString(),
+            borrowerEmail: meta['borrower_email']?.toString(),
+            borrowerOrg: meta['borrower_organization']?.toString(),
+            borrowedQty: (meta['quantity'] as num?)?.toInt() ?? 0,
+            dueDate: meta['due_date'] != null ? DateTime.tryParse(meta['due_date'].toString()) : null,
+            borrowedAt: meta['borrowed_at'] != null ? DateTime.tryParse(meta['borrowed_at'].toString()) : null,
+            approvedByName: meta['approved_by_name']?.toString(),
+            releasedByName: meta['released_by_name']?.toString(),
+            platformOrigin: meta['platform_origin']?.toString(),
             qtyGood: (liveData?['qty_good'] ?? meta['qty_good'] as num?)?.toInt() ?? 0,
             qtyDamaged: (liveData?['qty_damaged'] ?? meta['qty_damaged'] as num?)?.toInt() ?? 0,
             qtyMaintenance: (liveData?['qty_maintenance'] ?? meta['qty_maintenance'] as num?)?.toInt() ?? 0,
@@ -188,7 +227,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         }
       }
 
-      return anomalies;
+      return sortResourceAnomaliesLikeActionCenter(anomalies);
     } catch (e) {
       debugPrint('[AnalystRepo] getAnomalies failed: $e');
       return [];
@@ -217,6 +256,68 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // FORCE RETURN (overdue borrow — mirrors web returnItem server action)
+  // ---------------------------------------------------------------------------
+  @override
+  Future<ForceReturnResult> forceReturn({
+    required int borrowId,
+    required int inventoryId,
+    required int quantity,
+    required String receivedByName,
+    required String receivedByUserId,
+    String returnCondition = 'good',
+    String? returnNotes,
+  }) async {
+    try {
+      // 1. Guard: verify not already returned
+      final check = await _supabase
+          .from('borrow_logs')
+          .select('status')
+          .eq('id', borrowId)
+          .maybeSingle();
+
+      if (check == null) {
+        return const ForceReturnResult.fail('Borrow record not found.');
+      }
+      if (check['status'] == 'returned') {
+        return const ForceReturnResult.fail('Item has already been returned.');
+      }
+
+      // 2. Update borrow_logs — same fields as web returnItem
+      await _supabase.from('borrow_logs').update({
+        'status': 'returned',
+        'actual_return_date': DateTime.now().toUtc().toIso8601String(),
+        'received_by_name': receivedByName,
+        'received_by_user_id': receivedByUserId,
+        'return_condition': returnCondition,
+        'return_notes': returnNotes,
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
+      }).eq('id', borrowId);
+
+      // 3. Increment inventory stock
+      final invRow = await _supabase
+          .from('inventory')
+          .select('stock_available')
+          .eq('id', inventoryId)
+          .maybeSingle();
+
+      if (invRow != null) {
+        final current = (invRow['stock_available'] as num?)?.toInt() ?? 0;
+        await _supabase
+            .from('inventory')
+            .update({'stock_available': current + quantity})
+            .eq('id', inventoryId);
+      }
+
+      return const ForceReturnResult.ok();
+    } catch (e) {
+      debugPrint('[AnalystRepo] forceReturn failed: $e');
+      return ForceReturnResult.fail(e.toString());
+    }
+  }
+
   @override
   Future<List<ActivityEvent>> getActivityStream({
     bool liveOnly = false,
@@ -224,7 +325,15 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     String? warehouseId,
   }) async {
     try {
-      var query = _supabase.from('borrow_logs').select('*, inventory:inventory_id(image_url)');
+      // 🛡️ SSOT HYDRATION: Ensure we join inventory and select all required forensic context fields
+      var query = _supabase.from('borrow_logs').select('''
+        *, 
+        approved_by_name,
+        released_by_name,
+        borrower_organization,
+        borrower_contact,
+        inventory:inventory_id(image_url)
+      ''');
       if (warehouseId != null) {
         query = query.eq('warehouse_id', warehouseId);
       }
@@ -267,7 +376,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
             warehouseId: map['warehouse_id']?.toString(),
             binLocation: map['bin_location']?.toString(),
             forensicNote: map['forensic_note']?.toString(),
-            forensicImageUrl: _resolveImageUrl(map['forensic_image_url']?.toString()),
+            forensicImageUrl: _resolveRawPath(map['forensic_image_url']?.toString()),
             createdAt: map['created_at'] != null ? DateTime.parse(map['created_at']) : null,
           ));
         } catch (e) {
@@ -305,15 +414,28 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   }
 
   @override
-  Stream<List<ActivityEvent>> watchActivityStream({String? warehouseId}) {
-    final query = warehouseId != null
-        ? _supabase.from('borrow_logs').stream(primaryKey: ['id']).eq('warehouse_id', warehouseId)
-        : _supabase.from('borrow_logs').stream(primaryKey: ['id']);
+  Stream<List<ActivityEvent>> watchActivityStream({String? warehouseId}) async* {
+    int retryCount = 0;
+    const maxRetries = 3;
 
-    return query
-        .order('updated_at', ascending: false)
-        .limit(50)
-        .map((data) => data.map((item) => _mapToActivityEvent(item)).toList());
+    while (retryCount < maxRetries) {
+      try {
+        await _supabase.checkConnection();
+
+        // Initial load
+        yield await getActivityStream(limit: 50, warehouseId: warehouseId);
+
+        // Listen for any movement in borrow_logs
+        await for (final _ in _supabase.from('borrow_logs').stream(primaryKey: ['id'])) {
+          yield await getActivityStream(limit: 50, warehouseId: warehouseId);
+        }
+        break;
+      } catch (e) {
+        retryCount++;
+        debugPrint('[Analyst-Activity] Reconnecting (Attempt $retryCount/$maxRetries)...');
+        await Future.delayed(Duration(seconds: retryCount * 2));
+      }
+    }
   }
 
   @override
@@ -370,13 +492,108 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   }
 
   @override
+  Future<void> approveRequest({
+    required String logId,
+    required String approvedBy,
+    bool isInstant = false,
+  }) async {
+    try {
+      final updateData = {
+        'status': isInstant ? 'borrowed' : 'staged',
+        'approved_by_name': approvedBy,
+        'approved_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
+        if (isInstant) ...{
+          'released_by_name': approvedBy,
+          'handed_at': DateTime.now().toIso8601String(),
+          'borrow_date': DateTime.now().toIso8601String(),
+        }
+      };
+
+      await _supabase.from('borrow_logs').update(updateData).eq('id', logId);
+    } catch (e) {
+      throw Exception('Failed to approve request: $e');
+    }
+  }
+
+  @override
+  Future<void> rejectRequest({required String logId}) async {
+    try {
+      // 1. Fetch Log for restoration info
+      final log = await _supabase
+          .from('borrow_logs')
+          .select('inventory_id, quantity, status')
+          .eq('id', logId)
+          .single();
+
+      if (log['status'] != 'pending' && log['status'] != 'staged') {
+        throw Exception('Only pending or staged requests can be rejected');
+      }
+
+      // 2. Mark as Rejected
+      await _supabase
+          .from('borrow_logs')
+          .update({
+            'status': 'rejected',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', logId);
+
+      // 3. Restore Stock
+      final invId = log['inventory_id'] as int;
+      final qty = log['quantity'] as int;
+
+      final item = await _supabase
+          .from('inventory')
+          .select('stock_available')
+          .eq('id', invId)
+          .single();
+
+      await _supabase
+          .from('inventory')
+          .update({
+            'stock_available': (item['stock_available'] as int) + qty,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', invId);
+    } catch (e) {
+      throw Exception('Failed to reject request: $e');
+    }
+  }
+
+  @override
+  Future<void> completeHandoff({
+    required String logId,
+    required String handedBy,
+  }) async {
+    try {
+      await _supabase.from('borrow_logs').update({
+        'status': 'borrowed',
+        'borrow_date': DateTime.now().toIso8601String(),
+        'released_by_name': handedBy,
+        'handed_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
+      }).eq('id', logId);
+    } catch (e) {
+      throw Exception('Failed to complete handoff: $e');
+    }
+  }
+
+  @override
   Future<void> restockAsset({
     required int inventoryId,
-    required int addedQuantity,
+    int addedGood = 0,
+    int addedDamaged = 0,
+    int addedMaintenance = 0,
+    int addedLost = 0,
     String? notes,
   }) async {
     try {
-      // 1. Fetch current health state
+      // 1. Fetch current health state (baseline)
       final response = await _supabase
           .from('inventory')
           .select('qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total')
@@ -388,21 +605,46 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       final currentMaint = (response['qty_maintenance'] as num?)?.toInt() ?? 0;
       final currentLost = (response['qty_lost'] as num?)?.toInt() ?? 0;
 
-      // 2. Calculate new proportions
-      final newGood = currentGood + addedQuantity;
-      final newTotal = newGood + currentDamaged + currentMaint + currentLost;
+      // 2. Calculate new proportions (Deltas)
+      final newGood = currentGood + addedGood;
+      final newDamaged = currentDamaged + addedDamaged;
+      final newMaint = currentMaint + addedMaintenance;
+      final newLost = currentLost + addedLost;
+      final newTotal = newGood + newDamaged + newMaint + newLost;
 
       // 3. EXECUTE COMMAND OVERRIDE
       await _supabase.from('inventory').update({
         'qty_good': newGood,
+        'qty_damaged': newDamaged,
+        'qty_maintenance': newMaint,
+        'qty_lost': newLost,
         'stock_total': newTotal,
         'stock_available': newGood, // Available is strictly linked to Good bucket
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', inventoryId);
 
-      debugPrint('⚙️ LIGTAS-RESTOCK: Asset $inventoryId +$addedQuantity units.');
+      debugPrint('⚙️ LIGTAS-RESTOCK: Asset $inventoryId Injected. Good: +$addedGood, Damaged: +$addedDamaged');
     } catch (e) {
       throw Exception('Restock Command Failed: $e');
+    }
+  }
+
+  @override
+  Future<void> updateItemStrategy({
+    required int inventoryId,
+    required int threshold,
+    required String strategyLabel,
+  }) async {
+    try {
+      await _supabase.from('inventory').update({
+        'low_stock_threshold': threshold,
+        'item_type': strategyLabel.toLowerCase().contains('fixed') ? 'equipment' : 'consumable',
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', inventoryId);
+      
+      debugPrint('⚙️ LIGTAS-STRATEGY: Asset $inventoryId defined as $strategyLabel.');
+    } catch (e) {
+      throw Exception('Failed to update item strategy: $e');
     }
   }
 
@@ -481,8 +723,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
 
   ActivityEvent _mapToActivityEvent(Map<String, dynamic> item) {
     final status = item['status'] as String? ?? 'pending';
-    final typeStr = item['transaction_type'] as String? ?? 'borrow';
-
+    
     final eventType = switch (status) {
       'pending'   => EventType.requisitionApproved,
       'borrowed'  => EventType.assetOut,
@@ -499,7 +740,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       _                            => EventStatus.verified,
     };
 
-    final delta = '${item['quantity'] ?? 0} UNITS';
+    final delta = 'QTY: ${item['quantity'] ?? 0}';
     final actor = item['borrower_name'] as String? ?? 'Field Personnel';
 
     // 🏛️ DYNAMIC REASONING: Construct smart fallbacks based on event context
@@ -526,16 +767,22 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       locationSource: 'WH-Alpha',
       locationTarget: 'Central Hub',
       actorName: actor,
+      // 🛰️ MAP LOGISTICS CONTEXT
+      approvedByName: item['approved_by_name'] as String?,
+      releasedByName: item['released_by_name'] as String?,
+      borrowerOrganization: item['borrower_organization'] as String?,
+      borrowerContact: item['borrower_contact'] as String?,
+      createdOrigin: item['created_origin'] as String?,
+      lastUpdatedOrigin: item['last_updated_origin'] as String?,
       // 🛡️ FORENSIC PRIORITY: return_notes > purpose > generic_notes > fallback
       notes: item['return_notes'] as String? ?? 
              item['purpose'] as String? ?? 
              item['notes'] as String? ?? 
              dynamicFallback,
-      evidenceImageUrl: _resolveImageUrl(item['evidence_image_url'] as String?, bucket: 'forensic-evidence'),
-      referenceImageUrl: _resolveImageUrl(
+      evidencePath: _resolveRawPath(item['evidence_image_url'] as String?),
+      referencePath: _resolveRawPath(
         item['reference_image_url'] as String? ?? 
-        (item['inventory'] as Map<String, dynamic>?)?['image_url'] as String?, 
-        bucket: 'item-images'
+        (item['inventory'] as Map<String, dynamic>?)?['image_url'] as String?
       ),
       assetCategory: item['item_category'] as String?,
       assetCondition: item['return_condition'] as String?,
@@ -552,11 +799,11 @@ class AnalystRepositoryImpl implements IAnalystRepository {
 
   AnomalyCategory _mapCategoryToType(String? category) {
     return switch (category?.toUpperCase()) {
-      'INVENTORY'          => AnomalyCategory.depletion,
-      'LOGISTICS'          => AnomalyCategory.logistics,
-      'OVERDUE'            => AnomalyCategory.logistics,
-      'ACCESS'             => AnomalyCategory.stagnation,
-      _                    => AnomalyCategory.depletion,
+      'INVENTORY'  => AnomalyCategory.depletion,
+      'LOGISTICS'  => AnomalyCategory.logistics,
+      'OVERDUE'    => AnomalyCategory.overdue,
+      'ACCESS'     => AnomalyCategory.access,
+      _            => AnomalyCategory.depletion,
     };
   }
 
@@ -589,44 +836,28 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     );
   }
 
-  /// 🛡️ STRATEGIC IMAGE RESOLVER: Single Source of Truth Alignment
-  /// Replicates web's getInventoryImageUrl to handle brittle signed URLs and raw paths.
-  String? _resolveImageUrl(String? pathOrUrl, {String bucket = 'item-images'}) {
+  /// 🛡️ SSOT PATH RESOLVER: Extracts raw paths from signed/full URLs or raw inputs.
+  /// This ensures the UI component TacticalAssetImage can do its own resolution.
+  String? _resolveRawPath(String? pathOrUrl) {
     if (pathOrUrl == null || pathOrUrl.trim().isEmpty) return null;
 
-    // 🏛️ HANDLE FULL URLS (Potentially expired signed URLs)
+    // 🏛️ HANDLE FULL URLS (Extract path segments)
     if (pathOrUrl.startsWith('http')) {
       if (pathOrUrl.contains('/storage/v1/object/')) {
         try {
-          // Parse: .../storage/v1/object/[type]/[bucket]/[path]
           final uri = Uri.parse(pathOrUrl);
           final segments = uri.pathSegments;
-          
           final objectIndex = segments.indexOf('object');
-          if (objectIndex != -1 && objectIndex + 2 < segments.length) {
-            final detectedBucket = segments[objectIndex + 2];
-            final filePath = segments.sublist(objectIndex + 3).join('/');
-            
-            // Return clean public URL from the detected bucket
-            return _supabase.storage.from(detectedBucket).getPublicUrl(filePath);
+          if (objectIndex != -1 && objectIndex + 3 < segments.length) {
+             // segments: [... object, public, bucket, path...]
+             return segments.sublist(objectIndex + 3).join('/');
           }
-        } catch (e) {
-          debugPrint('🛡️ LIGTAS-RESOLVE: URL Parse Failure: $e');
-          return pathOrUrl; // Fallback to raw URL
-        }
+        } catch (_) {}
       }
-      return pathOrUrl;
+      return pathOrUrl; // Fallback to raw
     }
 
-    // 🏛️ HANDLE RELATIVE PATHS
-    String cleanPath = pathOrUrl.trim().replaceAll(RegExp(r'^\/+'), '');
-    
-    // Remove redundant bucket prefix if present
-    if (cleanPath.startsWith('$bucket/')) {
-      cleanPath = cleanPath.replaceFirst('$bucket/', '');
-    }
-
-    // Resolve via SDK (Handles encoding and context)
-    return _supabase.storage.from(bucket).getPublicUrl(cleanPath);
+    // 🏛️ HANDLE RELATIVE PATHS (Cleanup)
+    return pathOrUrl.trim().replaceAll(RegExp(r'^\/+'), '');
   }
 }

@@ -14,6 +14,13 @@ import { addItemSchema } from '../schemas/catalog.schema'
 
 export async function addItem(formData: FormData) {
     try {
+        const thresholdRaw = formData.get('low_stock_threshold')
+        const parsedThreshold =
+            thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
+        const restockAlertEnabledRaw = formData.get('restock_alert_enabled')
+        const restockAlertEnabled =
+            restockAlertEnabledRaw === null ? true : `${restockAlertEnabledRaw}` === 'true'
+
         // Parse and validate form data
         const rawData = {
             name: formData.get('name'),
@@ -24,6 +31,7 @@ export async function addItem(formData: FormData) {
             status: 'Good',
             image_url: formData.get('image_url'),
             serial_number: formData.get('serial_number'),
+            model_number: formData.get('model_number'),
             equipment_type: formData.get('equipment_type'),
             item_type: formData.get('item_type') || 'equipment',
             storage_location: formData.get('storage_location'),
@@ -32,7 +40,9 @@ export async function addItem(formData: FormData) {
             expiry_date: formData.get('expiry_date'),
             parent_id: formData.get('parent_id'),
             variant_label: formData.get('variant_label'),
-            low_stock_threshold: formData.get('low_stock_threshold') || 20,
+            low_stock_threshold: parsedThreshold,
+            target_stock: Number(formData.get('target_stock') ?? 0) || 0,
+            restock_alert_enabled: restockAlertEnabled,
             // Enterprise Sub-Buckets
             qty_good: Number(formData.get('qty_good')) || Number(formData.get('stock_total')) || 0,
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
@@ -84,6 +94,7 @@ export async function addItem(formData: FormData) {
                         parent_id: null,
                         variant_label: null,
                         description: validatedData.description,
+                        model_number: validatedData.model_number,
                         category: validatedData.category,
                         stock_total: 0,
                         stock_available: 0,
@@ -99,7 +110,9 @@ export async function addItem(formData: FormData) {
                         storage_location: validatedData.storage_location,
                         brand: validatedData.brand,
                         expiry_date: validatedData.expiry_date,
-                        low_stock_threshold: validatedData.low_stock_threshold || 20,
+                        low_stock_threshold: validatedData.low_stock_threshold,
+                        target_stock: validatedData.target_stock,
+                        restock_alert_enabled: restockAlertEnabled,
                     }])
                     .select()
                     .single()
@@ -124,6 +137,7 @@ export async function addItem(formData: FormData) {
                 parent_id: finalParentId,
                 variant_label: finalVariantLabel,
                 description: validatedData.description,
+                model_number: validatedData.model_number,
                 category: validatedData.category,
                 stock_total: finalStockTotal,
                 stock_available: rawData.qty_good, // Available is strictly Ready for Deployment
@@ -141,6 +155,8 @@ export async function addItem(formData: FormData) {
                 brand: validatedData.brand,
                 expiry_date: validatedData.expiry_date,
                 low_stock_threshold: validatedData.low_stock_threshold,
+                target_stock: validatedData.target_stock,
+                restock_alert_enabled: restockAlertEnabled,
             },
         ]).select()
 
@@ -256,6 +272,12 @@ export async function updateItem(formData: FormData) {
     try {
         const id = formData.get('id')
         if (!id) throw new Error('Item ID is required')
+        const thresholdRaw = formData.get('low_stock_threshold')
+        const parsedThreshold =
+            thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
+        const restockAlertEnabledRaw = formData.get('restock_alert_enabled')
+        const restockAlertEnabled =
+            restockAlertEnabledRaw === null ? true : `${restockAlertEnabledRaw}` === 'true'
 
         // 1. Data Extraction & Coercion
         const rawData = {
@@ -264,11 +286,13 @@ export async function updateItem(formData: FormData) {
             category: String(formData.get('category') || ''),
             image_url: formData.get('image_url') ? String(formData.get('image_url')) : null,
             serial_number: formData.get('serial_number') ? String(formData.get('serial_number')) : null,
+            model_number: formData.get('model_number') ? String(formData.get('model_number')) : null,
             equipment_type: formData.get('equipment_type') ? String(formData.get('equipment_type')) : null,
             brand: formData.get('brand') ? String(formData.get('brand')) : null,
             expiry_date: formData.get('expiry_date') ? String(formData.get('expiry_date')) : null,
-            low_stock_threshold: Number(formData.get('low_stock_threshold')) || 20,
-            target_stock: Number(formData.get('target_stock')) || 0,
+            low_stock_threshold: parsedThreshold,
+            target_stock: Number(formData.get('target_stock') ?? 0) || 0,
+            restock_alert_enabled: restockAlertEnabled,
             item_type: String(formData.get('item_type') || 'equipment'),
             qty_good: Number(formData.get('qty_good')) || 0,
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
@@ -313,9 +337,11 @@ export async function updateItem(formData: FormData) {
                     equipment_type: rawData.equipment_type,
                     item_type: rawData.item_type,
                     serial_number: rawData.serial_number,
+                    model_number: rawData.model_number,
                     expiry_date: rawData.expiry_date,
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
+                    restock_alert_enabled: rawData.restock_alert_enabled,
                     storage_location: dist.locationName,
                     location_registry_id: dist.locationId,
                     qty_good: dist.qtyGood,
@@ -355,11 +381,13 @@ export async function updateItem(formData: FormData) {
                     qty_lost: rawData.qty_lost,
                     image_url: rawData.image_url,
                     serial_number: rawData.serial_number,
+                    model_number: rawData.model_number,
                     equipment_type: rawData.equipment_type,
                     brand: rawData.brand,
                     expiry_date: rawData.expiry_date,
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
+                    restock_alert_enabled: rawData.restock_alert_enabled,
                 })
                 .eq('id', id)
             

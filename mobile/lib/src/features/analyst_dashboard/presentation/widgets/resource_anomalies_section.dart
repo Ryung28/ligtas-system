@@ -7,6 +7,8 @@ import 'anomaly_card.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/design_system/app_theme.dart';
 
+import 'package:go_router/go_router.dart';
+
 /// Tactical Section: Aggregates Stock & Operational Anomalies
 class ResourceAnomaliesSection extends StatelessWidget {
   final List<ResourceAnomaly> anomalies;
@@ -24,113 +26,44 @@ class ResourceAnomaliesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final criticalCount = anomalies.where((e) => e.severity == AnomalySeverity.critical).length;
     final isOverloaded = anomalies.length >= 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Header Section: Operational Awareness ──
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'EQUIPMENT STATUS',
-                style: GoogleFonts.lexend(
-                  fontSize: 10,
+                'Alerts',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.neutralGray500,
-                  letterSpacing: 2.0,
+                  color: AppTheme.neutralGray900,
+                  letterSpacing: -1.0,
                 ),
               ),
-              if (anomalies.isNotEmpty)
-                GestureDetector(
-                  onTap: onViewAll,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isOverloaded ? AppTheme.errorRed.withOpacity(0.08) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: isOverloaded ? Border.all(color: AppTheme.errorRed.withOpacity(0.2)) : null,
-                    ),
-                    child: Row(
-                      children: [
-                        if (isOverloaded) ...[
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.errorRed,
-                              shape: BoxShape.circle,
-                            ),
-                          ).animate(onPlay: (c) => c.repeat()).scale(begin: const Offset(1,1), end: const Offset(1.5,1.5)).then().scale(begin: const Offset(1.5,1.5), end: const Offset(1,1)),
-                          const Gap(8),
-                        ],
-                        Text(
-                          isOverloaded ? 'MANAGE QUEUE (${anomalies.length})' : 'VIEW ALL',
-                          style: GoogleFonts.lexend(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: isOverloaded ? AppTheme.errorRed : AppTheme.primaryBlue,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const Gap(10),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Stock Alerts',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.neutralGray900,
-                    letterSpacing: -1.0,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const Gap(8), 
-              
-              // ⚙️ TUNING TRIGGER
               GestureDetector(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  onTuningTap?.call();
+                  context.push('/manager/queue');
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppTheme.neutralGray50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.neutralGray100),
+                    color: AppTheme.neutralGray900,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.tune_rounded, size: 14, color: AppTheme.neutralGray900),
-                      const Gap(6),
-                      Text(
-                        'TUNING',
-                        style: GoogleFonts.lexend(
-                          fontSize: 9, 
-                          fontWeight: FontWeight.w800, 
-                          color: AppTheme.neutralGray900,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'SEE ALL (${anomalies.length})',
+                    style: GoogleFonts.lexend(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),

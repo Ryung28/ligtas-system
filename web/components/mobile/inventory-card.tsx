@@ -107,10 +107,3 @@ export function InventoryCard({ item }: InventoryCardProps) {
         </div>
     )
 }
-assName="text-[11px] font-bold whitespace-nowrap">{statusLabel}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-}

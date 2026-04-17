@@ -13,10 +13,10 @@ abstract class IAnalystRepository {
   Stream<AnalystMetrics> watchMetricsStream({String? warehouseId});
 
   /// Fetch resource anomalies (low stock, critical operational failures)
-  Future<List<ResourceAnomaly>> getAnomalies({int limit = 10, String? warehouseId});
+  Future<List<ResourceAnomaly>> getAnomalies({int limit = 200, String? warehouseId});
 
   /// 🛰️ SENTINEL PULSE: Real-time stream for resource anomalies
-  Stream<List<ResourceAnomaly>> watchAnomalies({int limit = 10, String? warehouseId});
+  Stream<List<ResourceAnomaly>> watchAnomalies({int limit = 200, String? warehouseId});
 
   /// 🛡️ ACTIVE TRIAGE: Fetch pending logistics actions (Dispense, Dispose, Returns)
   Future<List<LogisticsAction>> getLogisticsQueue({String? warehouseId});
@@ -46,11 +46,39 @@ abstract class IAnalystRepository {
     String? forensicNote,
   });
 
-  /// ⚙️ COMMAND OVERRIDE: Administratively restock an asset
+  /// ⚙️ COMMAND OVERRIDE: Approve a borrow request (Pending -> Staged/Borrowed)
+  Future<void> approveRequest({
+    required String logId,
+    required String approvedBy,
+    bool isInstant = false,
+  });
+
+  /// ⚙️ COMMAND OVERRIDE: Reject a borrow request (Pending/Staged -> Rejected + Restore Stock)
+  Future<void> rejectRequest({
+    required String logId,
+  });
+
+  /// ⚙️ COMMAND OVERRIDE: Complete equipment handoff (Staged -> Borrowed)
+  Future<void> completeHandoff({
+    required String logId,
+    required String handedBy,
+  });
+
+  /// ⚙️ COMMAND OVERRIDE: Administratively restock an asset with condition tracking
   Future<void> restockAsset({
     required int inventoryId,
-    required int addedQuantity,
+    int addedGood = 0,
+    int addedDamaged = 0,
+    int addedMaintenance = 0,
+    int addedLost = 0,
     String? notes,
+  });
+
+  /// ⚙️ COMMAND OVERRIDE: Set the logistical strategy for an item (Fixed vs Consumable)
+  Future<void> updateItemStrategy({
+    required int inventoryId,
+    required int threshold,
+    required String strategyLabel,
   });
 
   /// ⚙️ COMMAND OVERRIDE: Triage asset health buckets (Good, Damaged, Maintenance, Lost)
@@ -71,4 +99,24 @@ abstract class IAnalystRepository {
     String? status, // Forensic Status Filter (e.g., 'pending', 'returned')
     String? warehouseId,
   });
+
+  /// ⚙️ COMMAND OVERRIDE: Force-return an overdue borrow (mirrors web returnItem).
+  /// Sets borrow_logs.status = 'returned', stamps audit fields, and
+  /// increments inventory.stock_available by [quantity].
+  Future<ForceReturnResult> forceReturn({
+    required int borrowId,
+    required int inventoryId,
+    required int quantity,
+    required String receivedByName,
+    required String receivedByUserId,
+    String returnCondition = 'good',
+    String? returnNotes,
+  });
+}
+
+class ForceReturnResult {
+  final bool success;
+  final String? error;
+  const ForceReturnResult.ok() : success = true, error = null;
+  const ForceReturnResult.fail(this.error) : success = false;
 }

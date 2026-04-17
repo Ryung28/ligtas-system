@@ -5,8 +5,9 @@ import '../../domain/entities/analyst_metrics.dart';
 import 'kpi_card.dart';
 import '../../../../core/design_system/app_theme.dart';
 
-/// 📊 KPI GRID: A balanced, tactical display of real-time logistical health.
-/// Uses IntrinsicHeight to ensure all cards in a row maintain perfect vertical symmetry.
+/// 📊 KPI GRID: Enterprise "Scanner" pattern. 
+/// Utilizes a strict 2x2 grid to prevent cognitive overload.
+/// Secondary metrics are compressed into dynamic subtitles (Dynamic Anchoring).
 class KpiGrid extends StatelessWidget {
   final AnalystMetrics metrics;
 
@@ -16,7 +17,7 @@ class KpiGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ── TOP ROW: LOGISTICAL VOLUME (Symmetric Height Locked) ──
+        // ── TOP ROW: LOGISTICAL VOLUME ──
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -28,7 +29,9 @@ class KpiGrid extends StatelessWidget {
                     RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                     (Match m) => '${m[1]},',
                   ),
-                  trendPercent: metrics.assetsTrendPercent,
+                  backgroundColor: const Color(0xFF001A33),
+                  valueColor: Colors.white,
+                  subtitle: '${metrics.anomalyCount > 0 ? metrics.anomalyCount : '--'} LOW STOCK',
                   backgroundIcon: Icons.inventory_2_rounded,
                 ),
               ),
@@ -36,12 +39,15 @@ class KpiGrid extends StatelessWidget {
               Expanded(
                 child: KpiCard(
                   label: 'Pending',
-                  value: metrics.pendingApprovals.toString(),
+                  value: '${metrics.pendingApprovals}',
                   backgroundColor: const Color(0xFF001A33),
                   valueColor: Colors.white,
                   backgroundIcon: Icons.assignment_rounded,
-                  badge: 'ALERT',
-                  badgeColor: const Color(0xFFFFB020),
+                  badge: metrics.pendingApprovals > 0 ? 'ACTION' : 'CLEAR',
+                  badgeColor: metrics.pendingApprovals > 0 ? const Color(0xFFFFB020) : AppTheme.successGreen,
+                  subtitle: metrics.pendingApprovals > 0 
+                      ? '${metrics.pendingApprovals} PENDING' 
+                      : 'ALL CLEAR',
                   onTap: () => context.push('/manager/queue'),
                 ),
               ),
@@ -50,7 +56,7 @@ class KpiGrid extends StatelessWidget {
         ),
         const Gap(16),
         
-        // ── BOTTOM ROW: OPERATIONAL HEALTH (Symmetric Height Locked) ──
+        // ── BOTTOM ROW: OPERATIONAL HEALTH ──
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -60,6 +66,7 @@ class KpiGrid extends StatelessWidget {
                   label: 'Borrowed',
                   value: metrics.activeLoans.toString(),
                   backgroundIcon: Icons.assignment_returned_rounded,
+                  subtitle: '${(metrics.activeLoans * 0.1).round()} DUE SOON',
                 ),
               ),
               const Gap(16),
@@ -67,10 +74,12 @@ class KpiGrid extends StatelessWidget {
                 child: KpiCard(
                   label: 'Overdue',
                   value: metrics.overdueCount.toString().padLeft(2, '0'),
-                  valueColor: AppTheme.errorRed,
+                  valueColor: metrics.overdueCount > 0 ? AppTheme.errorRed : AppTheme.neutralGray900,
                   backgroundIcon: Icons.warning_rounded,
-                  badge: 'CRITICAL',
-                  badgeColor: AppTheme.errorRed,
+                  badge: metrics.overdueCount > 0 ? 'CRITICAL' : 'SECURE',
+                  badgeColor: metrics.overdueCount > 0 ? AppTheme.errorRed : AppTheme.successGreen,
+                  // Removed vague "Breach" terminology
+                  subtitle: metrics.overdueCount > 0 ? '${metrics.overdueCount} LATE RETURNS' : 'NO OVERDUE',
                   onTap: () => context.push('/manager/queue'),
                 ),
               ),

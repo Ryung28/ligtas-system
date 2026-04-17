@@ -5,7 +5,6 @@ import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:go_router/go_router.dart';
-import '../../auth/presentation/providers/auth_providers.dart';
 import '../../weather/presentation/providers/weather_provider.dart';
 import '../../weather/domain/entities/weather_data.dart';
 import '../../notifications/presentation/providers/notification_provider.dart';
@@ -138,21 +137,27 @@ class DashboardHeader extends ConsumerWidget {
   }
 
   Widget _buildNotificationBell(BuildContext context, int unreadCount) {
+    final hasUnread = unreadCount > 0;
     return GestureDetector(
       onTap: () => context.push('/notifications'),
       child: Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC), // 🛡️ Slate-50 for high-contrast depth
+          color: hasUnread ? stitchNavy : const Color(0xFFF8FAFC),
           shape: BoxShape.circle,
-          border: Border.all(color: stitchNavy.withOpacity(0.08), width: 1),
+          border: Border.all(
+            color: hasUnread ? Colors.transparent : stitchNavy.withOpacity(0.08),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
+              color: hasUnread
+                  ? AppTheme.errorRed.withOpacity(0.28)
+                  : Colors.black.withOpacity(0.08),
+              blurRadius: hasUnread ? 18 : 12,
               offset: const Offset(0, 4),
-              spreadRadius: unreadCount > 0 ? 2 : 0, // 🛰️ Visual Pop for alerts
+              spreadRadius: hasUnread ? 1 : 0,
             ),
           ],
         ),
@@ -160,9 +165,9 @@ class DashboardHeader extends ConsumerWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            const Icon(
+            Icon(
               Icons.notifications_outlined,
-              color: stitchNavy,
+              color: hasUnread ? Colors.white : stitchNavy,
               size: 26, // Scaled Up
             ),
             if (unreadCount > 0)

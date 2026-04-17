@@ -7,7 +7,7 @@ import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../providers/mission_cart_provider.dart';
-import 'manager_action_sheet.dart';
+import 'manager_action_sheet_v2/manager_action_sheet_v2.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'tactical_asset_image.dart';
@@ -42,7 +42,7 @@ class InventoryCard extends ConsumerWidget {
             useRootNavigator: true, 
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (context) => ManagerActionSheet(item: item),
+            builder: (context) => ManagerActionSheetV2(item: item),
           );
         } else {
           onBorrow?.call();
@@ -83,17 +83,17 @@ class InventoryCard extends ConsumerWidget {
 
             // ── 🛡️ INFO BLOCK (Content Area) ──
             Expanded(
-              flex: 1,
+              flex: 1, // 🛡️ Reverted to maintain image header size
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final isTight = constraints.maxHeight < 120; // 🛡️ ADAPTIVE PRUNING THRESHOLD
+                  final isTight = constraints.maxHeight < 100; 
                   
                   return Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 8), 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start, // 🛡️ CONTENT-FIRST GROUPING
                       children: [
+                        // 1. IDENTITY BLOCK
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -107,69 +107,57 @@ class InventoryCard extends ConsumerWidget {
                                   fontSize: 8,
                                 ),
                               ),
-                            const Gap(2),
                             Text(
                               item.name,
-                              maxLines: 2,
+                              maxLines: isTight ? 1 : 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 height: 1.1,
-                                fontSize: 13,
+                                fontSize: isTight ? 12 : 13,
                                 color: sentinel.navy,
                               ),
                             ),
-                            const Gap(4),
-                              Text(
-                                item.status.toLowerCase() == 'staged' || item.status.toLowerCase() == 'reserved'
-                                    ? 'RESERVED'
-                                    : (item.availableStock <= 0 
-                                        ? 'OUT OF STOCK' 
-                                        : (item.availableStock <= item.minStockLevel ? 'LOW STOCK: ${item.availableStock.toInt()} ${item.unit.toUpperCase()}' : 'STOCK: ${item.availableStock.toInt()} ${item.unit.toUpperCase()}')),
-                                style: GoogleFonts.lexend(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: (item.status.toLowerCase() == 'staged' || item.status.toLowerCase() == 'reserved')
-                                      ? AppTheme.primaryBlue
-                                      : (item.availableStock <= 0 
-                                          ? Colors.redAccent 
-                                          : (item.availableStock <= item.minStockLevel ? Colors.orangeAccent : sentinel.onSurfaceVariant.withOpacity(0.6))),
-                                ),
-                              ),
                           ],
                         ),
+
+                        const Spacer(),
+
+                        // 2. LOGISTICS BLOCK (Stock)
+                        if (item.hasMultipleLocations && !isTight) ...[
+                          _LocationBadge(
+                            label: '${item.variants.length + 1} HUBS',
+                            isMultiple: true,
+                          ),
+                          const Gap(4),
+                        ] else if (item.location.isNotEmpty && !isTight) ...[
+                          _LocationBadge(label: item.location),
+                          const Gap(4),
+                        ],
                         
-                        // 🛡️ ADAPTIVE PROXIMITY: Anchors the button to the bottom
-                        const Gap(2), 
-                        const Spacer(), 
-                        const Gap(2), 
+                        _StockLabel(item: item, sentinel: sentinel),
+                        const Gap(6), 
                         
-                        // ── 🛡️ ACTION ROW (KINETIC HUB) ──
+                        // 3. ACTION ROW (KINETIC HUB)
                         Consumer(
                           builder: (context, ref, child) {
                             final cart = ref.watch(missionCartNotifierProvider);
                             final isInCart = cart.containsKey(item.id.toString());
                             final currentQty = cart[item.id.toString()]?.quantity ?? 0;
-                            final isReserved = item.status.toLowerCase() == 'staged' || item.status.toLowerCase() == 'reserved';
+                            final isReserved = item.status.toLowerCase() == 'reserved' || item.status.toLowerCase() == 'staged';
                             
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               width: double.infinity,
-                              height: 34,
+                              height: 32, // Tightened to save 2px
                               decoration: BoxDecoration(
                                 color: isManager 
                                     ? sentinel.containerLow 
                                     : (isInCart ? sentinel.primary : (item.availableStock <= 0 || isReserved ? sentinel.containerLow : sentinel.navy)),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: isInCart 
-                                    ? [BoxShadow(color: sentinel.primary.withOpacity(0.4), blurRadius: 8)] 
-                                    : null,
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
-                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                  return ScaleTransition(scale: animation, child: FadeTransition(opacity: animation, child: child));
-                                },
                                 child: isInCart && !isManager 
                                   ? Row(
                                       key: const ValueKey('counter_state'),
@@ -208,7 +196,7 @@ class InventoryCard extends ConsumerWidget {
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          isManager ? Icons.settings_input_component_rounded : (isReserved ? Icons.bookmark_added_rounded : Icons.shopping_bag_outlined),
+                                          isManager ? Icons.tune_rounded : (isReserved ? Icons.event_available_rounded : Icons.send_rounded),
                                           color: isManager ? sentinel.navy : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
                                           size: 14,
                                         ),
@@ -221,16 +209,15 @@ class InventoryCard extends ConsumerWidget {
                                                     ? 'RESERVED' 
                                                     : (item.availableStock <= 0 
                                                         ? 'OUT OF STOCK' 
-                                                        : 'BORROW ITEM')),
+                                                        : 'DISPATCH')),
                                             textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.visible, 
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis, 
                                             style: GoogleFonts.lexend(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w900,
                                               color: isManager ? sentinel.navy : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
                                               letterSpacing: 1.0,
-                                              height: 1.0,
                                             ),
                                           ),
                                         ),
@@ -273,6 +260,126 @@ class InventoryCard extends ConsumerWidget {
     if (key.contains('shelter')) return Icons.home_rounded;
     if (key.contains('water')) return Icons.water_drop_rounded;
     return Icons.inventory_rounded;
+  }
+}
+
+/// Stock label row — High-speed "Logistics Progress Bar" layout.
+/// Allows managers to scan stock levels visually (health bar) instead of reading.
+class _StockLabel extends StatelessWidget {
+  final InventoryItem item;
+  final dynamic sentinel;
+
+  const _StockLabel({required this.item, required this.sentinel});
+
+  @override
+  Widget build(BuildContext context) {
+    final double percentage = item.displayTotal > 0 
+        ? (item.displayStock / item.displayTotal).clamp(0.0, 1.0) 
+        : 0.0;
+    
+    final Color barColor = item.isOutOffStock 
+        ? Colors.redAccent 
+        : (item.isLowStock ? Colors.orangeAccent : const Color(0xFF1E293B));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Text(
+              '${item.displayStock}',
+              style: GoogleFonts.lexend(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: barColor,
+              ),
+            ),
+            Text(
+              ' / ${item.displayTotal}',
+              style: GoogleFonts.lexend(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF64748B).withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+        const Gap(6),
+        // 🛡️ LOGISTICS PROGRESS BAR: Visual health indicator
+        Container(
+          width: double.infinity,
+          height: 4,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B).withOpacity(0.05),
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: Stack(
+            children: [
+              FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: percentage,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: barColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Location badge shown on items so managers can see at a glance
+/// where stock is situated — mirrors the web's location indicator.
+class _LocationBadge extends StatelessWidget {
+  final String label;
+  final bool isMultiple;
+
+  const _LocationBadge({required this.label, this.isMultiple = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: isMultiple 
+            ? const Color(0xFF6366F1).withOpacity(0.1) 
+            : const Color(0xFF1E293B).withOpacity(0.07),
+        borderRadius: BorderRadius.circular(6),
+        border: isMultiple 
+            ? Border.all(color: const Color(0xFF6366F1).withOpacity(0.2), width: 0.5)
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_on_rounded, 
+            size: 8, 
+            color: isMultiple ? const Color(0xFF6366F1) : const Color(0xFF1E293B)
+          ),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              label.replaceAll('_', ' ').toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.lexend(
+                fontSize: 7.5,
+                fontWeight: FontWeight.w900,
+                color: isMultiple ? const Color(0xFF4F46E5) : const Color(0xFF1E293B),
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

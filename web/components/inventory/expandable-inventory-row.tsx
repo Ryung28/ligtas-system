@@ -7,7 +7,7 @@ import { TableCell, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Edit2, Trash2, Maximize2, Package, ChevronDown, Warehouse, ArrowRightLeft } from 'lucide-react'
-import { InventoryItem, getInventoryImageUrl } from '@/lib/supabase'
+import { InventoryItem, InventoryVariant, getInventoryImageUrl } from '@/lib/supabase'
 import { QRDialog } from './qr-dialog'
 import { EditableStorageLocation } from './editable-storage-location'
 import { getPendingRequestsByItemId, type PendingRequest } from '@/src/features/transactions'
@@ -21,6 +21,27 @@ import { useStorageLocations } from '@/hooks/use-storage-locations'
 
 // Sub-components
 import { CompositeStockBar } from './_components/composite-stock-bar'
+
+function SiteHealthFootnote({ variant }: { variant: InventoryVariant | undefined }) {
+    if (!variant) return null
+    const d = variant.qty_damaged ?? 0
+    const m = variant.qty_maintenance ?? 0
+    const l = variant.qty_lost ?? 0
+    if (!d && !m && !l) {
+        return (
+            <p className="mt-3 text-[9px] font-bold uppercase tracking-widest text-emerald-700/90">
+                All units serviceable at this site
+            </p>
+        )
+    }
+    return (
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-black uppercase tracking-widest">
+            {d > 0 && <span className="text-rose-600">{d} damaged</span>}
+            {m > 0 && <span className="text-amber-600">{m} maintenance</span>}
+            {l > 0 && <span className="text-slate-500">{l} lost</span>}
+        </div>
+    )
+}
 
 interface ExpandableInventoryRowProps {
     item: InventoryItem
@@ -62,11 +83,13 @@ export function ExpandableInventoryRow({
     // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
     const imageUrl = item.image_url ? getInventoryImageUrl(item.image_url) : null;
 
-    // 🏛️ SENIOR GEOGRAPHIC DETECTOR: Consolidated variants list
-    // The first item in group.variants is the Primary Site. Everyone else is a Remote Site.
+    // 🏛️ SENIOR GEOGRAPHIC DETECTOR: Consolidated variants list (one row per physical site).
     const allSites = item.variants || []
-    const actualVariants = allSites.slice(1) // Satellites only
-    const isDistributed = actualVariants.length > 0;
+    const primaryLocKey = ((item.primary_location || item.storage_location || '') as string).trim()
+    const primaryVariant =
+        allSites.find((v) => (v.location || '').trim() === primaryLocKey) ?? allSites[0]
+    const satelliteVariants = allSites.filter((v) => (v.location || '').trim() !== primaryLocKey)
+    const isDistributed = satelliteVariants.length > 0
     
     // Header represents the TRUE AGGREGATE of all unique sites.
     // Since InventoryTable now pre-calculates the sum for the group, we display it directly.
@@ -237,19 +260,20 @@ export function ExpandableInventoryRow({
                                     <div className="flex items-end justify-between">
                                         <div className="flex flex-col">
                                             <span className="text-[24px] font-black text-gray-950 tabular-nums tracking-tighter leading-none">
-                                                {allSites[0]?.stock_available ?? 0}
+                                                {primaryVariant?.stock_available ?? 0}
                                             </span>
                                             <div className="flex items-center gap-1.5 mt-2">
                                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    IN STOCK / {allSites[0]?.stock_total ?? 0} TOTAL
+                                                    IN STOCK / {primaryVariant?.stock_total ?? 0} TOTAL
                                                 </span>
                                             </div>
+                                            <SiteHealthFootnote variant={primaryVariant} />
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Satellite Site Cards */}
-                                {actualVariants.map((v) => (
+                                {satelliteVariants.map((v) => (
                                     <div key={v.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.1)] transition-all duration-300 group/site">
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="flex items-center gap-2.5">
@@ -272,6 +296,7 @@ export function ExpandableInventoryRow({
                                                         IN STOCK / {v.stock_total ?? 0} TOTAL
                                                     </span>
                                                 </div>
+                                                <SiteHealthFootnote variant={v} />
                                             </div>
                                         </div>
                                     </div>

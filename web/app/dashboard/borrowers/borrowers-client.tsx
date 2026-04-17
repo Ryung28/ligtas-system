@@ -71,7 +71,7 @@ export function BorrowersClient({ initialData }: BorrowersClientProps) {
     }
 
     const handleSelectBorrower = (borrower: any) => {
-        setSelectedBorrower(prev =>
+        setSelectedBorrower((prev: any) =>
             // Toggle off if clicking the same row
             prev && (
                 borrower.borrower_user_id

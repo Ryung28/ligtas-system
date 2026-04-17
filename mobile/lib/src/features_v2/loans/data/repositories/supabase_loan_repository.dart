@@ -63,7 +63,10 @@ class SupabaseLoanRepository implements ILoanRepository {
         'pickup_scheduled_at': request.pickupScheduledAt?.toIso8601String(),
         'notes': request.notes,
         'status': 'pending',
-        'borrowed_by': userId, // Ensure current user owns the log
+        'borrowed_by': userId,
+        'platform_origin': 'Mobile',
+        'created_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       }).select('*, inventory:inventory_id(image_url)').single();
 
       final newLoan = _mapJsonToEntity(response);
@@ -83,6 +86,8 @@ class SupabaseLoanRepository implements ILoanRepository {
       await _client.from('borrow_logs').update({
         'status': 'returned',
         'actual_return_date': DateTime.now().toIso8601String(),
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       }).eq('id', loanId).eq('borrowed_by', userId);
 
       await fetchMyLoans();
@@ -151,6 +156,8 @@ class SupabaseLoanRepository implements ILoanRepository {
         'status': 'approved',
         'approved_by': managerName,
         'approved_at': DateTime.now().toIso8601String(),
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -165,6 +172,8 @@ class SupabaseLoanRepository implements ILoanRepository {
         'handed_by': staffName,
         'handed_at': DateTime.now().toIso8601String(),
         'borrow_date': DateTime.now().toIso8601String(),
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -185,6 +194,8 @@ class SupabaseLoanRepository implements ILoanRepository {
         'received_by_user_id': _client.auth.currentUser?.id,
         'return_condition': condition,
         'return_notes': notes,
+        'platform_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
       throw ExceptionHandler.fromException(e);

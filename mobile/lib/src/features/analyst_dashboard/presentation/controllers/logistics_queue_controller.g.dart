@@ -7,7 +7,7 @@ part of 'logistics_queue_controller.dart';
 // **************************************************************************
 
 String _$logisticsQueueControllerHash() =>
-    r'ce499388326ed38929b916d12c9ffffb49820398';
+    r'8869e5de0e5f08cb7e6b0ddc81c1d2c276022c8d';
 
 /// See also [LogisticsQueueController].
 @ProviderFor(LogisticsQueueController)

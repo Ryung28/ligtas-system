@@ -26,17 +26,25 @@ mixin _$InventoryItem {
   String get qrCode => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
   String get code => throw _privateConstructorUsedError;
+  String get modelNumber => throw _privateConstructorUsedError;
   int get minStockLevel => throw _privateConstructorUsedError;
+  int get targetStock => throw _privateConstructorUsedError;
   String get unit => throw _privateConstructorUsedError;
   String? get imageUrl => throw _privateConstructorUsedError;
   DateTime? get lastUpdated => throw _privateConstructorUsedError;
-  bool get isPendingSync =>
+  DateTime? get expiryDate => throw _privateConstructorUsedError;
+  bool get isPendingSync => throw _privateConstructorUsedError;
+  bool get restockAlertEnabled =>
+      throw _privateConstructorUsedError; // Health buckets (mirrors web qty_* columns)
+  int get qtyGood => throw _privateConstructorUsedError;
+  int get qtyDamaged => throw _privateConstructorUsedError;
+  int get qtyMaintenance => throw _privateConstructorUsedError;
+  int get qtyLost =>
       throw _privateConstructorUsedError; // Hierarchical Location Support
   int? get parentId => throw _privateConstructorUsedError;
   int get aggregateTotal => throw _privateConstructorUsedError;
   int get aggregateAvailable => throw _privateConstructorUsedError;
-  int? get locationRegistryId =>
-      throw _privateConstructorUsedError; // MASTER IDENTITY ANCHOR
+  int? get locationRegistryId => throw _privateConstructorUsedError;
   List<InventoryVariant> get variants => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
@@ -61,11 +69,19 @@ abstract class $InventoryItemCopyWith<$Res> {
       String qrCode,
       String status,
       String code,
+      String modelNumber,
       int minStockLevel,
+      int targetStock,
       String unit,
       String? imageUrl,
       DateTime? lastUpdated,
+      DateTime? expiryDate,
       bool isPendingSync,
+      bool restockAlertEnabled,
+      int qtyGood,
+      int qtyDamaged,
+      int qtyMaintenance,
+      int qtyLost,
       int? parentId,
       int aggregateTotal,
       int aggregateAvailable,
@@ -96,11 +112,19 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
     Object? qrCode = null,
     Object? status = null,
     Object? code = null,
+    Object? modelNumber = null,
     Object? minStockLevel = null,
+    Object? targetStock = null,
     Object? unit = null,
     Object? imageUrl = freezed,
     Object? lastUpdated = freezed,
+    Object? expiryDate = freezed,
     Object? isPendingSync = null,
+    Object? restockAlertEnabled = null,
+    Object? qtyGood = null,
+    Object? qtyDamaged = null,
+    Object? qtyMaintenance = null,
+    Object? qtyLost = null,
     Object? parentId = freezed,
     Object? aggregateTotal = null,
     Object? aggregateAvailable = null,
@@ -148,9 +172,17 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
           ? _value.code
           : code // ignore: cast_nullable_to_non_nullable
               as String,
+      modelNumber: null == modelNumber
+          ? _value.modelNumber
+          : modelNumber // ignore: cast_nullable_to_non_nullable
+              as String,
       minStockLevel: null == minStockLevel
           ? _value.minStockLevel
           : minStockLevel // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetStock: null == targetStock
+          ? _value.targetStock
+          : targetStock // ignore: cast_nullable_to_non_nullable
               as int,
       unit: null == unit
           ? _value.unit
@@ -164,10 +196,34 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
           ? _value.lastUpdated
           : lastUpdated // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      expiryDate: freezed == expiryDate
+          ? _value.expiryDate
+          : expiryDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       isPendingSync: null == isPendingSync
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
               as bool,
+      restockAlertEnabled: null == restockAlertEnabled
+          ? _value.restockAlertEnabled
+          : restockAlertEnabled // ignore: cast_nullable_to_non_nullable
+              as bool,
+      qtyGood: null == qtyGood
+          ? _value.qtyGood
+          : qtyGood // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyDamaged: null == qtyDamaged
+          ? _value.qtyDamaged
+          : qtyDamaged // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyMaintenance: null == qtyMaintenance
+          ? _value.qtyMaintenance
+          : qtyMaintenance // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyLost: null == qtyLost
+          ? _value.qtyLost
+          : qtyLost // ignore: cast_nullable_to_non_nullable
+              as int,
       parentId: freezed == parentId
           ? _value.parentId
           : parentId // ignore: cast_nullable_to_non_nullable
@@ -211,11 +267,19 @@ abstract class _$$InventoryItemImplCopyWith<$Res>
       String qrCode,
       String status,
       String code,
+      String modelNumber,
       int minStockLevel,
+      int targetStock,
       String unit,
       String? imageUrl,
       DateTime? lastUpdated,
+      DateTime? expiryDate,
       bool isPendingSync,
+      bool restockAlertEnabled,
+      int qtyGood,
+      int qtyDamaged,
+      int qtyMaintenance,
+      int qtyLost,
       int? parentId,
       int aggregateTotal,
       int aggregateAvailable,
@@ -244,11 +308,19 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
     Object? qrCode = null,
     Object? status = null,
     Object? code = null,
+    Object? modelNumber = null,
     Object? minStockLevel = null,
+    Object? targetStock = null,
     Object? unit = null,
     Object? imageUrl = freezed,
     Object? lastUpdated = freezed,
+    Object? expiryDate = freezed,
     Object? isPendingSync = null,
+    Object? restockAlertEnabled = null,
+    Object? qtyGood = null,
+    Object? qtyDamaged = null,
+    Object? qtyMaintenance = null,
+    Object? qtyLost = null,
     Object? parentId = freezed,
     Object? aggregateTotal = null,
     Object? aggregateAvailable = null,
@@ -296,9 +368,17 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
           ? _value.code
           : code // ignore: cast_nullable_to_non_nullable
               as String,
+      modelNumber: null == modelNumber
+          ? _value.modelNumber
+          : modelNumber // ignore: cast_nullable_to_non_nullable
+              as String,
       minStockLevel: null == minStockLevel
           ? _value.minStockLevel
           : minStockLevel // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetStock: null == targetStock
+          ? _value.targetStock
+          : targetStock // ignore: cast_nullable_to_non_nullable
               as int,
       unit: null == unit
           ? _value.unit
@@ -312,10 +392,34 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
           ? _value.lastUpdated
           : lastUpdated // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      expiryDate: freezed == expiryDate
+          ? _value.expiryDate
+          : expiryDate // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
       isPendingSync: null == isPendingSync
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
               as bool,
+      restockAlertEnabled: null == restockAlertEnabled
+          ? _value.restockAlertEnabled
+          : restockAlertEnabled // ignore: cast_nullable_to_non_nullable
+              as bool,
+      qtyGood: null == qtyGood
+          ? _value.qtyGood
+          : qtyGood // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyDamaged: null == qtyDamaged
+          ? _value.qtyDamaged
+          : qtyDamaged // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyMaintenance: null == qtyMaintenance
+          ? _value.qtyMaintenance
+          : qtyMaintenance // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyLost: null == qtyLost
+          ? _value.qtyLost
+          : qtyLost // ignore: cast_nullable_to_non_nullable
+              as int,
       parentId: freezed == parentId
           ? _value.parentId
           : parentId // ignore: cast_nullable_to_non_nullable
@@ -354,11 +458,19 @@ class _$InventoryItemImpl extends _InventoryItem {
       this.qrCode = '',
       this.status = 'Good',
       this.code = '',
+      this.modelNumber = '',
       this.minStockLevel = 10,
+      this.targetStock = 0,
       this.unit = 'pcs',
       this.imageUrl,
       this.lastUpdated,
+      this.expiryDate,
       this.isPendingSync = false,
+      this.restockAlertEnabled = true,
+      this.qtyGood = 0,
+      this.qtyDamaged = 0,
+      this.qtyMaintenance = 0,
+      this.qtyLost = 0,
       this.parentId,
       this.aggregateTotal = 0,
       this.aggregateAvailable = 0,
@@ -396,7 +508,13 @@ class _$InventoryItemImpl extends _InventoryItem {
   final String code;
   @override
   @JsonKey()
+  final String modelNumber;
+  @override
+  @JsonKey()
   final int minStockLevel;
+  @override
+  @JsonKey()
+  final int targetStock;
   @override
   @JsonKey()
   final String unit;
@@ -405,8 +523,26 @@ class _$InventoryItemImpl extends _InventoryItem {
   @override
   final DateTime? lastUpdated;
   @override
+  final DateTime? expiryDate;
+  @override
   @JsonKey()
   final bool isPendingSync;
+  @override
+  @JsonKey()
+  final bool restockAlertEnabled;
+// Health buckets (mirrors web qty_* columns)
+  @override
+  @JsonKey()
+  final int qtyGood;
+  @override
+  @JsonKey()
+  final int qtyDamaged;
+  @override
+  @JsonKey()
+  final int qtyMaintenance;
+  @override
+  @JsonKey()
+  final int qtyLost;
 // Hierarchical Location Support
   @override
   final int? parentId;
@@ -418,9 +554,7 @@ class _$InventoryItemImpl extends _InventoryItem {
   final int aggregateAvailable;
   @override
   final int? locationRegistryId;
-// MASTER IDENTITY ANCHOR
   final List<InventoryVariant> _variants;
-// MASTER IDENTITY ANCHOR
   @override
   @JsonKey()
   List<InventoryVariant> get variants {
@@ -431,7 +565,7 @@ class _$InventoryItemImpl extends _InventoryItem {
 
   @override
   String toString() {
-    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, minStockLevel: $minStockLevel, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, isPendingSync: $isPendingSync, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
+    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, expiryDate: $expiryDate, isPendingSync: $isPendingSync, restockAlertEnabled: $restockAlertEnabled, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
   }
 
   @override
@@ -454,15 +588,29 @@ class _$InventoryItemImpl extends _InventoryItem {
             (identical(other.qrCode, qrCode) || other.qrCode == qrCode) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.code, code) || other.code == code) &&
+            (identical(other.modelNumber, modelNumber) ||
+                other.modelNumber == modelNumber) &&
             (identical(other.minStockLevel, minStockLevel) ||
                 other.minStockLevel == minStockLevel) &&
+            (identical(other.targetStock, targetStock) ||
+                other.targetStock == targetStock) &&
             (identical(other.unit, unit) || other.unit == unit) &&
             (identical(other.imageUrl, imageUrl) ||
                 other.imageUrl == imageUrl) &&
             (identical(other.lastUpdated, lastUpdated) ||
                 other.lastUpdated == lastUpdated) &&
+            (identical(other.expiryDate, expiryDate) ||
+                other.expiryDate == expiryDate) &&
             (identical(other.isPendingSync, isPendingSync) ||
                 other.isPendingSync == isPendingSync) &&
+            (identical(other.restockAlertEnabled, restockAlertEnabled) ||
+                other.restockAlertEnabled == restockAlertEnabled) &&
+            (identical(other.qtyGood, qtyGood) || other.qtyGood == qtyGood) &&
+            (identical(other.qtyDamaged, qtyDamaged) ||
+                other.qtyDamaged == qtyDamaged) &&
+            (identical(other.qtyMaintenance, qtyMaintenance) ||
+                other.qtyMaintenance == qtyMaintenance) &&
+            (identical(other.qtyLost, qtyLost) || other.qtyLost == qtyLost) &&
             (identical(other.parentId, parentId) ||
                 other.parentId == parentId) &&
             (identical(other.aggregateTotal, aggregateTotal) ||
@@ -487,11 +635,19 @@ class _$InventoryItemImpl extends _InventoryItem {
         qrCode,
         status,
         code,
+        modelNumber,
         minStockLevel,
+        targetStock,
         unit,
         imageUrl,
         lastUpdated,
+        expiryDate,
         isPendingSync,
+        restockAlertEnabled,
+        qtyGood,
+        qtyDamaged,
+        qtyMaintenance,
+        qtyLost,
         parentId,
         aggregateTotal,
         aggregateAvailable,
@@ -518,11 +674,19 @@ abstract class _InventoryItem extends InventoryItem {
       final String qrCode,
       final String status,
       final String code,
+      final String modelNumber,
       final int minStockLevel,
+      final int targetStock,
       final String unit,
       final String? imageUrl,
       final DateTime? lastUpdated,
+      final DateTime? expiryDate,
       final bool isPendingSync,
+      final bool restockAlertEnabled,
+      final int qtyGood,
+      final int qtyDamaged,
+      final int qtyMaintenance,
+      final int qtyLost,
       final int? parentId,
       final int aggregateTotal,
       final int aggregateAvailable,
@@ -551,7 +715,11 @@ abstract class _InventoryItem extends InventoryItem {
   @override
   String get code;
   @override
+  String get modelNumber;
+  @override
   int get minStockLevel;
+  @override
+  int get targetStock;
   @override
   String get unit;
   @override
@@ -559,7 +727,19 @@ abstract class _InventoryItem extends InventoryItem {
   @override
   DateTime? get lastUpdated;
   @override
+  DateTime? get expiryDate;
+  @override
   bool get isPendingSync;
+  @override
+  bool get restockAlertEnabled;
+  @override // Health buckets (mirrors web qty_* columns)
+  int get qtyGood;
+  @override
+  int get qtyDamaged;
+  @override
+  int get qtyMaintenance;
+  @override
+  int get qtyLost;
   @override // Hierarchical Location Support
   int? get parentId;
   @override
@@ -568,7 +748,7 @@ abstract class _InventoryItem extends InventoryItem {
   int get aggregateAvailable;
   @override
   int? get locationRegistryId;
-  @override // MASTER IDENTITY ANCHOR
+  @override
   List<InventoryVariant> get variants;
   @override
   @JsonKey(ignore: true)
@@ -583,7 +763,13 @@ mixin _$InventoryVariant {
   int get stockAvailable => throw _privateConstructorUsedError;
   int get stockTotal => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
-  int? get locationRegistryId => throw _privateConstructorUsedError;
+  int? get locationRegistryId =>
+      throw _privateConstructorUsedError; // REGISTRY LINK
+  /// Per-site health buckets (from `inventory` row / `active_inventory.variants` JSON).
+  int get qtyGood => throw _privateConstructorUsedError;
+  int get qtyDamaged => throw _privateConstructorUsedError;
+  int get qtyMaintenance => throw _privateConstructorUsedError;
+  int get qtyLost => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $InventoryVariantCopyWith<InventoryVariant> get copyWith =>
@@ -602,7 +788,11 @@ abstract class $InventoryVariantCopyWith<$Res> {
       int stockAvailable,
       int stockTotal,
       String status,
-      int? locationRegistryId});
+      int? locationRegistryId,
+      int qtyGood,
+      int qtyDamaged,
+      int qtyMaintenance,
+      int qtyLost});
 }
 
 /// @nodoc
@@ -624,6 +814,10 @@ class _$InventoryVariantCopyWithImpl<$Res, $Val extends InventoryVariant>
     Object? stockTotal = null,
     Object? status = null,
     Object? locationRegistryId = freezed,
+    Object? qtyGood = null,
+    Object? qtyDamaged = null,
+    Object? qtyMaintenance = null,
+    Object? qtyLost = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -650,6 +844,22 @@ class _$InventoryVariantCopyWithImpl<$Res, $Val extends InventoryVariant>
           ? _value.locationRegistryId
           : locationRegistryId // ignore: cast_nullable_to_non_nullable
               as int?,
+      qtyGood: null == qtyGood
+          ? _value.qtyGood
+          : qtyGood // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyDamaged: null == qtyDamaged
+          ? _value.qtyDamaged
+          : qtyDamaged // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyMaintenance: null == qtyMaintenance
+          ? _value.qtyMaintenance
+          : qtyMaintenance // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyLost: null == qtyLost
+          ? _value.qtyLost
+          : qtyLost // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -668,7 +878,11 @@ abstract class _$$InventoryVariantImplCopyWith<$Res>
       int stockAvailable,
       int stockTotal,
       String status,
-      int? locationRegistryId});
+      int? locationRegistryId,
+      int qtyGood,
+      int qtyDamaged,
+      int qtyMaintenance,
+      int qtyLost});
 }
 
 /// @nodoc
@@ -688,6 +902,10 @@ class __$$InventoryVariantImplCopyWithImpl<$Res>
     Object? stockTotal = null,
     Object? status = null,
     Object? locationRegistryId = freezed,
+    Object? qtyGood = null,
+    Object? qtyDamaged = null,
+    Object? qtyMaintenance = null,
+    Object? qtyLost = null,
   }) {
     return _then(_$InventoryVariantImpl(
       id: null == id
@@ -714,6 +932,22 @@ class __$$InventoryVariantImplCopyWithImpl<$Res>
           ? _value.locationRegistryId
           : locationRegistryId // ignore: cast_nullable_to_non_nullable
               as int?,
+      qtyGood: null == qtyGood
+          ? _value.qtyGood
+          : qtyGood // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyDamaged: null == qtyDamaged
+          ? _value.qtyDamaged
+          : qtyDamaged // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyMaintenance: null == qtyMaintenance
+          ? _value.qtyMaintenance
+          : qtyMaintenance // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyLost: null == qtyLost
+          ? _value.qtyLost
+          : qtyLost // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -727,7 +961,11 @@ class _$InventoryVariantImpl implements _InventoryVariant {
       required this.stockAvailable,
       required this.stockTotal,
       required this.status,
-      this.locationRegistryId});
+      this.locationRegistryId,
+      this.qtyGood = 0,
+      this.qtyDamaged = 0,
+      this.qtyMaintenance = 0,
+      this.qtyLost = 0});
 
   @override
   final int id;
@@ -741,10 +979,24 @@ class _$InventoryVariantImpl implements _InventoryVariant {
   final String status;
   @override
   final int? locationRegistryId;
+// REGISTRY LINK
+  /// Per-site health buckets (from `inventory` row / `active_inventory.variants` JSON).
+  @override
+  @JsonKey()
+  final int qtyGood;
+  @override
+  @JsonKey()
+  final int qtyDamaged;
+  @override
+  @JsonKey()
+  final int qtyMaintenance;
+  @override
+  @JsonKey()
+  final int qtyLost;
 
   @override
   String toString() {
-    return 'InventoryVariant(id: $id, location: $location, stockAvailable: $stockAvailable, stockTotal: $stockTotal, status: $status, locationRegistryId: $locationRegistryId)';
+    return 'InventoryVariant(id: $id, location: $location, stockAvailable: $stockAvailable, stockTotal: $stockTotal, status: $status, locationRegistryId: $locationRegistryId, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost)';
   }
 
   @override
@@ -761,12 +1013,28 @@ class _$InventoryVariantImpl implements _InventoryVariant {
                 other.stockTotal == stockTotal) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.locationRegistryId, locationRegistryId) ||
-                other.locationRegistryId == locationRegistryId));
+                other.locationRegistryId == locationRegistryId) &&
+            (identical(other.qtyGood, qtyGood) || other.qtyGood == qtyGood) &&
+            (identical(other.qtyDamaged, qtyDamaged) ||
+                other.qtyDamaged == qtyDamaged) &&
+            (identical(other.qtyMaintenance, qtyMaintenance) ||
+                other.qtyMaintenance == qtyMaintenance) &&
+            (identical(other.qtyLost, qtyLost) || other.qtyLost == qtyLost));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, id, location, stockAvailable,
-      stockTotal, status, locationRegistryId);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      location,
+      stockAvailable,
+      stockTotal,
+      status,
+      locationRegistryId,
+      qtyGood,
+      qtyDamaged,
+      qtyMaintenance,
+      qtyLost);
 
   @JsonKey(ignore: true)
   @override
@@ -783,7 +1051,11 @@ abstract class _InventoryVariant implements InventoryVariant {
       required final int stockAvailable,
       required final int stockTotal,
       required final String status,
-      final int? locationRegistryId}) = _$InventoryVariantImpl;
+      final int? locationRegistryId,
+      final int qtyGood,
+      final int qtyDamaged,
+      final int qtyMaintenance,
+      final int qtyLost}) = _$InventoryVariantImpl;
 
   @override
   int get id;
@@ -797,6 +1069,15 @@ abstract class _InventoryVariant implements InventoryVariant {
   String get status;
   @override
   int? get locationRegistryId;
+  @override // REGISTRY LINK
+  /// Per-site health buckets (from `inventory` row / `active_inventory.variants` JSON).
+  int get qtyGood;
+  @override
+  int get qtyDamaged;
+  @override
+  int get qtyMaintenance;
+  @override
+  int get qtyLost;
   @override
   @JsonKey(ignore: true)
   _$$InventoryVariantImplCopyWith<_$InventoryVariantImpl> get copyWith =>

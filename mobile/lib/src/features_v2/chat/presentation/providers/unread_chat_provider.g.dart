@@ -6,16 +6,11 @@ part of 'unread_chat_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$unreadChatCountHash() => r'580bd38f0cdae4401578ba61b0a35c44d9b6b11e';
+String _$unreadChatCountHash() => r'cf81db75afe7797e9bff8e78ccd2618057904caa';
 /**
  * UnreadChatCount Provider
  * 
- * 🛠️ Patterns Applied: Realtime Stream Observation, Tactical Filtering
- * 
- * This provider listens to the 'chat_messages' table in realtime.
- * It counts all messages where:
- * 1. is_read = false
- * 2. receiver_id = current user's ID
+ * 🛠️ Patterns Applied: Realtime Stream Observation, Tactical Filtering, Socket Resilience
  */
 ///
 /// Copied from [unreadChatCount].

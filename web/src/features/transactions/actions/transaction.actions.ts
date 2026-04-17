@@ -96,6 +96,9 @@ export async function borrowItem(formData: FormData) {
                     pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
                     actual_return_date: isConsumable ? now : null, 
                     expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
+                    platform_origin: 'Web',
+                    created_origin: 'Web',
+                    last_updated_origin: 'Web',
                     created_at: now,
                 },
             ])
@@ -213,6 +216,9 @@ export async function batchBorrowItems(data: {
                 pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
                 actual_return_date: isConsumable ? now : null,
                 expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
+                platform_origin: 'Web',
+                created_origin: 'Web',
+                last_updated_origin: 'Web',
                 created_at: now,
             })
         }
@@ -306,6 +312,8 @@ export async function returnItem(
                 received_by_user_id: user?.id || null,
                 return_condition: auditData?.returnCondition || 'good',
                 return_notes: auditData?.returnNotes || null,
+                platform_origin: 'Web',
+                last_updated_origin: 'Web',
             })
             .eq('id', logId)
 
@@ -396,6 +404,8 @@ export async function revertReturnItem(logId: number) {
                 received_by_user_id: null,
                 return_condition: null,
                 return_notes: null,
+                platform_origin: 'Web',
+                last_updated_origin: 'Web',
             })
             .eq('id', logId)
 
@@ -446,6 +456,8 @@ export async function releaseReservedItem(logId: number) {
                 borrow_date: now,
                 released_by_user_id: user?.id || null,
                 released_by_name: userName,
+                platform_origin: 'Web',
+                last_updated_origin: 'Web',
                 updated_at: now
             })
             .eq('id', logId)

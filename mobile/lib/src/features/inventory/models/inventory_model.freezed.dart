@@ -37,13 +37,20 @@ mixin _$InventoryModel {
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
   String get code => throw _privateConstructorUsedError;
+  @JsonKey(name: 'model_number')
+  String get modelNumber => throw _privateConstructorUsedError;
+  @JsonKey(name: 'low_stock_threshold')
   int get minStockLevel => throw _privateConstructorUsedError;
+  @JsonKey(name: 'target_stock')
+  int get targetStock => throw _privateConstructorUsedError;
   String get unit => throw _privateConstructorUsedError;
   String get supplier => throw _privateConstructorUsedError;
   String get supplierContact => throw _privateConstructorUsedError;
   String get notes => throw _privateConstructorUsedError;
   @JsonKey(name: 'image_url')
-  String get imageUrl =>
+  String get imageUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'restock_alert_enabled')
+  bool get restockAlertEnabled =>
       throw _privateConstructorUsedError; // Multi-location fields
   @JsonKey(name: 'aggregate_total')
   int get aggregateTotal => throw _privateConstructorUsedError;
@@ -57,6 +64,14 @@ mixin _$InventoryModel {
   int? get locationRegistryId =>
       throw _privateConstructorUsedError; // MASTER IDENTITY ANCHOR
   List<Map<String, dynamic>> get variants => throw _privateConstructorUsedError;
+  @JsonKey(name: 'qty_good')
+  int get qtyGood => throw _privateConstructorUsedError;
+  @JsonKey(name: 'qty_damaged')
+  int get qtyDamaged => throw _privateConstructorUsedError;
+  @JsonKey(name: 'qty_maintenance')
+  int get qtyMaintenance => throw _privateConstructorUsedError;
+  @JsonKey(name: 'qty_lost')
+  int get qtyLost => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -83,18 +98,25 @@ abstract class $InventoryModelCopyWith<$Res> {
       @JsonKey(name: 'created_at') DateTime? createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String code,
-      int minStockLevel,
+      @JsonKey(name: 'model_number') String modelNumber,
+      @JsonKey(name: 'low_stock_threshold') int minStockLevel,
+      @JsonKey(name: 'target_stock') int targetStock,
       String unit,
       String supplier,
       String supplierContact,
       String notes,
       @JsonKey(name: 'image_url') String imageUrl,
+      @JsonKey(name: 'restock_alert_enabled') bool restockAlertEnabled,
       @JsonKey(name: 'aggregate_total') int aggregateTotal,
       @JsonKey(name: 'aggregate_available') int aggregateAvailable,
       @JsonKey(name: 'primary_location') String? primaryLocation,
       @JsonKey(name: 'primary_stock_available') int primaryAvailable,
       @JsonKey(name: 'location_registry_id') int? locationRegistryId,
-      List<Map<String, dynamic>> variants});
+      List<Map<String, dynamic>> variants,
+      @JsonKey(name: 'qty_good') int qtyGood,
+      @JsonKey(name: 'qty_damaged') int qtyDamaged,
+      @JsonKey(name: 'qty_maintenance') int qtyMaintenance,
+      @JsonKey(name: 'qty_lost') int qtyLost});
 }
 
 /// @nodoc
@@ -122,18 +144,25 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
     Object? code = null,
+    Object? modelNumber = null,
     Object? minStockLevel = null,
+    Object? targetStock = null,
     Object? unit = null,
     Object? supplier = null,
     Object? supplierContact = null,
     Object? notes = null,
     Object? imageUrl = null,
+    Object? restockAlertEnabled = null,
     Object? aggregateTotal = null,
     Object? aggregateAvailable = null,
     Object? primaryLocation = freezed,
     Object? primaryAvailable = null,
     Object? locationRegistryId = freezed,
     Object? variants = null,
+    Object? qtyGood = null,
+    Object? qtyDamaged = null,
+    Object? qtyMaintenance = null,
+    Object? qtyLost = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -184,9 +213,17 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
           ? _value.code
           : code // ignore: cast_nullable_to_non_nullable
               as String,
+      modelNumber: null == modelNumber
+          ? _value.modelNumber
+          : modelNumber // ignore: cast_nullable_to_non_nullable
+              as String,
       minStockLevel: null == minStockLevel
           ? _value.minStockLevel
           : minStockLevel // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetStock: null == targetStock
+          ? _value.targetStock
+          : targetStock // ignore: cast_nullable_to_non_nullable
               as int,
       unit: null == unit
           ? _value.unit
@@ -208,6 +245,10 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
           ? _value.imageUrl
           : imageUrl // ignore: cast_nullable_to_non_nullable
               as String,
+      restockAlertEnabled: null == restockAlertEnabled
+          ? _value.restockAlertEnabled
+          : restockAlertEnabled // ignore: cast_nullable_to_non_nullable
+              as bool,
       aggregateTotal: null == aggregateTotal
           ? _value.aggregateTotal
           : aggregateTotal // ignore: cast_nullable_to_non_nullable
@@ -232,6 +273,22 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
           ? _value.variants
           : variants // ignore: cast_nullable_to_non_nullable
               as List<Map<String, dynamic>>,
+      qtyGood: null == qtyGood
+          ? _value.qtyGood
+          : qtyGood // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyDamaged: null == qtyDamaged
+          ? _value.qtyDamaged
+          : qtyDamaged // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyMaintenance: null == qtyMaintenance
+          ? _value.qtyMaintenance
+          : qtyMaintenance // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyLost: null == qtyLost
+          ? _value.qtyLost
+          : qtyLost // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -257,18 +314,25 @@ abstract class _$$InventoryModelImplCopyWith<$Res>
       @JsonKey(name: 'created_at') DateTime? createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String code,
-      int minStockLevel,
+      @JsonKey(name: 'model_number') String modelNumber,
+      @JsonKey(name: 'low_stock_threshold') int minStockLevel,
+      @JsonKey(name: 'target_stock') int targetStock,
       String unit,
       String supplier,
       String supplierContact,
       String notes,
       @JsonKey(name: 'image_url') String imageUrl,
+      @JsonKey(name: 'restock_alert_enabled') bool restockAlertEnabled,
       @JsonKey(name: 'aggregate_total') int aggregateTotal,
       @JsonKey(name: 'aggregate_available') int aggregateAvailable,
       @JsonKey(name: 'primary_location') String? primaryLocation,
       @JsonKey(name: 'primary_stock_available') int primaryAvailable,
       @JsonKey(name: 'location_registry_id') int? locationRegistryId,
-      List<Map<String, dynamic>> variants});
+      List<Map<String, dynamic>> variants,
+      @JsonKey(name: 'qty_good') int qtyGood,
+      @JsonKey(name: 'qty_damaged') int qtyDamaged,
+      @JsonKey(name: 'qty_maintenance') int qtyMaintenance,
+      @JsonKey(name: 'qty_lost') int qtyLost});
 }
 
 /// @nodoc
@@ -294,18 +358,25 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
     Object? code = null,
+    Object? modelNumber = null,
     Object? minStockLevel = null,
+    Object? targetStock = null,
     Object? unit = null,
     Object? supplier = null,
     Object? supplierContact = null,
     Object? notes = null,
     Object? imageUrl = null,
+    Object? restockAlertEnabled = null,
     Object? aggregateTotal = null,
     Object? aggregateAvailable = null,
     Object? primaryLocation = freezed,
     Object? primaryAvailable = null,
     Object? locationRegistryId = freezed,
     Object? variants = null,
+    Object? qtyGood = null,
+    Object? qtyDamaged = null,
+    Object? qtyMaintenance = null,
+    Object? qtyLost = null,
   }) {
     return _then(_$InventoryModelImpl(
       id: null == id
@@ -356,9 +427,17 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
           ? _value.code
           : code // ignore: cast_nullable_to_non_nullable
               as String,
+      modelNumber: null == modelNumber
+          ? _value.modelNumber
+          : modelNumber // ignore: cast_nullable_to_non_nullable
+              as String,
       minStockLevel: null == minStockLevel
           ? _value.minStockLevel
           : minStockLevel // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetStock: null == targetStock
+          ? _value.targetStock
+          : targetStock // ignore: cast_nullable_to_non_nullable
               as int,
       unit: null == unit
           ? _value.unit
@@ -380,6 +459,10 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
           ? _value.imageUrl
           : imageUrl // ignore: cast_nullable_to_non_nullable
               as String,
+      restockAlertEnabled: null == restockAlertEnabled
+          ? _value.restockAlertEnabled
+          : restockAlertEnabled // ignore: cast_nullable_to_non_nullable
+              as bool,
       aggregateTotal: null == aggregateTotal
           ? _value.aggregateTotal
           : aggregateTotal // ignore: cast_nullable_to_non_nullable
@@ -404,6 +487,22 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
           ? _value._variants
           : variants // ignore: cast_nullable_to_non_nullable
               as List<Map<String, dynamic>>,
+      qtyGood: null == qtyGood
+          ? _value.qtyGood
+          : qtyGood // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyDamaged: null == qtyDamaged
+          ? _value.qtyDamaged
+          : qtyDamaged // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyMaintenance: null == qtyMaintenance
+          ? _value.qtyMaintenance
+          : qtyMaintenance // ignore: cast_nullable_to_non_nullable
+              as int,
+      qtyLost: null == qtyLost
+          ? _value.qtyLost
+          : qtyLost // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -424,18 +523,25 @@ class _$InventoryModelImpl implements _InventoryModel {
       @JsonKey(name: 'created_at') this.createdAt,
       @JsonKey(name: 'updated_at') this.updatedAt,
       this.code = '',
-      this.minStockLevel = 10,
+      @JsonKey(name: 'model_number') this.modelNumber = '',
+      @JsonKey(name: 'low_stock_threshold') this.minStockLevel = 10,
+      @JsonKey(name: 'target_stock') this.targetStock = 0,
       this.unit = 'pcs',
       this.supplier = '',
       this.supplierContact = '',
       this.notes = '',
       @JsonKey(name: 'image_url') this.imageUrl = '',
+      @JsonKey(name: 'restock_alert_enabled') this.restockAlertEnabled = true,
       @JsonKey(name: 'aggregate_total') this.aggregateTotal = 0,
       @JsonKey(name: 'aggregate_available') this.aggregateAvailable = 0,
       @JsonKey(name: 'primary_location') this.primaryLocation,
       @JsonKey(name: 'primary_stock_available') this.primaryAvailable = 0,
       @JsonKey(name: 'location_registry_id') this.locationRegistryId,
-      final List<Map<String, dynamic>> variants = const []})
+      final List<Map<String, dynamic>> variants = const [],
+      @JsonKey(name: 'qty_good') this.qtyGood = 0,
+      @JsonKey(name: 'qty_damaged') this.qtyDamaged = 0,
+      @JsonKey(name: 'qty_maintenance') this.qtyMaintenance = 0,
+      @JsonKey(name: 'qty_lost') this.qtyLost = 0})
       : _variants = variants;
 
   factory _$InventoryModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -476,8 +582,14 @@ class _$InventoryModelImpl implements _InventoryModel {
   @JsonKey()
   final String code;
   @override
-  @JsonKey()
+  @JsonKey(name: 'model_number')
+  final String modelNumber;
+  @override
+  @JsonKey(name: 'low_stock_threshold')
   final int minStockLevel;
+  @override
+  @JsonKey(name: 'target_stock')
+  final int targetStock;
   @override
   @JsonKey()
   final String unit;
@@ -493,6 +605,9 @@ class _$InventoryModelImpl implements _InventoryModel {
   @override
   @JsonKey(name: 'image_url')
   final String imageUrl;
+  @override
+  @JsonKey(name: 'restock_alert_enabled')
+  final bool restockAlertEnabled;
 // Multi-location fields
   @override
   @JsonKey(name: 'aggregate_total')
@@ -521,8 +636,21 @@ class _$InventoryModelImpl implements _InventoryModel {
   }
 
   @override
+  @JsonKey(name: 'qty_good')
+  final int qtyGood;
+  @override
+  @JsonKey(name: 'qty_damaged')
+  final int qtyDamaged;
+  @override
+  @JsonKey(name: 'qty_maintenance')
+  final int qtyMaintenance;
+  @override
+  @JsonKey(name: 'qty_lost')
+  final int qtyLost;
+
+  @override
   String toString() {
-    return 'InventoryModel(id: $id, name: $name, description: $description, category: $category, quantity: $quantity, available: $available, location: $location, qrCode: $qrCode, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, code: $code, minStockLevel: $minStockLevel, unit: $unit, supplier: $supplier, supplierContact: $supplierContact, notes: $notes, imageUrl: $imageUrl, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, primaryLocation: $primaryLocation, primaryAvailable: $primaryAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
+    return 'InventoryModel(id: $id, name: $name, description: $description, category: $category, quantity: $quantity, available: $available, location: $location, qrCode: $qrCode, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, supplier: $supplier, supplierContact: $supplierContact, notes: $notes, imageUrl: $imageUrl, restockAlertEnabled: $restockAlertEnabled, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, primaryLocation: $primaryLocation, primaryAvailable: $primaryAvailable, locationRegistryId: $locationRegistryId, variants: $variants, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost)';
   }
 
   @override
@@ -549,8 +677,12 @@ class _$InventoryModelImpl implements _InventoryModel {
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             (identical(other.code, code) || other.code == code) &&
+            (identical(other.modelNumber, modelNumber) ||
+                other.modelNumber == modelNumber) &&
             (identical(other.minStockLevel, minStockLevel) ||
                 other.minStockLevel == minStockLevel) &&
+            (identical(other.targetStock, targetStock) ||
+                other.targetStock == targetStock) &&
             (identical(other.unit, unit) || other.unit == unit) &&
             (identical(other.supplier, supplier) ||
                 other.supplier == supplier) &&
@@ -559,6 +691,8 @@ class _$InventoryModelImpl implements _InventoryModel {
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.imageUrl, imageUrl) ||
                 other.imageUrl == imageUrl) &&
+            (identical(other.restockAlertEnabled, restockAlertEnabled) ||
+                other.restockAlertEnabled == restockAlertEnabled) &&
             (identical(other.aggregateTotal, aggregateTotal) ||
                 other.aggregateTotal == aggregateTotal) &&
             (identical(other.aggregateAvailable, aggregateAvailable) ||
@@ -569,7 +703,13 @@ class _$InventoryModelImpl implements _InventoryModel {
                 other.primaryAvailable == primaryAvailable) &&
             (identical(other.locationRegistryId, locationRegistryId) ||
                 other.locationRegistryId == locationRegistryId) &&
-            const DeepCollectionEquality().equals(other._variants, _variants));
+            const DeepCollectionEquality().equals(other._variants, _variants) &&
+            (identical(other.qtyGood, qtyGood) || other.qtyGood == qtyGood) &&
+            (identical(other.qtyDamaged, qtyDamaged) ||
+                other.qtyDamaged == qtyDamaged) &&
+            (identical(other.qtyMaintenance, qtyMaintenance) ||
+                other.qtyMaintenance == qtyMaintenance) &&
+            (identical(other.qtyLost, qtyLost) || other.qtyLost == qtyLost));
   }
 
   @JsonKey(ignore: true)
@@ -588,18 +728,25 @@ class _$InventoryModelImpl implements _InventoryModel {
         createdAt,
         updatedAt,
         code,
+        modelNumber,
         minStockLevel,
+        targetStock,
         unit,
         supplier,
         supplierContact,
         notes,
         imageUrl,
+        restockAlertEnabled,
         aggregateTotal,
         aggregateAvailable,
         primaryLocation,
         primaryAvailable,
         locationRegistryId,
-        const DeepCollectionEquality().hash(_variants)
+        const DeepCollectionEquality().hash(_variants),
+        qtyGood,
+        qtyDamaged,
+        qtyMaintenance,
+        qtyLost
       ]);
 
   @JsonKey(ignore: true)
@@ -631,18 +778,25 @@ abstract class _InventoryModel implements InventoryModel {
       @JsonKey(name: 'created_at') final DateTime? createdAt,
       @JsonKey(name: 'updated_at') final DateTime? updatedAt,
       final String code,
-      final int minStockLevel,
+      @JsonKey(name: 'model_number') final String modelNumber,
+      @JsonKey(name: 'low_stock_threshold') final int minStockLevel,
+      @JsonKey(name: 'target_stock') final int targetStock,
       final String unit,
       final String supplier,
       final String supplierContact,
       final String notes,
       @JsonKey(name: 'image_url') final String imageUrl,
+      @JsonKey(name: 'restock_alert_enabled') final bool restockAlertEnabled,
       @JsonKey(name: 'aggregate_total') final int aggregateTotal,
       @JsonKey(name: 'aggregate_available') final int aggregateAvailable,
       @JsonKey(name: 'primary_location') final String? primaryLocation,
       @JsonKey(name: 'primary_stock_available') final int primaryAvailable,
       @JsonKey(name: 'location_registry_id') final int? locationRegistryId,
-      final List<Map<String, dynamic>> variants}) = _$InventoryModelImpl;
+      final List<Map<String, dynamic>> variants,
+      @JsonKey(name: 'qty_good') final int qtyGood,
+      @JsonKey(name: 'qty_damaged') final int qtyDamaged,
+      @JsonKey(name: 'qty_maintenance') final int qtyMaintenance,
+      @JsonKey(name: 'qty_lost') final int qtyLost}) = _$InventoryModelImpl;
 
   factory _InventoryModel.fromJson(Map<String, dynamic> json) =
       _$InventoryModelImpl.fromJson;
@@ -677,7 +831,14 @@ abstract class _InventoryModel implements InventoryModel {
   @override
   String get code;
   @override
+  @JsonKey(name: 'model_number')
+  String get modelNumber;
+  @override
+  @JsonKey(name: 'low_stock_threshold')
   int get minStockLevel;
+  @override
+  @JsonKey(name: 'target_stock')
+  int get targetStock;
   @override
   String get unit;
   @override
@@ -689,6 +850,9 @@ abstract class _InventoryModel implements InventoryModel {
   @override
   @JsonKey(name: 'image_url')
   String get imageUrl;
+  @override
+  @JsonKey(name: 'restock_alert_enabled')
+  bool get restockAlertEnabled;
   @override // Multi-location fields
   @JsonKey(name: 'aggregate_total')
   int get aggregateTotal;
@@ -706,6 +870,18 @@ abstract class _InventoryModel implements InventoryModel {
   int? get locationRegistryId;
   @override // MASTER IDENTITY ANCHOR
   List<Map<String, dynamic>> get variants;
+  @override
+  @JsonKey(name: 'qty_good')
+  int get qtyGood;
+  @override
+  @JsonKey(name: 'qty_damaged')
+  int get qtyDamaged;
+  @override
+  @JsonKey(name: 'qty_maintenance')
+  int get qtyMaintenance;
+  @override
+  @JsonKey(name: 'qty_lost')
+  int get qtyLost;
   @override
   @JsonKey(ignore: true)
   _$$InventoryModelImplCopyWith<_$InventoryModelImpl> get copyWith =>

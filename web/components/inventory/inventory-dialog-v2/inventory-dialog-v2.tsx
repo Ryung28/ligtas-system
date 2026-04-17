@@ -1,9 +1,11 @@
 "use client"
 
+import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, Package } from 'lucide-react'
+import { toast } from 'sonner'
 import { V2IdentityFields } from './_components/v2-identity-fields'
 import { V2MetadataFields } from './_components/v2-metadata-fields'
 import { V2ConsumableFields } from './_components/v2-consumable-fields'
@@ -19,18 +21,97 @@ interface InventoryDialogV2Props {
     onOpenChange: (open: boolean) => void
     existingItem?: any
     onSuccess?: () => void
+    focusRestockPolicy?: boolean
+    showRestockWarningOnOpen?: boolean
 }
 
-export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSuccess }: InventoryDialogV2Props) {
+export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSuccess, focusRestockPolicy = false, showRestockWarningOnOpen = false }: InventoryDialogV2Props) {
     const { categories, locations, parents, isLoading: isDataLoading } = useInventoryDataV2(isOpen)
     const state = useInventoryStateV2(existingItem)
     const img = useInventoryImageV2(existingItem?.image_url)
+    const statusSectionRef = useRef<HTMLDivElement | null>(null)
+    const [policyErrors, setPolicyErrors] = useState<{ ready: string; target: string; threshold: string }>({ ready: '', target: '', threshold: '' })
     const { submit, isPending } = useInventorySubmitV2(() => {
         onOpenChange(false)
         if (onSuccess) onSuccess()
     })
+    const { setRestockAlertEnabled } = state
+
+    useEffect(() => {
+        if (!isOpen || !focusRestockPolicy) return
+        const timer = setTimeout(() => {
+            statusSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const targetInput = statusSectionRef.current?.querySelector<HTMLInputElement>('[data-restock-input="target"]')
+            targetInput?.focus()
+        }, 120)
+        // Strict triage mode: entering from "Make Restockable" means this path is intentional.
+        setRestockAlertEnabled(true)
+        return () => clearTimeout(timer)
+    }, [isOpen, focusRestockPolicy, existingItem?.id, setRestockAlertEnabled])
+
+    useEffect(() => {
+        if (!isOpen || !showRestockWarningOnOpen) return
+        toast.warning('To enable restock alerts, set Max Stock to 2 or more and Warn at (%) above 0.')
+        const readyUnits = Number(state.totals.qtyGood) || 0
+        const targetNum = Number(state.targetStock) || 0
+        const thresholdNum = Number(state.lowStockThreshold) || 0
+        setPolicyErrors({
+            ready: readyUnits < 2 ? 'Set Ready to Use to at least 2' : '',
+            target: targetNum < 2 ? 'Set Max Stock Goal to at least 2' : '',
+            threshold: thresholdNum <= 0 ? 'Warn at (%) must be greater than 0' : '',
+        })
+    }, [
+        isOpen,
+        showRestockWarningOnOpen,
+        existingItem?.id,
+        state.totals.qtyGood,
+        state.targetStock,
+        state.lowStockThreshold,
+    ])
+
+    useEffect(() => {
+        if (!state.restockAlertEnabled) {
+            setPolicyErrors({ ready: '', target: '', threshold: '' })
+            return
+        }
+
+        const readyUnits = Number(state.totals.qtyGood) || 0
+        const targetNum = Number(state.targetStock) || 0
+        const thresholdNum = Number(state.lowStockThreshold) || 0
+
+        setPolicyErrors(prev => ({
+            ready: prev.ready && readyUnits >= 2 ? '' : prev.ready,
+            target: prev.target && targetNum >= 2 ? '' : prev.target,
+            threshold: prev.threshold && thresholdNum > 0 ? '' : prev.threshold,
+        }))
+    }, [state.restockAlertEnabled, state.totals.qtyGood, state.targetStock, state.lowStockThreshold])
 
     const handleFormSubmit = () => {
+        const targetNum = Number(state.targetStock) || 0
+        const thresholdNum = Number(state.lowStockThreshold) || 0
+        const readyUnits = Number(state.totals.qtyGood) || 0
+        let nextErrors = { ready: '', target: '', threshold: '' }
+
+        if (state.restockAlertEnabled && focusRestockPolicy && readyUnits < 2) {
+            nextErrors.ready = 'Set Ready to Use to at least 2'
+        }
+
+        if (state.restockAlertEnabled && targetNum < 2) {
+            nextErrors.target = 'Set Max Stock Goal to at least 2'
+        }
+
+        if (state.restockAlertEnabled && thresholdNum <= 0) {
+            nextErrors.threshold = 'Warn at (%) must be greater than 0'
+        }
+
+        if (nextErrors.target || nextErrors.threshold) {
+            setPolicyErrors(nextErrors)
+            toast.error('Fix the highlighted restock policy fields before saving')
+            statusSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            return
+        }
+        setPolicyErrors({ ready: '', target: '', threshold: '' })
+
         const formData = new FormData()
         if (existingItem?.id) formData.append('id', existingItem.id.toString())
 
@@ -47,11 +128,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         formData.append('brand', state.brand)
         if (state.expiryDate) formData.append('expiry_date', state.expiryDate)
 
-        // 3. Variant Reconciliation (Legacy Line 346)
-        if (state.isSpecial) {
-            formData.append('parent_id', state.parentId)
-            formData.set('variant_label', state.variantLabel === 'custom' ? state.customVariant : state.variantLabel)
-        }
+        // Legacy variant and model fields have been structurally severed.
 
         // 4. Heavy-Duty Health Mapping
         formData.set('qty_good', state.totals.qtyGood.toString())
@@ -62,6 +139,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         formData.set('stock_available', state.totals.qtyGood.toString())
         formData.set('target_stock', state.targetStock.toString())
         formData.set('low_stock_threshold', state.lowStockThreshold.toString())
+        formData.set('restock_alert_enabled', String(state.restockAlertEnabled))
 
         // 5. Geographic Resolution (Legacy Line 328)
         formData.set('site_distributions', JSON.stringify(state.distributions))
@@ -97,14 +175,13 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                 <ScrollArea className="flex-1 px-6 py-2">
                     <div className="space-y-8 pb-10">
                         <V2IdentityFields
-                            {...state} onNameChange={state.setName} onCategoryChange={state.setCategoryId}
+                            name={state.name} onNameChange={state.setName} 
+                            categoryId={state.categoryId} onCategoryChange={state.setCategoryId}
                             categories={categories} isLoadingCategories={isDataLoading}
-                            onToggleSpecial={state.setIsSpecial} onParentChange={state.setParentId}
-                            parentItems={parents} onTypeChange={state.setItemType}
+                            itemType={state.itemType} onTypeChange={state.setItemType}
                             previewUrl={img.previewUrl} isUploading={img.isUploading}
                             onImageUpload={img.handleUpload} onRemoveImage={img.removeImage}
-                            fileInputRef={img.fileInputRef} isSpecialVersion={state.isSpecial}
-                            onVariantLabelChange={state.setVariantLabel} onCustomVariantChange={state.setCustomVariant}
+                            fileInputRef={img.fileInputRef}
                         />
 
                         {state.itemType === 'equipment' ? (
@@ -113,13 +190,17 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                             <V2ConsumableFields brand={state.brand} onBrandChange={state.setBrand} expiryDate={state.expiryDate} onExpiryChange={state.setExpiryDate} />
                         )}
 
-                        <V2StatusFields
-                            qtyGood={state.distributions[0]?.qtyGood} setQtyGood={(val) => state.updateSiteQty(0, 'qtyGood', val)}
-                            qtyDamaged={state.distributions[0]?.qtyDamaged} setQtyDamaged={(val) => state.updateSiteQty(0, 'qtyDamaged', val)}
-                            qtyMaintenance={state.distributions[0]?.qtyMaintenance} setQtyMaintenance={(val) => state.updateSiteQty(0, 'qtyMaintenance', val)}
-                            qtyLost={state.distributions[0]?.qtyLost} setQtyLost={(val) => state.updateSiteQty(0, 'qtyLost', val)}
-                            targetStock={state.targetStock} setTargetStock={state.setTargetStock} lowStockThreshold={state.lowStockThreshold} setLowStockThreshold={state.setLowStockThreshold}
-                        />
+                        <div ref={statusSectionRef}>
+                            <V2StatusFields
+                                qtyGood={state.distributions[0]?.qtyGood} setQtyGood={(val) => state.updateSiteQty(0, 'qtyGood', val)}
+                                qtyDamaged={state.distributions[0]?.qtyDamaged} setQtyDamaged={(val) => state.updateSiteQty(0, 'qtyDamaged', val)}
+                                qtyMaintenance={state.distributions[0]?.qtyMaintenance} setQtyMaintenance={(val) => state.updateSiteQty(0, 'qtyMaintenance', val)}
+                                qtyLost={state.distributions[0]?.qtyLost} setQtyLost={(val) => state.updateSiteQty(0, 'qtyLost', val)}
+                                targetStock={state.targetStock} setTargetStock={state.setTargetStock} lowStockThreshold={state.lowStockThreshold} setLowStockThreshold={state.setLowStockThreshold}
+                                restockAlertEnabled={state.restockAlertEnabled} setRestockAlertEnabled={state.setRestockAlertEnabled}
+                                policyErrors={policyErrors}
+                            />
+                        </div>
 
                         <V2LogisticsLedger
                             distributions={state.distributions}

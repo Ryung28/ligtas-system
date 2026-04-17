@@ -115,17 +115,17 @@ class DashboardWelcomeCard extends StatelessWidget {
                       children: [
                         Text(
                           _greeting(),
-                          style: GoogleFonts.roboto(
+                          style: GoogleFonts.lexend(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           isLoading ? 'Loading...' : userName,
-                          style: GoogleFonts.roboto(
+                          style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -147,10 +147,10 @@ class DashboardWelcomeCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               'Active',
-                              style: GoogleFonts.roboto(
+                              style: GoogleFonts.lexend(
                                 color: Colors.white.withValues(alpha: 0.8),
                                 fontSize: 10,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

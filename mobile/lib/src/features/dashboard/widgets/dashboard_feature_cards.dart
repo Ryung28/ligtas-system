@@ -59,9 +59,9 @@ class DashboardFeatureCards extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'Quick Access',
-              style: GoogleFonts.roboto(
+              style: GoogleFonts.lexend(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: AppTheme.neutralGray900,
               ),
             ),
@@ -187,7 +187,7 @@ class _FeatureCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       data.title,
-                      style: GoogleFonts.roboto(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.neutralGray900,
@@ -199,9 +199,9 @@ class _FeatureCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       data.subtitle,
-                      style: GoogleFonts.roboto(
+                      style: GoogleFonts.lexend(
                         fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: AppTheme.neutralGray600,
                       ),
                       maxLines: 1,
@@ -210,8 +210,9 @@ class _FeatureCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       data.description,
-                      style: GoogleFonts.roboto(
+                      style: GoogleFonts.lexend(
                         fontSize: 9,
+                        fontWeight: FontWeight.w500,
                         color: AppTheme.neutralGray500,
                         height: 1.2,
                       ),

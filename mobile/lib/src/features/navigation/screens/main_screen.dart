@@ -17,7 +17,6 @@ import '../providers/navigation_provider.dart';
 import '../../../core/design_system/widgets/offline_indicator.dart';
 import '../../notifications/data/services/user_notification_service.dart';
 import '../widgets/comms_capsule.dart';
-import '../widgets/comms_drawer.dart';
 import '../providers/comms_capsule_provider.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
 
@@ -25,12 +24,14 @@ import '../../auth/presentation/providers/auth_providers.dart';
 /// Defines the intention and destination for the Adaptive Shell.
 class _NavAction {
   final String label;
-  final IconData icon;
+  final IconData activeIcon;
+  final IconData inactiveIcon;
   final String path;
 
   const _NavAction({
     required this.label,
-    required this.icon,
+    required this.activeIcon,
+    required this.inactiveIcon,
     required this.path,
   });
 }
@@ -163,17 +164,57 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final showDock = _isDockVisible && !isKeyboardVisible && !isDockSuppressed;
     final isCommsDrawerOpen = ref.watch(commsDrawerStateProvider);
 
-    // 🗺️ TACTICAL MANIFEST: Provision items based on Role
+    // 🗺️ TACTICAL MANIFEST: Provision items based on Role (Filled vs Outlined)
     final List<_NavAction> actions = isManager ? [
-      const _NavAction(label: 'Terminal', icon: Icons.grid_view_rounded, path: '/manager'),
-      const _NavAction(label: 'Queue', icon: Icons.assignment_late_rounded, path: '/manager/queue'),
-      const _NavAction(label: 'Shelves', icon: Icons.inventory_2_rounded, path: '/inventory'),
-      const _NavAction(label: 'System', icon: Icons.settings_rounded, path: '/profile'),
+      const _NavAction(
+        label: 'Dashboard', 
+        activeIcon: Icons.grid_view_rounded, 
+        inactiveIcon: Icons.grid_view_outlined, 
+        path: '/manager'
+      ),
+      const _NavAction(
+        label: 'Alerts', 
+        activeIcon: Icons.notifications_active_rounded, 
+        inactiveIcon: Icons.notifications_active_outlined, 
+        path: '/manager/queue'
+      ),
+      const _NavAction(
+        label: 'Shelves', 
+        activeIcon: Icons.inventory_2_rounded, 
+        inactiveIcon: Icons.inventory_2_outlined, 
+        path: '/inventory'
+      ),
+      const _NavAction(
+        label: 'System', 
+        activeIcon: Icons.settings_rounded, 
+        inactiveIcon: Icons.settings_outlined, 
+        path: '/profile'
+      ),
     ] : [
-      const _NavAction(label: 'Home', icon: Icons.home_filled, path: '/dashboard'),
-      const _NavAction(label: 'Pending', icon: Icons.assignment_returned_rounded, path: '/requests'),
-      const _NavAction(label: 'Inventory', icon: Icons.inventory_2_rounded, path: '/inventory'),
-      const _NavAction(label: 'Settings', icon: Icons.settings_rounded, path: '/profile'),
+      const _NavAction(
+        label: 'Home', 
+        activeIcon: Icons.home_filled, 
+        inactiveIcon: Icons.home_outlined, 
+        path: '/dashboard'
+      ),
+      const _NavAction(
+        label: 'Pending', 
+        activeIcon: Icons.assignment_returned_rounded, 
+        inactiveIcon: Icons.assignment_returned_outlined, 
+        path: '/requests'
+      ),
+      const _NavAction(
+        label: 'Inventory', 
+        activeIcon: Icons.inventory_2_rounded, 
+        inactiveIcon: Icons.inventory_2_outlined, 
+        path: '/inventory'
+      ),
+      const _NavAction(
+        label: 'Settings', 
+        activeIcon: Icons.settings_rounded, 
+        inactiveIcon: Icons.settings_outlined, 
+        path: '/profile'
+      ),
     ];
 
     // Split for the center Scanner FAB (Functional Parity)
@@ -271,9 +312,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ...left.map((action) => _buildTacticalItem(action)),
+              ...left.map((action) => _buildTacticalItem(action, left + right)),
               _buildScannerDockAction(),
-              ...right.map((action) => _buildTacticalItem(action)),
+              ...right.map((action) => _buildTacticalItem(action, left + right)),
             ],
           ),
         ),
@@ -282,11 +323,32 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   /// 🎯 THE TACTICAL ITEM
-  /// Route-aware, role-blind, and premium.
-  Widget _buildTacticalItem(_NavAction action) {
-    // 🛡️ TACTICAL SNIPER: Match selection via route-prefix to ensure sub-pages don't kill the highlight
-    final isSelected = widget.location == action.path || 
-                      (action.path != '/' && widget.location.startsWith(action.path));
+  /// Icon shift (Filled/Outlined) and color aware.
+  Widget _buildTacticalItem(_NavAction action, List<_NavAction> allActions) {
+    // 🛡️ TACTICAL SNIPER: Match selection via route-prefix.
+    // To prevent prefix-collisions (e.g. /manager vs /manager/queue), 
+    // we ensure there isn't a more specific match in the manifest.
+    bool checkSelection() {
+      if (widget.location == action.path) return true;
+      
+      // If action path is just '/', only matches exact.
+      if (action.path == '/') return widget.location == '/';
+      
+      final isPrefix = widget.location.startsWith(action.path);
+      if (!isPrefix) return false;
+
+      // Check if another top-level nav item has a longer prefix match.
+      // e.g. if we are at /manager/queue, 'Alerts' matches it better than 'Dashboard' (/manager).
+      final betterMatch = allActions.any((other) => 
+        other != action && 
+        other.path.length > action.path.length && 
+        widget.location.startsWith(other.path)
+      );
+
+      return !betterMatch;
+    }
+
+    final isSelected = checkSelection();
     final sentinel = Theme.of(context).sentinel;
 
     return Expanded(
@@ -301,36 +363,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  action.icon,
-                  color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant,
-                  size: 24,
-                ),
-                if (isSelected)
-                  Positioned(
-                    bottom: -16, // Proximity-locked dot
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: sentinel.navy,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: sentinel.navy.withOpacity(0.4),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                    ).animate().scale(duration: 200.ms, curve: Curves.easeOutBack),
-                  ),
-              ],
-            ),
+            Icon(
+              isSelected ? action.activeIcon : action.inactiveIcon,
+              color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant,
+              size: 24,
+            ).animate(target: isSelected ? 1 : 0)
+             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 200.ms, curve: Curves.easeOutBack),
             const Gap(4),
             Text(
               action.label,

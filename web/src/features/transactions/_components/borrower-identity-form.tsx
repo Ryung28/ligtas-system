@@ -59,7 +59,7 @@ export function BorrowerIdentityForm({ defaultValues, onChange }: BorrowerIdenti
     const valuesString = JSON.stringify(values);
 
     React.useEffect(() => {
-        onChange(values, isValid);
+        onChange(JSON.parse(valuesString) as IdentityFormValues, isValid);
     }, [valuesString, isValid, onChange]);
 
     const returnType = watch('return_type');
