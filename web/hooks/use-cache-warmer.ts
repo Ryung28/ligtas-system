@@ -52,7 +52,10 @@ export function useCacheWarmer() {
 
                 // 7. Secure Communications (Messaging-V3)
                 const { getChatRoomsV3 } = await import('@/app/actions/chat-v3')
-                preload('chat_rooms_v3', () => getChatRoomsV3())
+                preload('chat_rooms_v3', async () => {
+                    const result = await getChatRoomsV3()
+                    return result.success ? (result.data || []) : []
+                })
 
                 console.log('🚀 [LIGTAS OMNI-IGNITION] All sectors hydrated.')
             } catch (error) {

@@ -44,7 +44,7 @@ export function useChatRoomsV3() {
         dedupingInterval: 2000
     })
 
-    const rooms = useMemo(() => data || [], [data])
+    const rooms = useMemo(() => (Array.isArray(data) ? data : []), [data])
 
     useEffect(() => {
         const channel = supabase
