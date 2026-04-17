@@ -139,15 +139,18 @@ export function V2StatusFields({
                         onChange={(e) => setRestockAlertEnabled(e.target.checked)}
                         className="h-4 w-4 rounded border-slate-300"
                     />
-                    Include this item in low-stock alerts
+                    Enable low-stock alerts for this item
                 </label>
+                <p className="text-[10px] text-slate-500 mt-1">
+                    Turn this off to exclude this item from low-stock alerts.
+                </p>
             </div>
 
             {/* Smart Footer - Reverted to Clean Blue */}
             <div className="bg-blue-600/5 p-3 rounded-2xl border border-blue-50 flex items-center gap-3">
                 <AlertTriangle className="h-4 w-4 text-blue-500" />
                 <p className="text-[11px] font-bold text-blue-800 leading-tight">
-                    Low Stock Alert at: <span className="text-blue-600 underline underline-offset-2">{calculatedLimit} units</span>
+                    Low Stock Alert at or below: <span className="text-blue-600 underline underline-offset-2">{calculatedLimit} units</span>
                 </p>
             </div>
         </div>

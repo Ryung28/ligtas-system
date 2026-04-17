@@ -164,8 +164,11 @@ export function StockManagementFields({
                                 onChange={(e) => onRestockAlertEnabledChange(e.target.checked)}
                                 className="h-4 w-4 rounded border-slate-300"
                             />
-                            Include this item in low-stock alerts
+                            Enable low-stock alerts for this item
                         </label>
+                        <p className="text-[10px] text-slate-500">
+                            Turn this off to exclude this item from low-stock alerts.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -175,7 +178,7 @@ export function StockManagementFields({
                 <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5" strokeWidth={2.5} />
                 <p className="text-[11px] font-medium text-blue-700 leading-normal">
                     <span className="font-black uppercase tracking-tighter mr-1 text-blue-900">Alert Rule:</span>
-                    Tell me if my <span className="font-black italic text-blue-900">Ready to Use</span> stock hits 
+                    Tell me if my <span className="font-black italic text-blue-900">Ready to Use</span> stock goes at or below
                     <span className="mx-1 px-1.5 py-0.5 rounded bg-blue-600 text-white font-black">{calculatedThreshold}</span> 
                     units.
                 </p>

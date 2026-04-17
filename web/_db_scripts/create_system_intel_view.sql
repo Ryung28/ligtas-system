@@ -1,9 +1,10 @@
 -- ============================================================================
--- THE UNIFIED INTEL COMMAND CENTER (V3.2 - LOW STOCK SSOT)
+-- THE UNIFIED INTEL COMMAND CENTER (V4.0 - PERCENT-BASED LOW STOCK SSOT)
 -- Creates a "Single Pane of Glass" view for all system anomalies.
--- INVENTORY branch: aligns with mobile + web "low stock" (absolute < 5 OR at/below
--- effective threshold). Removed stock_available < stock_total so 1/1 and 2/2
--- caps still surface when units are critically low.
+-- INVENTORY branch uses:
+--   1) hard-critical absolute guard: stock_available < 5
+--   2) percent rule: stock_available <= ceil(target_stock * low_stock_threshold / 100)
+--      where low_stock_threshold is interpreted as PERCENT (0-100), matching UI.
 -- ============================================================================
 
 -- Drop the view if it exists so we can safely recreate it
@@ -27,7 +28,15 @@ SELECT
         'item_name', i.item_name, 
         'stock_available', i.stock_available,
         'stock_total', i.stock_total,
+        'target_stock', i.target_stock,
         'low_stock_threshold', i.low_stock_threshold,
+        'effective_threshold_units',
+            CASE
+                WHEN COALESCE(i.target_stock, 0) > 0
+                  AND COALESCE(i.low_stock_threshold, 0) > 0
+                    THEN CEIL((i.target_stock::NUMERIC * i.low_stock_threshold::NUMERIC) / 100.0)
+                ELSE NULL
+            END,
         'restock_alert_enabled', i.restock_alert_enabled,
         'search_query', i.item_name
     ) as metadata,
@@ -39,7 +48,11 @@ WHERE i.deleted_at IS NULL
   AND LOWER(COALESCE(i.status, '')) NOT IN ('damaged', 'lost', 'deleted')
   AND (
     i.stock_available < 5
-    OR i.stock_available <= COALESCE(NULLIF(i.low_stock_threshold, 0), 10)
+    OR (
+      COALESCE(i.target_stock, 0) > 0
+      AND COALESCE(i.low_stock_threshold, 0) > 0
+      AND i.stock_available <= CEIL((i.target_stock::NUMERIC * i.low_stock_threshold::NUMERIC) / 100.0)
+    )
   )
 
 UNION ALL
