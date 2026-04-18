@@ -22,6 +22,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
+
+    // 📱 PWA SERVICE WORKER REGISTRATION
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker
+                    .register('/sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registered:', registration.scope)
+                    })
+                    .catch((error) => {
+                        console.error('[PWA] Service Worker registration failed:', error)
+                    })
+            })
+        }
+    }, [])
     
     // Use SWR for global user caching across navigation
     const { data: user, mutate, isLoading } = useSWR('global_user_profile', async () => {

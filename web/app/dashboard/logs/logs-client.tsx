@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { RefreshCw, Filter } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
@@ -22,6 +23,8 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
     
     const {
         sessions,
+        triageLog,
+        triageId,
         stats,
         isLoading,
         error,
@@ -40,23 +43,50 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
 
     const searchParams = useSearchParams()
     const [highlightedName, setHighlightedName] = useState<string | null>(null)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     // Deep-Link Hook (Enterprise Drill-Down)
     useEffect(() => {
+        const id = searchParams.get('id')
         const search = searchParams.get('search')
         const shouldHighlight = searchParams.get('highlight') === 'true'
         
-        if (search) {
+        if (id) {
+            // 🎯 TACTICAL PERSISTENCE: Keep the search name so the table filters to the correct borrower
+            if (search) setSearchQuery(search)
+            if (shouldHighlight && search) setHighlightedName(search)
+            // 🛡️ PAGINATION RESET: Ensure we are on Page 1 where the hoisted item lives
+            setCurrentPage(1)
+        } else if (search) {
             setSearchQuery(search)
             if (shouldHighlight) setHighlightedName(search)
         }
-    }, [searchParams, setSearchQuery])
+    }, [searchParams, setSearchQuery, setCurrentPage])
+
+    // 🛡️ AUTO-EXPANSION ENGINE: Ensure the targeted session is visible
+    useEffect(() => {
+        if (!triageId || sessions.length === 0) return
+
+        const targetSession = sessions.find(s => 
+            s.items.some((item: any) => item.id.toString() === triageId)
+        )
+
+        if (targetSession && !expandedSessions.has(targetSession.key)) {
+            toggleSessionExpansion(targetSession.key)
+        }
+    }, [triageId, sessions, expandedSessions, toggleSessionExpansion])
+
+    if (!mounted) return null
 
     return (
         <div className="max-w-screen-3xl mx-auto space-y-4 p-1 14in:p-2 animate-in fade-in duration-200">
             {/* Page Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white/80 backdrop-blur-md p-3 14in:p-4 rounded-xl border border-slate-100 shadow-sm">
-                <div>
+                <div className="flex items-center gap-3">
                     <h1 className="text-2xl 14in:text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">
                         Borrow/Return Logs
                     </h1>

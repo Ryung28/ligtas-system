@@ -55,7 +55,16 @@ export function LogFilters({
     searchQuery,
     setSearchQuery
 }: Omit<LogFiltersProps, 'filter' | 'setFilter'>) {
+    const [mounted, setMounted] = React.useState(false)
     const activeDate = dateFilter ? new Date(dateFilter) : undefined
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return <div className="flex flex-col sm:flex-row gap-2 w-full h-10 bg-white/50 animate-pulse rounded-lg"></div>
+    }
 
     return (
         <div className="flex flex-col sm:flex-row gap-2 w-full">

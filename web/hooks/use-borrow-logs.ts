@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import useSWR, { mutate } from 'swr'
+import useSWR from 'swr'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BorrowLog, BorrowSession, LogStats, TransactionStatus } from '@/lib/types/inventory'
-import { getBorrowLogsAction } from '@/app/actions/logs-actions'
+import { getBorrowLogsAction, getBorrowLogByIdAction } from '@/app/actions/logs-actions'
 
 // SWR Configurations
 export const LOGS_CACHE_KEY = 'borrow_logs'
@@ -23,6 +24,10 @@ export const fetchLogs = async () => {
 }
 
 export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
+    const searchParams = useSearchParams()
+    const triageId = searchParams.get('id')
+    const [triageLog, setTriageLog] = useState<BorrowLog | null>(null)
+
     const {
         data: logs = [],
         error,
@@ -42,6 +47,27 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
     const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
 
+    // 🛡️ ATOMIC RESOLUTION: Ensure the triage record is ALWAYS available
+    useEffect(() => {
+        if (!triageId) {
+            setTriageLog(null)
+            return
+        }
+
+        // 1. Optimization: Check if it's already in our loaded list
+        const inMemoryRecord = logs.find(l => l.id.toString() === triageId)
+        if (inMemoryRecord) {
+            setTriageLog(inMemoryRecord)
+        } else {
+            // 2. Precision Fetch: Pull the exact row from the database (bypass 100-limit)
+            getBorrowLogByIdAction(triageId).then(res => {
+                if (res.success && res.data) {
+                    setTriageLog(res.data)
+                }
+            })
+        }
+    }, [triageId, logs])
+
     const ITEMS_PER_PAGE = 10
 
     // Real-time updates subscription
@@ -60,24 +86,41 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
 
     // Filter Logic
     const filteredLogs = useMemo(() => {
-        return logs.filter((log) => {
+        // 🛡️ SENIOR DATA NORMALIZATION: Use a Map keyed by string IDs to merge pools.
+        // This makes duplicate IDs mathematically impossible regardless of source.
+        const poolMap = new Map<string, BorrowLog>();
+        
+        // 1. Load bulk logs
+        logs.forEach(log => poolMap.set(String(log.id), log));
+        
+        // 2. Triage log overrides (Ensures precision data for the deep-linked record)
+        if (triageLog) poolMap.set(String(triageLog.id), triageLog);
+
+        const pool = Array.from(poolMap.values());
+
+        return pool.filter((log) => {
+            const matchesId = triageId ? String(log.id) === String(triageId) : false
             const matchesSearch =
                 log.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 log.borrower_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 log.borrower_organization?.toLowerCase().includes(searchQuery.toLowerCase())
+            
             const matchesStatus = statusFilter === 'all' 
                 ? true 
                 : statusFilter === 'overdue'
                     ? (log.status === 'borrowed' && log.expected_return_date && new Date(log.expected_return_date) < new Date())
                     : log.status === statusFilter
+            
             let matchesDate = true
             if (dateFilter) {
                 const logDate = new Date(log.borrow_date || log.created_at).toISOString().split('T')[0]
                 matchesDate = logDate === dateFilter
             }
-            return matchesSearch && matchesStatus && matchesDate
+            
+            // Priority: If it matches the deep-link ID, it survives regardless of other filters.
+            return matchesId || (matchesSearch && matchesStatus && matchesDate)
         })
-    }, [logs, searchQuery, statusFilter, dateFilter])
+    }, [logs, triageLog, searchQuery, statusFilter, dateFilter, triageId])
 
     // Grouping into Sessions (Time-Gap Algorithm - Optimized O(N))
     const sessions = useMemo(() => {
@@ -92,13 +135,10 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         const sessionsList: BorrowSession[] = []
         const TIME_GAP_MS = 15 * 60 * 1000 // 15 minutes
         
-        // Track the "current" session being built to achieve O(N)
         let currentSession: BorrowSession | null = null
 
         sorted.forEach((log) => {
             const logTime = new Date(log.created_at).getTime()
-
-            // Check if this log belongs to the session we just looked at
             const isSameSession = currentSession && 
                 currentSession.borrower_name === log.borrower_name &&
                 Math.abs(new Date(currentSession.created_at).getTime() - logTime) <= TIME_GAP_MS
@@ -107,7 +147,6 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                 currentSession.items.push(log)
                 currentSession.total_quantity += log.quantity
                 if (currentSession.status !== log.status) currentSession.status = 'mixed'
-                // Session time reflects the most recent activity in that window
                 if (logTime > new Date(currentSession.created_at).getTime()) {
                     currentSession.created_at = log.created_at
                 }
@@ -130,10 +169,17 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
             }
         })
 
-        return sessionsList.sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-    }, [filteredLogs])
+        // 🛡️ DATA HOISTING: Ensure the session containing the triageId is moved to index 0
+        return sessionsList.sort((a, b) => {
+            if (triageId) {
+                const aHasTarget = a.items.some(i => String(i.id) === String(triageId))
+                const bHasTarget = b.items.some(i => String(i.id) === String(triageId))
+                if (aHasTarget) return -1
+                if (bHasTarget) return 1
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+    }, [filteredLogs, triageId])
 
     const stats: LogStats = useMemo(() => {
         const now = new Date();
@@ -188,6 +234,8 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
 
     return {
         logs, // Raw logs for global lookups
+        triageLog, // 🎯 Return the targeted record as a separate entity
+        triageId,
         sessions: paginatedSessions,
         staffTracking, // New tracking data
         stats,

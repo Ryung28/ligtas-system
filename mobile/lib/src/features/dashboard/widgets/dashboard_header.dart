@@ -43,62 +43,64 @@ class DashboardHeader extends ConsumerWidget {
         _buildUserAvatar(userName),
         const Gap(16),
 
-        // ── 1. INTERACTION CANVAS ──
+        // ── 1. INTERACTION CANVAS: Decoupled Dual-Channel Layout ──
         Expanded(
-          child: Stack(
-            clipBehavior: Clip.none,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── IDENTITY STACK (Pinned High) ──
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getGreeting(),
-                    style: GoogleFonts.lexend(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: stitchOnSurfaceVariant,
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-                  const Gap(2),
-                  Text(
-                    userName,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: stitchOnSurface,
-                      letterSpacing: -1.0,
-                      height: 1.1,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-
-              // ── HUD INTERACTION ROW (DECOUPLED DUO) ──
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Row(
+              // ── IDENTITY CHANNEL (Left) ──
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 🔔 TACTICAL PULSE: Only breathes when unread exists
-                    unreadCount > 0
-                      ? _buildNotificationBell(context, unreadCount)
-                          .animate(onPlay: (c) => c.repeat(reverse: true))
-                          .scale(
-                            begin: const Offset(1, 1),
-                            end: const Offset(1.1, 1.1),
-                            duration: 1500.ms,
-                            curve: Curves.easeInOut,
-                          )
-                      : _buildNotificationBell(context, unreadCount),
-                    const Gap(12),
-                    _buildWeatherInfo(weatherAsync),
+                    Text(
+                      _getGreeting(),
+                      style: GoogleFonts.lexend(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: stitchOnSurfaceVariant,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const Gap(2),
+                    Text(
+                      userName.split(' ')[0].toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: stitchOnSurface,
+                        letterSpacing: -1.0,
+                        height: 1.1,
+                      ),
+                      maxLines: 2,
+                    ),
                   ],
-                ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.2, end: 0),
+                ),
               ),
+
+              const Gap(12), // Minimum buffer zone
+
+              // ── HUD CHANNEL (Right) ──
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🔔 TACTICAL PULSE: Only breathes when unread exists
+                  unreadCount > 0
+                    ? _buildNotificationBell(context, unreadCount)
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.1, 1.1),
+                          duration: 1500.ms,
+                          curve: Curves.easeInOut,
+                        )
+                    : _buildNotificationBell(context, unreadCount),
+                  const Gap(12),
+                  _buildWeatherInfo(weatherAsync),
+                ],
+              ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.2, end: 0),
             ],
           ),
         ),

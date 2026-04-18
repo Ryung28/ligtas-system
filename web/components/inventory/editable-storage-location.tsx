@@ -16,19 +16,24 @@ interface EditableStorageLocationProps {
     onUpdate?: () => void
 }
 
+import { useStorageLocations } from '@/hooks/use-storage-locations'
+
 export function EditableStorageLocation({ 
     itemId, 
     itemName, 
     currentLocation, 
     onUpdate 
 }: EditableStorageLocationProps) {
+    const { locations: savedLocations, resolveLocationName } = useStorageLocations()
     const [isEditing, setIsEditing] = useState(false)
     const [isPending, startTransition] = useTransition()
     const [selectedLocation, setSelectedLocation] = useState<string>(currentLocation)
     const [customLocation, setCustomLocation] = useState<string>('')
 
-    const predefinedLocations = ['lower_warehouse', '2nd_floor_warehouse', 'office', 'field']
-    const isCustomLocation = !predefinedLocations.includes(currentLocation)
+    const isCustomLocation = !savedLocations.some(l => 
+        l.location_name.toLowerCase() === (currentLocation || '').toLowerCase() ||
+        String(l.id) === String(currentLocation)
+    )
 
     const handleLocationChange = (newLocation: string) => {
         if (newLocation === 'custom') {
@@ -70,10 +75,7 @@ export function EditableStorageLocation({
     }
 
     const getLocationLabel = (location: string) => {
-        if (predefinedLocations.includes(location)) {
-            return STORAGE_LOCATION_LABELS[location as StorageLocation]
-        }
-        return location
+        return resolveLocationName(location)
     }
 
     const getLocationColor = (location: string) => {
@@ -113,18 +115,11 @@ export function EditableStorageLocation({
                         className="rounded-lg border-gray-200 shadow-xl"
                         onPointerDownOutside={() => setIsEditing(false)}
                     >
-                        <SelectItem value="lower_warehouse" className="text-[12px]">
-                            Lower Warehouse
-                        </SelectItem>
-                        <SelectItem value="2nd_floor_warehouse" className="text-[12px]">
-                            2nd Floor Warehouse
-                        </SelectItem>
-                        <SelectItem value="office" className="text-[12px]">
-                            Office
-                        </SelectItem>
-                        <SelectItem value="field" className="text-[12px]">
-                            Field
-                        </SelectItem>
+                        {savedLocations.map(loc => (
+                            <SelectItem key={loc.id} value={String(loc.id)} className="text-[12px]">
+                                {loc.location_name}
+                            </SelectItem>
+                        ))}
                         <SelectItem value="custom" className="text-[12px] font-semibold text-blue-600">
                             Custom Location...
                         </SelectItem>

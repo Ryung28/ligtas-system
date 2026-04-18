@@ -30,6 +30,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LogisticsPreviewCard } from '../_components/logistics-preview-card'
 import { cn } from '@/lib/utils'
+import { TacticalAssetPreview } from '@/src/shared/ui/tactical-asset-preview'
 
 // V3 API Bridge (Mapped to exactly what the old file expected)
 import { createBatchBorrow as batchBorrowItems, createBorrowRecord as borrowItem } from '../api/transaction-repository'
@@ -41,6 +42,7 @@ interface AvailableItem {
     item_name: string
     category: string
     item_type?: 'equipment' | 'consumable'
+    storage_location?: string
     primary_location?: string
     primary_stock_available: number
     aggregate_available: number
@@ -48,10 +50,11 @@ interface AvailableItem {
     image_url?: string
     variants: Array<{
         id: number
-        location: string
+        storage_location: string
         stock_available: number
         stock_total: number
     }>
+    status: string
 }
 
 interface CartItem {
@@ -80,6 +83,11 @@ export function DispatchCommandSheet() {
 
     const supabase = createClient()
     const router = useRouter()
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const isConsumable = selectedItem?.item_type === 'consumable'
 
@@ -195,18 +203,14 @@ export function DispatchCommandSheet() {
             return;
         }
 
-        let maxAvailable = selectedItem.aggregate_available || selectedItem.primary_stock_available
+        let maxAvailable = selectedItem.primary_stock_available
         let targetId = selectedItem.id
 
         if (selectedVariantId) {
-            if (selectedVariantId === 'primary') {
-                maxAvailable = selectedItem.primary_stock_available
-            } else {
-                const variant = selectedItem.variants.find(v => v.id.toString() === selectedVariantId)
-                if (variant) {
-                    maxAvailable = variant.stock_available
-                    targetId = variant.id
-                }
+            const variant = selectedItem.variants?.find(v => String(v.id) === selectedVariantId)
+            if (variant) {
+                maxAvailable = variant.stock_available
+                targetId = variant.id
             }
         }
 
@@ -219,8 +223,8 @@ export function DispatchCommandSheet() {
         const cartItem: AvailableItem = {
             ...selectedItem,
             id: targetId,
-            item_name: selectedVariantId && selectedVariantId !== 'primary' 
-                ? `${selectedItem.item_name} (${selectedItem.variants.find(v => v.id.toString() === selectedVariantId)?.location})`
+            item_name: selectedVariantId 
+                ? `${selectedItem.item_name} (${selectedItem.variants?.find(v => String(v.id) === selectedVariantId)?.storage_location || 'Distributed'})`
                 : selectedItem.item_name
         }
 
@@ -231,6 +235,8 @@ export function DispatchCommandSheet() {
         setSelectedQuantity(1)
         toast.success(`Added ${cartItem.item_name} to cart`)
     }
+
+    if (!mounted) return null
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -337,125 +343,154 @@ export function DispatchCommandSheet() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-12 gap-4 items-start">
-                            <div className="col-span-12 md:col-span-8 flex flex-col gap-2">
-                                <Label className="text-sm font-semibold text-slate-700">Select Item <span className="text-red-500">*</span></Label>
-                                <Combobox
-                                    options={availableItems.map(item => ({
-                                        value: item.id.toString(),
-                                        label: item.item_name,
-                                        imageUrl: getInventoryImageUrl(item.image_url) || undefined,
-                                        description: `${item.aggregate_available} units City-wide • ${item.category}`,
-                                    }))}
-                                    value={selectedItem?.id.toString()}
-                                    onValueChange={handleItemSelect}
-                                    placeholder={isLoadingItems ? "Loading items..." : "Search for an item..."}
-                                    disabled={isPending || isLoadingItems}
-                                />
-                                
-                                {/* 🎯 Equipment Verification Reveal */}
+                        {/* 🎯 THE DISPATCH ENGINE (PICK & LIST) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 border-t border-slate-100 pt-6">
+                            
+                            {/* LEFT SIDE: SELECTOR */}
+                            <div className="lg:col-span-3 space-y-5">
+                                <div className="space-y-3">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">1. Select Equipment</Label>
+                                    <Combobox
+                                        options={availableItems.map(item => ({
+                                            value: item.id.toString(),
+                                            label: item.item_name,
+                                            imageUrl: getInventoryImageUrl(item.image_url) || undefined,
+                                            description: `${item.aggregate_available} units City-wide • ${item.category}`,
+                                        }))}
+                                        value={selectedItem?.id.toString()}
+                                        onValueChange={handleItemSelect}
+                                        placeholder={isLoadingItems ? "Loading..." : "Search equipment name..."}
+                                        disabled={isPending || isLoadingItems}
+                                    />
+                                </div>
                                 {selectedItem && (
-                                    <div className="mt-1 animate-in zoom-in-95 fade-in duration-300">
-                                        <LogisticsPreviewCard item={selectedItem as any} />
+                                    <TacticalAssetPreview 
+                                        item={{
+                                            item_name: selectedItem.item_name,
+                                            category: selectedItem.category,
+                                            image_url: selectedItem.image_url,
+                                            item_type: selectedItem.item_type,
+                                            storage_location: selectedItem.storage_location,
+                                            aggregate_available: selectedItem.aggregate_available
+                                        }} 
+                                        className="border-blue-100 bg-blue-50/20"
+                                    />
+                                )}
+
+                                {selectedItem && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {/* LOCATION PICKER */}
+                                        <div className="space-y-3">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">2. Take from where?</Label>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setSelectedVariantId(null)}
+                                                    className={cn(
+                                                        "flex-1 min-w-[140px] px-4 py-3 rounded-xl border-2 transition-all text-left",
+                                                        selectedVariantId === null 
+                                                            ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50" 
+                                                            : "bg-white border-slate-100 hover:border-slate-200"
+                                                    )}
+                                                >
+                                                    <p className={cn("text-[11px] font-bold", selectedVariantId === null ? "text-blue-700" : "text-slate-600")}>
+                                                        {selectedItem.storage_location || 'Main Hub'}
+                                                    </p>
+                                                    <p className="text-[9px] text-slate-400 font-medium">Ready: {selectedItem.primary_stock_available}</p>
+                                                </button>
+
+                                                {selectedItem.variants?.map(v => (
+                                                    <button
+                                                        key={v.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedVariantId(String(v.id))}
+                                                        disabled={v.stock_available <= 0}
+                                                        className={cn(
+                                                            "flex-1 min-w-[140px] px-4 py-3 rounded-xl border-2 transition-all text-left",
+                                                            selectedVariantId === String(v.id) 
+                                                                ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50" 
+                                                                : v.stock_available <= 0
+                                                                    ? "bg-slate-50 border-slate-50 opacity-40 cursor-not-allowed"
+                                                                    : "bg-white border-slate-100 hover:border-slate-200"
+                                                        )}
+                                                    >
+                                                        <p className={cn("text-[11px] font-bold", selectedVariantId === String(v.id) ? "text-blue-700" : "text-slate-600")}>
+                                                            {v.storage_location}
+                                                        </p>
+                                                        <p className="text-[9px] text-slate-400 font-medium">Ready: {v.stock_available}</p>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* QTY & ACTION */}
+                                        <div className="flex items-end gap-3 pt-2">
+                                            <div className="flex-1 space-y-2">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">3. How many?</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    value={selectedQuantity} 
+                                                    onChange={e => setSelectedQuantity(e.target.value === "" ? "" : Number(e.target.value))}
+                                                    className="h-12 text-lg font-bold rounded-xl"
+                                                />
+                                            </div>
+                                            <Button 
+                                                type="button" 
+                                                onClick={handleAddToCart}
+                                                className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95"
+                                            >
+                                                Add to List
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
-                            {selectedItem && selectedItem.variants && selectedItem.variants.length > 0 && (
-                                <div className="col-span-12 animate-in slide-in-from-left-2 duration-300">
-                                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex flex-col md:flex-row md:items-center gap-4">
-                                        <div className="flex items-center gap-2 text-blue-900 shrink-0">
-                                            <Warehouse className="h-4 w-4" />
-                                            <span className="text-xs font-bold uppercase tracking-wider">Pickup Site <span className="text-red-500">*</span></span>
-                                        </div>
-                                        <Select value={selectedVariantId || ''} onValueChange={setSelectedVariantId}>
-                                            <SelectTrigger className="bg-white border-blue-200 h-10 flex-1">
-                                                <SelectValue placeholder="Select warehouse or satellite location..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="rounded-xl border-blue-100 shadow-xl">
-                                                <SelectItem value="primary" className="py-2">
-                                                    <div className="flex justify-between items-center w-full gap-8">
-                                                        <span className="font-bold text-slate-900 uppercase text-[11px]">{STORAGE_LOCATION_LABELS[selectedItem.primary_location as StorageLocation] || selectedItem.primary_location || 'Main Hub'}</span>
-                                                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{selectedItem.primary_stock_available} READY</span>
-                                                    </div>
-                                                </SelectItem>
-                                                {selectedItem.variants.map(variant => (
-                                                    <SelectItem key={variant.id} value={variant.id.toString()} className="py-2">
-                                                        <div className="flex justify-between items-center w-full gap-8">
-                                                            <span className="font-bold text-slate-900 uppercase text-[11px]">{STORAGE_LOCATION_LABELS[variant.location as StorageLocation] || variant.location}</span>
-                                                            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{variant.stock_available} READY</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                            {/* RIGHT SIDE: THE LIST (MANIFEST) */}
+                            <div className="lg:col-span-2">
+                                <div className="h-full min-h-[200px] bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 p-4 flex flex-col">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Items for Respondent</Label>
+                                        {cart.length > 0 && <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{cart.length} items</span>}
                                     </div>
+
+                                    {cart.length === 0 ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-40">
+                                            <ShoppingCart className="w-8 h-8 text-slate-400" />
+                                            <p className="text-[11px] font-bold text-slate-500">No items added yet</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1">
+                                            {cart.map((c) => (
+                                                <div key={c.item.id} className="group bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between shadow-sm hover:border-blue-200 transition-all">
+                                                    <div className="min-w-0 pr-2">
+                                                        <p className="text-xs font-bold text-slate-900 truncate">{c.item.item_name}</p>
+                                                        <p className="text-[9px] text-slate-400 font-medium uppercase">{c.quantity}x • From {c.item.item_name.split('(')[1]?.replace(')', '') || 'Main Hub'}</p>
+                                                    </div>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => v3RemoveFromCart(c.item.id)} // This will be handled by local state in parent or useEffect in real app, keeping logic consistent
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {cart.length > 0 && (
+                                        <Button 
+                                            variant="ghost" 
+                                            onClick={() => {v3ClearCart(); setCart([]);}}
+                                            className="mt-4 text-[10px] font-bold text-slate-400 hover:text-red-600 transition-colors uppercase tracking-widest"
+                                        >
+                                            Clear All
+                                        </Button>
+                                    )}
                                 </div>
-                            )}
-
-                            <div className="col-span-6 md:col-span-2 space-y-2">
-                                <Label htmlFor="quantity" className="text-sm font-semibold text-slate-700">Quantity <span className="text-red-500">*</span></Label>
-                                <Input 
-                                    id="quantity" 
-                                    name="quantity" 
-                                    type="number" 
-                                    value={selectedQuantity === "" ? "" : selectedQuantity} 
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === "") {
-                                            setSelectedQuantity("");
-                                        } else {
-                                            setSelectedQuantity(parseInt(val) || 1);
-                                        }
-                                    }} 
-                                    required 
-                                    min={1} 
-                                    disabled={isPending || !selectedItem} 
-                                    className="h-11 rounded-lg border-slate-300 shadow-inner" 
-                                />
-                            </div>
-
-                            <div className="col-span-6 md:col-span-2 space-y-2">
-                                <Label className="text-sm font-semibold text-slate-700 opacity-0 pointer-events-none">Add</Label>
-                                <Button type="button" onClick={handleAddToCart} disabled={!selectedItem || isPending} className="h-11 w-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg gap-2 font-semibold shadow-lg transition-all active:scale-[0.98]">
-                                    <Plus className="h-4 w-4" /> Add
-                                </Button>
                             </div>
                         </div>
-
-                        {/* Cart Display */}
-                        {cart.length > 0 && (
-                            <div className="relative overflow-hidden rounded-2xl border border-blue-200/60 bg-gradient-to-br from-blue-50 via-white to-blue-50/30 p-5 shadow-lg animate-in fade-in duration-300">
-                                <div className="relative space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
-                                                <ShoppingCart className="h-4.5 w-4.5 text-white" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-sm font-bold text-slate-800">Dispatch Cart</h3>
-                                                <p className="text-xs text-slate-500">{cart.length} items ready</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {cart.map((cartItem) => (
-                                            <div key={cartItem.item.id} className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-3.5 shadow-sm">
-                                                <div className="flex-1 min-w-0 pr-3">
-                                                    <h4 className="font-semibold text-slate-900 text-sm truncate">{cartItem.item.item_name}</h4>
-                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                        <span className="font-medium text-slate-700">{cartItem.quantity}x</span> • <span>{cartItem.item.category}</span>
-                                                    </div>
-                                                </div>
-                                                <Button type="button" variant="ghost" size="sm" onClick={() => setCart(cart.filter(c => c.item.id !== cartItem.item.id))} className="h-8 w-8 text-slate-400 hover:text-red-600">
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {!isConsumable && (
                             <div className="grid gap-2">

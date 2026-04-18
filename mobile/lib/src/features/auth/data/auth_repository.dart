@@ -52,8 +52,8 @@ class AuthRepository {
     debugPrint('📡 [Auth-Guard] Initiating Recovery Handshake...');
 
     try {
-      // 🛡️ RESET: Clear existing state to prevent focus-lock and force account selection
-      await _googleSignIn.signOut().catchError((_) => null);
+      // 🛡️ RESET: Clear existing state to force account selection picker
+      await _googleSignIn.disconnect().catchError((_) => null);
       
       // Interactive Picker: Always force selection when this method is called manually
       debugPrint('📡 [Auth-Guard] Launching Interactive Picker...');
@@ -126,10 +126,9 @@ class AuthRepository {
     }
   }
 
-  // Sign Out (Handles both Supabase and Google)
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut().catchError((_) => null);
+      await _googleSignIn.disconnect().catchError((_) => null);
       await _supabase.auth.signOut();
     } catch (e) {
       throw ExceptionHandler.fromException(e);

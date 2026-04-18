@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../presentation/providers/notification_provider.dart';
 import '../data/models/notification_model.dart';
@@ -47,11 +48,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         slivers: [
           // ── TACTILE HEADER ──
           SliverAppBar(
-            expandedHeight: 120,
+            expandedHeight: 140,
             floating: true,
             pinned: true,
             backgroundColor: sentinel.containerLow.withOpacity(0.9),
             elevation: 0,
+            surfaceTintColor: Colors.transparent,
             leading: IconButton(
               icon: Icon(Icons.arrow_back_ios_new_rounded, color: sentinel.navy, size: 20),
               onPressed: () => context.pop(),
@@ -59,13 +61,29 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             flexibleSpace: FlexibleSpaceBar(
               centerTitle: false,
               titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              title: Text(
-                'Tactical Feed',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 22,
-                  color: sentinel.navy,
-                ),
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CENTRAL INTELLIGENCE FEED',
+                    style: GoogleFonts.lexend(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: sentinel.onSurfaceVariant.withOpacity(0.5),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const Gap(2),
+                  Text(
+                    'Active Alerts',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 24,
+                      color: sentinel.navy,
+                    ),
+                  ),
+                ],
               ),
             ),
             actions: [
@@ -88,35 +106,60 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 return SliverFillRemaining(child: _buildEmptyState(context));
               }
 
-              // Split by Category (Mirroring Web UI behavior)
-              final urgent = notifications.where((n) => 
-                ['stock_out', 'item_overdue', 'borrow_rejected'].contains(n.type)
-              ).toList();
-              
-              final rest = notifications.where((n) => 
-                !urgent.contains(n)
-              ).toList();
+              final active = notifications.where((n) => !n.isRead).toList();
+              final resolved = notifications.where((n) => n.isRead).toList();
+
+              // Determine priority for active section
+              final hasCritical = active.any((n) => ['stock_out', 'item_overdue', 'borrow_rejected', 'system_alert'].contains(n.type));
 
               return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.only(bottom: 100),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     const SyncErrorBanner(),
                     
-                    if (urgent.isNotEmpty) ...[
-                      _buildSectionHeader('CRITICAL PULSE', urgent.length, AppTheme.errorRed),
-                      const Gap(12),
-                      ...urgent.map((n) => TacticalNotificationCard(notification: n)),
-                      const Gap(24),
+                    // ACTIVE ALERTS SECTION
+                    if (active.isNotEmpty) ...[
+                      _buildProtocolHeader(
+                        context,
+                        title: "Today's Protocol",
+                        subtitle: DateFormat('MMMM dd, yyyy').format(DateTime.now()),
+                        icon: Icons.calendar_today_rounded,
+                        isDark: true,
+                        priority: hasCritical ? "High" : "Standard",
+                      ),
+                      ...active.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final n = entry.value;
+                        return TacticalNotificationCard(
+                          notification: n,
+                          isFirst: idx == 0,
+                          isLast: idx == active.length - 1 && resolved.isEmpty,
+                        );
+                      }),
                     ],
 
-                    if (rest.isNotEmpty) ...[
-                      _buildSectionHeader('SYSTEM LOGS', rest.length, sentinel.primary),
-                      const Gap(12),
-                      ...rest.map((n) => TacticalNotificationCard(notification: n)),
+                    // RESOLVED EVENTS SECTION
+                    if (resolved.isNotEmpty) ...[
+                      const Gap(24),
+                      _buildProtocolHeader(
+                        context,
+                        title: "Resolved Events",
+                        subtitle: DateFormat('MMMM dd, yyyy').format(DateTime.now().subtract(const Duration(days: 1))),
+                        icon: Icons.history_rounded,
+                        isDark: false,
+                        priority: "Archived",
+                      ),
+                      ...resolved.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final n = entry.value;
+                        return TacticalNotificationCard(
+                          notification: n,
+                          isFirst: idx == 0,
+                          isLast: idx == resolved.length - 1,
+                        );
+                      }),
                     ],
-                    
-                    const Gap(100), // Bottom clearance
                   ]),
                 ),
               );
@@ -133,39 +176,69 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, int count, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            '$count',
-            style: GoogleFonts.lexend(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              color: color,
+  Widget _buildProtocolHeader(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isDark,
+    required String priority,
+  }) {
+    final sentinel = Theme.of(context).sentinel;
+    
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 16, top: 8),
+      child: Row(
+        children: [
+          // Icon Node
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isDark ? sentinel.navy : sentinel.containerLow,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isDark ? Colors.white : sentinel.onSurfaceVariant,
             ),
           ),
-        ),
-        const Gap(10),
-        Text(
-          title,
-          style: GoogleFonts.lexend(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: Theme.of(context).sentinel.onSurfaceVariant.withOpacity(0.5),
-            letterSpacing: 1.2,
+          const Gap(16),
+          // Text Content
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: sentinel.navy,
+                ),
+              ),
+              Text(
+                '$subtitle • Priority Level: $priority',
+                style: GoogleFonts.lexend(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: sentinel.onSurfaceVariant.withOpacity(0.4),
+                ),
+              ),
+            ],
           ),
-        ),
-        const Gap(10),
-        Expanded(child: Divider(color: color.withOpacity(0.05))),
-      ],
+        ],
+      ),
     );
   }
+
   Widget _buildEmptyState(BuildContext context) {
     final sentinel = Theme.of(context).sentinel;
     return Center(
@@ -186,7 +259,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
           const Gap(24),
           Text(
-            'FEED SILENT',
+            'INTEL FEED SILENT',
             style: GoogleFonts.lexend(
               fontSize: 14,
               fontWeight: FontWeight.w900,
@@ -213,12 +286,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.errorRed.withOpacity(0.3)),
             const Gap(16),
             Text(
-              'SIGNAL LOST',
+              'SIGNAL INTERRUPTED',
               style: GoogleFonts.lexend(fontWeight: FontWeight.w900, color: AppTheme.errorRed, fontSize: 14, letterSpacing: 1.5),
             ),
             const Gap(8),
@@ -233,3 +307,4 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 }
+

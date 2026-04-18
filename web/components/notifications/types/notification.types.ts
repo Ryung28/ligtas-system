@@ -24,6 +24,7 @@ export interface NotificationCardProps {
   index: number
   onMarkRead: (id: string) => void
   onDelete?: (id: string) => void
+  onClose?: () => void
 }
 
 export interface TypeConfig {

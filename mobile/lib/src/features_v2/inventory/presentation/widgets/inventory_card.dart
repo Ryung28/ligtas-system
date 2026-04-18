@@ -94,50 +94,99 @@ class InventoryCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // 1. IDENTITY BLOCK
-                        Column(
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (!isTight) 
-                              Text(
-                                item.category.toUpperCase(),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: sentinel.primary.withOpacity(0.7),
-                                  letterSpacing: 1.2,
-                                  fontSize: 8,
+                            if (!isTight)
+                              Container(
+                                width: 2.5,
+                                height: 44, // 🛡️ Frames Category (8) + Gap (2) + Name (34)
+                                margin: const EdgeInsets.only(top: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E293B).withOpacity(0.15), // 🛡️ Industrial Charcoal Frame
+                                  borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
-                            Text(
-                              item.name,
-                              maxLines: isTight ? 1 : 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                height: 1.1,
-                                fontSize: isTight ? 12 : 13,
-                                color: sentinel.navy,
+                            if (!isTight) const Gap(8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!isTight) 
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 2),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.layers_rounded, 
+                                            size: 9, 
+                                            color: const Color(0xFF1E293B).withOpacity(0.7)
+                                          ),
+                                          const Gap(4),
+                                          Text(
+                                            item.category.toUpperCase(),
+                                            style: theme.textTheme.labelSmall?.copyWith(
+                                              color: const Color(0xFF1E293B),
+                                              letterSpacing: 1.2,
+                                              fontSize: 7.5,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  SizedBox(
+                                    height: isTight ? 16 : 34, // 🛡️ ATOMIC SAFE-ZONE: Fixed height prevents layout push
+                                    child: Text(
+                                      item.name,
+                                      maxLines: isTight ? 1 : 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.1,
+                                        fontSize: isTight ? 12 : 13,
+                                        color: sentinel.navy,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
 
-                        const Spacer(),
+                        const Spacer(), // Re-enabled Spacer with Safe-Zone headroom
 
-                        // 2. LOGISTICS BLOCK (Stock)
-                        if (item.hasMultipleLocations && !isTight) ...[
-                          _LocationBadge(
-                            label: '${item.variants.length + 1} HUBS',
-                            isMultiple: true,
+                        // 2. LOGISTICS BLOCK (Stock & Location)
+                        if (!isTight) ...[
+                          Row(
+                            children: [
+                              if (isManager)
+                                Expanded(
+                                  child: item.hasMultipleLocations
+                                      ? _LocationBadge(
+                                          label: '${item.variants.length + 1} HUBS',
+                                          isMultiple: true,
+                                        )
+                                      : (item.location.isNotEmpty
+                                          ? _LocationBadge(label: item.location)
+                                          : const SizedBox.shrink()),
+                                ),
+                              const Gap(8),
+                              _StockRatioText(item: item),
+                            ],
                           ),
+                          const Gap(6),
+                          _StockProgressBar(item: item),
+                        ] else ...[
+                          // Minimal view for tight constraints
+                          _StockRatioText(item: item),
                           const Gap(4),
-                        ] else if (item.location.isNotEmpty && !isTight) ...[
-                          _LocationBadge(label: item.location),
-                          const Gap(4),
+                          _StockProgressBar(item: item),
                         ],
-                        
-                        _StockLabel(item: item, sentinel: sentinel),
-                        const Gap(6), 
-                        
+                        const Gap(8), 
+
                         // 3. ACTION ROW (KINETIC HUB)
                         Consumer(
                           builder: (context, ref, child) {
@@ -209,7 +258,7 @@ class InventoryCard extends ConsumerWidget {
                                                     ? 'RESERVED' 
                                                     : (item.availableStock <= 0 
                                                         ? 'OUT OF STOCK' 
-                                                        : 'DISPATCH')),
+                                                        : 'BORROW')),
                                             textAlign: TextAlign.center,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis, 
@@ -263,13 +312,50 @@ class InventoryCard extends ConsumerWidget {
   }
 }
 
-/// Stock label row — High-speed "Logistics Progress Bar" layout.
-/// Allows managers to scan stock levels visually (health bar) instead of reading.
-class _StockLabel extends StatelessWidget {
+/// Helper for the Stock Ratio (e.g. 12 / 45)
+class _StockRatioText extends StatelessWidget {
   final InventoryItem item;
-  final dynamic sentinel;
+  const _StockRatioText({required this.item});
 
-  const _StockLabel({required this.item, required this.sentinel});
+  @override
+  Widget build(BuildContext context) {
+    final double pct = item.displayTotal > 0 ? item.displayStock / item.displayTotal : 0;
+    
+    // 🛡️ DYNAMIC LOGISTICS COLOR ENGINE
+    final Color color = pct >= 0.70 
+        ? const Color(0xFF10B981) // Healthy Green
+        : (pct >= 0.25 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)); // Amber or Red
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          '${item.displayStock}',
+          style: GoogleFonts.lexend(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: color,
+          ),
+        ),
+        Text(
+          ' / ${item.displayTotal}',
+          style: GoogleFonts.lexend(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF64748B).withOpacity(0.5),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Helper for the Visual Health Bar
+class _StockProgressBar extends StatelessWidget {
+  final InventoryItem item;
+  const _StockProgressBar({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -277,59 +363,32 @@ class _StockLabel extends StatelessWidget {
         ? (item.displayStock / item.displayTotal).clamp(0.0, 1.0) 
         : 0.0;
     
-    final Color barColor = item.isOutOffStock 
-        ? Colors.redAccent 
-        : (item.isLowStock ? Colors.orangeAccent : const Color(0xFF1E293B));
+    // 🛡️ SYNCED COLOR LOGIC
+    final Color barColor = percentage >= 0.70 
+        ? const Color(0xFF10B981) 
+        : (percentage >= 0.25 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Text(
-              '${item.displayStock}',
-              style: GoogleFonts.lexend(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
+    return Container(
+      width: double.infinity,
+      height: 4,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Stack(
+        children: [
+          FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: percentage,
+            child: Container(
+              decoration: BoxDecoration(
                 color: barColor,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            Text(
-              ' / ${item.displayTotal}',
-              style: GoogleFonts.lexend(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF64748B).withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
-        const Gap(6),
-        // 🛡️ LOGISTICS PROGRESS BAR: Visual health indicator
-        Container(
-          width: double.infinity,
-          height: 4,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B).withOpacity(0.05),
-            borderRadius: BorderRadius.circular(2),
           ),
-          child: Stack(
-            children: [
-              FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: percentage,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: barColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

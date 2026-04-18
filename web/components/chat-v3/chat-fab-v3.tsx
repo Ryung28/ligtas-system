@@ -18,7 +18,12 @@ export function ChatFabV3() {
     const [isOpen, setIsOpen] = useState(false)
     const [recentRooms, setRecentRooms] = useState<{ id: string; name: string }[]>([])
     const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
+    const [mounted, setMounted] = useState(false)
     const { requests } = usePendingRequests()
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
     
     // Stable constraint reference
     const constraintsRef = useRef(null)
@@ -65,6 +70,8 @@ export function ChatFabV3() {
             setIsOpen(false)
         }
     }
+
+    if (!mounted) return null
 
     return (
         <>

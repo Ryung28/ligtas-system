@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState, useTransition, useRef, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -30,12 +30,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getInventoryImageUrl } from '@/lib/supabase'
 import { BorrowLog, BorrowSession, TransactionStatus } from '@/lib/types/inventory'
 import { InitialsAvatar } from './log-avatar'
+import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { ReturnCommandSheet } from '@/src/features/transactions/v2/return-command-sheet'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { bulkReturnItems, revertReturnItem, releaseReservedItem } from '@/src/features/transactions'
 import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
 import { toast } from 'sonner'
+import { useSearchParams } from 'next/navigation'
 
 interface LogSessionTableProps {
     sessions: BorrowSession[]
@@ -67,6 +69,8 @@ export function LogSessionTable({
     const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set())
     const [isPending, startTransition] = useTransition()
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
+    const searchParams = useSearchParams()
+    const triageId = searchParams.get('id')
 
     // --- Selection Logic ---
     const allReturnableIds = sessions.flatMap(s => 
@@ -119,7 +123,6 @@ export function LogSessionTable({
             }
         })
     }
-    // UI Helpers copied from original implementation for consistency
     // UI Helpers
     const getStatusBadge = (status: string) => {
         const baseClass = "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-zinc-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)]";
@@ -258,6 +261,7 @@ export function LogSessionTable({
                                         getUrgencyColor={getUrgencyColor}
                                         getStatusBadge={getStatusBadge}
                                         isHighlighted={highlightedName === session.borrower_name}
+                                        triageId={triageId}
                                         selectedLogIds={selectedLogIds}
                                         toggleSession={() => toggleSession(session.items)}
                                         toggleLogId={toggleLogId}
@@ -363,6 +367,7 @@ function LogSessionRow({
     getUrgencyColor,
     getStatusBadge,
     isHighlighted,
+    triageId,
     selectedLogIds,
     toggleSession,
     toggleLogId,
@@ -376,6 +381,25 @@ function LogSessionRow({
     const allItemsSelected = hasReturnable && returnableItems.every((i: any) => selectedLogIds.has(i.id))
     const someItemsSelected = hasReturnable && returnableItems.some((i: any) => selectedLogIds.has(i.id)) && !allItemsSelected
     const selectedSessionItems = session.items.filter((i: any) => selectedLogIds.has(i.id) && i.status !== 'returned')
+    
+    // 🛡️ ANCHOR REF: Targeted item location tracking
+    const targetedItemRef = useRef<HTMLDivElement>(null)
+
+    // 🏎️ AUTO-SCROLL ENGINE: Triggers when the parent session is expanded
+    useEffect(() => {
+        if (isExpanded && triageId) {
+            const hasTarget = session.items.some((item: any) => String(item.id) === String(triageId))
+            if (hasTarget) {
+                const timer = setTimeout(() => {
+                    targetedItemRef.current?.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    })
+                }, 350)
+                return () => clearTimeout(timer)
+            }
+        }
+    }, [isExpanded, triageId, session.items])
 
     return (
         <React.Fragment>
@@ -504,7 +528,7 @@ function LogSessionRow({
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }} // smooth circOut easing
+                                transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
                                 className="overflow-hidden"
                             >
                                 <div className="px-6 py-5 flex gap-8">
@@ -513,23 +537,21 @@ function LogSessionRow({
                                         <div>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Personnel Details</p>
                                             <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
-                                                {/* Borrower Info */}
                                                 <div className="flex items-center gap-3">
                                                     <InitialsAvatar name={session.borrower_name} size={10} />
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <p className="text-sm font-black text-slate-900 leading-tight truncate">{session.borrower_name}</p>
-                                            {(session.created_origin ?? session.platform_origin) === 'Web' ? (
-                                                <Monitor className="h-2.5 w-2.5 text-blue-400" />
-                                            ) : (session.created_origin ?? session.platform_origin) === 'Mobile' ? (
-                                                <Smartphone className="h-2.5 w-2.5 text-orange-400" />
-                                            ) : null}
+                                                            {(session.created_origin ?? session.platform_origin) === 'Web' ? (
+                                                                <Monitor className="h-2.5 w-2.5 text-blue-400" />
+                                                            ) : (session.created_origin ?? session.platform_origin) === 'Mobile' ? (
+                                                                <Smartphone className="h-2.5 w-2.5 text-orange-400" />
+                                                            ) : null}
                                                         </div>
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">{session.borrower_organization || 'External Member'}</p>
                                                     </div>
                                                 </div>
 
-                                                {/* Contact Details */}
                                                 <div className="pt-3 space-y-2.5 border-t border-slate-50">
                                                     <div className="flex items-center gap-2">
                                                         <Phone className="h-3 w-3 text-slate-400" />
@@ -541,7 +563,6 @@ function LogSessionRow({
                                                     </div>
                                                 </div>
 
-                                                {/* Dispatch Sign-off: Chain of Command */}
                                                 <div className="pt-3 space-y-3 border-t border-slate-50">
                                                     <div className="flex flex-col gap-1">
                                                         <div className="flex items-center gap-1.5 opacity-50">
@@ -574,7 +595,6 @@ function LogSessionRow({
                                         )}
                                     </div>
 
-                                    {/* Main Content: Equipment List */}
                                     <div className="flex-1">
                                         <div className="mb-3 flex items-center justify-between gap-3">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Equipment List ({session.items.length})</p>
@@ -583,19 +603,20 @@ function LogSessionRow({
                                             {session.items.map((item: BorrowLog) => {
                                                 const isReturned = item.status === 'returned'
                                                 const isOverdue = item.status === 'borrowed' && item.expected_return_date && new Date(item.expected_return_date) < new Date()
-                                                const imageUrl = getInventoryImageUrl((item as any).inventory?.image_url)
+                                                const isTargeted = triageId && String(item.id) === String(triageId)
 
                                                 return (
                                                     <div 
                                                         key={item.id} 
+                                                        ref={isTargeted ? targetedItemRef : null}
                                                         className={cn(
                                                             "relative overflow-hidden bg-white rounded-2xl border p-4 flex items-center gap-5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] shadow-sm",
+                                                            isTargeted ? "ring-2 ring-blue-500 bg-blue-50/30 border-blue-200" :
                                                             selectedLogIds.has(item.id)
                                                                 ? "border-slate-300 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] -translate-y-[2px] scale-[1.004] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-slate-700/80"
                                                                 : "border-slate-100"
                                                         )}
                                                     >
-                                                        {/* Explicit per-item selector (expanded view) */}
                                                         {!isReturned ? (
                                                             <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                                                 <Checkbox
@@ -608,24 +629,13 @@ function LogSessionRow({
                                                             <div className="w-4 h-4 shrink-0" />
                                                         )}
 
-                                                        {/* Item Image with Preview */}
-                                                        <div 
-                                                            onClick={(e) => { e.stopPropagation(); if (imageUrl) onImageClick(imageUrl, item.item_name); }}
-                                                            className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 relative group cursor-pointer hover:border-blue-300 transition-all flex items-center justify-center"
-                                                        >
-                                                            {imageUrl ? (
-                                                                <>
-                                                                    <Image src={imageUrl} alt={item.item_name} fill className="object-contain p-1.5 transition-transform group-hover:scale-110" unoptimized />
-                                                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                                        <Maximize2 className="h-4 w-4 text-white shadow-sm" />
-                                                                    </div>
-                                                                </>
-                                                            ) : (
-                                                                <Package className="h-7 w-7 text-slate-200" strokeWidth={1} />
-                                                            )}
-                                                        </div>
+                                                        <TacticalAssetImage 
+                                                            url={(item as any).inventory?.image_url} 
+                                                            alt={item.item_name}
+                                                            size="md"
+                                                            className="rounded-xl shadow-sm"
+                                                        />
 
-                                                        {/* Item Info */}
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center justify-between mb-1">
                                                                 <p className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">{item.item_name}</p>
@@ -655,7 +665,6 @@ function LogSessionRow({
                                                             </div>
                                                         </div>
 
-                                                        {/* Row Action Cluster */}
                                                         <div className="flex items-center gap-2 pl-4 border-l border-slate-50">
                                                             {isReturned ? (
                                                                 <Button

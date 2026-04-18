@@ -4,7 +4,6 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { AudioPermissionWrapper } from "@/components/audio-permission-wrapper";
 import { RealtimeAudioProvider } from "@/components/realtime-audio";
-import { PWARegister } from "./pwa-register";
 import { AuthProvider } from "@/providers/auth-provider";
 
 const inter = Inter({
@@ -78,7 +77,6 @@ export default function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="LIGTAS" />
             </head>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
-                <PWARegister />
                 <AuthProvider>
                     <AudioPermissionWrapper>
                         <RealtimeAudioProvider>

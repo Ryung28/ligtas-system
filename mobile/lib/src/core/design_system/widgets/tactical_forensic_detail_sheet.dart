@@ -199,7 +199,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
 
           // ── 2. DATA SURFACE ──
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // IDENTITY HEADER
@@ -232,7 +232,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const Gap(24),
+                const Gap(12), // 🛡️ COMPACT: Snaps the action hub closer to the identity header
 
                 // 🏗️ BENTO GRID GENERATOR
                 ...zones.entries.map((entry) => _buildBentoCard(context, entry.key, entry.value)),
@@ -248,28 +248,17 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
                 // ANALYST NOTES
                 if (analystNotes != null) _buildNotesCard(),
 
+                // ── 🛡️ ACTION HUB (Fused into Scroll Layer) ──
+                if (actionHub != null) ...[
+                  const Gap(16),
+                  actionHub!,
+                ],
+
                 const Gap(8),
               ]),
             ),
           ),
 
-          // ── 3. FLEXIBLE ACTION HUB ──
-          // This ensures the action button is pushed to the bottom if space allows
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-              child: Column(
-                children: [
-                   const Spacer(), // 🛡️ ANCHOR: Pushes content down
-                   if (actionHub != null) ...[
-                      const Gap(12),
-                      actionHub!,
-                   ],
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

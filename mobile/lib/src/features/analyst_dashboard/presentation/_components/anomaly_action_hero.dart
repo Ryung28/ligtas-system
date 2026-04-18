@@ -22,15 +22,18 @@ class AnomalyActionHero extends ConsumerStatefulWidget {
 
   /// 🛡️ PROTECTED INVOCATION: Self-orchestrates dock focus and triage lifecycle.
   static Future<T?> show<T>(BuildContext context, WidgetRef ref, ResourceAnomaly anomaly) async {
+    // 🛡️ SUPPRESS DOCK: Maintain forensic focus during triage
     ref.read(isDockSuppressedProvider.notifier).state = true;
     
     final result = await showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true, // 🛡️ SENIOR FIX: System UI protection
       backgroundColor: Colors.transparent,
       builder: (context) => AnomalyActionHero(anomaly: anomaly),
     );
 
+    // 🛡️ RESTORE DOCK: Modal lifecycle completed
     ref.read(isDockSuppressedProvider.notifier).state = false;
     return result;
   }
@@ -45,10 +48,12 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
   final _damagedController = TextEditingController();
   final _maintenanceController = TextEditingController();
   final _lostController = TextEditingController();
+  final _returnNotesController = TextEditingController();
 
   bool _isProcessing = false;
   late _ActionMode _mode;
   int? _selectedWarehouseId;
+  String? _returnCondition = 'good';
 
   ResourceAnomaly get _a => widget.anomaly;
 
@@ -107,8 +112,6 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
   // ---------------------------------------------------------------------------
   // OVERDUE FLOW
   // ---------------------------------------------------------------------------
-  String? _returnCondition = 'good';
-  final _returnNotesController = TextEditingController();
 
   Widget _buildOverdueHero(BuildContext context, String analystName) {
     final sentinel = Theme.of(context).sentinel;
@@ -613,30 +616,20 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
       imagePath: _a.imageUrl,
       heroTagPrefix: 'anomaly',
       categoryLabel: _a.category.name.toUpperCase(),
-      details: [
-        DetailRowData(
-          icon: Icons.inventory_rounded,
-          label: 'CURRENT STOCK',
-          value: '${_a.currentStock} Units',
-          zone: 'Stock Ledger',
-          isHalfWidth: true,
-        ),
-        DetailRowData(
-          icon: Icons.flag_rounded,
-          label: 'TARGET STOCK',
-          value: '${_a.maxStock ?? _a.thresholdStock} Units',
-          zone: 'Stock Ledger',
-          isHalfWidth: true,
-        ),
-      ],
-      analystNotes: _a.reason,
+      details: const [], // 🛡️ PURGED: Context moved to Terminal Hub
+      analystNotes: null, // 🛡️ PURGED: Log moved to Terminal Hub
       actionHub: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showToggle) ...[
             _buildModeToggle(sentinel),
-            const Gap(20),
+            const Gap(16),
           ],
+          
+          // 📡 SHARED CONTEXT: Hub Selector + Hub Snapshot (Onyx Ledger)
+          _buildDeploymentContext(sentinel),
+          const Gap(16),
+          
           if (_mode == _ActionMode.restock)
             _buildRestockPanel(sentinel, analystName)
           else
@@ -723,15 +716,9 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
       children: [
         // ── 1. STRATEGIC OVERVIEW (The "Why") ──
         _buildStrategicOverview(sentinel),
-        const Gap(20),
+        const Gap(16),
 
-        // ── 2. DEPLOYMENT TARGET (The "Where") ──
-        _buildLocationSelector(sentinel),
-        const Gap(12),
-        _buildHubSnapshot(sentinel),
-        const Gap(20),
-
-        // ── 3. CONDITION INJECTION (The "What") ──
+        // ── 2. CONDITION INJECTION (The "What") ──
         Text('INJECTION QUANTITIES',
             style: GoogleFonts.lexend(
                 fontSize: 10,
@@ -739,25 +726,26 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
                 color: sentinel.onSurfaceVariant.withOpacity(0.5),
                 letterSpacing: 1.0)),
         const Gap(12),
-        Row(children: [
-          Expanded(child: _bucketField('GOOD STOCK', _goodController, sentinel, accentColor: AppTheme.emeraldGreen)),
-          const Gap(10),
-          Expanded(child: _bucketField('DAMAGED', _damagedController, sentinel, accentColor: Colors.orangeAccent)),
-        ]),
+        Row(
+          children: [
+            Expanded(child: _tacticalStepperBucket('GOOD STOCK', _goodController, Icons.check_circle_outline_rounded, AppTheme.emeraldGreen)),
+            const Gap(10),
+            Expanded(child: _tacticalStepperBucket('DAMAGED', _damagedController, Icons.favorite_border_rounded, Colors.orangeAccent)),
+          ],
+        ),
         const Gap(10),
-        Row(children: [
-          Expanded(child: _bucketField('MAINTENANCE', _maintenanceController, sentinel, accentColor: AppTheme.warningAmber)),
-          const Gap(10),
-          Expanded(child: _bucketField('LOST / SHRINK', _lostController, sentinel, accentColor: AppTheme.errorRed)),
-        ]),
-        
+        Row(
+          children: [
+            Expanded(child: _tacticalStepperBucket('MAINTENANCE', _maintenanceController, Icons.build_outlined, AppTheme.warningAmber)),
+            const Gap(10),
+            Expanded(child: _tacticalStepperBucket('LOST/SHRINK', _lostController, Icons.history_rounded, AppTheme.errorRed)),
+          ],
+        ),
         const Gap(16),
-        _buildAuditRow(sentinel, analystName),
-        const Gap(24),
         _buildConfirmButton(
           sentinel: sentinel,
           label: 'CONFIRM INJECTION',
-          icon: Icons.add_business_rounded,
+          icon: Icons.send_rounded,
           color: sentinel.navy,
           onPressed: _handleRestock,
         ),
@@ -766,79 +754,134 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
   }
 
   Widget _buildStrategicOverview(LigtasColors sentinel) {
-    final target = _a.maxStock ?? _a.thresholdStock;
     final current = _a.currentStock;
-    final gap = target - current;
-    final progress = (current / (target > 0 ? target : 1)).clamp(0.0, 1.0);
+    final goal = _a.maxStock ?? _a.thresholdStock;
+    final gap = goal - current;
+    final readiness = goal > 0 ? (current / goal * 100).clamp(0, 100).toInt() : 0;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF001A33).withOpacity(0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── BOLD LEDGER CARD ──
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('DEPLOYMENT GAP',
+              Text('STOCK LEDGER',
                   style: GoogleFonts.lexend(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
                       color: const Color(0xFF64748B),
                       letterSpacing: 0.5)),
-              if (gap > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text('- $gap UNITS',
+              const Gap(4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                   Text(current.toString().padLeft(2, '0'),
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF001A33),
+                          height: 1.0)),
+                  Text(' / $goal',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF64748B).withOpacity(0.4),
+                          height: 1.5)),
+                ],
+              ),
+              Text('Available Units',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF64748B))),
+            ],
+          ),
+        ),
+        const Gap(12),
+
+        // ── ANALYST LOG (CRIMSON BOX) ──
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF2F2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFEE2E2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.error_outline_rounded, color: const Color(0xFFB91C1C), size: 16),
+                  const Gap(8),
+                  Text('ANALYST LOG',
                       style: GoogleFonts.lexend(
                           fontSize: 9,
                           fontWeight: FontWeight.w900,
-                          color: Colors.orange)),
-                ),
+                          color: const Color(0xFFB91C1C))),
+                ],
+              ),
+              const Gap(8),
+              Text(_a.reason,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF7F1D1D))),
             ],
           ),
-          const Gap(12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: const Color(0xFFF1F5F9),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                  progress < 0.5 ? AppTheme.errorRed : AppTheme.primaryBlue),
+        ),
+        const Gap(16),
+
+        // ── DEPLOYMENT GAP ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('DEPLOYMENT GAP',
+                style: GoogleFonts.lexend(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF64748B))),
+            Text('$readiness% Readiness',
+                style: GoogleFonts.lexend(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF001A33))),
+          ],
+        ),
+        const Gap(8),
+        Container(
+          height: 10,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: FractionallySizedBox(
+            widthFactor: readiness / 100,
+            alignment: Alignment.centerLeft,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
-          const Gap(12),
-          Row(
-            children: [
-              Text('$current',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFF001A33))),
-              Text(' / $target UNITS',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF94A3B8))),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -997,33 +1040,30 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('STOCK DISTRIBUTION',
+        // ── INJECTION QUANTITIES (The "What") ──
+        Text('TRIAGE DISTRIBUTION',
             style: GoogleFonts.lexend(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: sentinel.onSurfaceVariant.withOpacity(0.5),
                 letterSpacing: 1.0)),
         const Gap(12),
-        Row(children: [
-          Expanded(
-              child: _bucketField('GOOD', _goodController, sentinel,
-                  accentColor: AppTheme.emeraldGreen)),
-          const Gap(10),
-          Expanded(
-              child: _bucketField('DAMAGED', _damagedController, sentinel,
-                  accentColor: Colors.orangeAccent)),
-        ]),
+        Row(
+          children: [
+            Expanded(child: _tacticalStepperBucket('GOOD', _goodController, Icons.check_circle_outline_rounded, AppTheme.emeraldGreen)),
+            const Gap(10),
+            Expanded(child: _tacticalStepperBucket('DAMAGED', _damagedController, Icons.favorite_border_rounded, Colors.orangeAccent)),
+          ],
+        ),
         const Gap(10),
-        Row(children: [
-          Expanded(
-              child: _bucketField('MAINTENANCE', _maintenanceController, sentinel,
-                  accentColor: AppTheme.warningAmber)),
-          const Gap(10),
-          Expanded(
-              child: _bucketField('LOST', _lostController, sentinel,
-                  accentColor: AppTheme.errorRed)),
-        ]),
-        const Gap(14),
+        Row(
+          children: [
+            Expanded(child: _tacticalStepperBucket('MAINTENANCE', _maintenanceController, Icons.build_outlined, AppTheme.warningAmber)),
+            const Gap(10),
+            Expanded(child: _tacticalStepperBucket('LOST', _lostController, Icons.history_rounded, AppTheme.errorRed)),
+          ],
+        ),
+        const Gap(12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
@@ -1066,65 +1106,86 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
     );
   }
 
-  Widget _bucketField(
-    String label,
-    TextEditingController controller,
-    LigtasColors sentinel, {
-    required Color accentColor,
-  }) {
+  Widget _tacticalStepperBucket(String label, TextEditingController controller, IconData icon, Color color) {
+    final onyx = const Color(0xFF001A33);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
+                  style: GoogleFonts.lexend(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF64748B),
+                      letterSpacing: 0.5)),
+              Icon(icon, size: 12, color: color),
+            ],
+          ),
+          const Gap(8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _stepperBtn(Icons.remove_rounded, () {
+                final v = _int(controller);
+                if (v > 0) controller.text = (v - 1).toString();
+                setState(() {});
+              }),
+              Text(_int(controller).toString().padLeft(2, '0'),
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20, fontWeight: FontWeight.w900, color: onyx)),
+              _stepperBtn(Icons.add_rounded, () {
+                final v = _int(controller);
+                controller.text = (v + 1).toString();
+                setState(() {});
+              }, isPrimary: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepperBtn(IconData icon, VoidCallback onTap, {bool isPrimary = false}) {
+    final onyx = const Color(0xFF001A33);
+    return Material(
+      color: isPrimary ? onyx : onyx.withOpacity(0.05),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        customBorder: const CircleBorder(),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 14, color: isPrimary ? Colors.white : onyx),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // SHARED LOGIC
+  // ---------------------------------------------------------------------------
+
+  Widget _buildDeploymentContext(LigtasColors sentinel) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
-            ),
-            const Gap(6),
-            Text(label,
-                style: GoogleFonts.lexend(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: sentinel.navy.withOpacity(0.6),
-                    letterSpacing: 0.5)),
-          ],
-        ),
-        const Gap(6),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (_) => setState(() {}),
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF001A33)),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.transparent,
-              hintText: '0',
-              hintStyle: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF64748B).withOpacity(0.4)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ),
+        _buildLocationSelector(sentinel),
+        const Gap(12),
+        _buildHubSnapshot(sentinel),
       ],
     );
   }

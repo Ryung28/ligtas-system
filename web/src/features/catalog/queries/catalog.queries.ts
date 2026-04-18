@@ -59,19 +59,22 @@ export async function getInventoryItems(options: {
  */
 export async function getAvailableItems() {
     try {
-        // 🚀 LIGTAS TACTICAL OPTIMIZATION: High-speed fetch
         const { data, error } = await supabase
-            .from('inventory_catalog')
+            .from('inventory')
             .select(`
-                id, 
-                item_name, 
-                aggregate_available, 
-                category, 
+                id,
+                item_name,
+                stock_available,
+                stock_total,
+                category,
                 item_type,
-                image_url
+                image_url,
+                storage_location,
+                parent_id,
+                unit
             `)
-            .gt('aggregate_available', 0)
-            .order('item_name')
+            .is('deleted_at', null)
+            .order('item_name', { ascending: true })
 
         if (error) throw error
         return { success: true, data: data || [] }
@@ -80,7 +83,7 @@ export async function getAvailableItems() {
         return {
             success: false,
             data: [],
-            error: error.message || 'Operational Timeout',
+            error: error.message || 'Failed to sync catalog'
         }
     }
 }

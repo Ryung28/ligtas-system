@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 export interface CartItem {
     item: AvailableItem;
     quantity: number;
+    selectedVariantId?: number | null;
+    selectedVariantName?: string | null;
 }
 
 /**
@@ -16,21 +18,25 @@ export interface CartItem {
 export function useBorrowCart() {
     const [cart, setCart] = useState<CartItem[]>([]);
 
-    const addToCart = (item: AvailableItem, quantity: number) => {
-        // Validation: Stock Check
-        if (quantity > item.primary_stock_available) {
-            toast.error(`Stock Error: Only ${item.primary_stock_available} units at this site.`);
+    const addToCart = (item: AvailableItem, quantity: number, variantId?: number | null, variantName?: string | null) => {
+        // Validation: Stock Check (Blueprint or Variant)
+        const availableCount = variantId 
+            ? item.variants?.find(v => v.id === variantId)?.stock_available || 0
+            : item.primary_stock_available;
+
+        if (quantity > availableCount) {
+            toast.error(`Stock Error: Only ${availableCount} units available at this location.`);
             return;
         }
 
-        // Validation: Duplicate Check
-        if (cart.find(c => c.item.id === item.id)) {
-            toast.error('Item is already in your dispatch queue.');
+        // Validation: Duplicate Check (Now by ID + Variant)
+        if (cart.find(c => c.item.id === item.id && c.selectedVariantId === variantId)) {
+            toast.error('This specific variant is already in your dispatch queue.');
             return;
         }
 
-        setCart(prev => [...prev, { item, quantity }]);
-        toast.success(`${item.item_name} added to dispatch queue.`);
+        setCart(prev => [...prev, { item, quantity, selectedVariantId: variantId, selectedVariantName: variantName }]);
+        toast.success(`${item.item_name} (${variantName || 'Primary'}) added to dispatch queue.`);
     };
 
     const removeFromCart = (itemId: number) => {

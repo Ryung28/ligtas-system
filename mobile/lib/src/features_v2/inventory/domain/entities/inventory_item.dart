@@ -84,8 +84,8 @@ class InventoryItem with _$InventoryItem {
   /// Prefers aggregateAvailable (cross-location sum) over single-location stock.
   int get displayStock => aggregateAvailable > 0 ? aggregateAvailable : availableStock;
 
-  /// Prefers aggregateTotal (cross-location sum) over single-location total.
-  int get displayTotal => aggregateTotal > 0 ? aggregateTotal : totalStock;
+  /// Standardized 'Max' Stock: Prefers targetStock (Web Goal) over current physical totalStock.
+  int get displayTotal => targetStock > 0 ? targetStock : (aggregateTotal > 0 ? aggregateTotal : totalStock);
 
   bool get hasMultipleLocations => variants.isNotEmpty;
 }

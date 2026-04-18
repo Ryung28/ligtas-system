@@ -53,11 +53,12 @@ class _AnalystTerminalScreenState extends ConsumerState<AnalystTerminalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
     final hasEntered = ref.watch(analystTerminalEntryProvider);
     final duration = hasEntered ? 0.ms : 600.ms;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: sentinel.containerLow,
       body: Stack(
         fit: StackFit.expand,
         children: [

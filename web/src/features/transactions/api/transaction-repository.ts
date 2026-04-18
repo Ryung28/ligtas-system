@@ -59,13 +59,16 @@ export async function finalizeReturn(logId: number, audit: any, quantity: number
     const supabase = await createSupabaseServer();
     const returnedAt = new Date().toISOString();
     
-    // 1. Update the log status
+    // 1. Update the log status with comprehensive audit trail
     const { error: updateError } = await supabase
         .from('borrow_logs')
         .update({
             status: 'returned',
             actual_return_date: returnedAt,
-            ...audit
+            received_by_name: audit.received_by_name,
+            returned_by_name: audit.returned_by_name, // 🛡️ Audit: Who physically returned it
+            return_condition: audit.return_condition,
+            return_notes: audit.return_notes
         })
         .eq('id', logId);
 

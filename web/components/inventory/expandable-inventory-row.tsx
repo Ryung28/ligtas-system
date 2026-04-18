@@ -7,7 +7,8 @@ import { TableCell, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Edit2, Trash2, Maximize2, Package, ChevronDown, Warehouse, ArrowRightLeft } from 'lucide-react'
-import { InventoryItem, InventoryVariant, getInventoryImageUrl } from '@/lib/supabase'
+import { InventoryItem, InventoryVariant } from '@/lib/supabase'
+import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { QRDialog } from './qr-dialog'
 import { EditableStorageLocation } from './editable-storage-location'
 import { getPendingRequestsByItemId, type PendingRequest } from '@/src/features/transactions'
@@ -77,11 +78,6 @@ export function ExpandableInventoryRow({
     
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
     const [isLoadingPending, setIsLoadingPending] = useState(false)
-    const [imgError, setImgError] = useState(false)
-    const [isImgLoading, setIsImgLoading] = useState(true)
-
-    // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
-    const imageUrl = item.image_url ? getInventoryImageUrl(item.image_url) : null;
 
     // 🏛️ SENIOR GEOGRAPHIC DETECTOR: Consolidated variants list (one row per physical site).
     const allSites = item.variants || []
@@ -132,15 +128,12 @@ export function ExpandableInventoryRow({
                 )}
                 <TableCell className="pl-3 14in:pl-4 pr-2 py-5">
                     <div className="flex items-center gap-3">
-                        <div className="h-14 w-14 rounded-lg bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative group/img cursor-pointer transition-all hover:border-gray-300" onClick={(e) => { e.stopPropagation(); if (imageUrl && !imgError) onImageClick(imageUrl, item.item_name); }}>
-                            {imageUrl && !imgError ? (
-                                <>
-                                    {isImgLoading && <div className="absolute inset-0 bg-gray-50 animate-pulse flex items-center justify-center"><Package className="h-6 w-6 text-gray-200" strokeWidth={1} /></div>}
-                                    <Image src={imageUrl} alt={item.item_name} fill unoptimized className={`object-contain p-2 transition-all duration-500 ${isImgLoading ? 'scale-90 blur-sm opacity-0' : 'scale-100 opacity-100'}`} onLoadingComplete={() => setIsImgLoading(false)} onError={() => setImgError(true)} />
-                                    <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center ${isImgLoading ? 'hidden' : ''}`}><Maximize2 className="h-4 w-4 text-white" /></div>
-                                </>
-                            ) : <div className="absolute inset-0 bg-slate-50 flex items-center justify-center"><Package className="h-7 w-7 text-slate-200" strokeWidth={1} /></div>}
-                        </div>
+                        <TacticalAssetImage 
+                            url={item.image_url} 
+                            alt={item.item_name}
+                            size="md"
+                            className="rounded-lg shadow-sm"
+                        />
                         <div className="flex flex-col min-w-0">
                             <span className="text-[14px] 14in:text-[15px] font-black text-gray-950 truncate leading-tight tracking-tight mb-1">{item.item_name}</span>
                             <div className="flex items-center gap-1.5 ml-0.5">

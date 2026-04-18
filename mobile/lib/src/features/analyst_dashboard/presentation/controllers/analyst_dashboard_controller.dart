@@ -6,7 +6,8 @@ import '../../domain/entities/activity_event.dart';
 import '../../domain/repositories/i_analyst_repository.dart';
 export '../../domain/repositories/i_analyst_repository.dart' show ForceReturnResult;
 import '../../data/repositories/analyst_repository_impl.dart';
-import '../../../auth/providers/auth_provider.dart';
+import 'package:mobile/src/features/auth/providers/auth_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 part 'analyst_dashboard_controller.g.dart';
 

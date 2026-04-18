@@ -23,6 +23,7 @@ import { BorrowerIdentityForm, IdentityFormValues } from '../_components/borrowe
 import { createBatchBorrow } from '../api/transaction-repository';
 import { toast } from 'sonner';
 import { useCallback } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * BorrowDialogV2 (The Orchestrator)
@@ -37,6 +38,7 @@ export function BorrowDialogV2() {
     
     // Selection state
     const [selectedId, setSelectedId] = useState<string>('');
+    const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
     const [qty, setQty] = useState(1);
     const [identity, setIdentity] = useState<IdentityFormValues | null>(null);
 
@@ -52,6 +54,7 @@ export function BorrowDialogV2() {
         
         const logs = cart.map(c => ({
             inventory_id: c.item.id,
+            inventory_variant_id: c.selectedVariantId || null,
             item_name: c.item.item_name,
             quantity: c.quantity,
             borrower_name: identity.borrower_name,
@@ -92,23 +95,85 @@ export function BorrowDialogV2() {
 
                 <div className="space-y-6 pt-4">
                     {/* Item Selection Section (The Selector) */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-slate-50/80 p-4 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="md:col-span-2 space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Asset Search</Label>
-                            <Combobox 
-                                options={items.map(i => ({ value: i.id.toString(), label: i.item_name, description: i.category }))}
-                                value={selectedId}
-                                onValueChange={setSelectedId}
-                                placeholder="Scan or search equipment..."
-                            />
+                    <div className="bg-slate-50/80 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4">
+                            <div className="md:col-span-2 space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Asset Search</Label>
+                                <Combobox 
+                                    options={items.map(i => ({ value: i.id.toString(), label: i.item_name, description: i.category }))}
+                                    value={selectedId}
+                                    onValueChange={(val) => {
+                                        setSelectedId(val);
+                                        setSelectedVariantId(null); // Reset variant on item change
+                                    }}
+                                    placeholder="Scan or search equipment..."
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Quantity</Label>
+                                <Input type="number" value={qty} onChange={e => setQty(Number(e.target.value))} className="h-11 font-bold text-center" min={1} />
+                            </div>
+                            <Button 
+                                onClick={() => {
+                                    if (activeItem) {
+                                        const vName = activeItem.variants?.find(v => v.id === selectedVariantId)?.storage_location || activeItem.storage_location || 'Primary';
+                                        addToCart(activeItem, qty, selectedVariantId, vName);
+                                    }
+                                }} 
+                                disabled={!activeItem} 
+                                className="h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-lg shadow-sm"
+                            >
+                                Queue Item
+                            </Button>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Quantity</Label>
-                            <Input type="number" value={qty} onChange={e => setQty(Number(e.target.value))} className="h-11 font-bold text-center" min={1} />
-                        </div>
-                        <Button onClick={() => activeItem && addToCart(activeItem, qty)} disabled={!activeItem} className="h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-lg shadow-sm">
-                            Queue Item
-                        </Button>
+
+                        {/* SITE SELECTOR (The Source Registry) */}
+                        {activeItem && (
+                            <div className="px-4 pb-4 border-t border-slate-100 pt-3 animate-in fade-in slide-in-from-top-1 bg-white/50">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 mb-2 block">Source Registry</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {/* PRIMARY LOCATION */}
+                                    <button 
+                                        type="button"
+                                        onClick={() => setSelectedVariantId(null)}
+                                        className={cn(
+                                            "px-4 py-2.5 rounded-xl text-[10px] font-bold border-2 transition-all flex flex-col items-start gap-0.5",
+                                            selectedVariantId === null 
+                                                ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100" 
+                                                : "bg-white border-slate-200 text-slate-600 hover:border-blue-300"
+                                        )}
+                                    >
+                                        <span className="text-[12px] font-black">{activeItem.storage_location || 'Warehouse'}</span>
+                                        <span className={cn("text-[9px] uppercase tracking-tighter opacity-70", selectedVariantId === null ? "text-blue-100" : "text-slate-400")}>
+                                            Main Entry ({activeItem.primary_stock_available} Left)
+                                        </span>
+                                    </button>
+
+                                    {/* VARIANT LOCATIONS */}
+                                    {activeItem.variants?.map((v) => (
+                                        <button
+                                            key={v.id}
+                                            type="button"
+                                            onClick={() => setSelectedVariantId(v.id)}
+                                            disabled={v.stock_available <= 0}
+                                            className={cn(
+                                                "px-4 py-2.5 rounded-xl text-[10px] font-bold border-2 transition-all flex flex-col items-start gap-0.5",
+                                                selectedVariantId === v.id 
+                                                    ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100" 
+                                                    : v.stock_available <= 0 
+                                                        ? "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed opacity-50"
+                                                        : "bg-white border-slate-200 text-slate-600 hover:border-blue-300"
+                                            )}
+                                        >
+                                            <span className="text-[12px] font-black">{v.storage_location}</span>
+                                            <span className={cn("text-[9px] uppercase tracking-tighter opacity-70", selectedVariantId === v.id ? "text-blue-100" : "text-slate-400")}>
+                                                Distributed ({v.stock_available} Left)
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* LOGISTICS PREVIEW (The Discovery Card) */}

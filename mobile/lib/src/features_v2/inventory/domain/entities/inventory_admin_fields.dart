@@ -9,6 +9,7 @@ class InventoryAdminFields {
 
   final String storageLocation;
   final int? locationRegistryId;
+  final int targetStock;
 
   const InventoryAdminFields({
     required this.qtyGood,
@@ -19,6 +20,7 @@ class InventoryAdminFields {
     required this.stockAvailable,
     required this.storageLocation,
     required this.locationRegistryId,
+    required this.targetStock,
   });
 }
 

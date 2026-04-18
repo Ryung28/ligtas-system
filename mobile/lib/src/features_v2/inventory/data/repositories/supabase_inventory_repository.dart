@@ -91,6 +91,28 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   }
 
   @override
+  Future<InventoryItem?> fetchById(int id) async {
+    try {
+      final response = await _client
+          .from('active_inventory')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+      if (response != null) {
+        final model = InventoryModel.fromJson(response);
+        final item = _mapModelToEntity(model);
+        _local.saveAll([item]);
+        return item;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Surgical Fetch Error: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<void> archiveItem(String id) async {
     try {
       debugPrint('[LIGTAS-Security] 🛡️ Hard-Deleting Item: $id');
@@ -205,7 +227,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       final response = await _client
           .from('inventory')
           .select(
-            'id, qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, stock_available, storage_location, location_registry_id',
+            'id, qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, stock_available, storage_location, location_registry_id, target_stock',
           )
           .eq('id', itemId)
           .maybeSingle();
@@ -236,6 +258,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
         stockAvailable: stockAvailable.toInt(),
         storageLocation: storageLocation,
         locationRegistryId: locationRegistryId,
+        targetStock: (response['target_stock'] ?? 0) as int,
       );
     } catch (e) {
       debugPrint('fetchAdminFields error: $e');

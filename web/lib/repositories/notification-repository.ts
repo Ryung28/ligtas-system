@@ -147,8 +147,8 @@ export class NotificationRepository {
     return {
       // 🛡️ RECOVERY GATE: Ensure ID is never undefined to prevent key-mapping collisions in UI
       id: String(n.id || `err-packet-${Math.random().toString(36).substr(2, 9)}`),
-      userId: n.user_id || null,             // 🛡️ CRITICAL: camelCase for DTO consistency
-      referenceId: n.reference_id || null,   // 🛡️ CRITICAL: camelCase for DTO consistency
+      userId: n.user_id ? String(n.user_id) : null,
+      referenceId: n.reference_id ? String(n.reference_id) : null,
       title: n.title || 'System Alert',
       message: n.message || 'Mission status information update.',
       time: n.created_at || new Date().toISOString(),

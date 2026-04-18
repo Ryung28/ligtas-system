@@ -6,12 +6,24 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from 
 import { Sidebar } from './sidebar'
 import { NotificationBellV2 } from './notification-bell-v2'
 import { SmartScanner } from './smart-scanner'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '@/providers/auth-provider'
 
 export function Header() {
     const { user } = useUser()
     const [open, setOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    const initials = user?.email?.substring(0, 2).toUpperCase() || 'AD'
+
+    if (!mounted) {
+        // ⚡️ PERFORMANCE GATE: Only render the placeholder layout during SSR
+        return <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white/80 backdrop-blur-md px-6"></header>
+    }
 
     return (
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white/80 backdrop-blur-md px-6">

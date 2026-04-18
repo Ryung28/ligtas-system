@@ -31,6 +31,9 @@ abstract class ILoanRepository {
     String? notes,
   });
 
+  /// Surgical fetch for a specific log by its primary key
+  Future<LoanItem?> fetchById(String loanId);
+
   /// Watch for remote changes from Supabase Realtime
   Stream<void> watchRemote({String? warehouseId});
 }

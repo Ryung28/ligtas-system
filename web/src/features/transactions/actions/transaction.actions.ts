@@ -160,6 +160,7 @@ export async function batchBorrowItems(data: {
         item_id: number
         quantity: number
         item_type: 'equipment' | 'consumable'
+        inventory_variant_id?: number | null
     }>
 }) {
     try {
@@ -192,15 +193,49 @@ export async function batchBorrowItems(data: {
                 continue
             }
 
-            if (inventoryItem.stock_available < item.quantity) {
-                errors.push(`${inventoryItem.item_name}: Only ${inventoryItem.stock_available} units available`)
-                continue
+            // SATELLITE STOCK CHECK: If borrowing from a specific location (Variant)
+            if (item.inventory_variant_id) {
+                const { data: variantItem, error: variantError } = await supabase
+                    .from('inventory')
+                    .select('id, stock_available, storage_location')
+                    .eq('id', item.inventory_variant_id)
+                    .single()
+
+                if (variantError || !variantItem) {
+                    errors.push(`Location data for ${inventoryItem.item_name} not found`)
+                    continue
+                }
+
+                if (variantItem.stock_available < item.quantity) {
+                    errors.push(`${inventoryItem.item_name} (at ${variantItem.storage_location}): Only ${variantItem.stock_available} units available`)
+                    continue
+                }
+
+                // Execute Subtraction from Variant row in the main inventory table
+                await supabase
+                    .from('inventory')
+                    .update({ stock_available: variantItem.stock_available - item.quantity })
+                    .eq('id', item.inventory_variant_id)
+            } else {
+                // Fallback: Check and subtract from main inventory table (Primary Location)
+                if (inventoryItem.stock_available < item.quantity) {
+                    errors.push(`${inventoryItem.item_name}: Only ${inventoryItem.stock_available} units available`)
+                    continue
+                }
+                
+                // Note: Main inventory subtraction usually handled by trigger, 
+                // but we explicitly subtract here if no variant is used to ensure parity.
+                await supabase
+                    .from('inventory')
+                    .update({ stock_available: inventoryItem.stock_available - item.quantity })
+                    .eq('id', item.item_id)
             }
 
             const isConsumable = item.item_type === 'consumable'
 
             borrowLogs.push({
                 inventory_id: item.item_id,
+                inventory_variant_id: item.inventory_variant_id || null,
                 item_name: inventoryItem.item_name,
                 quantity: item.quantity,
                 borrower_name: validatedData.borrower_name,

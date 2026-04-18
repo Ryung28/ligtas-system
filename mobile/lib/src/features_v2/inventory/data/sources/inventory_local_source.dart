@@ -96,14 +96,30 @@ class InventoryLocalDataSource {
 
   /// 🛡️ SEARCH BYPASS: Direct disk-level search
   Future<List<InventoryItem>> searchLocal(String query) async {
-    final list = await _isar.collection<InventoryCollection>()
-        .filter()
-        .nameContains(query, caseSensitive: false)
-        .or()
-        .codeContains(query, caseSensitive: false)
-        .or()
-        .categoryContains(query, caseSensitive: false)
-        .findAll();
+    final List<InventoryCollection> list;
+    final intQuery = int.tryParse(query);
+
+    if (intQuery != null) {
+      // 🛡️ NUMERIC TRIAGE: Search by ID or textual match
+      list = await _isar.collection<InventoryCollection>()
+          .filter()
+          .originalIdEqualTo(intQuery)
+          .or()
+          .nameContains(query, caseSensitive: false)
+          .or()
+          .codeContains(query, caseSensitive: false)
+          .findAll();
+    } else {
+      // 🛡️ TEXTUAL SEARCH
+      list = await _isar.collection<InventoryCollection>()
+          .filter()
+          .nameContains(query, caseSensitive: false)
+          .or()
+          .codeContains(query, caseSensitive: false)
+          .or()
+          .categoryContains(query, caseSensitive: false)
+          .findAll();
+    }
     return list.map((e) => _mapCollectionToEntity(e)).toList();
   }
 

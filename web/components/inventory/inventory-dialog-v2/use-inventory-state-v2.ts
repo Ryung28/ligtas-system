@@ -38,7 +38,7 @@ export function useInventoryStateV2(initialItem?: any) {
         }
         return [{
             id: initialItem?.id,
-            locationId: initialItem?.location_registry_id || initialItem?.location_id || null,
+            locationId: initialItem?.location_registry_id || initialItem?.location_id || (initialItem ? null : 10),
             locationName: initialItem?.storage_location || 'lower_warehouse',
             qtyGood: initialItem?.qty_good || 0, qtyDamaged: initialItem?.qty_damaged || 0,
             qtyMaintenance: initialItem?.qty_maintenance || 0, qtyLost: initialItem?.qty_lost || 0

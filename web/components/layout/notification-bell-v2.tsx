@@ -27,6 +27,11 @@ export function NotificationBellV2() {
   const [isScanning, setIsScanning] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const filtered = notifications.filter((n: NotificationItem) =>
     FILTER_MAP[activeFilter].includes(n.type)
@@ -58,6 +63,8 @@ export function NotificationBellV2() {
   }
 
   const FILTERS: Category[] = ["ALL", "LOGS", "AUTH", "ALERTS"]
+
+  if (!mounted) return null
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -143,13 +150,21 @@ export function NotificationBellV2() {
                   </motion.div>
                 ) : (
                   filtered.map((notif: NotificationItem, i: number) => (
-                    <NotificationCard 
-                      key={notif.id} 
-                      notif={notif} 
-                      index={i}
-                      onMarkRead={markAsRead} 
-                      onDelete={deleteNotification} 
-                    />
+                    <motion.div
+                      key={notif.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, pointerEvents: 'none' }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <NotificationCard 
+                        notif={notif} 
+                        index={i}
+                        onMarkRead={markAsRead} 
+                        onDelete={deleteNotification} 
+                        onClose={() => setIsOpen(false)}
+                      />
+                    </motion.div>
                   ))
                 )}
               </AnimatePresence>

@@ -22,11 +22,14 @@ import '../providers/mission_cart_provider.dart';
 import '../widgets/inventory_card.dart';
 import '../widgets/glass_search_bar.dart';
 import '../widgets/glass_filter_chip.dart';
+import '../widgets/manager_action_sheet_v2/manager_action_sheet_v2.dart';
 import 'package:mobile/src/core/design_system/widgets/tactical_image_viewer.dart';
 import '../../domain/entities/inventory_item.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
-  const InventoryScreen({super.key});
+  final String? initialItemId;
+  final String? triageItemId;
+  const InventoryScreen({super.key, this.initialItemId, this.triageItemId});
 
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
@@ -36,20 +39,51 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
   final TextEditingController _searchController = TextEditingController();
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
+  bool _triageExecuted = false;
   
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _scrollController.addListener(_onScroll);
+
+    // 🛡️ SENIOR AUTO-FOCUS: If an ID was passed via search query param, update search state
+    if (widget.initialItemId != null) {
+      _searchController.text = widget.initialItemId!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(selectedCategoryProvider.notifier).update('All');
+        ref.read(inventorySearchQueryProvider.notifier).update(widget.initialItemId!);
+      });
+    }
   }
- 
+
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final currentOffset = _scrollController.position.pixels;
     final extent = _scrollController.position.maxScrollExtent;
     if (currentOffset >= extent * 0.8) {
       ref.read(inventoryNotifierProvider.notifier).loadMore();
+    }
+  }
+
+  void _triggerAtomicTriage(List<InventoryItem> items) {
+    if (_triageExecuted || widget.triageItemId == null) return;
+
+    final targetId = int.tryParse(widget.triageItemId!);
+    final match = items.where((item) => item.id == targetId).firstOrNull;
+    
+    if (match != null) {
+      _triageExecuted = true;
+      Future.microtask(() {
+        if (!mounted) return;
+        showModalBottomSheet(
+          context: context,
+          useRootNavigator: true, 
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => ManagerActionSheetV2(item: match),
+        );
+      });
     }
   }
 
@@ -66,6 +100,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
   Widget build(BuildContext context) {
     final inventoryItemsAsync = ref.watch(inventoryNotifierProvider);
     final filteredItems = ref.watch(filteredInventoryProvider);
+    
+    // 🛡️ SENIOR TRIAGE OBSERVER: Wait for real data to arrive and auto-open triage sheet
+    ref.listen(inventoryNotifierProvider, (previous, next) {
+      next.whenData((items) => _triggerAtomicTriage(items));
+    });
+    
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(inventorySearchQueryProvider);
     final user = ref.watch(currentUserProvider);
@@ -186,7 +226,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 0.72,
+                              childAspectRatio: 0.58,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
@@ -235,9 +275,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
                       sliver: SliverGrid(
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 0.68,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.58, // 🛡️ Headroom for Safe-Zone
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) => const ShimmerSkeleton(

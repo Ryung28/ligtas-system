@@ -22,7 +22,12 @@ import { Html5Qrcode } from 'html5-qrcode'
 
 export function SmartScanner() {
     const [open, setOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
     const [scanValue, setScanValue] = useState('')
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
     const { logs, refresh: refreshLogs } = useBorrowLogs()
     const { inventory, refresh: refreshInventory } = useInventory()
 
@@ -165,6 +170,8 @@ export function SmartScanner() {
             setIsProcessing(false)
         }
     }
+
+    if (!mounted) return null
 
     return (
         <Dialog open={open} onOpenChange={(val) => {

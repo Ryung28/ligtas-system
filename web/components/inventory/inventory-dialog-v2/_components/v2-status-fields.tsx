@@ -49,13 +49,13 @@ export function V2StatusFields({
         <div className="bg-slate-50/50 rounded-3xl p-4 border border-slate-100 space-y-4">
             <div className="flex items-center gap-2 mb-1">
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tighter text-blue-600">Stock Levels</p>
+                <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tighter text-blue-600">Equipment Status</p>
             </div>
 
             {/* Health Grid: 2x2 for better readability on laptops */}
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
-                    <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Ready to Use</Label>
+                    <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Good / Ready</Label>
                     <Input 
                         type="number" value={qtyGood} onChange={(e) => setQtyGood(e.target.value)}
                         className={`h-9 rounded-lg font-black text-emerald-600 text-lg bg-emerald-50/10 p-0 focus-visible:ring-0 ${
@@ -74,7 +74,7 @@ export function V2StatusFields({
                     />
                 </div>
                 <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
-                    <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">In Repair</Label>
+                    <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Maintenance</Label>
                     <Input 
                         type="number" value={qtyMaintenance} onChange={(e) => setQtyMaintenance(e.target.value)}
                         className="h-9 rounded-lg border-none font-black text-amber-500 text-lg bg-amber-50/10 p-0 focus-visible:ring-0" 

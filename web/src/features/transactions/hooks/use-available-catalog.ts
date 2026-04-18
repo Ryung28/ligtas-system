@@ -9,14 +9,13 @@ export interface AvailableItem {
     item_name: string;
     category: string;
     item_type?: 'equipment' | 'consumable';
-    primary_location: string;
+    image_url: string | null;
+    storage_location: string;
     primary_stock_available: number;
     aggregate_available: number;
-    stock_pending: number;
-    image_url?: string;
     variants: Array<{
         id: number;
-        location: string;
+        storage_location: string;
         stock_available: number;
         stock_total: number;
     }>;
@@ -52,7 +51,50 @@ export function useAvailableCatalog(autoLoad = true) {
         try {
             const result = await getAvailableItems();
             if (result.success && result.data) {
-                CATALOG_CACHE_BUFFER = result.data as AvailableItem[];
+                const rawItems = result.data as any[];
+                
+                // SMART NAME-GROUPING ENGINE
+                // Group everything by name to collapse duplicates into a single card
+                const groupedByName: Record<string, any[]> = {};
+                
+                rawItems.forEach(item => {
+                    const nameKey = item.item_name.toLowerCase().trim();
+                    if (!groupedByName[nameKey]) {
+                        groupedByName[nameKey] = [];
+                    }
+                    groupedByName[nameKey].push(item);
+                });
+
+                const normalized = Object.values(groupedByName).map(group => {
+                    // Sort so the one without a parent id (or just the first one) is the "Primary"
+                    const sortedGroup = group.sort((a, b) => {
+                        if (a.parent_id === null && b.parent_id !== null) return -1;
+                        if (a.parent_id !== null && b.parent_id === null) return 1;
+                        return 0;
+                    });
+
+                    const primary = sortedGroup[0];
+                    const otherEntries = sortedGroup.slice(1);
+
+                    // Map all other entries as variants
+                    const variants = otherEntries.map(v => ({
+                        id: v.id,
+                        storage_location: v.storage_location || 'Satellite',
+                        stock_available: v.stock_available || 0,
+                        stock_total: v.stock_total || 0
+                    }));
+
+                    const variantStock = variants.reduce((acc, v) => acc + v.stock_available, 0);
+
+                    return {
+                        ...primary,
+                        primary_stock_available: primary.stock_available || 0,
+                        aggregate_available: (primary.stock_available || 0) + variantStock,
+                        variants: variants
+                    };
+                });
+
+                CATALOG_CACHE_BUFFER = normalized as AvailableItem[];
                 LAST_SYNC_TIME = Date.now();
                 setItems(CATALOG_CACHE_BUFFER);
             } else {

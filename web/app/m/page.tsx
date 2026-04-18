@@ -21,12 +21,14 @@ import { formatDistanceToNow } from 'date-fns'
 
 import { DashboardSkeleton } from '@/components/mobile/skeletons/dashboard-skeleton'
 
+import { Suspense } from 'react'
+
 /**
  * 📱 LIGTAS Mobile Dashboard
  * 🏛️ ARCHITECTURE: "The Command Hub"
  * Focuses on high-frequency field operations: Stats, Actions, and Intel.
  */
-export default function MobileDashboard() {
+function DashboardContent() {
     const { stats, isLoading: statsLoading, refresh: refreshStats } = useDashboardStats()
     const { logs, isLoading: logsLoading, refresh: refreshLogs } = useBorrowLogs()
 
@@ -161,6 +163,14 @@ export default function MobileDashboard() {
                 </div>
             </section>
         </div>
+    )
+}
+
+export default function MobileDashboard() {
+    return (
+        <Suspense fallback={<DashboardSkeleton />}>
+            <DashboardContent />
+        </Suspense>
     )
 }
 

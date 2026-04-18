@@ -18,6 +18,7 @@ import { FilterTabs } from '@/components/ui/filter-tabs'
 import { ExpandableInventoryRow } from './expandable-inventory-row'
 import { CategoryManager } from './advanced-query-builder'
 import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
+import { useStorageLocations } from '@/hooks/use-storage-locations'
 
 interface InventoryTableProps {
     items: InventoryItem[]
@@ -41,6 +42,7 @@ interface AggregatedInventoryItem extends InventoryItem {
 const ITEMS_PER_PAGE = 10
 
 export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange, onEdit, isLoading }: InventoryTableProps) {
+    const { locations: registryLocations } = useStorageLocations()
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
@@ -50,25 +52,45 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
     const [localCategories, setLocalCategories] = useState<string[]>([])
     const [highlightId, setHighlightId] = useState<number | null>(null)
+    const [triageItem, setTriageItem] = useState<InventoryItem | null>(null)
     const searchParams = useSearchParams()
+    const triageId = searchParams.get('id')
 
-    // Listening for Deep-Links
+    // 🛡️ ATOMIC RESOLUTION ENGINE: Listen for Deep-Links
     useEffect(() => {
-        const search = searchParams.get('search')
         const id = searchParams.get('id')
-        const highlight = searchParams.get('highlight')
+        const search = searchParams.get('search')
 
-        if (search) {
-            setSearchQuery(search)
-        }
-        
-        if (id && highlight === 'true') {
+        if (id) {
+            setSearchQuery('') 
             setHighlightId(parseInt(id))
-            // Auto-clear highlight after 5s
-            const timer = setTimeout(() => setHighlightId(null), 5000)
+            
+            // 🏎️ EXTENDED SEARCH: Check variants and aggregated groups
+            const item = items.find(i => 
+                i.id.toString() === id || 
+                (i as any).parent_id?.toString() === id
+            )
+            
+            if (item) {
+                setTriageItem(item)
+            } else if (search) {
+                // TACTICAL FALLBACK: If ID doesn't match a currently loaded item, use the search query
+                setSearchQuery(search)
+                setTriageItem(null)
+            }
+            
+            // Auto-clear focus after 10s
+            const timer = setTimeout(() => setHighlightId(null), 10000)
             return () => clearTimeout(timer)
+        } else if (search) {
+            setSearchQuery(search)
+            setHighlightId(null)
+            setTriageItem(null)
+        } else {
+            setHighlightId(null)
+            setTriageItem(null)
         }
-    }, [searchParams])
+    }, [searchParams, items])
 
     const handleCategoryCreate = (name: string) => {
         if (!name) return
@@ -150,8 +172,20 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
     const { uniqueLocations, filterCounts, filterTabs, categoryFilterTabs, finalCategories } = derivedData
 
+    // 🏎️ REGISTRY SYNC: Ensure all rooms (even empty ones) are visible in the filter
+    const displayLocations = useMemo(() => {
+        const registryNames = registryLocations.map(l => l.location_name)
+        // Combine Registry + any existing strings on items not yet in Registry
+        return Array.from(new Set([...registryNames, ...uniqueLocations])).sort()
+    }, [registryLocations, uniqueLocations])
+
     // Filter Items
     const filteredItems = useMemo(() => {
+        // 🎯 TARGETED RECORD ISOLATION: If we have an ID-lock, we suppress the global ledger
+        if (triageItem) {
+            return [triageItem]
+        }
+
         const filtered = items.filter((item) => {
             const matchesSearch = item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -204,7 +238,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         }
 
         return filtered
-    }, [items, searchQuery, categoryFilter, conditionFilter, statusFilter, locationFilter, highlightId])
+    }, [items, searchQuery, categoryFilter, conditionFilter, statusFilter, locationFilter, highlightId, triageItem])
 
     // 🏛️ SENIOR AGGREGATION ENGINE: Group by Name + Category to prevent Card Proliferation
     const aggregatedItems = useMemo(() => {
@@ -336,7 +370,11 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                     <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
                         <div className="flex flex-col gap-1">
                             <h2 className="text-base font-semibold text-gray-900">Inventory</h2>
-                            <span className="text-[12px] text-gray-500 font-medium">{filteredItems.length} results found</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[12px] text-gray-500 font-medium">
+                                    {filteredItems.length} results found
+                                </span>
+                            </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -356,7 +394,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
                                     <SelectItem value="all" className="text-[14px] rounded-md">All Locations</SelectItem>
-                                    {uniqueLocations.map(location => (
+                                    {displayLocations.map(location => (
                                         <SelectItem key={location} value={location} className="text-[14px] rounded-md">
                                             {STORAGE_LOCATION_LABELS[location as StorageLocation] || location}
                                         </SelectItem>

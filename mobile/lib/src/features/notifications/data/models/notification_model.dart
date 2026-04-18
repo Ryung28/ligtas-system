@@ -107,19 +107,22 @@ class NotificationItem with _$NotificationItem {
 
   /// Gets the appropriate action target
   String? get actionTarget {
+    if (referenceId == null && !['system_alert'].contains(type)) return null;
+
     switch (type) {
       case 'stock_low':
       case 'stock_out':
-        return '/inventory';
+        return '/inventory/triage/$referenceId';
       case 'user_pending':
-        return '/users?tab=requests';
+        return '/manager';
       case 'chat_message':
-        return '/chat/${referenceId ?? ''}';
+        return referenceId != null ? '/chat/$referenceId' : null;
       case 'borrow_request':
       case 'item_returned':
-        return '/logs';
+      case 'item_overdue':
+        return '/manager/queue/triage/$referenceId';
       case 'system_alert':
-        return '/dashboard';
+        return '/manager';
       default:
         return null;
     }

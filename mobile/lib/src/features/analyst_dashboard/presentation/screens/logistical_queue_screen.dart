@@ -14,14 +14,17 @@ import '../../../../features/dashboard/widgets/dashboard_background.dart';
 
 /// 📡 LIGTAS ALERTS TERMINAL
 class LogisticalQueueScreen extends ConsumerStatefulWidget {
-  const LogisticalQueueScreen({super.key});
+  final String? initialAlertId;
+  final String? triageAlertId;
+  const LogisticalQueueScreen({super.key, this.initialAlertId, this.triageAlertId});
 
   @override
   ConsumerState<LogisticalQueueScreen> createState() => _LogisticalQueueScreenState();
 }
 
-class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
+class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> { 
   late final TextEditingController _searchController;
+  bool _triageExecuted = false;
 
   @override
   void initState() {
@@ -31,6 +34,19 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
       if (!mounted) return;
       ref.read(alertQueueEntryCompleteProvider.notifier).state = true;
     });
+  }
+
+  void _triggerAtomicTriage(List<ResourceAnomaly> alerts) {
+    if (_triageExecuted || widget.triageAlertId == null) return;
+
+    final match = alerts.where((a) => a.id == widget.triageAlertId).firstOrNull;
+    if (match != null) {
+      _triageExecuted = true;
+      Future.microtask(() {
+        if (!mounted) return;
+        _openActionSheet(context, match);
+      });
+    }
   }
 
   @override
@@ -53,6 +69,12 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
     final sentinel = Theme.of(context).sentinel;
     final activeFilter = ref.watch(alertQueueFilterProvider);
     final sortedAlerts = ref.watch(alertQueueSortedProvider);
+    
+    // 🛡️ SENIOR TRIAGE OBSERVER: Watch for data to arrive and auto-triage
+    ref.listen(alertQueueRawListProvider, (previous, next) {
+      _triggerAtomicTriage(next);
+    });
+
     final sortNewestFirst = ref.watch(alertQueueSortNewestFirstProvider);
     final counts = ref.watch(alertQueueFilterCountsProvider);
     final entryComplete = ref.watch(alertQueueEntryCompleteProvider);
@@ -60,7 +82,7 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
     const filters = ['All', 'Critical', 'Inventory', 'Logistics', 'Overdue', 'Access'];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: sentinel.containerLow,
       body: Stack(
         children: [
           const DashboardBackground(),

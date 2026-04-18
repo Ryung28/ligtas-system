@@ -15,8 +15,10 @@ import { MapPin, Plus, Trash2, Loader2, Settings2 } from 'lucide-react'
 import { getStorageLocations, addStorageLocation, deleteStorageLocation } from '@/app/actions/storage-locations'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useStorageLocations } from '@/hooks/use-storage-locations'
 
 export function LocationManagerDialog() {
+    const { refresh } = useStorageLocations()
     const [locations, setLocations] = useState<any[]>([])
     const [newLocation, setNewLocation] = useState('')
     const [isLoading, setIsLoading] = useState(false)
@@ -43,6 +45,7 @@ export function LocationManagerDialog() {
             toast.success(result.message)
             setNewLocation('')
             fetchLocations()
+            refresh()
         } else {
             toast.error(result.error)
         }

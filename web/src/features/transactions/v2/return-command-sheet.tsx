@@ -14,7 +14,8 @@ import {
     Wrench,
     Cross,
     Shield,
-    Box
+    Box,
+    UserCircle2
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -58,12 +59,6 @@ interface ReturnCommandSheetProps {
     triggerClassName?: string;
 }
 
-/**
- * ReturnCommandSheet (Light/Soft-Boxed Sync)
- * 
- * Pattern: Clean Header + Soft Assessment Tray
- * Color Signature: Orange-Tactical
- */
 export function ReturnCommandSheet({
     logId,
     itemName,
@@ -79,10 +74,12 @@ export function ReturnCommandSheet({
     const [isPending, startTransition] = useTransition();
     const [expandedImage, setExpandedImage] = useState<{ url: string; name: string } | null>(null);
     
-    // Identity State (Matched to Image Aesthetic)
+    // Identity State
     const [returnCondition, setReturnCondition] = useState('Good');
     const [returnNotes, setReturnNotes] = useState('');
     const [receivedBy, setReceivedBy] = useState('Officer Name');
+    const [returnedBy, setReturnedBy] = useState(borrowerName); // 🛡️ Audit State
+    
     const [itemDetails, setItemDetails] = useState<{
         item_name?: string;
         category?: string;
@@ -93,6 +90,7 @@ export function ReturnCommandSheet({
         category?: string;
         image_url?: string | null;
     }>>({});
+    
     const isBatchMode = Array.isArray(items) && items.length > 0;
     const targetItems = useMemo(
         () =>
@@ -159,8 +157,9 @@ export function ReturnCommandSheet({
         if (!open) {
             setBatchResult(null);
             setItemConditionOverrides({});
+            setReturnedBy(borrowerName); // Reset to borrower on open
         }
-    }, [open]);
+    }, [open, borrowerName]);
 
     useEffect(() => {
         if (!open) return;
@@ -200,6 +199,7 @@ export function ReturnCommandSheet({
                 item.logId,
                 {
                     received_by_name: receivedBy,
+                    returned_by_name: returnedBy, // 🛡️ Audit Field
                     return_condition: condition as any,
                     return_notes: returnNotes
                 },
@@ -252,23 +252,6 @@ export function ReturnCommandSheet({
                 setOpen(false);
             } else {
                 toast.error(`Completed with issues: ${successCount} succeeded, ${failureCount} failed.`);
-            }
-        });
-    };
-
-    const retryFailedItems = async () => {
-        if (!batchResult || batchResult.failureCount === 0) return;
-        const failedLookup = new Set(batchResult.rows.filter((r) => !r.success).map((r) => r.logId));
-        const failedItems = targetItems.filter((item) => failedLookup.has(item.logId));
-        if (failedItems.length === 0) return;
-
-        startTransition(async () => {
-            const retried = await runReturnForItems(failedItems);
-            setBatchResult(retried);
-            if (retried.failureCount === 0) {
-                toast.success(`Retry succeeded. ${retried.successCount} item(s) recovered.`);
-            } else {
-                toast.error(`Retry completed: ${retried.successCount} succeeded, ${retried.failureCount} failed.`);
             }
         });
     };
@@ -422,7 +405,7 @@ export function ReturnCommandSheet({
                                         <span className="text-sm font-bold text-slate-900">{itemName}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Person</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Original Borrower</span>
                                         <span className="text-sm font-bold text-slate-900">{borrowerName}</span>
                                     </div>
                                     <div className="flex flex-col">
@@ -445,7 +428,32 @@ export function ReturnCommandSheet({
                             <div className="p-7 md:p-8 border border-slate-100 rounded-2xl bg-white space-y-6 shadow-sm">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                     <ClipboardCheck className="h-4 w-4 text-blue-500" />
-                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Check Details</span>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Audit Trail</span>
+                                </div>
+
+                                {/* 🛡️ Audit Field: Returned By */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="text-[13px] font-bold text-slate-700">Physically Returned By <span className="text-red-500">*</span></Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setReturnedBy(borrowerName)}
+                                            className="h-7 px-2 text-[9px] font-black uppercase text-slate-400 hover:text-blue-600"
+                                        >
+                                            Same as borrower
+                                        </Button>
+                                    </div>
+                                    <div className="relative">
+                                        <Input 
+                                            placeholder="Name of person handing back item" 
+                                            value={returnedBy} 
+                                            onChange={e => setReturnedBy(e.target.value)} 
+                                            className="h-12 bg-white border-slate-200 rounded-xl pl-10" 
+                                        />
+                                        <UserCircle2 className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -524,53 +532,6 @@ export function ReturnCommandSheet({
                                         </div>
                                     </div>
                                 )}
-
-                                {isBatchMode && batchResult && (
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[11px] font-black uppercase tracking-widest text-slate-600">
-                                                Return Result ({batchResult.returnedAtLabel})
-                                            </p>
-                                            <p className="text-xs font-bold text-slate-700">
-                                                {batchResult.successCount} success / {batchResult.failureCount} failed
-                                            </p>
-                                        </div>
-                                        <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-                                            {batchResult.rows.map((row) => (
-                                                <div key={`result-${row.logId}`} className="text-xs rounded-lg bg-white border border-slate-200 px-2 py-1.5">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-semibold text-slate-700 truncate mr-2">{row.itemName}</span>
-                                                        {row.success ? (
-                                                            <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
-                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Returned
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center gap-1 text-rose-600 font-bold">
-                                                                <XCircle className="h-3.5 w-3.5" /> Failed
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {!row.success && row.error && (
-                                                        <p className="mt-1 text-[11px] text-rose-700 leading-snug">
-                                                            {row.error}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {batchResult.failureCount > 0 && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={retryFailedItems}
-                                                disabled={isPending}
-                                                className="w-full h-9 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50"
-                                            >
-                                                Retry Failed Items
-                                            </Button>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         </div>
 
@@ -595,7 +556,7 @@ export function ReturnCommandSheet({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isPending || !receivedBy} 
+                            disabled={isPending || !receivedBy || !returnedBy} 
                             className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold gap-3 shadow-lg shadow-blue-500/20 flex-1 sm:flex-none transition-all"
                         >
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-5 w-5" />}

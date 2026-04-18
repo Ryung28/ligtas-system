@@ -80,7 +80,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
 
     final isSystemicFailure = anomaly.category != AnomalyCategory.depletion;
     
-    // 🎨 CATEGORY-FIRST THEME: Mirrors Web Action Center palette
+    // 🎨 CATEGORY-FIRST THEME: Reverted to Original Strategic Palette
     // Amber=Inventory, Blue=Logistics, Red=Overdue/Operational, Purple=Access/Security
     Color categoryColor;
     switch (anomaly.categoryTheme) {
@@ -89,6 +89,9 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
       case AnomalyCategoryTheme.red:    categoryColor = AppTheme.errorRed; break;
       case AnomalyCategoryTheme.purple: categoryColor = const Color(0xFF7C3AED); break;
     }
+
+    final Color categoryBgColor = categoryColor.withOpacity(0.1);
+    const navyBlue = Color(0xFF001A33);
 
     // Severity still governs the progress bar fill (stock level)
     Color severityColor;
@@ -119,10 +122,10 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: categoryColor.withOpacity(0.15), width: 1),
+            border: Border.all(color: categoryColor.withOpacity(0.1), width: 1),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF001A33).withOpacity(0.04),
+                color: navyBlue.withOpacity(0.04),
                 blurRadius: 12,
                 offset: const Offset(4, 4),
               ),
@@ -138,7 +141,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                     Container(
                       width: 44, height: 44,
                       decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.10),
+                        color: categoryBgColor,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(child: Icon(categoryIcon, size: 20, color: categoryColor)),
@@ -150,8 +153,8 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                         children: [
                           Text(anomaly.itemName,
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16, fontWeight: FontWeight.w700,
-                              color: AppTheme.neutralGray900, letterSpacing: -0.4,
+                              fontSize: 16, fontWeight: FontWeight.w800,
+                              color: navyBlue, letterSpacing: -0.4,
                             ),
                           ),
                           Text(
@@ -168,7 +171,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: categoryColor.withOpacity(0.08),
+                          color: categoryBgColor,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text('STOCK ALERT',
@@ -202,10 +205,10 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                             denominator,
                             isMaxView: hasMaxStock,
                           ),
-                          Text(anomaly.shelfActionLabel,
+                          Text(anomaly.shelfActionLabel.toUpperCase(),
                             style: GoogleFonts.lexend(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              color: AppTheme.neutralGray900, letterSpacing: 0.5,
+                              fontSize: 10, fontWeight: FontWeight.w800,
+                              color: navyBlue, letterSpacing: 0.5,
                             ),
                           ),
                         ],
@@ -221,6 +224,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
         ),
       ),
     );
+
   }
 
   Widget _buildPulseBadge(Color color) {

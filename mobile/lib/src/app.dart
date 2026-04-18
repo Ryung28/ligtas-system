@@ -234,7 +234,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'queue',
-                builder: (context, state) => const LogisticalQueueScreen(),
+                builder: (context, state) {
+                  final id = state.uri.queryParameters['id'];
+                  return LogisticalQueueScreen(initialAlertId: id);
+                },
+                routes: [
+                  GoRoute(
+                    path: 'triage/:id',
+                    builder: (context, state) {
+                      final id = state.pathParameters['id'];
+                      return LogisticalQueueScreen(triageAlertId: id);
+                    },
+                  ),
+                ],
               ),
               GoRoute(
                 path: 'activity',
@@ -248,8 +260,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/inventory',
-            builder: (context, state) => const InventoryScreen(),
+            builder: (context, state) {
+              final id = state.uri.queryParameters['id'];
+              return InventoryScreen(initialItemId: id);
+            },
             routes: [
+              GoRoute(
+                path: 'triage/:itemId',
+                builder: (context, state) {
+                  final itemId = state.pathParameters['itemId'];
+                  return InventoryScreen(triageItemId: itemId);
+                },
+              ),
               GoRoute(
                 path: 'request',
                 parentNavigatorKey: rootNavigatorKey,

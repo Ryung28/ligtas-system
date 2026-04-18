@@ -29,6 +29,9 @@ abstract class IInventoryRepository {
   /// 🛡️ THE HARD STOP: Permanently delete an item, blocking if currently borrowed.
   Future<void> archiveItem(String id);
 
+  /// 📡 SURGICAL FETCH: Retrieve exactly one item by its primary key
+  Future<InventoryItem?> fetchById(int id);
+
   /// Watch local storage for real-time reactivity (Full List)
   Stream<List<InventoryItem>> watchLocal();
 

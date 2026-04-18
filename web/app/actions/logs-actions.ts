@@ -47,3 +47,45 @@ export async function getBorrowLogsAction() {
         return { success: false, error: 'Internal Server Error' }
     }
 }
+
+/**
+ * 🎯 ATOMIC RESOLUTION: Precision Point-Query
+ * 
+ * Fetches a single borrow log with its inventory context.
+ * Bypasses the 100-limit for standard history browsing.
+ */
+export async function getBorrowLogByIdAction(id: string) {
+    try {
+        const supabase = await createSupabaseServer()
+        
+        const { data, error } = await supabase
+            .from('borrow_logs')
+            .select(`
+                *,
+                inventory:inventory_id (
+                    item_name,
+                    image_url,
+                    item_type
+                )
+            `)
+            .eq('id', id)
+            .single()
+
+        if (error) {
+            console.error('📡 POINT QUERY ERROR:', error)
+            return { success: false, error: error.message }
+        }
+
+        const log = {
+            ...data,
+            item_name: (data.item_name && data.item_name !== 'Unknown Item')
+                ? data.item_name
+                : (data.inventory?.item_name || data.item_name || 'Unknown Item')
+        } as BorrowLog
+
+        return { success: true, data: log }
+    } catch (e) {
+        console.error('📡 UNEXPECTED POINT ERROR:', e)
+        return { success: false, error: 'Internal Server Error' }
+    }
+}

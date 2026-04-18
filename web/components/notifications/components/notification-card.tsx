@@ -1,14 +1,15 @@
 import React from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Icons, TYPE_CONFIG } from '../constants/notification.config'
 import { NotificationCardProps } from '../types/notification.types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCardProps) {
-  const router = useRouter()
-  
+import { resolveSystemRoute } from '@/lib/utils/route-resolver'
+
+export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: NotificationCardProps) {
+
   const cfg = TYPE_CONFIG[notif.type] || {
     icon: Icons.box,
     label: "Update",
@@ -20,56 +21,20 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
   const isCritical = ['stock_out', 'item_overdue', 'borrow_rejected'].includes(notif.type);
   const meta = notif.metadata || {}
 
-    const getTargetRoute = () => {
-      const message = notif.message || notif.description || ""
-      const title = notif.title || ""
-      
-      // 1. ASSET DOMAIN (The "What"): Redirect to Inventory Hub
-      // 🛡️ Priority One: Explicit Stock/Inventory types
-      const isInventoryContext = [
-        'stock_low', 'stock_out', 'low_stock', 'inventory_alert'
-      ].includes(notif.type) || (notif.id && notif.id.startsWith('inv-'))
-      
-      if (isInventoryContext) {
-        const itemName = meta.search_query || meta.item_name || title
-        const itemId = meta.item_id || meta.id || notif.reference_id || ''
-        return `/dashboard/inventory?search=${encodeURIComponent(itemName)}&id=${itemId}&highlight=true`
-      }
+  // 🛡️ SSOT RESOLVER: Use shared logic
+  const target = resolveSystemRoute({
+    type: notif.type,
+    metadata: notif.metadata,
+    reference_id: notif.reference_id,
+    id: notif.id,
+    title: notif.title
+  })
 
-      // 2. IDENTITY/LOGISTICS DOMAIN (The "Who"): Redirect to Logs
-      // 🛡️ TACTICAL NAME EXTRACTION (Fallback for Legacy/Unpatched Notifs)
-      const extractName = () => {
-        // Check Metadata first (Highest priority)
-        if (meta.search_query) return meta.search_query
-        if (meta.borrower_name) return meta.borrower_name
-        if (meta.requester_name) return meta.requester_name
-        
-        // Regex Scan from message ("from Lll", "by Lll")
-        const fromMatch = message.match(/from\s+([A-Za-z0-9\s]+?)(?=\s*\()|from\s+([A-Za-z0-9\s]+?)$|by\s+([A-Za-z0-9\s]+?)(?=\s*\.|$)/i)
-        if (fromMatch) return (fromMatch[1] || fromMatch[2] || fromMatch[3]).trim()
-        
-        // Fallback to title keywords if title contains user info
-        if (title.includes("BORROWER") || title.includes("USER")) return title.split(":").pop()?.trim() || ""
-        
-        return ""
-      }
-
-      const identityTypes = [
-        'borrow_request', 'item_overdue', 'item_returned', 
-        'user_pending', 'user_request', 'borrow_approved', 'borrow_rejected'
-      ]
-      
-      const targetName = extractName()
-      const isIdentityContext = identityTypes.includes(notif.type) || 
-                               (notif.id && (notif.id.startsWith('log-') || notif.id.startsWith('bor-'))) ||
-                               targetName.length > 0
-
-      if (isIdentityContext) {
-        return `/dashboard/logs?search=${encodeURIComponent(targetName)}&id=${meta.borrower_user_id || meta.id || notif.reference_id || ''}&highlight=true`
-      }
-      
-      return null
-    }
+  const handleLinkClick = (e: React.MouseEvent) => {
+    // 🛡️ TACTICAL ISOLATION: Side effects only, let the Link handle navigation
+    if (!notif.isRead) onMarkRead(notif.id)
+    if (onClose) onClose()
+  }
 
   const getActionLabel = (type: string) => {
     switch(type) {
@@ -87,19 +52,14 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
 
   const actionLabel = getActionLabel(notif.type);
 
-  const onRoute = () => {
-    if (!notif.isRead) onMarkRead(notif.id)
-    const target = getTargetRoute()
-    if (target) router.push(target)
-  }
-
   return (
-    <div 
+    <Link 
+      href={target || '#'}
+      onClick={handleLinkClick}
       className={cn(
         "group relative flex items-start gap-3 p-3 transition-all cursor-pointer border-b border-slate-100/50 hover:bg-slate-50",
         !notif.isRead && "bg-blue-50/20"
       )}
-      onClick={onRoute}
     >
       {/* Intent Strip (The Admin Edge) */}
       <div 
@@ -173,8 +133,6 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
           );
         })()}
         
-        {/* 🛡️ DESCRIPTION: Removed as redundant with Title + Item Chips */}
-
         {meta.id && (
           <p className="text-[8px] text-slate-300 font-mono mt-1.5 font-bold tracking-tighter uppercase">
             TXN: #{meta.id.toString().slice(-6)}
@@ -188,13 +146,17 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
           size="sm" 
           className="opacity-0 group-hover:opacity-100 transition-all h-7 px-2.5 text-[9px] font-black uppercase tracking-[0.15em] border border-slate-200/80 bg-white hover:bg-slate-50"
           style={{ color: cfg.accent }}
+          asChild
         >
-          {actionLabel}
+          <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            {actionLabel}
+          </span>
         </Button>
         
         {onDelete && (
           <button
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onDelete(notif.id);
             }}
@@ -205,6 +167,6 @@ export function NotificationCard({ notif, onMarkRead, onDelete }: NotificationCa
           </button>
         )}
       </div>
-    </div>
+    </Link>
   )
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/loan_item.dart';
 import '../../domain/repositories/loan_repository.dart';
@@ -109,6 +110,27 @@ class SupabaseLoanRepository implements ILoanRepository {
       await fetchMyLoans();
     } on Exception catch (e) {
       throw ExceptionHandler.fromException(e);
+    }
+  }
+
+  @override
+  Future<LoanItem?> fetchById(String loanId) async {
+    try {
+      final response = await _client
+          .from('borrow_logs')
+          .select('*, inventory:inventory_id(image_url)')
+          .eq('id', loanId)
+          .maybeSingle();
+
+      if (response != null) {
+        final loan = _mapJsonToEntity(response);
+        _local.saveLoans([loan]);
+        return loan;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Surgical Loan Fetch Error: $e');
+      return null;
     }
   }
 

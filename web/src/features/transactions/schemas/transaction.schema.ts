@@ -37,6 +37,7 @@ export const batchBorrowSchema = z.object({
         item_id: z.number().min(1),
         quantity: z.number().min(1),
         item_type: z.enum(['equipment', 'consumable']).default('equipment'),
+        inventory_variant_id: z.number().optional().nullable(),
     })).min(1, 'At least one item is required'),
 })
 

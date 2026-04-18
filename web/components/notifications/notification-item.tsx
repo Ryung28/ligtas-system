@@ -79,9 +79,9 @@ export const NotificationItemComponent: React.FC<NotificationItemProps> = ({ ite
           ].includes(item.type) || (item.id && item.id.startsWith('inv-'));
 
           if (isInventoryContext) {
-            const itemName = meta.search_query || meta.item_name || title;
             const itemId = meta.item_id || meta.id || item.referenceId || '';
-            const target = `/dashboard/inventory?search=${encodeURIComponent(itemName)}&id=${itemId}&highlight=true`;
+            const itemName = meta.item_name || meta.search_query || title;
+            const target = `/dashboard/inventory?id=${itemId}&search=${encodeURIComponent(itemName)}&highlight=true`;
             router.push(target);
             return;
           }
@@ -108,7 +108,16 @@ export const NotificationItemComponent: React.FC<NotificationItemProps> = ({ ite
                                    targetName.length > 0;
 
           if (isIdentityContext) {
-            const target = `/dashboard/logs?search=${encodeURIComponent(targetName)}&id=${meta.borrower_user_id || meta.id || item.referenceId || ''}&highlight=true`;
+            // 🛡️ AGGRESSIVE ID HUNTER: Search all possible identity sinks
+            const transactionId = item.referenceId || 
+                                 meta.log_id || 
+                                 meta.borrow_id || 
+                                 meta.reference_id || 
+                                 meta.id || 
+                                 meta.borrower_user_id || 
+                                 '';
+
+            const target = `/dashboard/logs?id=${transactionId}&search=${encodeURIComponent(targetName)}&highlight=true`;
             router.push(target);
             return;
           }

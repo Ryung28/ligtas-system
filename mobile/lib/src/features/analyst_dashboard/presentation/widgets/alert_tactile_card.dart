@@ -45,7 +45,7 @@ class AlertTactileCard extends StatelessWidget {
       statusColor = Colors.orangeAccent;
     }
 
-    // 🎨 THEME SYNC: Use the entity's category-based theme
+    // 🎨 THEME SYNC: Reverted to Original Strategic Palette
     Color categoryBgColor;
     Color categoryTextColor;
     switch (anomaly.categoryTheme) {
@@ -67,6 +67,8 @@ class AlertTactileCard extends StatelessWidget {
         break;
     }
 
+    const navyBlue = Color(0xFF001A33);
+
     final isInventory = anomaly.category == AnomalyCategory.depletion;
     final thumb = 88.0;
 
@@ -86,6 +88,7 @@ class AlertTactileCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: Container(
               decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: sentinel.tactile.card,
               ),
@@ -118,10 +121,10 @@ class AlertTactileCard extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: categoryBgColor,
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       anomaly.serviceStatus.toUpperCase(),
@@ -129,7 +132,7 @@ class AlertTactileCard extends StatelessWidget {
                                         fontSize: 8,
                                         fontWeight: FontWeight.w800,
                                         color: categoryTextColor,
-                                        letterSpacing: 0.5,
+                                        letterSpacing: 0.8,
                                       ),
                                     ),
                                   ),
@@ -155,8 +158,8 @@ class AlertTactileCard extends StatelessWidget {
                                 anomaly.itemName,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: sentinel.navy,
+                                  fontWeight: FontWeight.w900,
+                                  color: navyBlue,
                                   height: 1.1,
                                 ),
                                 maxLines: 1,
@@ -200,13 +203,20 @@ class AlertTactileCard extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  anomaly.shelfActionLabel.toUpperCase(),
-                                  style: GoogleFonts.lexend(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: categoryTextColor,
-                                    letterSpacing: 0.5,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: categoryBgColor.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    anomaly.shelfActionLabel.toUpperCase(),
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: navyBlue,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                 ),
                                 Icon(Icons.chevron_right_rounded,
@@ -225,6 +235,7 @@ class AlertTactileCard extends StatelessWidget {
         ),
       ),
     );
+
 
     return RepaintBoundary(
       child: card

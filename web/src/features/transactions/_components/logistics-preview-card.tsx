@@ -5,24 +5,16 @@ import { Package, MapPin, Info, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getInventoryImageUrl } from '@/lib/supabase';
-import {
-    Dialog,
-    DialogContent,
-    DialogTrigger,
-    DialogTitle,
-    DialogHeader,
-} from '@/components/ui/dialog';
-import { Maximize2 } from 'lucide-react';
+import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image';
 
 interface LogisticsPreviewCardProps {
     item: {
         item_name: string;
         category: string;
         image_url?: string | null;
-        primary_location: string;
-        primary_stock_available: number;
-        status: string;
+        primary_location?: string;
+        primary_stock_available?: number;
+        status?: string;
     } | null;
     isLoading?: boolean;
 }
@@ -31,9 +23,6 @@ interface LogisticsPreviewCardProps {
  * LogisticsPreviewCard Molecule
  * A high-fidelity card used in Transaction V2 to verify equipment details
  * before finalizing a borrow or return action.
- * 
- * Pattern: Visual Verification Anchor
- * Constraints: "Steel Cage" height clumping (max 100px)
  */
 export function LogisticsPreviewCard({ item, isLoading }: LogisticsPreviewCardProps) {
     if (isLoading) {
@@ -42,52 +31,20 @@ export function LogisticsPreviewCard({ item, isLoading }: LogisticsPreviewCardPr
 
     if (!item) return null;
 
-    const isLowStock = item.primary_stock_available <= 2;
+    const stock = item.primary_stock_available ?? 0;
+    const isLowStock = stock <= 2;
 
     return (
         <Card className="overflow-hidden border-blue-100 bg-gradient-to-br from-blue-50/30 to-white shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-top-2">
             <CardContent className="p-3">
                 <div className="flex gap-4 items-center">
-                    {/* Item Thumbnail with Tacticle Lightbox */}
-                    <div className="relative group/img flex-shrink-0 cursor-zoom-in">
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <div className="relative w-16 h-16 rounded-md overflow-hidden border border-blue-100 bg-white shadow-sm transition-all hover:ring-2 hover:ring-blue-500/20">
-                                    {item.image_url ? (
-                                        <>
-                                            <Image
-                                                src={getInventoryImageUrl(item.image_url) || ''}
-                                                alt={item.item_name}
-                                                fill
-                                                className="object-cover transition-transform duration-500 group-hover/img:scale-110"
-                                            />
-                                            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 flex items-center justify-center transition-all opacity-0 group-hover/img:opacity-100">
-                                                <Maximize2 className="w-4 h-4 text-white drop-shadow-md" />
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-300">
-                                            <Package className="w-6 h-6" />
-                                        </div>
-                                    )}
-                                </div>
-                            </DialogTrigger>
-                            
-                            {item.image_url && (
-                                <DialogContent className="p-0 overflow-hidden bg-transparent border-none shadow-none sm:max-w-2xl">
-                                    <DialogHeader className="p-0 h-0 opacity-0"><DialogTitle>{item.item_name} Preview</DialogTitle></DialogHeader>
-                                    <div className="relative aspect-square w-full rounded-2xl overflow-hidden border-4 border-white/20 shadow-2xl backdrop-blur-sm">
-                                        <Image
-                                            src={getInventoryImageUrl(item.image_url) || '/placeholder.png'}
-                                            alt={item.item_name}
-                                            fill
-                                            className="object-contain bg-slate-900/50"
-                                        />
-                                    </div>
-                                </DialogContent>
-                            )}
-                        </Dialog>
-                    </div>
+                    {/* Item Thumbnail with SSOT Integration */}
+                    <TacticalAssetImage 
+                        url={item.image_url} 
+                        alt={item.item_name}
+                        size="md"
+                        className="rounded-lg shadow-sm shrink-0"
+                    />
 
                     {/* Logistics Metadata Stack */}
                     <div className="flex-1 min-w-0">
@@ -100,7 +57,7 @@ export function LogisticsPreviewCard({ item, isLoading }: LogisticsPreviewCardPr
                                 className={`text-[9px] h-4 px-1.5 font-bold ${!isLowStock && 'border-green-200 text-green-700 bg-green-50'}`}
                             >
                                 {isLowStock && <AlertCircle className="w-2.5 h-2.5 mr-1" />}
-                                {item.primary_stock_available} UNITS
+                                {stock} UNITS
                             </Badge>
                         </div>
 
@@ -110,9 +67,9 @@ export function LogisticsPreviewCard({ item, isLoading }: LogisticsPreviewCardPr
                                 <span className="truncate">{item.category}</span>
                             </div>
 
-                            <div className="flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50/50 rounded px-1.5 py-0.5 w-fit border border-blue-100">
+                            <div className="flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50/50 rounded px-1.5 py-0.5 w-fit border border-blue-100 uppercase">
                                 <MapPin className="w-3 h-3" />
-                                <span className="truncate">📍 {item.primary_location || 'GENERAL STORAGE'}</span>
+                                <span className="truncate">{item.primary_location || 'GENERAL STORAGE'}</span>
                             </div>
                         </div>
                     </div>
