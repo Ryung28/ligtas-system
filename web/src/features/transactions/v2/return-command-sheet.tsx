@@ -15,7 +15,8 @@ import {
     Cross,
     Shield,
     Box,
-    UserCircle2
+    UserCircle2,
+    MapPin
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -48,12 +49,14 @@ interface ReturnCommandSheetProps {
     borrowerName: string;
     quantity?: number;
     inventoryId?: number;
+    borrowedFrom?: string | null;
     items?: Array<{
         logId: number;
         itemName: string;
         quantity: number;
         inventoryId: number;
         imageUrl?: string | null;
+        borrowedFrom?: string | null;
     }>;
     triggerLabel?: string;
     triggerClassName?: string;
@@ -65,6 +68,7 @@ export function ReturnCommandSheet({
     borrowerName,
     quantity,
     inventoryId,
+    borrowedFrom,
     items,
     triggerLabel,
     triggerClassName
@@ -84,11 +88,13 @@ export function ReturnCommandSheet({
         item_name?: string;
         category?: string;
         image_url?: string | null;
+        storage_location?: string | null;
     } | null>(null);
     const [batchItemDetails, setBatchItemDetails] = useState<Record<number, {
         item_name?: string;
         category?: string;
         image_url?: string | null;
+        storage_location?: string | null;
     }>>({});
     
     const isBatchMode = Array.isArray(items) && items.length > 0;
@@ -97,9 +103,9 @@ export function ReturnCommandSheet({
             isBatchMode
                 ? items
                 : (logId && inventoryId && itemName && quantity
-                    ? [{ logId, inventoryId, itemName, quantity, imageUrl: null }]
+                    ? [{ logId, inventoryId, itemName, quantity, imageUrl: null, borrowedFrom }]
                     : []),
-        [isBatchMode, items, logId, inventoryId, itemName, quantity]
+        [isBatchMode, items, logId, inventoryId, itemName, quantity, borrowedFrom]
     );
     const isDamaged = returnCondition === 'Damaged';
     const imageUrl = getInventoryImageUrl(itemDetails?.image_url || null);
@@ -122,7 +128,7 @@ export function ReturnCommandSheet({
                     const inventoryIds = Array.from(new Set(targetItems.map((item) => item.inventoryId)));
                     const { data } = await supabase
                         .from('inventory')
-                        .select('id, item_name, category, image_url')
+                        .select('id, item_name, category, image_url, storage_location')
                         .in('id', inventoryIds);
                     if (active) {
                         const mapped: Record<number, any> = {};
@@ -135,7 +141,7 @@ export function ReturnCommandSheet({
                 } else if (inventoryId) {
                     const { data } = await supabase
                         .from('inventory')
-                        .select('item_name, category, image_url')
+                        .select('item_name, category, image_url, storage_location')
                         .eq('id', inventoryId)
                         .single();
                     if (active) {
@@ -350,6 +356,12 @@ export function ReturnCommandSheet({
                                                                     {batchItemDetails[item.inventoryId]?.category}
                                                                 </span>
                                                             )}
+                                                            {(item.borrowedFrom || batchItemDetails[item.inventoryId]?.storage_location) && (
+                                                                <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 mt-1">
+                                                                    <MapPin className="h-3 w-3" />
+                                                                    {item.borrowedFrom || batchItemDetails[item.inventoryId]?.storage_location}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -407,6 +419,13 @@ export function ReturnCommandSheet({
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Original Borrower</span>
                                         <span className="text-sm font-bold text-slate-900">{borrowerName}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Return Location</span>
+                                        <div className="flex items-center gap-1.5 text-blue-600 font-bold">
+                                            <MapPin className="h-3.5 w-3.5" />
+                                            <span className="text-sm">{borrowedFrom || itemDetails?.storage_location || 'Not Specified'}</span>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Quantity</span>

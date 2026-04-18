@@ -11,6 +11,8 @@ import '../widgets/settings_tile.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../profile/controllers/profile_controller.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -189,8 +191,16 @@ class SettingsScreen extends ConsumerWidget {
                     iconColor: sentinel.error,
                     textColor: sentinel.error,
                     onTap: () async {
-                      final confirmed = await _showConfirmLogout(context, sentinel);
-                      if (confirmed == true) {
+                      // 🛡️ SMART LOGOUT: Only confirm if this is a "Remembered" session
+                      final prefs = await SharedPreferences.getInstance();
+                      final isRemembered = prefs.getBool('is_remembered') ?? false;
+
+                      bool confirmed = true;
+                      if (isRemembered && context.mounted) {
+                        confirmed = await _showConfirmLogout(context, sentinel) ?? false;
+                      }
+
+                      if (confirmed && context.mounted) {
                         await ref.read(settingsControllerProvider.notifier).logout();
                         if (context.mounted) context.go('/login');
                       }

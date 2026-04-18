@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 interface UserHeaderProps {
     isLoading: boolean
     isValidating: boolean
-    onInvite: (email: string, role: string) => Promise<boolean>
+    onInvite: (email: string, role: 'admin' | 'editor' | 'viewer' | 'responder') => Promise<boolean>
 }
 
 export function UserHeader({ isLoading, isValidating, onInvite }: UserHeaderProps) {

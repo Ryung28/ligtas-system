@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import React, { useState, useMemo } from 'react'
 import { useInventory } from '@/hooks/use-inventory'
 import { InventoryCard } from '@/components/mobile/inventory-card'

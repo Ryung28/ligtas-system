@@ -1,26 +1,21 @@
 // LIGTAS PWA Service Worker
-// Basic caching strategy for offline support
+// Network-first strategy for auth-gated routes, cache-first for static assets
 
-const CACHE_NAME = 'ligtas-tactical-v2';
+const CACHE_NAME = 'ligtas-tactical-v3';
 const OFFLINE_URL = '/offline';
 
-// Assets to cache on install - Strategic Pre-loading
+// Only cache truly static assets — NOT auth-gated routes
 const PRECACHE_ASSETS = [
-  '/',
-  '/m',
-  '/m/inventory',
-  '/m/approvals',
-  '/m/logs',
   '/offline',
   '/oro-cervo.png',
   '/favicon.ico'
 ];
 
-// Install event - cache essential assets
+// Install event - cache essential static assets only
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Precaching assets');
+      console.log('[SW] Precaching static assets');
       return cache.addAll(PRECACHE_ASSETS);
     })
   );
@@ -44,7 +39,17 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - Optimized Strategy: Cache-First for UI, Network-First for Data
+// Message handler - cache busting on logout
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'LOGOUT') {
+    console.log('[SW] Logout signal received — clearing all caches');
+    caches.keys().then((cacheNames) => {
+      return Promise.all(cacheNames.map((name) => caches.delete(name)));
+    });
+  }
+});
+
+// Fetch event - Optimized Strategy: Cache-First for static, Network-First for everything else
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith('http')) return;
@@ -71,20 +76,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 🏛️ STRATEGY 2: Navigation & Routes - STALE-WHILE-REVALIDATE
-  // This makes "/m/inventory" load instantly from cache while updating in background
+  // 🏛️ STRATEGY 2: Navigation & Auth-Gated Routes - NETWORK FIRST
+  // Always hit the server so middleware can validate session cookies.
+  // Only fall back to cache if network is unavailable (true offline mode).
   if (event.request.mode === 'navigate' || url.pathname.startsWith('/m')) {
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
+      fetch(event.request)
+        .then((networkResponse) => {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
           return networkResponse;
-        });
-        return cachedResponse || fetchPromise;
-      }).catch(() => caches.match(OFFLINE_URL))
+        })
+        .catch(() => {
+          return caches.match(event.request)
+            .then((cached) => cached || caches.match(OFFLINE_URL));
+        })
     );
     return;
   }

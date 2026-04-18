@@ -27,6 +27,7 @@ export interface BorrowLog {
     platform_origin?: 'Web' | 'Mobile';
     created_origin?: 'Web' | 'Mobile' | null;
     last_updated_origin?: 'Web' | 'Mobile' | null;
+    borrowed_from_warehouse?: string | null;
     created_at: string;
 }
 

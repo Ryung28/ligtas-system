@@ -708,6 +708,7 @@ function LogSessionRow({
                                                                     borrowerName={item.borrower_name}
                                                                     quantity={item.quantity}
                                                                     inventoryId={item.inventory_id}
+                                                                    borrowedFrom={item.borrowed_from_warehouse}
                                                                 />
                                                             )}
                                                         </div>
@@ -729,6 +730,7 @@ function LogSessionRow({
                                                         quantity: item.quantity,
                                                         inventoryId: item.inventory_id,
                                                         imageUrl: getInventoryImageUrl((item as any).inventory?.image_url),
+                                                        borrowedFrom: item.borrowed_from_warehouse,
                                                     }))}
                                                     triggerLabel={`Return Selected (${selectedSessionItems.length})`}
                                                     triggerClassName="h-8 bg-slate-900 text-white hover:bg-black hover:text-white border-slate-900"

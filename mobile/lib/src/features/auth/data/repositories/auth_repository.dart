@@ -45,15 +45,23 @@ class AuthRepository {
     return UserModel.fromSupabase(profileData);
   }
 
-  // 🛡️ THE SMOKING GUN RECOVERY: Simplified flow with return type to detect cancellation
+  // 🛡️ THE SMOKING GUN RECOVERY: Respects rememberMe to prevent sticky accounts
   Future<GoogleSignInAccount?> signInWithGoogle({bool rememberMe = false}) async {
-    debugPrint('📡 [Auth-Guard] Initiating Recovery Handshake...');
+    debugPrint('📡 [Auth-Guard] Initiating Recovery Handshake (RememberMe: $rememberMe)...');
 
     try {
-      // 1. Silent Attempt (Bypasses picker if already signed in)
-      GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+      GoogleSignInAccount? googleUser;
       
-      // 2. Interactive Picker (Only if silent fails)
+      // 1. Silent Attempt (Only if rememberMe is enabled)
+      if (rememberMe) {
+        debugPrint('📡 [Auth-Guard] Attempting Silent Login...');
+        googleUser = await _googleSignIn.signInSilently();
+      } else {
+        // Force account picker by signing out of the SDK before starting
+        await _googleSignIn.signOut().catchError((_) => null);
+      }
+      
+      // 2. Interactive Picker (If silent failed or was skipped)
       if (googleUser == null) {
         debugPrint('📡 [Auth-Guard] Launching Interactive Picker...');
         googleUser = await _googleSignIn.signIn();
@@ -61,7 +69,7 @@ class AuthRepository {
       
       if (googleUser == null) {
         debugPrint('📡 [Auth-Guard] Picker closed or cancelled by user.');
-        return null; // Exit gracefully so the controller can reset state
+        return null;
       }
 
       debugPrint('📡 [Auth-Guard] ✅ Account selected: ${googleUser.email}');
@@ -76,16 +84,21 @@ class AuthRepository {
         accessToken: googleAuth.accessToken,
       );
 
+      // If NOT remembering, disconnect after signing into Supabase so the PICKER shows next time
+      if (!rememberMe) {
+        await _googleSignIn.signOut().catchError((_) => null);
+      }
+
       debugPrint('📡 [Auth-Guard] 🏆 Session Established.');
       return googleUser;
 
     } on PlatformException catch (e) {
       debugPrint('🚨 [Auth-Guard] NATIVE_ERROR: ${e.code}');
-      // Clear state on error to allow retry
       await _googleSignIn.signOut().catchError((_) => null);
       rethrow;
     } catch (e) {
       debugPrint('🚨 [Auth-Guard] FATAL_ERROR: $e');
+      await _googleSignIn.signOut().catchError((_) => null);
       rethrow;
     }
   }

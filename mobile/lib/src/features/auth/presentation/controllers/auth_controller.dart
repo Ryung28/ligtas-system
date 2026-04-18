@@ -8,11 +8,14 @@ import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 import 'package:mobile/src/core/local_storage/isar_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 part 'auth_controller.g.dart';
 
 @riverpod
 class AuthController extends _$AuthController {
   StreamSubscription? _sub;
+  static const String _rememberMeKey = 'is_remembered';
 
   @override
   FutureOr<AuthState> build() async {
@@ -96,6 +99,11 @@ class AuthController extends _$AuthController {
 
     try {
       final repo = ref.read(authRepositoryProvider);
+      
+      // 🛡️ PERSISTENCE: Save session type
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_rememberMeKey, rememberMe);
+      
       final googleUser = await repo.signInWithGoogle(rememberMe: rememberMe);
       
       // 🛡️ RECOVERY: If user closed the picker, reset UI to initial clickable state
@@ -140,6 +148,10 @@ class AuthController extends _$AuthController {
   Future<void> logout() async {
     state = AsyncValue.data(AuthState.loading());
     try {
+      // 🛡️ PERSISTENCE: Wipe session preference
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_rememberMeKey, false);
+
       await ref.read(authRepositoryProvider).signOut();
       
       // 🚀 State Cleansing

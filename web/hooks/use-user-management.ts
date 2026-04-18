@@ -53,7 +53,14 @@ export const AUTHORIZED_EMAILS_KEY = 'authorized_emails'
 export const PENDING_USER_REQUESTS_KEY = 'pending_user_requests'
 
 export const fetchUsers = async () => {
-    const { data, error } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false })
+    // Explicitly wait for session to ensure RLS has auth context
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+    
     if (error) throw error
     return (data as UserProfile[]) || []
 }
@@ -75,12 +82,41 @@ export const fetchPendingUserRequests = async () => {
 }
 
 export function useUserManagement() {
-    // 🛰️ SWR TRACKS
-    const { data: users = [], mutate: mutateUsers, isLoading: usersLoading, isValidating: usersValidating } = useSWR(USER_PROFILES_KEY, fetchUsers, { revalidateOnFocus: false })
-    const { data: authorizedEmails = [], mutate: mutateWhitelist, isLoading: whitelistLoading } = useSWR(AUTHORIZED_EMAILS_KEY, fetchAuthorizedEmails, { revalidateOnFocus: false })
-    const { data: pendingRequests = [], mutate: mutateRequests, isLoading: requestsLoading } = useSWR(PENDING_USER_REQUESTS_KEY, fetchPendingUserRequests, { revalidateOnFocus: false })
+    // 🛰️ Auth Awareness: We track the session to signal SWR revalidation
+    const [sessionId, setSessionId] = React.useState<string | null>(null)
 
-    const isLoading = usersLoading || whitelistLoading || requestsLoading
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSessionId(session?.user?.id || 'anon')
+        })
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSessionId(session?.user?.id || 'anon')
+        })
+
+        return () => subscription.unsubscribe()
+    }, [])
+
+    // 🛰️ SWR TRACKS - Keyed by sessionId to force re-fetch on login
+    const { data: users = [], mutate: mutateUsers, isLoading: usersLoading, isValidating: usersValidating } = useSWR(
+        sessionId ? [USER_PROFILES_KEY, sessionId] : null, 
+        () => fetchUsers(), 
+        { revalidateOnFocus: false }
+    )
+    
+    const { data: authorizedEmails = [], mutate: mutateWhitelist, isLoading: whitelistLoading } = useSWR(
+        sessionId ? [AUTHORIZED_EMAILS_KEY, sessionId] : null,
+        fetchAuthorizedEmails, 
+        { revalidateOnFocus: false }
+    )
+    
+    const { data: pendingRequests = [], mutate: mutateRequests, isLoading: requestsLoading } = useSWR(
+        sessionId ? [PENDING_USER_REQUESTS_KEY, sessionId] : null,
+        fetchPendingUserRequests, 
+        { revalidateOnFocus: false }
+    )
+
+    const isLoading = !sessionId || usersLoading || whitelistLoading || requestsLoading
     const isValidating = usersValidating
 
     const refresh = async () => {
@@ -93,7 +129,7 @@ export function useUserManagement() {
         const result = await approveUserAction(userId, role)
         if (result.success) {
             toast.success(result.message)
-            await refresh()
+            refresh()
             return true
         }
         toast.error('Failed to approve user: ' + result.message)
@@ -104,7 +140,7 @@ export function useUserManagement() {
         const result = await rejectUserAction(userId)
         if (result.success) {
             toast.success(result.message)
-            await refresh()
+            refresh()
             return true
         }
         toast.error('Failed to reject user: ' + result.message)
@@ -120,7 +156,7 @@ export function useUserManagement() {
         const result = await suspendUserAction(userId)
         if (result.success) {
             toast.success(result.message)
-            await refresh()
+            refresh()
             return true
         }
         toast.error(result.message)
@@ -131,29 +167,31 @@ export function useUserManagement() {
         const result = await reactivateUserAction(userId)
         if (result.success) {
             toast.success(result.message)
-            await refresh()
+            refresh()
             return true
         }
         toast.error('Failed to reactivate user: ' + result.message)
         return false
     }
 
-    const updateUserRole = async (userId: string, newRole: 'admin' | 'editor') => {
+    const updateUserRole = async (userId: string, newRole: 'admin' | 'editor' | 'viewer' | 'responder') => {
         const result = await updateUserRoleAction(userId, newRole)
         if (result.success) {
             toast.success(result.message || `User role updated successfully`)
-            await refresh()
+            refresh()
             return true
         }
         toast.error(result.error || `Failed to update user role`)
         return false
     }
 
-    const authorizeUser = async (email: string, role: string) => {
+    const authorizeUser = async (email: string, role: 'admin' | 'editor' | 'viewer' | 'responder') => {
         const result = await authorizeUserAction(email, role)
         if (result.success) {
             toast.success(result.message)
-            await refresh()
+            // Senior Fix: Fire and forget the refresh. Don't wait for SWR revalidation
+            // to finish before unlocking the UI. Stops the "Authorizing..." hang.
+            refresh() 
             return true
         }
         toast.error('Failed to authorize email: ' + result.message)
@@ -164,7 +202,7 @@ export function useUserManagement() {
         const result = await unauthorizeUserAction(email)
         if (result.success) {
             toast.success(result.message)
-            await refresh()
+            refresh()
             return true
         }
         toast.error(result.message)
@@ -181,7 +219,7 @@ export function useUserManagement() {
             if (error) throw error
 
             toast.success(warehouse ? `Warehouse assigned: ${warehouse}` : 'Warehouse assignment removed')
-            await refresh()
+            refresh()
             return true
         } catch (err: any) {
             toast.error('Failed to assign warehouse: ' + err.message)

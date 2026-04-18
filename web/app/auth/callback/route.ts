@@ -43,39 +43,41 @@ export async function GET(request: Request) {
             const { data: { user } } = await supabase.auth.getUser()
 
             if (user?.email) {
-                // Check if user is whitelisted - Use maybeSingle() to prevent PGRST116 (0 rows found)
+                // Check if user is whitelisted - case-insensitive match
                 const { data: whitelistEntry, error: whitelistError } = await supabase
                     .from('authorized_emails')
                     .select('role')
-                    .eq('email', user.email.toLowerCase())
+                    .ilike('email', user.email)
                     .maybeSingle()
 
                 if (!whitelistEntry) {
                     console.log(`[Auth] Unauthorized login attempt: ${user.email}`)
 
-                    // Optional: Delete unauthorized account if service role key is available
-                    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-                    if (serviceKey) {
-                        const { createClient } = await import('@supabase/supabase-js')
-                        const supabaseAdmin = createClient(
-                            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                            serviceKey
-                        )
-                        await supabaseAdmin.auth.admin.deleteUser(user.id)
-                    }
+                    // Sign out the unauthorized user so the middleware doesn't redirect them back in
+                    await supabase.auth.signOut()
 
                     return NextResponse.redirect(`${origin}/login?error=ACCESS DENIED: You must be invited by an Administrator to use this system.`)
                 }
 
-                // Authorized: Update user profile
+                // Authorized: Upsert user profile to handle race condition
+                // The DB trigger (on_auth_user_created) may not have committed
+                // the row yet, so UPDATE would silently no-op on 0 rows.
+                // UPSERT guarantees the profile exists and is promoted.
+                const fullName = user.user_metadata?.full_name
+                    || user.user_metadata?.name
+                    || user.email?.split('@')[0]
+                    || 'User'
+
                 await supabase
                     .from('user_profiles')
-                    .update({
+                    .upsert({
+                        id: user.id,
+                        email: user.email,
+                        full_name: fullName,
                         role: whitelistEntry.role,
                         status: 'active',
                         approved_at: new Date().toISOString()
-                    })
-                    .eq('id', user.id)
+                    }, { onConflict: 'id' })
 
                 console.log(`[Auth] Authorized & Promoted ${user.email} as ${whitelistEntry.role}`)
             }

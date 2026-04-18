@@ -7,8 +7,8 @@ import { LogOut } from 'lucide-react'
 import { navItems, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { signOut } from '@/lib/auth'
-import { useEffect, useState } from 'react'
+import { logoutAction } from '@/app/actions/auth-actions'
+import { useState } from 'react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TACTICAL_THEME } from '@/lib/theme-config'
 import { preload } from 'swr'
@@ -20,7 +20,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className, onNavigate }: SidebarProps) {
-    const { user } = useUser()
+    const { user, isLoading } = useUser()
     const pathname = usePathname()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -37,9 +37,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     const handleLogout = async () => {
         try {
             setIsLoggingOut(true)
-            await signOut()
-            // Force a full page reload to the login page to clear all memory states
-            window.location.href = '/login'
+            // Clear SW cache before server-side redirect
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' })
+            }
+            await logoutAction()
         } catch (error) {
             console.error('Logout failed:', error)
             setIsLoggingOut(false)
@@ -126,25 +128,33 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 </div>
 
                 {/* REPORTS & ADMIN SECTION */}
-                {(user?.role === 'admin' || user?.role === 'editor') && (
+                {(isLoading || user?.role === 'admin' || user?.role === 'editor') && (
                     <div className="pt-4">
                         <div className="px-3 mb-2">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Reports & Admin</p>
                         </div>
                         <div className="space-y-1.5">
-                            {navItems.filter(i => i.category === 'reports').map((item) => {
-                                // 🔒 ROLE GUARD: System Users is Admin-only
-                                if (item.label === 'System Users' && user?.role !== 'admin') return null;
+                            {isLoading ? (
+                                // Skeleton for report items
+                                <>
+                                    <div className="h-9 w-full bg-slate-50 animate-pulse rounded-lg mx-3" />
+                                    <div className="h-9 w-full bg-slate-50 animate-pulse rounded-lg mx-3 mt-2" />
+                                </>
+                            ) : (
+                                navItems.filter(i => i.category === 'reports').map((item) => {
+                                    // 🔒 ROLE GUARD: System Users is Admin-only
+                                    if (item.label === 'System Users' && user?.role !== 'admin') return null;
 
-                                return (
-                                    <SidebarItem
-                                        key={item.href}
-                                        item={item}
-                                        active={isActive(item.href)}
-                                        onNavigate={onNavigate}
-                                    />
-                                );
-                            })}
+                                    return (
+                                        <SidebarItem
+                                            key={item.href}
+                                            item={item}
+                                            active={isActive(item.href)}
+                                            onNavigate={onNavigate}
+                                        />
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 )}
@@ -162,12 +172,22 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                         <AvatarFallback className="text-blue-700 font-semibold bg-blue-50">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0 text-left">
-                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
-                            {user?.email?.split('@')[0] || 'Administrator'}
-                        </p>
-                        <p className="text-[10px] text-gray-500 truncate">View Profile</p>
+                        {isLoading ? (
+                            <>
+                                <div className="h-4 w-24 bg-slate-200 rounded animate-pulse mb-1" />
+                                <div className="h-3 w-16 bg-slate-100 rounded animate-pulse" />
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                                    {user?.email?.split('@')[0] || 'User'}
+                                </p>
+                                <p className="text-[10px] text-gray-500 truncate">View Profile</p>
+                            </>
+                        )}
                     </div>
                 </Link>
+
 
                 <Button
                     onClick={handleLogout}

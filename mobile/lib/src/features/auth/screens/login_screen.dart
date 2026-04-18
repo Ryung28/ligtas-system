@@ -119,12 +119,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: AutofillGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Gap(40),
+                const Gap(12),
                 
                 // ── BRANDING HUD ──
                 Center(
@@ -146,7 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
 
-                const Gap(24),
+                const Gap(12),
                 
                 // ── SYSTEM TITLE ──
                 Column(
@@ -160,9 +160,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         letterSpacing: -1.0,
                       ),
                     ),
-                    const Gap(4),
+                    const Gap(2),
                     Text(
-                      'LOGISTICS COMMAND',
+                      'EQUIPMENT HUB',
                       style: GoogleFonts.lexend(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -173,14 +173,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ).animate().fadeIn(delay: 200.ms),
 
-                const Gap(40),
+                const Gap(16),
 
                 // ── AUTHENTICATION CARD ──
                 Animate(
                   key: ValueKey(_shakeCount),
                   effects: _shakeCount > 0 ? [ShakeEffect(duration: 400.ms)] : [],
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
@@ -206,7 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               return null;
                             },
                           ),
-                          const Gap(24),
+                          const Gap(12),
                           _buildInputField(
                             sentinel: sentinel,
                             controller: _passwordController,
@@ -221,7 +221,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             autofillHints: [AutofillHints.password],
                             validator: (value) => value == null || value.isEmpty ? 'Password is required' : null,
                           ),
-                          const Gap(20),
+                          const Gap(8),
                           
                           Row(
                             children: [
@@ -248,7 +248,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ],
                           ),
                           
-                          const Gap(32),
+                          const Gap(16),
 
                           SizedBox(
                             width: double.infinity,
@@ -278,7 +278,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
 
-                          const Gap(24),
+                          const Gap(12),
 
                           Row(
                             children: [
@@ -299,7 +299,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ],
                           ),
 
-                          const Gap(24),
+                          const Gap(12),
 
                           SizedBox(
                             width: double.infinity,
@@ -339,7 +339,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ).animate().fadeIn(duration: 500.ms, delay: 300.ms),
 
-                const Gap(24),
+                const Gap(8),
 
                 SizedBox(
                   width: double.infinity,
@@ -368,7 +368,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ).animate().fadeIn(delay: 500.ms),
                 ),
 
-                const Gap(32),
+                const Gap(12),
 
                 Column(
                   children: [
@@ -381,7 +381,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         letterSpacing: 1.5,
                       ),
                     ),
-                    const Gap(12),
+                    const Gap(4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -443,7 +443,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             letterSpacing: 1.0,
           ),
         ),
-        const Gap(8),
+        const Gap(4),
         TextFormField(
           controller: controller,
           obscureText: isPassword && !isVisible,
@@ -471,7 +471,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 : null,
             filled: true,
             fillColor: const Color(0xFFF1F5F9),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: sentinel.navy.withOpacity(0.12))),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: sentinel.navy, width: 1.5)),
             errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppTheme.errorRed, width: 1)),

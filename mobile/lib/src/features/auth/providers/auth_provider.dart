@@ -1,11 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile/src/core/networking/supabase_client.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../domain/models/user_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Auth state notifier for professional session management
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final SupabaseClient _supabase;
+  static const String _rememberMeKey = 'is_remembered';
 
   AuthNotifier(this._supabase) : super(const AsyncValue.data(null)) {
     // Check initial session
@@ -61,6 +65,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
+  /// Check if the session was marked as "Remembered"
+  Future<bool> isSessionRemembered() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_rememberMeKey) ?? false;
+  }
+
+  /// Update the remember me preference
+  Future<void> setRememberMe(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_rememberMeKey, value);
+  }
+
   /// Fallback: Map Supabase auth user to UserModel
   UserModel _mapSupabaseUser(User user) {
     final List<String> providers = (user.appMetadata['providers'] as List<dynamic>?)
@@ -87,14 +103,29 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
-  Future<void> signIn(String email, String password) async {
+  Future<void> signIn(String email, String password, {bool rememberMe = false}) async {
     state = const AsyncValue.loading();
     try {
+      await setRememberMe(rememberMe);
       await _supabase.auth.signInWithPassword(
         email: email.trim(),
         password: password,
       );
       // State is updated by the onAuthStateChange listener
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Professional Sign In with Google
+  Future<void> signInWithGoogle(Future<GoogleSignInAccount?> Function({bool rememberMe}) call, {bool rememberMe = false}) async {
+    state = const AsyncValue.loading();
+    try {
+      await setRememberMe(rememberMe);
+      final result = await call(rememberMe: rememberMe);
+      if (result == null) {
+        state = const AsyncValue.data(null);
+      }
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -114,7 +145,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       );
       
       // If session is null, it means email confirmation is likely enabled.
-      // We reset state to data(null) so the UI stops loading.
       if (response.session == null) {
         state = const AsyncValue.data(null);
       }
@@ -124,6 +154,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   }
 
   Future<void> signOut() async {
+    // Clear persistence on logout
+    await setRememberMe(false);
     await _supabase.auth.signOut();
     state = const AsyncValue.data(null);
   }
@@ -138,6 +170,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       organization: null,
       role: 'admin',
       status: 'active',
+      providers: [],
     );
     state = AsyncValue.data(mockUser);
   }

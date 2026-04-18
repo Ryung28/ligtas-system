@@ -24,7 +24,7 @@ export default function LoginPage() {
     const [imageLoaded, setImageLoaded] = useState(false)
     const [showMobileApp, setShowMobileApp] = useState(false)
 
-    const APK_URL = "https://knarlvwnuvedyfvvaota.supabase.co/storage/v1/object/public/release/Cdrrmo-Ligstas.apk"
+    const APK_URL = "https://knarlvwnuvedyfvvaota.supabase.co/storage/v1/object/public/release/Cdrrmo-Ligtas.apk"
 
     // Senior Dev: Use a callback ref to handle cached images that don't trigger onLoad
     const onImageRef = useCallback((node: HTMLImageElement | null) => {

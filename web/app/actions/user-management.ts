@@ -12,11 +12,11 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 // RE-EXPORT: UPDATE USER ROLE (pre-existing action — kept for compatibility)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ExtendedRoleSchema = z.enum(['admin', 'editor'])
+const ExtendedRoleSchema = z.enum(['admin', 'editor', 'viewer', 'responder'])
 
 export async function updateUserRole(
     userId: string,
-    newRole: 'admin' | 'editor',
+    newRole: 'admin' | 'editor' | 'viewer' | 'responder',
 ): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
         const validatedRole = ExtendedRoleSchema.parse(newRole)
@@ -168,7 +168,25 @@ export async function suspendUserAction(userId: string): Promise<ActionResult> {
         console.warn('[UserAction:suspend] Scrubbing warning:', cleanupErr)
     }
 
-    // STEP 2: Suspend the profile
+    // STEP 2: Revoke whitelist access (prevents re-activation on next login)
+    try {
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('email')
+            .eq('id', parsed.data.userId)
+            .single()
+
+        if (profile?.email) {
+            await supabase
+                .from('authorized_emails')
+                .delete()
+                .eq('email', profile.email.toLowerCase().trim())
+        }
+    } catch (revokeErr) {
+        console.warn('[UserAction:suspend] Whitelist revoke warning:', revokeErr)
+    }
+
+    // STEP 3: Suspend the profile
     const { error } = await supabase
         .from('user_profiles')
         .update({ status: 'suspended' })
@@ -187,6 +205,11 @@ export async function suspendUserAction(userId: string): Promise<ActionResult> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ReactivateUserInputSchema = z.object({ userId: UuidSchema })
+
+const AuthorizeUserInputSchema = z.object({
+    email: EmailSchema,
+    role: RoleSchema,
+})
 
 export async function reactivateUserAction(userId: string): Promise<ActionResult> {
     const parsed = ReactivateUserInputSchema.safeParse({ userId })
@@ -215,16 +238,10 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
     return { success: true, message: 'User reactivated.' }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ACTION 5: AUTHORIZE USER (Whitelist Insert)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const AuthorizeUserInputSchema = z.object({
-    email: EmailSchema,
-    role: RoleSchema,
-})
-
-export async function authorizeUserAction(email: string, role: string): Promise<ActionResult> {
+export async function authorizeUserAction(
+    email: string,
+    role: 'admin' | 'editor' | 'viewer' | 'responder' = 'editor',
+): Promise<ActionResult> {
     const parsed = AuthorizeUserInputSchema.safeParse({ email, role })
     if (!parsed.success) {
         return {
@@ -235,19 +252,50 @@ export async function authorizeUserAction(email: string, role: string): Promise<
     }
 
     const supabase = await createSupabaseServer()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, message: 'Unauthorized.' }
+    const { data: { user: adminUser } } = await supabase.auth.getUser()
+    if (!adminUser) return { success: false, message: 'Unauthorized.' }
 
-    const { error } = await supabase
+    const cleanEmail = parsed.data.email.toLowerCase().trim()
+
+    // 1. Whitelist Management (Atomic Update)
+    const { error: whitelistError } = await supabase
         .from('authorized_emails')
-        .insert([{ email: parsed.data.email.toLowerCase().trim(), role: parsed.data.role }])
+        .upsert({ 
+            email: cleanEmail, 
+            role: parsed.data.role 
+        }, { onConflict: 'email' })
 
-    if (error) {
-        console.error('[UserAction:authorize]', error.message)
-        return { success: false, message: error.message }
+    if (whitelistError) {
+        console.error('[UserAction:authorize] Whitelist failed:', whitelistError.message)
+        return { success: false, message: whitelistError.message }
     }
 
-    return { success: true, message: `${parsed.data.email} is now authorized.` }
+    // 2. SELF-HEALING: If user has an existing suspended profile, REACTIVATE THEM
+    try {
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('id, status')
+            .ilike('email', cleanEmail)
+            .maybeSingle()
+
+        if (profile && profile.status === 'suspended') {
+            const { error: patchError } = await supabase
+                .from('user_profiles')
+                .update({ 
+                    status: 'active',
+                    role: parsed.data.role,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', profile.id)
+
+            if (patchError) throw patchError
+            return { success: true, message: `${cleanEmail} was previously suspended but is now REACTIVATED.` }
+        }
+    } catch (err) {
+        console.warn('[UserAction:authorize] Self-healing warning:', err)
+    }
+
+    return { success: true, message: `${cleanEmail} is now authorized.` }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,7 +321,7 @@ export async function unauthorizeUserAction(email: string): Promise<ActionResult
     const { error } = await supabase
         .from('authorized_emails')
         .delete()
-        .eq('email', parsed.data.email)
+        .eq('email', parsed.data.email.toLowerCase().trim())
 
     if (error) {
         console.error('[UserAction:unauthorize]', error.message)

@@ -24,8 +24,8 @@ interface StaffManagementCardProps {
     staff: UserProfile[]
     isLoading: boolean
     onRemove: (userId: string) => void
-    onInvite: (email: string, role: string) => Promise<boolean>
-    onRoleUpdate: (userId: string, newRole: 'admin' | 'editor') => void
+    onInvite: (email: string, role: 'admin' | 'editor' | 'viewer' | 'responder') => Promise<boolean>
+    onRoleUpdate: (userId: string, newRole: 'admin' | 'editor' | 'viewer' | 'responder') => void
     onWarehouseAssign: (userId: string, warehouse: string | null) => Promise<boolean>
 }
 
@@ -34,7 +34,7 @@ export function StaffManagementCard({ staff, isLoading, onRemove, onInvite, onRo
     const [pendingAction, setPendingAction] = useState<{ 
         type: 'role_update' | 'remove', 
         userId: string,
-        targetRole?: 'admin' | 'editor'
+        targetRole?: 'admin' | 'editor' | 'viewer' | 'responder'
     } | null>(null)
 
     const handleConfirm = () => {

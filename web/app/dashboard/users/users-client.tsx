@@ -43,13 +43,18 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
 
     // Filter staff members (admins and editors only)
     const staffMembers = useMemo(() => {
-        const activeStaff = users.filter(user =>
-            (user.role === 'admin' || user.role === 'editor')
-        )
+        const activeStaff = users.filter(user => {
+            const role = user.role?.toLowerCase()
+            const status = user.status?.toLowerCase()
+            return (role === 'admin' || role === 'editor') && status === 'active'
+        })
 
         // Add authorized emails that haven't signed up yet
         const pendingInvites = authorizedEmails
-            .filter((auth: any) => !activeStaff.some(s => s.email.toLowerCase() === auth.email.toLowerCase()))
+            .filter((auth: any) => {
+                const authEmail = auth.email?.toLowerCase()
+                return !activeStaff.some(s => s.email?.toLowerCase() === authEmail)
+            })
             .map((auth: any) => ({
                 id: `pending-${auth.email}`,
                 email: auth.email,
@@ -64,12 +69,16 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
 
     // Filter pending borrowers (requests)
     const pendingBorrowers = useMemo(() => {
-        return users.filter(user => user.status === 'pending')
+        return users.filter(user => user.status?.toLowerCase() === 'pending')
     }, [users])
 
     // Filter active borrowers (mobile app users)
     const activeBorrowers = useMemo(() => {
-        return users.filter(user => user.status === 'active' && (user.role === 'viewer' || user.role === 'responder'))
+        return users.filter(user => {
+            const status = user.status?.toLowerCase()
+            const role = user.role?.toLowerCase()
+            return status === 'active' && (role === 'viewer' || role === 'responder')
+        })
     }, [users])
 
     // Calculate enhanced stats

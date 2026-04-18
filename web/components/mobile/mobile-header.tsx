@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { ChevronLeft, RefreshCw, MoreVertical, LogOut, User, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { signOut } from '@/lib/auth'
+import { logoutAction } from '@/app/actions/auth-actions'
 import { useUser } from '@/providers/auth-provider'
 import {
     Popover,
@@ -37,9 +37,11 @@ export function MobileHeader({ title, onRefresh, isLoading }: MobileHeaderProps)
     const handleLogout = async () => {
         try {
             setIsLoggingOut(true)
-            await signOut()
-            // Force a full page reload to the login page to clear all memory states
-            window.location.href = '/login'
+            // Clear SW cache before server-side redirect
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' })
+            }
+            await logoutAction()
         } catch (error) {
             console.error('Logout failed:', error)
             setIsLoggingOut(false)
@@ -111,13 +113,22 @@ export function MobileHeader({ title, onRefresh, isLoading }: MobileHeaderProps)
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
-                                    <p className="text-xs font-black text-slate-900 truncate uppercase tracking-tight">
-                                        {user?.full_name || 'Responder'}
-                                    </p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                        <Shield className="w-2.5 h-2.5" />
-                                        {user?.role || 'Personnel'}
-                                    </p>
+                                    {user ? (
+                                        <>
+                                            <p className="text-xs font-black text-slate-900 truncate uppercase tracking-tight">
+                                                {user?.full_name || 'Responder'}
+                                            </p>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                <Shield className="w-2.5 h-2.5" />
+                                                {user?.role || 'Personnel'}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="h-3 w-24 bg-slate-100 animate-pulse rounded mb-1" />
+                                            <div className="h-2 w-16 bg-slate-50 animate-pulse rounded" />
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
