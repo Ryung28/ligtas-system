@@ -38,6 +38,7 @@ export async function addItem(formData: FormData) {
             location_id: formData.get('location_id'),
             brand: formData.get('brand'),
             expiry_date: formData.get('expiry_date'),
+            expiry_alert_days: formData.get('expiry_alert_days') ? Number(formData.get('expiry_alert_days')) : null,
             parent_id: formData.get('parent_id'),
             variant_label: formData.get('variant_label'),
             low_stock_threshold: parsedThreshold,
@@ -110,6 +111,7 @@ export async function addItem(formData: FormData) {
                         storage_location: validatedData.storage_location,
                         brand: validatedData.brand,
                         expiry_date: validatedData.expiry_date,
+                        expiry_alert_days: validatedData.expiry_alert_days ?? null,
                         low_stock_threshold: validatedData.low_stock_threshold,
                         target_stock: validatedData.target_stock,
                         restock_alert_enabled: restockAlertEnabled,
@@ -154,6 +156,7 @@ export async function addItem(formData: FormData) {
                 location_registry_id: validatedData.location_id,
                 brand: validatedData.brand,
                 expiry_date: validatedData.expiry_date,
+                expiry_alert_days: validatedData.expiry_alert_days ?? null,
                 low_stock_threshold: validatedData.low_stock_threshold,
                 target_stock: validatedData.target_stock,
                 restock_alert_enabled: restockAlertEnabled,
@@ -230,17 +233,43 @@ export async function addItem(formData: FormData) {
     }
 }
 
-export async function bulkAddItems(items: Array<{ name: string; category: string; stock_total: number; status: string; description?: string }>) {
+export async function bulkAddItems(items: Array<{
+    name: string
+    category: string
+    item_type?: string
+    stock_total: number
+    stock_available?: number
+    qty_good?: number
+    status: string
+    storage_location?: string
+    serial_number?: string
+    model_number?: string
+    brand?: string
+    expiry_date?: string
+    expiry_alert_days?: number
+    description?: string
+}>) {
     try {
         const validatedItems = z.array(addItemSchema).parse(items)
 
         const insertData = validatedItems.map(item => ({
             item_name: item.name,
-            description: item.description,
+            description: item.description ?? null,
             category: item.category,
+            item_type: item.item_type ?? 'equipment',
             stock_total: item.stock_total,
-            stock_available: item.stock_total,
+            stock_available: item.qty_good ?? item.stock_total,
+            qty_good: item.qty_good ?? item.stock_total,
+            qty_damaged: 0,
+            qty_maintenance: 0,
+            qty_lost: 0,
             status: item.status,
+            storage_location: item.storage_location ?? null,
+            serial_number: item.serial_number ?? null,
+            model_number: item.model_number ?? null,
+            brand: item.brand ?? null,
+            expiry_date: item.expiry_date ?? null,
+            expiry_alert_days: item.expiry_alert_days ?? null,
         }))
 
         const { data, error } = await supabase.from('inventory').insert(insertData).select()
@@ -290,6 +319,7 @@ export async function updateItem(formData: FormData) {
             equipment_type: formData.get('equipment_type') ? String(formData.get('equipment_type')) : null,
             brand: formData.get('brand') ? String(formData.get('brand')) : null,
             expiry_date: formData.get('expiry_date') ? String(formData.get('expiry_date')) : null,
+            expiry_alert_days: formData.get('expiry_alert_days') ? Number(formData.get('expiry_alert_days')) : null,
             low_stock_threshold: parsedThreshold,
             target_stock: Number(formData.get('target_stock') ?? 0) || 0,
             restock_alert_enabled: restockAlertEnabled,
@@ -339,6 +369,7 @@ export async function updateItem(formData: FormData) {
                     serial_number: rawData.serial_number,
                     model_number: rawData.model_number,
                     expiry_date: rawData.expiry_date,
+                    expiry_alert_days: rawData.expiry_alert_days ?? null,
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
                     restock_alert_enabled: rawData.restock_alert_enabled,
@@ -385,6 +416,7 @@ export async function updateItem(formData: FormData) {
                     equipment_type: rawData.equipment_type,
                     brand: rawData.brand,
                     expiry_date: rawData.expiry_date,
+                    expiry_alert_days: rawData.expiry_alert_days ?? null,
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
                     restock_alert_enabled: rawData.restock_alert_enabled,

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, Warehouse } from 'lucide-react'
+import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, UserPlus, Warehouse } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 import { toast } from 'sonner'
 import { STORAGE_LOCATION_LABELS, StorageLocation, getInventoryImageUrl } from '@/lib/supabase'
@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LogisticsPreviewCard } from '../_components/logistics-preview-card'
+import { BorrowerNameField } from '../_components/borrower-name-field'
 import { cn } from '@/lib/utils'
 import { TacticalAssetPreview } from '@/src/shared/ui/tactical-asset-preview'
 
@@ -74,6 +74,7 @@ export function DispatchCommandSheet() {
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
     const [selectedQuantity, setSelectedQuantity] = useState<number | "">(1)
     const [borrowerName, setBorrowerName] = useState('')
+    const [borrowerManualEntry, setBorrowerManualEntry] = useState(false)
     const [contactNumber, setContactNumber] = useState('')
     const [intakeMode, setIntakeMode] = useState<'immediate' | 'scheduled'>('immediate')
     const [pickupDate, setPickupDate] = useState<string>('')
@@ -88,6 +89,10 @@ export function DispatchCommandSheet() {
     useEffect(() => {
         setMounted(true)
     }, [])
+
+    useEffect(() => {
+        if (!open) setBorrowerManualEntry(false)
+    }, [open])
 
     const isConsumable = selectedItem?.item_type === 'consumable'
 
@@ -182,6 +187,7 @@ export function DispatchCommandSheet() {
                 setCart([])
                 setSelectedItem(null)
                 setBorrowerName('')
+                setBorrowerManualEntry(false)
                 setContactNumber('')
                 router.refresh()
             } else {
@@ -299,47 +305,76 @@ export function DispatchCommandSheet() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="borrower_name" className="text-sm font-semibold text-gray-700 flex items-center h-6">
+                        <div className="flex flex-col gap-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                                <Label htmlFor="borrower_name" className="text-sm font-semibold text-gray-700 flex items-center min-h-6">
                                     <span>Borrower Name <span className="text-red-500">*</span></span>
                                 </Label>
-                                <Input id="borrower_name" name="borrower_name" placeholder="Full name of borrower" required disabled={isPending} value={borrowerName} onChange={(e) => setBorrowerName(e.target.value)} className="rounded-lg border-gray-300" />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="contact_number" className="text-sm font-semibold text-gray-700 flex justify-between items-center h-6">
+                                <Label htmlFor="contact_number" className="text-sm font-semibold text-gray-700 flex justify-between items-center gap-2 min-h-6">
                                     <span>Contact Number <span className="text-red-500">*</span></span>
                                     {contactNumber.length > 0 && (
                                         <span className={cn(
-                                            "text-[9px] font-bold uppercase py-0.5 px-2 rounded-full transition-all",
+                                            "shrink-0 text-[9px] font-bold uppercase py-0.5 px-2 rounded-full transition-all",
                                             contactNumber.length < 11 ? "bg-amber-100 text-amber-700 animate-pulse" :
                                             contactNumber.length === 11 ? "bg-emerald-100 text-emerald-700" :
                                             "bg-red-100 text-red-700"
                                         )}>
-                                            {contactNumber.length < 11 
+                                            {contactNumber.length < 11
                                                 ? `${11 - contactNumber.length} ${11 - contactNumber.length === 1 ? 'number' : 'numbers'} left`
                                                 : contactNumber.length === 11 ? "Verified" : "Too long"}
                                         </span>
                                     )}
                                 </Label>
-                                <Input 
-                                    id="contact_number" 
-                                    name="contact_number" 
-                                    type="tel" 
-                                    placeholder="09XXXXXXXXX" 
-                                    required 
-                                    disabled={isPending} 
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 md:items-start">
+                                <BorrowerNameField
+                                    id="borrower_name"
+                                    value={borrowerName}
+                                    onChange={setBorrowerName}
+                                    disabled={isPending}
+                                    dialogOpen={open}
+                                    manual={borrowerManualEntry}
+                                    onManualChange={setBorrowerManualEntry}
+                                />
+                                <Input
+                                    id="contact_number"
+                                    name="contact_number"
+                                    type="tel"
+                                    placeholder="09XXXXXXXXX"
+                                    required
+                                    disabled={isPending}
                                     value={contactNumber}
                                     onChange={(e) => {
                                         let val = e.target.value.replace(/\D/g, '');
-                                        // Auto-normalize 639 to 09
                                         if (val.startsWith('639')) {
                                             val = '0' + val.slice(2);
                                         }
                                         setContactNumber(val.slice(0, 11));
                                     }}
-                                    className="rounded-lg border-gray-300" 
+                                    className="h-11 rounded-lg border-gray-300"
                                 />
+                            </div>
+                            <div className="min-h-[22px]">
+                                {borrowerManualEntry ? (
+                                    <button
+                                        type="button"
+                                        disabled={isPending}
+                                        onClick={() => setBorrowerManualEntry(false)}
+                                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                                    >
+                                        Search registry instead
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled={isPending}
+                                        onClick={() => setBorrowerManualEntry(true)}
+                                        className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                                    >
+                                        <UserPlus className="h-3.5 w-3.5 shrink-0" />
+                                        New borrower (manual entry)
+                                    </button>
+                                )}
                             </div>
                         </div>
 

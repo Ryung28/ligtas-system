@@ -1,59 +1,65 @@
-export type TransactionStatus = 'borrowed' | 'returned' | 'overdue' | 'pending' | 'rejected' | 'cancelled' | 'mixed' | 'all' | 'staged' | 'reserved';
-export type TransactionType = 'borrow' | 'return';
+
+export type TransactionStatus = 'all' | 'borrowed' | 'returned' | 'pending' | 'overdue' | 'lost' | 'damaged' | 'maintenance' | 'reserved' | 'staged' | 'denied';
 
 export interface BorrowLog {
     id: number;
-    inventory_id: number;
+    inventory_id: number | null;
     item_name: string;
-    quantity: number;
     borrower_name: string;
-    borrower_contact: string;
-    borrower_organization: string;
-    transaction_type: TransactionType;
+    borrower_email: string | null;
+    borrower_organization: string | null;
+    borrower_contact: string | null;
+    borrower_user_id: string | null;
+    quantity: number;
+    status: TransactionStatus;
     borrow_date: string;
     expected_return_date: string | null;
     actual_return_date: string | null;
-    status: TransactionStatus;
-    notes?: string;
-    purpose?: string;
-    approved_by_name?: string | null;
-    released_by_name?: string | null;
-    released_by_user_id?: string | null;
-    received_by_name?: string | null;
-    received_by_user_id?: string | null;
-    return_condition?: string | null;
-    return_notes?: string | null;
-    pickup_scheduled_at?: string | null;
-    platform_origin?: 'Web' | 'Mobile';
-    created_origin?: 'Web' | 'Mobile' | null;
-    last_updated_origin?: 'Web' | 'Mobile' | null;
-    borrowed_from_warehouse?: string | null;
+    return_condition: string | null;
+    return_notes: string | null;
+    received_by_name: string | null;
+    returned_by_name: string | null;
+    approved_by_name: string | null;
+    released_by_name: string | null;
+    platform_origin: string | null;
+    pickup_scheduled_at: string | null;
+    return_scheduled_at: string | null;
+    purpose: string | null;
     created_at: string;
+    updated_at: string | null;
+    inventory?: {
+        item_name?: string;
+        image_url?: string | null;
+        item_type?: string;
+        category?: string;
+        serial_number?: string;
+        model_number?: string;
+        brand?: string;
+        expiry_date?: string;
+        storage_location?: string;
+    };
+    image_url?: string | null;
 }
 
 export interface BorrowSession {
-    key: string; // borrower_name + timestamp_minute
+    key: string;
     borrower_name: string;
-    borrower_organization: string;
-    borrower_contact: string;
-    items: BorrowLog[];
-    total_quantity: number;
-    status: TransactionStatus;
-    approved_by_name?: string | null;
-    released_by_name?: string | null;
-    pickup_scheduled_at?: string | null;
-    platform_origin?: 'Web' | 'Mobile';
-    created_origin?: 'Web' | 'Mobile' | null;
-    last_updated_origin?: 'Web' | 'Mobile' | null;
+    borrower_organization: string | null;
     created_at: string;
+    items: BorrowLog[];
+    total_items: number;
+    total_quantity: number;
+    status: 'mixed' | TransactionStatus;
 }
 
 export interface LogStats {
     total: number;
-    borrowed: number;
-    returned: number;
-    overdue: number;
+    active: number;
     pending: number;
     staged: number;
+    borrowed: number;
+    returned: number;
     reserved: number;
+    overdue: number;
+    returned_today: number;
 }

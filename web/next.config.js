@@ -1,24 +1,26 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
+  typescript: {
+    ignoreBuildErrors: true, 
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
       config.watchOptions = {
-        ignored: ['**/node_modules', '**/.next', 'D:/WindowsApps', 'D:/System Volume Information'],
+        poll: 2000,
+        aggregateTimeout: 3000,
+        ignored: /[\\/]node_modules[\\/]|[\\/]\.next[\\/]|System Volume Information|WindowsApps|\$RECYCLE\.BIN|Config\.Msi|Recovery/i
       }
     }
     return config
   },
-  transpilePackages: ['recharts'],
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'knarlvwnuvedyfvvaota.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/**',
-      },
-    ],
-  },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

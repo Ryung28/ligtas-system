@@ -33,6 +33,17 @@ class InventoryCard extends ConsumerWidget {
     final sentinel = Theme.of(context).sentinel;
     final theme = Theme.of(context);
 
+    // Expiry urgency for this item
+    final bool expiryAlert = item.hasAlert && item.expiryDate != null;
+    final int? daysLeft = item.expiryDate != null
+        ? item.expiryDate!.difference(DateTime.now()).inDays
+        : null;
+    final bool isExpired = daysLeft != null && daysLeft < 0;
+    final bool isCritical = daysLeft != null && daysLeft >= 0 && daysLeft <= 7;
+    final Color expiryAccent = isExpired || isCritical
+        ? const Color(0xFFDC2626)
+        : const Color(0xFFF59E0B);
+
     return GestureDetector(
       onTap: () {
         if (isManager) {
@@ -54,6 +65,9 @@ class InventoryCard extends ConsumerWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: sentinel.tactile.card,
+          border: expiryAlert
+              ? Border.all(color: expiryAccent.withOpacity(0.5), width: 1.5)
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,17 +80,55 @@ class InventoryCard extends ConsumerWidget {
                   HapticFeedback.lightImpact();
                   onImageTap?.call();
                 },
-                child: Hero(
-                  tag: 'inv_img_${item.id}',
-                  child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: item.imageUrl!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          placeholder: (context, url) => Container(color: sentinel.containerLow),
-                          errorWidget: (context, url, error) => _buildIconPlaceholder(sentinel),
-                        )
-                      : _buildIconPlaceholder(sentinel),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Hero(
+                      tag: 'inv_img_${item.id}',
+                      child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: item.imageUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              placeholder: (context, url) => Container(color: sentinel.containerLow),
+                              errorWidget: (context, url, error) => _buildIconPlaceholder(sentinel),
+                            )
+                          : _buildIconPlaceholder(sentinel),
+                    ),
+                    // Expiry alert badge overlay
+                    if (expiryAlert)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: expiryAccent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.schedule_rounded, color: Colors.white, size: 9),
+                              const SizedBox(width: 3),
+                              Text(
+                                isExpired
+                                    ? 'EXPIRED'
+                                    : isCritical
+                                        ? '${daysLeft}D'
+                                        : item.alertLabel,
+                                style: GoogleFonts.lexend(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -103,7 +155,9 @@ class InventoryCard extends ConsumerWidget {
                                 height: 44, // 🛡️ Frames Category (8) + Gap (2) + Name (34)
                                 margin: const EdgeInsets.only(top: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1E293B).withOpacity(0.15), // 🛡️ Industrial Charcoal Frame
+                                  color: expiryAlert
+                                      ? expiryAccent.withOpacity(0.7)
+                                      : const Color(0xFF1E293B).withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),

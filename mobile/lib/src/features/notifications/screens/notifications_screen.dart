@@ -101,7 +101,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
           // ── NOTIFICATION STREAM ──
           notificationsAsync.when(
-            data: (notifications) {
+            data: (allNotifications) {
+              // 🛡️ NOISE SUPPRESSION: Filter out boilerplate access messages
+              final notifications = allNotifications.where((n) {
+                final title = n.title.toLowerCase();
+                final message = n.message.toLowerCase();
+                final isAccessNoise = title.contains('new access') || message.contains('access granted');
+                return !isAccessNoise;
+              }).toList();
+
               if (notifications.isEmpty) {
                 return SliverFillRemaining(child: _buildEmptyState(context));
               }

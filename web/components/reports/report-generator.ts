@@ -1,6 +1,18 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-browser'
 import * as XLSX from 'xlsx'
 import type { ReportType, ReportConfig } from './types'
+import { isLowStock } from '@/lib/inventory-utils'
+
+/** Prevents XSS when injecting user data into print HTML. */
+function e(str: unknown): string {
+    if (str == null) return '—'
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+}
 
 export async function generateReport(
     type: ReportType,
@@ -50,13 +62,22 @@ export async function generateReport(
 }
 
 export async function fetchReportData(type: ReportType, config: ReportConfig) {
-    let query = supabase.from(getTableName(type)).select('*')
-    
+    const supabase = createClient()
+    const COLUMN_MAP: Record<string, string> = {
+        inventory: 'id,item_name,category,stock_available,stock_total,status,storage_location,serial_number,brand,expiry_date,expiry_alert_days,low_stock_threshold,target_stock,restock_alert_enabled',
+        borrow_logs: 'id,borrower_name,borrower_organization,borrower_contact,item_name,quantity,status,borrow_date,expected_return_date,actual_return_date,return_notes,return_condition,approved_by_name,released_by_name,received_by_name,created_at',
+    }
+    const table = getTableName(type)
+    const columns = COLUMN_MAP[table] || '*'
+
+    let query = supabase.from(table).select(columns)
+
     if (config.dateFrom) {
-        query = query.gte('created_at', config.dateFrom)
+        query = query.gte('created_at', `${config.dateFrom}T00:00:00`)
     }
     if (config.dateTo) {
-        query = query.lte('created_at', config.dateTo)
+        // Use end-of-day to include all records created on the selected date
+        query = query.lte('created_at', `${config.dateTo}T23:59:59`)
     }
     if (config.category && config.category !== 'all') {
         query = query.eq('category', config.category)
@@ -68,10 +89,10 @@ export async function fetchReportData(type: ReportType, config: ReportConfig) {
         query = query.in('status', config.status)
     }
 
-    // SENIOR FIX: Apply sorting based on primary temporal column
-    const sortColumn = type === 'logs' || type === 'borrower-activity' ? 'created_at' : 'item_name';
-    query = query.order(sortColumn, { ascending: config.sortOrder === 'oldest' });
-    
+    const sortColumn = type === 'logs' || type === 'borrower-activity' ? 'created_at' : 'item_name'
+    query = query.order(sortColumn, { ascending: config.sortOrder === 'oldest' })
+    query = (query as any).limit(500)
+
     const { data, error } = await query
     if (error) throw error
     return data || []
@@ -388,39 +409,41 @@ export function generateReportHTML(type: ReportType, data: any[], config: Report
 function generateTableContent(type: ReportType, data: any[]): string {
     switch (type) {
         case 'inventory':
-            return `<table><thead><tr><th style="width: 40%;">Item Name</th><th style="width: 25%;">Category</th><th style="width: 15%; text-align: right;">Stock</th><th style="width: 20%; text-align: center;">Status</th></tr></thead><tbody>${data.map(item => `<tr><td style="font-weight: 600;">${item.item_name}</td><td>${item.category}</td><td class="number">${item.stock_available}</td><td class="center"><span class="badge" style="color: white; background: ${item.stock_available === 0 ? '#dc2626' : item.stock_available < 5 ? '#ea580c' : '#16a34a'};">${item.stock_available === 0 ? 'OUT' : item.stock_available < 5 ? 'LOW' : 'READY'}</span></td></tr>`).join('')}</tbody></table>`
+            return `<table><thead><tr><th style="width: 40%;">Item Name</th><th style="width: 25%;">Category</th><th style="width: 15%; text-align: right;">Stock</th><th style="width: 20%; text-align: center;">Status</th></tr></thead><tbody>${data.map(item => `<tr><td style="font-weight: 600;">${e(item.item_name)}</td><td>${e(item.category)}</td><td class="number">${item.stock_available}</td><td class="center"><span class="badge" style="color: white; background: ${item.stock_available === 0 ? '#dc2626' : isLowStock(item) ? '#ea580c' : '#16a34a'};">${item.stock_available === 0 ? 'OUT' : isLowStock(item) ? 'LOW' : 'READY'}</span></td></tr>`).join('')}</tbody></table>`
+
         
         case 'logs':
-            return `<table><thead><tr><th style="width: 10%;">Borrow Date</th><th style="width: 10%;">Borrower</th><th style="width: 15%;">Item</th><th style="width: 5%; text-align: center;">Qty</th><th style="width: 10%;">Authorized By</th><th style="width: 10%;">Issued By</th><th style="width: 10%;">Return Date</th><th style="width: 8%; text-align: center;">Status</th><th style="width: 22%;">Return Verification</th></tr></thead><tbody>${data.map(log => {
+            return `<table><thead><tr><th style="width: 8%;">Borrow Date</th><th style="width: 10%;">Borrower</th><th style="width: 12%;">Item</th><th style="width: 4%; text-align: center;">Qty</th><th style="width: 9%;">Authorized</th><th style="width: 9%;">Issued</th><th style="width: 8%;">Return Date</th><th style="width: 9%;">Returned By</th><th style="width: 9%;">Received By</th><th style="width: 7%; text-align: center;">Status</th><th style="width: 15%;">Return Audit</th></tr></thead><tbody>${data.map(log => {
                 const borrowDate = new Date(log.borrow_date || log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                 const returnDate = log.actual_return_date ? new Date(log.actual_return_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
                 
-                // 🏛️ IDENTITY SEPARATION: Authorized (Who Said Yes) vs Issued (Who Handed Gear)
-                const authority = `<div style="font-weight: 600; font-size: 7.5pt;">${log.approved_by_name || '—'}</div>`
-                const releaseAgent = `<div style="font-weight: 600; font-size: 7.5pt;">${log.released_by_name || '—'}</div>`
+                // 🏛️ IDENTITY SEPARATION: Authorized vs Issued vs Received
+                const authority = `<div style="font-weight: 600; font-size: 7pt;">${e(log.approved_by_name)}</div>`
+                const releaseAgent = `<div style="font-weight: 600; font-size: 7pt;">${e(log.released_by_name)}</div>`
+                const returner = `<div style="font-weight: 600; font-size: 7pt;">${e(log.returned_by_name)}</div>`
+                const receivedBy = `<div style="font-weight: 600; font-size: 7pt;">${e(log.received_by_name)}</div>`
                 
-                // 🛡️ EXCEPTION-ONLY AUDIT: Hide [GOOD] to reduce signal noise
+                // 🛡️ EXCEPTION-ONLY AUDIT: Show condition + notes (NO personnel names here)
                 const isException = log.return_condition && log.return_condition.toLowerCase() !== 'good'
-                const conditionBadge = isException ? `<span style="font-size: 7.5pt; font-weight: 900; color: ${log.return_condition === 'damaged' ? '#dc2626' : '#ea580c'}; text-transform: uppercase;">[${log.return_condition}]</span>` : ''
-                const receiverName = log.received_by_name ? `<span style="font-size: 7.5pt; font-weight: 700; color: #0f172a; margin-left: 4px;">(${log.received_by_name})</span>` : ''
-                const noteContent = log.return_notes ? `<div style="font-size: 7.5pt; color: #64748b; margin-top: 2px; font-style: italic; line-height: 1.1;">"${log.return_notes}"</div>` : ''
+                const conditionBadge = isException ? `<span style="font-size: 7.5pt; font-weight: 900; color: ${log.return_condition === 'damaged' ? '#dc2626' : '#ea580c'}; text-transform: uppercase;">[${e(log.return_condition)}]</span>` : ''
+                const noteContent = log.return_notes ? `<div style="font-size: 7.5pt; color: #64748b; margin-top: 2px; font-style: italic; line-height: 1.1;">&ldquo;${e(log.return_notes)}&rdquo;</div>` : ''
                 
-                const auditTrail = log.status === 'returned' 
-                    ? `<div>${conditionBadge}${receiverName}</div>${noteContent}` 
+                const auditNotes = log.status === 'returned' 
+                    ? `<div>${conditionBadge}</div>${noteContent}` 
                     : '<span style="color:#cbd5e1; font-size:7pt;">AWAITS RETURN</span>'
 
-                return `<tr><td class="date">${borrowDate}</td><td style="font-weight: 600;">${log.borrower_name || '—'}</td><td>${log.item_name || '—'}</td><td class="center">${log.quantity || 0}</td><td>${authority}</td><td>${releaseAgent}</td><td class="date">${returnDate}</td><td class="center"><span class="badge" style="color: white; background: ${log.status === 'borrowed' ? '#ea580c' : log.status === 'returned' ? '#16a34a' : '#dc2626'};">${log.status.toUpperCase()}</span></td><td>${auditTrail}</td></tr>`
+                return `<tr><td class="date">${borrowDate}</td><td style="font-weight: 600; font-size:8pt;">${e(log.borrower_name)}</td><td style="font-size:8pt;">${e(log.item_name)}</td><td class="center">${log.quantity || 0}</td><td>${authority}</td><td>${releaseAgent}</td><td class="date">${returnDate}</td><td>${returner}</td><td>${receivedBy}</td><td class="center"><span class="badge" style="color: white; background: ${log.status === 'borrowed' ? '#ea580c' : log.status === 'returned' ? '#16a34a' : '#dc2626'};">${e(log.status).toUpperCase()}</span></td><td>${auditNotes}</td></tr>`
             }).join('')}</tbody></table>`
         
         case 'low-stock':
-            return `<div class="alert-box">⚠️ LOGISTICS WARNING: The following items are below operational thresholds.</div><table><thead><tr><th style="width: 50%;">Critical Item</th><th style="width: 20%; text-align: right;">Available</th><th style="width: 30%;">Requirement</th></tr></thead><tbody>${data.filter(item => item.stock_available < 5).map(item => `<tr><td style="font-weight: 600;">${item.item_name}</td><td class="number" style="color: #dc2626; font-weight: 700;">${item.stock_available}</td><td>Immediate Procurement</td></tr>`).join('')}</tbody></table>`
+            return `<div class="alert-box">⚠️ LOGISTICS WARNING: The following items are below operational thresholds.</div><table><thead><tr><th style="width: 50%;">Critical Item</th><th style="width: 20%; text-align: right;">Available</th><th style="width: 30%;">Requirement</th></tr></thead><tbody>${data.filter(item => isLowStock(item)).map(item => `<tr><td style="font-weight: 600;">${item.item_name}</td><td class="number" style="color: #dc2626; font-weight: 700;">${item.stock_available}</td><td>Immediate Procurement</td></tr>`).join('')}</tbody></table>`
         
         case 'overdue':
             return `<table><thead><tr><th style="width: 30%;">Item</th><th style="width: 25%;">Borrower</th><th style="width: 15%; text-align: right;">Days Overdue</th><th style="width: 15%;">Expected Return</th><th style="width: 15%; text-align: center;">Priority</th></tr></thead><tbody>${data.filter(log => log.status === 'borrowed' && new Date(log.expected_return_date) < new Date()).map(log => {
                 const daysOverdue = Math.floor((Date.now() - new Date(log.expected_return_date).getTime()) / (1000 * 60 * 60 * 24))
                 const priority = daysOverdue > 14 ? 'HIGH' : daysOverdue > 7 ? 'MEDIUM' : 'LOW'
                 const color = daysOverdue > 14 ? '#dc2626' : daysOverdue > 7 ? '#ea580c' : '#eab308'
-                return `<tr><td style="font-weight: 600;">${log.item_name}</td><td>${log.borrower_name}</td><td class="number" style="color: #dc2626; font-weight: 700;">${daysOverdue}</td><td class="date">${new Date(log.expected_return_date).toLocaleDateString()}</td><td class="center"><span class="badge" style="color: white; background: ${color};">${priority}</span></td></tr>`
+                return `<tr><td style="font-weight: 600;">${e(log.item_name)}</td><td>${e(log.borrower_name)}</td><td class="number" style="color: #dc2626; font-weight: 700;">${daysOverdue}</td><td class="date">${new Date(log.expected_return_date).toLocaleDateString()}</td><td class="center"><span class="badge" style="color: white; background: ${color};">${priority}</span></td></tr>`
             }).join('')}</tbody></table>`
         
         case 'summary':
@@ -435,16 +458,17 @@ function generateTableContent(type: ReportType, data: any[]): string {
             return `<div class="alert-box">⚠️ SAFETY ALERT: The following consumables require immediate attention.</div><table><thead><tr><th style="width: 22%;">Item Name</th><th style="width: 15%;">Brand</th><th style="width: 13%;">Expiry Date</th><th style="width: 13%; text-align: right;">Days Remaining</th><th style="width: 15%; text-align: center;">Status</th><th style="width: 22%;">Location</th></tr></thead><tbody>${data.filter(item => item.expiry_date).map(item => {
                 const expiryDate = new Date(item.expiry_date)
                 const daysRemaining = Math.floor((expiryDate.getTime() - now) / (1000 * 60 * 60 * 24))
-                const status = daysRemaining < 0 ? 'EXPIRED' : daysRemaining <= 7 ? 'URGENT' : daysRemaining <= 30 ? 'WARNING' : 'OK'
-                const color = daysRemaining < 0 ? '#dc2626' : daysRemaining <= 7 ? '#dc2626' : daysRemaining <= 30 ? '#ea580c' : '#eab308'
-                return `<tr><td style="font-weight: 600;">${item.item_name}</td><td>${item.brand || '—'}</td><td class="date">${expiryDate.toLocaleDateString()}</td><td class="number" style="font-weight: 700; color: ${daysRemaining < 0 ? '#dc2626' : 'inherit'};">${daysRemaining}</td><td class="center"><span class="badge" style="color: white; background: ${color};">${status}</span></td><td>${item.storage_location || '—'}</td></tr>`
+                const alertWindow = item.expiry_alert_days ?? 15
+                const status = daysRemaining < 0 ? 'EXPIRED' : daysRemaining <= 7 ? 'URGENT' : daysRemaining <= alertWindow ? 'WARNING' : 'OK'
+                const color = daysRemaining < 0 ? '#dc2626' : daysRemaining <= 7 ? '#dc2626' : daysRemaining <= alertWindow ? '#ea580c' : '#eab308'
+                return `<tr><td style="font-weight: 600;">${e(item.item_name)}</td><td>${e(item.brand)}</td><td class="date">${expiryDate.toLocaleDateString()}</td><td class="number" style="font-weight: 700; color: ${daysRemaining < 0 ? '#dc2626' : 'inherit'};">${daysRemaining}</td><td class="center"><span class="badge" style="color: white; background: ${color};">${status}</span></td><td>${e(item.storage_location)}</td></tr>`
             }).join('')}</tbody></table>`
 
         case 'borrower-activity':
             return `<table><thead><tr><th style="width: 15%;">Date</th><th style="width: 35%;">Equipment</th><th style="width: 10%; text-align: center;">Qty</th><th style="width: 20%; text-align: center;">Action</th><th style="width: 20%;">Condition</th></tr></thead><tbody>${data.map(log => {
                 const logDate = new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                 const statusColor = log.status === 'borrowed' ? '#ea580c' : '#16a34a'
-                return `<tr><td class="date">${logDate}</td><td style="font-weight: 600;">${log.item_name}</td><td class="center">${log.quantity}</td><td class="center"><span class="badge" style="color: white; background: ${statusColor};">${log.status.toUpperCase()}</span></td><td>${log.return_condition || '—'}</td></tr>`
+                return `<tr><td class="date">${logDate}</td><td style="font-weight: 600;">${e(log.item_name)}</td><td class="center">${log.quantity}</td><td class="center"><span class="badge" style="color: white; background: ${statusColor};">${e(log.status).toUpperCase()}</span></td><td>${e(log.return_condition)}</td></tr>`
             }).join('')}</tbody></table>`
         
         default:
@@ -528,6 +552,7 @@ function prepareExcelData(type: ReportType, data: any[]): { headers: string[], r
             { key: 'quantity', label: 'Qty' },
             { key: 'approved_by_name', label: 'Approved By' },
             { key: 'actual_return_date', label: 'Return Date/Time' },
+            { key: 'returned_by_name', label: 'Physically Returned By' },
             { key: 'status', label: 'Status' },
             { key: 'return_condition', label: 'Return Condition' },
             { key: 'return_notes', label: 'Return Notes' }

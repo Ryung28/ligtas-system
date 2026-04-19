@@ -23,6 +23,7 @@ export const addItemSchema = z.object({
     brand: z.string().optional().nullable(),
     model_number: z.string().optional().nullable(),
     expiry_date: z.string().optional().nullable(),
+    expiry_alert_days: z.coerce.number().int().positive().optional().nullable(),
     parent_id: z.coerce.number().optional().nullable(),
     variant_label: z.string().optional().nullable(),
     target_stock: z.coerce.number().min(0).default(0),

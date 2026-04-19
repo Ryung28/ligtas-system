@@ -155,6 +155,7 @@ export type Database = {
           return_condition: string | null
           return_notes: string | null
           returned_by: string | null
+          returned_by_name: string | null
           status: string
           transaction_type: string
           updated_at: string | null
@@ -188,6 +189,7 @@ export type Database = {
           return_condition?: string | null
           return_notes?: string | null
           returned_by?: string | null
+          returned_by_name?: string | null
           status?: string
           transaction_type: string
           updated_at?: string | null
@@ -221,6 +223,7 @@ export type Database = {
           return_condition?: string | null
           return_notes?: string | null
           returned_by?: string | null
+          returned_by_name?: string | null
           status?: string
           transaction_type?: string
           updated_at?: string | null

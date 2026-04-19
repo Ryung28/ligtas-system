@@ -55,6 +55,7 @@ export interface InventoryItem {
     primary_location?: string
     brand?: string
     expiry_date?: string
+    expiry_alert_days?: number | null
     target_stock?: number
     low_stock_threshold?: number
     restock_alert_enabled?: boolean
@@ -64,6 +65,9 @@ export interface InventoryItem {
 export function getInventoryImageUrl(pathOrUrl?: string | null) {
     if (!pathOrUrl || pathOrUrl.trim() === '') return null
     
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://knarlvwnuvedyfvvaota.supabase.co'
+    const BUCKET = 'item-images'
+
     // 🛡️ DEFENSIVE RESOLVER: Handle both raw paths and potentially expired URLs
     if (pathOrUrl.startsWith('http')) {
         // If it's our own Supabase URL, extract path to avoid expired signatures/tokens
@@ -76,9 +80,8 @@ export function getInventoryImageUrl(pathOrUrl?: string | null) {
                 const bucketName = parts[1]
                 const filePath = parts.slice(2).join('/')
                 
-                if (bucketName === 'item-images') {
-                    const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath)
-                    return data.publicUrl
+                if (bucketName === BUCKET) {
+                    return `${baseUrl}/storage/v1/object/public/${BUCKET}/${filePath}`
                 }
             } catch (e) {
                 return pathOrUrl // Fallback on parse error
@@ -91,13 +94,12 @@ export function getInventoryImageUrl(pathOrUrl?: string | null) {
     // This allows the system to handle 'mask.png', '/mask.png', and 'item-images/mask.png' correctly.
     let cleanPath = pathOrUrl.trim().replace(/^\/+/, '')
     
-    const BUCKET = 'item-images'
     if (cleanPath.startsWith(`${BUCKET}/`)) {
         cleanPath = cleanPath.replace(`${BUCKET}/`, '')
     }
     
-    // 🏛️ RELIABLE SDK RESOLUTION: Use the official Supabase SDK storage helper
-    // This handles URL encoding and bucket context correctly.
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(cleanPath)
-    return data.publicUrl
+    // 🚀 BULLETPROOF RESOLUTION: Manually construct the public URL
+    // By doing this manually, we avoid any bugs where the Supabase SDK returns a relative
+    // path if it was instantiated without NEXT_PUBLIC_SUPABASE_URL in specific Next.js Server Actions.
+    return `${baseUrl}/storage/v1/object/public/${BUCKET}/${cleanPath}`
 }

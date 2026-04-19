@@ -17,7 +17,9 @@ export async function createSupabaseServer() {
         {
             cookies: {
                 get(name: string) {
-                    return cookieStore.get(name)?.value
+                    const cookie = cookieStore.get(name)
+                    // 🛡️ Safety Shield: Ensure we only return the string value to Supabase
+                    return typeof cookie === 'object' ? cookie?.value : cookie
                 },
                 set(name: string, value: string, options: any) {
                     try {

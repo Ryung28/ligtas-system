@@ -213,25 +213,6 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
                     height: 1.1,
                   ),
                 ),
-                const Gap(8),
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
-                    ),
-                    const Gap(8),
-                    Text(
-                      categoryLabel ?? 'Operational Resource', 
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
                 const Gap(12), // 🛡️ COMPACT: Snaps the action hub closer to the identity header
 
                 // 🏗️ BENTO GRID GENERATOR
@@ -527,8 +508,6 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
                 ),
                 Text(
                   value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

@@ -4,6 +4,7 @@ import { MobileNav } from '@/components/mobile/mobile-nav'
 import { Metadata, Viewport } from 'next'
 import { AdaptiveRoutingSentry } from '@/components/layout/adaptive-routing-sentry'
 import { InventoryProvider } from '@/providers/inventory-provider'
+import { TransactionDetailSheet } from '@/components/mobile/transactions/transaction-detail-sheet'
 
 export const metadata: Metadata = {
     title: 'LIGTAS Tactical',
@@ -55,6 +56,9 @@ export default function MobileLayout({
 
                 {/* Bottom Strategic Navigation Layer */}
                 <MobileNav />
+                
+                {/* 🎯 GLOBAL TRIAGE LAYER: Handles URL-driven detailed inspections */}
+                <TransactionDetailSheet />
                 
                 {/* Visual Feedback Overlays (Optional reserved space for Toast/Notifications) */}
             </div>

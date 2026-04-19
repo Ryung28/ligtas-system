@@ -53,4 +53,11 @@ tmp/
 temp/
 backup/
 *.bak
-*.swp
+# ─── WINDOWS SYSTEM BLOCK (Fixes Scan Crashes) ───
+System Volume Information/
+WindowsApps/
+$RECYCLE.BIN/
+$Recycle.Bin/
+Config.Msi/
+Recovery/
+

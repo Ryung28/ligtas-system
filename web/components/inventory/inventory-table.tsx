@@ -46,7 +46,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
     const [conditionFilter, setConditionFilter] = useState<string>('all')
-    const [statusFilter, setStatusFilter] = useState<'all' | 'pending'>('all')
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'low_stock' | 'out_of_stock'>('all')
     const [locationFilter, setLocationFilter] = useState<string>('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
@@ -60,6 +60,11 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     useEffect(() => {
         const id = searchParams.get('id')
         const search = searchParams.get('search')
+        const status = searchParams.get('status')
+
+        if (status) {
+            setStatusFilter(status as any)
+        }
 
         if (id) {
             setSearchQuery('') 
@@ -150,6 +155,8 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         const filterTabs = [
             { value: 'all', label: 'All Items', count: items.length },
             { value: 'pending', label: 'Alerts', count: pendingCount, color: 'amber' },
+            ...(statusFilter === 'low_stock' ? [{ value: 'low_stock', label: 'Low Stock', count: items.filter(i => isLowStock(i)).length, color: 'amber' as const }] : []),
+            ...(statusFilter === 'out_of_stock' ? [{ value: 'out_of_stock', label: 'Out of Stock', count: items.filter(i => i.stock_available === 0).length, color: 'rose' as const }] : []),
         ]
 
         const categoryFilterTabs = [
@@ -168,7 +175,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             categoryFilterTabs,
             finalCategories: sortedCategories,
         }
-    }, [items, localCategories])
+    }, [items, localCategories, statusFilter])
 
     const { uniqueLocations, filterCounts, filterTabs, categoryFilterTabs, finalCategories } = derivedData
 
@@ -218,6 +225,10 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                 }
 
                 matchesStatus = hasPending || isLowStockItem || hasHealthIssues || isExpiring
+            } else if (statusFilter === 'low_stock') {
+                matchesStatus = isLowStock(item)
+            } else if (statusFilter === 'out_of_stock') {
+                matchesStatus = item.stock_available === 0
             }
 
             let matchesLocation = true
@@ -319,7 +330,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     // Reset page on filter change
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchQuery, categoryFilter, conditionFilter, locationFilter])
+    }, [searchQuery, categoryFilter, conditionFilter, locationFilter, statusFilter])
 
     const handleSelectAll = () => {
         if (selectedItems.length === paginatedItems.length) {

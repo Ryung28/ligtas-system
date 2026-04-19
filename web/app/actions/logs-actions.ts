@@ -2,6 +2,7 @@
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { BorrowLog } from '@/lib/types/inventory'
+import { getInventoryImageUrl } from '@/lib/supabase'
 
 /**
  * 🛡️ THE SERVER BRIDGE: Secured Log Fetcher
@@ -13,7 +14,7 @@ import { BorrowLog } from '@/lib/types/inventory'
 export async function getBorrowLogsAction() {
     try {
         const supabase = await createSupabaseServer()
-        
+
         const { data, error } = await supabase
             .from('borrow_logs')
             .select(`
@@ -38,7 +39,8 @@ export async function getBorrowLogsAction() {
             ...log,
             item_name: (log.item_name && log.item_name !== 'Unknown Item')
                 ? log.item_name
-                : (log.inventory?.item_name || log.item_name || 'Unknown Item')
+                : (log.inventory?.item_name || log.item_name || 'Unknown Item'),
+            image_url: getInventoryImageUrl((Array.isArray(log.inventory) ? log.inventory[0]?.image_url : log.inventory?.image_url) || null)
         })) as BorrowLog[]
 
         return { success: true, data: logs }
@@ -57,7 +59,7 @@ export async function getBorrowLogsAction() {
 export async function getBorrowLogByIdAction(id: string) {
     try {
         const supabase = await createSupabaseServer()
-        
+
         const { data, error } = await supabase
             .from('borrow_logs')
             .select(`
@@ -65,7 +67,13 @@ export async function getBorrowLogByIdAction(id: string) {
                 inventory:inventory_id (
                     item_name,
                     image_url,
-                    item_type
+                    item_type,
+                    category,
+                    serial_number,
+                    model_number,
+                    brand,
+                    expiry_date,
+                    storage_location
                 )
             `)
             .eq('id', id)
@@ -80,7 +88,8 @@ export async function getBorrowLogByIdAction(id: string) {
             ...data,
             item_name: (data.item_name && data.item_name !== 'Unknown Item')
                 ? data.item_name
-                : (data.inventory?.item_name || data.item_name || 'Unknown Item')
+                : (Array.isArray(data.inventory) ? data.inventory[0]?.item_name : data.inventory?.item_name) || data.item_name || 'Unknown Item',
+            image_url: getInventoryImageUrl((Array.isArray(data.inventory) ? data.inventory[0]?.image_url : data.inventory?.image_url) || null)
         } as BorrowLog
 
         return { success: true, data: log }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Loader2 } from 'lucide-react'
+import { resolveCategoryIcon } from '@/lib/category-icons'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -104,11 +105,21 @@ export function AddItemDialog() {
                                         <SelectValue placeholder="Select Category" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
-                                        {CATEGORIES.map((category) => (
-                                            <SelectItem key={category} value={category} className="text-sm font-medium rounded-lg">
-                                                {category}
-                                            </SelectItem>
-                                        ))}
+                                        {CATEGORIES.map((category) => {
+                                            const CatIcon = resolveCategoryIcon(category)
+                                            return (
+                                                <SelectItem
+                                                    key={category}
+                                                    value={category}
+                                                    className="rounded-lg text-sm font-medium"
+                                                >
+                                                    <span className="flex items-center gap-2.5">
+                                                        <CatIcon className="h-4 w-4 shrink-0 text-slate-500" strokeWidth={2} />
+                                                        {category}
+                                                    </span>
+                                                </SelectItem>
+                                            )
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>

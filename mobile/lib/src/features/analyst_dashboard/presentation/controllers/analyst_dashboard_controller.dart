@@ -45,28 +45,6 @@ class AnalystDashboardController extends _$AnalystDashboardController {
     }
   }
 
-  /// 🛡️ FORENSIC SIGN-OFF: Verify a logistical event
-  Future<void> verifyEvent(String eventId, {String? notes}) async {
-    final repository = ref.read(analystRepositoryProvider);
-    final user = ref.read(currentUserProvider);
-    
-    if (user == null) return;
-
-    try {
-      await repository.verifyActivityEvent(
-        eventId: eventId,
-        analystId: user.id,
-        forensicNote: notes,
-      );
-      
-      // Industrial Feedback: Refresh data to reflect verification
-      await refresh();
-    } catch (e) {
-      // Logic for handling verification errors (e.g., connection drop)
-      throw AnalystDashboardException('Verification protocol failed for event ID: $eventId', originalError: e);
-    }
-  }
-
   /// ⚙️ COMMAND OVERRIDE: Administratively restock an asset
   Future<void> restockAsset({
     required int inventoryId,

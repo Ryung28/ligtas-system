@@ -2,11 +2,11 @@
 // Network-first strategy for auth-gated routes, cache-first for static assets
 
 const CACHE_NAME = 'ligtas-tactical-v3';
-const OFFLINE_URL = '/offline';
+const OFFLINE_URL = '/offline.html';
 
 // Only cache truly static assets — NOT auth-gated routes
 const PRECACHE_ASSETS = [
-  '/offline',
+  '/offline.html',
   '/oro-cervo.png',
   '/favicon.ico'
 ];

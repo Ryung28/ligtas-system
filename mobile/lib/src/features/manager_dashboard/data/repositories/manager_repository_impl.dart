@@ -6,8 +6,17 @@ import 'package:mobile/src/features/manager_dashboard/domain/entities/resource_a
 import 'package:mobile/src/features/analyst_dashboard/domain/entities/activity_event.dart';
 import 'package:mobile/src/features/manager_dashboard/domain/repositories/i_manager_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:mobile/src/core/utils/storage_location_labels.dart';
 
 part 'manager_repository_impl.g.dart';
+
+String? _borrowSiteForLog(Map<String, dynamic> json) {
+  final raw = json['borrowed_from_warehouse'] ?? json['warehouse_id'];
+  if (raw == null) return null;
+  final s = raw.toString().trim();
+  if (s.isEmpty) return null;
+  return formatStorageLocationLabel(s);
+}
 
 /// Concrete Implementation: Supabase Manager Repository Silo
 /// Strictly follows LIGTAS V4 Protocol for Data-UI Separation
@@ -131,6 +140,7 @@ class ManagerRepositoryImpl implements IManagerRepository {
         final typeStr = json['transaction_type'] as String? ?? 'borrow';
         final statusStr = json['status'] as String? ?? 'pending';
 
+        final site = _borrowSiteForLog(json);
         return ActivityEvent(
           id: json['id'].toString(),
           type: typeStr == 'return' ? EventType.assetIn : EventType.assetOut,
@@ -141,7 +151,8 @@ class ManagerRepositoryImpl implements IManagerRepository {
           timestamp: DateTime.parse(json['created_at']),
           priority: statusStr == 'pending' ? 'ACTION REQUIRED' : null,
           actorName: json['borrower_name'],
-          locationTarget: json['borrowed_from_warehouse'],
+          locationSource: site,
+          locationTarget: site,
         );
       }).toList();
     } catch (e) {
@@ -165,16 +176,20 @@ class ManagerRepositoryImpl implements IManagerRepository {
         .from('borrow_logs')
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .map((data) => (data as List).map((json) => ActivityEvent(
-              id: json['id'].toString(),
-              type: json['transaction_type'] == 'return' ? EventType.assetIn : EventType.assetOut,
-              title: '${json['item_name']}',
-              subtitle: 'Borrower: ${json['borrower_name']}',
-              status: _mapStatus(json['status']),
-              timestamp: DateTime.parse(json['created_at']),
-              actorName: json['borrower_name'],
-              locationTarget: json['borrowed_from_warehouse'],
-            )).first);
+        .map((data) => (data as List).map((json) {
+              final site = _borrowSiteForLog(json);
+              return ActivityEvent(
+                id: json['id'].toString(),
+                type: json['transaction_type'] == 'return' ? EventType.assetIn : EventType.assetOut,
+                title: '${json['item_name']}',
+                subtitle: 'Borrower: ${json['borrower_name']}',
+                status: _mapStatus(json['status']),
+                timestamp: DateTime.parse(json['created_at']),
+                actorName: json['borrower_name'],
+                locationSource: site,
+                locationTarget: site,
+              );
+            }).first);
   }
 
   EventStatus _mapStatus(String status) {

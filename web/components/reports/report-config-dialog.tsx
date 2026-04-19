@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Printer, Eye, Download } from 'lucide-react'
+import { Loader2, Printer, Eye, Download } from 'lucide-react'
 import type { ReportType, ReportConfig } from './types'
 import { generateReport } from './report-generator'
+import { toast } from 'sonner'
 
 interface ReportConfigDialogProps {
     reportType: ReportType
@@ -32,24 +33,31 @@ export function ReportConfigDialog({ reportType, onClose, onGenerate }: ReportCo
         includePageNumbers: true,
         includeWatermark: true,
     })
+    const [isLoading, setIsLoading] = useState(false)
 
     const handlePrint = async () => {
+        setIsLoading(true)
         try {
             await generateReport(reportType, config, 'print')
             onGenerate()
         } catch (error) {
             console.error('Failed to generate report:', error)
-            alert('Failed to generate report')
+            toast.error('Failed to generate report. Check your connection.')
+        } finally {
+            setIsLoading(false)
         }
     }
 
     const handleExport = async () => {
+        setIsLoading(true)
         try {
             await generateReport(reportType, config, 'excel')
             onGenerate()
         } catch (error) {
             console.error('Failed to export report:', error)
-            alert('Failed to export report')
+            toast.error('Failed to export report. Check your connection.')
+        } finally {
+            setIsLoading(false)
         }
     }
 
@@ -176,13 +184,13 @@ export function ReportConfigDialog({ reportType, onClose, onGenerate }: ReportCo
                     </div>
 
                     <div className="flex gap-2 pt-4">
-                        <Button onClick={handlePrint} className="flex-1 h-9 text-sm">
-                            <Printer className="h-4 w-4 mr-2" />
-                            Print
+                        <Button onClick={handlePrint} disabled={isLoading} className="flex-1 h-9 text-sm">
+                            {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                            {isLoading ? 'Generating...' : 'Print'}
                         </Button>
-                        <Button onClick={handleExport} variant="outline" className="flex-1 h-9 text-sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            Excel
+                        <Button onClick={handleExport} disabled={isLoading} variant="outline" className="flex-1 h-9 text-sm">
+                            {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                            {isLoading ? 'Exporting...' : 'Excel'}
                         </Button>
                     </div>
                 </div>

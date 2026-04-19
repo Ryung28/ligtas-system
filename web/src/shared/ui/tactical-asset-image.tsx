@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Package, Maximize2, ShieldCheck } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Package, Maximize2 } from 'lucide-react'
 import { getInventoryImageUrl } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -11,7 +11,7 @@ interface TacticalAssetImageProps {
     url?: string | null
     alt: string
     className?: string
-    size?: 'sm' | 'md' | 'lg' | 'xl'
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
     priority?: boolean
 }
 
@@ -31,16 +31,26 @@ export function TacticalAssetImage({ url, alt, className, size = 'md', priority 
 
     const fullUrl = url ? getInventoryImageUrl(url) : null
 
+    /** Fills a bounded parent (e.g. h-16 w-16). Required when size="full" so flex + DialogTrigger don't collapse to 0×0. */
+    const wrapFullSlot = (node: ReactNode) =>
+        size === 'full' ? (
+            <div className="relative h-full w-full min-h-0 min-w-0">{node}</div>
+        ) : (
+            node
+        )
+
     const sizeClasses = {
         sm: 'w-10 h-10',
         md: 'w-14 h-14',
         lg: 'w-16 h-16',
-        xl: 'w-24 h-24'
+        xl: 'w-24 h-24',
+        full: 'w-full h-full'
     }
 
     const content = (
         <div className={cn(
-            "relative bg-white border border-slate-100 overflow-hidden flex items-center justify-center transition-all shrink-0",
+            "relative overflow-hidden flex items-center justify-center transition-all shrink-0",
+            size === 'full' ? 'bg-transparent border-none p-0' : 'bg-white border border-slate-100 p-1.5',
             sizeClasses[size],
             className
         )}>
@@ -58,8 +68,8 @@ export function TacticalAssetImage({ url, alt, className, size = 'md', priority 
                         unoptimized
                         priority={priority}
                         className={cn(
-                            "object-contain p-1.5 transition-all duration-500",
-                            isLoading ? "scale-90 blur-md opacity-0" : "scale-100 blur-0 opacity-100"
+                            "object-contain transition-all duration-500",
+                            isLoading ? "scale-95 blur-sm" : "scale-100 blur-0"
                         )}
                         onLoadingComplete={() => setIsLoading(false)}
                         onError={() => setIsError(true)}
@@ -78,12 +88,21 @@ export function TacticalAssetImage({ url, alt, className, size = 'md', priority 
     )
 
     // No lightbox if there's no image
-    if (!fullUrl || isError) return content
+    if (!fullUrl || isError) return wrapFullSlot(content)
 
-    return (
+    return wrapFullSlot(
         <Dialog>
             <DialogTrigger asChild>
-                <button type="button" className="group focus:outline-none shrink-0">
+                <button
+                    type="button"
+                    className={cn(
+                        'group focus:outline-none p-0',
+                        size === 'full'
+                            ? 'absolute inset-0 z-0 block size-full min-h-0 min-w-0'
+                            : 'shrink-0'
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     {content}
                 </button>
             </DialogTrigger>
@@ -103,9 +122,9 @@ export function TacticalAssetImage({ url, alt, className, size = 'md', priority 
                 {/* Cinema Canvas - Bounded to Aspect Video like Legacy */}
                 <div className="relative w-full aspect-video flex items-center justify-center p-8">
                     {fullUrl && (
-                        <Image 
-                            src={fullUrl} 
-                            alt={alt} 
+                        <Image
+                            src={fullUrl}
+                            alt={alt}
                             fill
                             unoptimized
                             className="object-contain rounded-lg animate-in zoom-in-95 duration-300 p-8"

@@ -427,7 +427,7 @@ class _HubStockSnapshotProviderElement
 }
 
 String _$analystDashboardControllerHash() =>
-    r'9a06f90d046340a4b5d786b9a681c6739049cd4f';
+    r'9546fa599dccad760e9889fc1f2c4946417639d2';
 
 /// Master Controller: Aggregates all analyst dashboard data
 /// Updated for Sentinel Real-Time Logistical Reactivity

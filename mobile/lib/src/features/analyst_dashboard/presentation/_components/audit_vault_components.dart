@@ -20,6 +20,15 @@ import '../../../../core/design_system/widgets/tactical_forensic_card.dart';
 import '../../../../core/design_system/widgets/tactical_image_viewer.dart';
 import '../../../../core/design_system/widgets/tactical_forensic_detail_sheet.dart';
 import '../controllers/analyst_dashboard_controller.dart';
+import '../../../../core/utils/storage_location_labels.dart';
+
+String? _displayBorrowSite(ActivityEvent e) {
+  final raw = e.locationSource ?? e.locationTarget;
+  if (raw == null) return null;
+  final t = raw.trim();
+  if (t.isEmpty) return null;
+  return formatStorageLocationLabel(t);
+}
 
 /// 🏛️ AUDIT VAULT COMPONENT HUB
 /// Centralized forensic UI organisms for the Analyst Audit System.
@@ -34,6 +43,7 @@ class AuditLedgerRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final borrowSite = _displayBorrowSite(event);
     final statusColor = _getSoftStatusColor(event.type);
     final iconColor = _getStatusColor(event.type);
     final quantityColor = _getQuantityColor(event.type);
@@ -109,6 +119,27 @@ class AuditLedgerRow extends ConsumerWidget {
                       letterSpacing: -0.3,
                     ),
                   ),
+                  if (borrowSite != null) ...[
+                    const Gap(4),
+                    Row(
+                      children: [
+                        Icon(Icons.place_outlined, size: 13, color: AppTheme.neutralGray400),
+                        const Gap(4),
+                        Expanded(
+                          child: Text(
+                            borrowSite,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.neutralGray500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const Gap(4),
                   // Borrower Name (Primary Identifier)
                   if (event.actorName != null)
@@ -343,6 +374,7 @@ class CommandDetailSheet extends ConsumerWidget {
     final sentinelColor = _getStatusColor(event.type);
     final statusText = _getStatusText(event.type);
     final isVerified = event.verifiedAt != null;
+    final borrowSiteRow = _displayBorrowSite(event);
 
     return TacticalForensicDetailSheet(
       id: event.id,
@@ -368,6 +400,14 @@ class CommandDetailSheet extends ConsumerWidget {
           value: event.actorName ?? 'System Override',
           zone: 'Personnel',
         ),
+        if (borrowSiteRow != null)
+          DetailRowData(
+            icon: Icons.warehouse_outlined,
+            label: 'BORROW SITE',
+            value: borrowSiteRow,
+            zone: 'Transaction Details',
+            isHalfWidth: false,
+          ),
         if (event.borrowerOrganization != null)
           DetailRowData(
             icon: Icons.business_center_rounded,
@@ -396,7 +436,7 @@ class CommandDetailSheet extends ConsumerWidget {
             label: 'HANDED BY',
             value: event.releasedByName!,
             zone: 'Transaction Details',
-            isHalfWidth: true,
+            isHalfWidth: false, // Changed to false to prevent truncation
           ),
         DetailRowData(
           icon: Icons.timer_rounded,
@@ -423,50 +463,7 @@ class CommandDetailSheet extends ConsumerWidget {
       ],
       actionHub: associatedLoan != null
           ? _buildTacticalActions(context, ref, associatedLoan)
-          : (!isVerified
-              ? _buildVerifyAction(context, ref)
-              : _buildDismissAction(context)),
-    );
-  }
-
-  Widget _buildVerifyAction(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () async {
-          HapticFeedback.heavyImpact();
-          try {
-            await ref.read(analystDashboardControllerProvider.notifier).verifyEvent(
-              event.id,
-              notes: 'Visual verification completed by Analyst.',
-            );
-            if (context.mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('EVENT AUDIT VERIFIED', style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700)),
-                  backgroundColor: AppTheme.successGreen,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            }
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('VERIFICATION ERROR: Protocol Failure')),
-              );
-            }
-          }
-        },
-        icon: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF001A33),
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        label: Text('VERIFY & CLOSE AUDIT', style: GoogleFonts.lexend(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
-      ),
+          : _buildDismissAction(context),
     );
   }
 

@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/src/core/utils/storage_location_labels.dart';
+
+String? _borrowSiteFromJson(Map<String, dynamic> json) {
+  final raw = json['borrowed_from_warehouse'] ?? json['warehouse_id'];
+  if (raw == null) return null;
+  final s = raw.toString().trim();
+  if (s.isEmpty) return null;
+  return formatStorageLocationLabel(s);
+}
 
 enum EventType {
   assetOut,
@@ -113,6 +122,7 @@ class ActivityEvent {
       priority: json['priority'],
       quantity: json['quantity'] != null ? (json['quantity'] as num).toInt() : (json['quantity_borrowed'] != null ? (json['quantity_borrowed'] as num).toInt() : 1),
       actorName: json['actorName'] ?? json['borrower_name'],
+      locationSource: _borrowSiteFromJson(json),
       locationTarget: json['locationTarget'] ?? json['borrowed_from_warehouse'],
       // 🛰️ HYDRATE NEW CONTEXT
       approvedByName: json['approved_by_name'] ?? json['approvedByName'],

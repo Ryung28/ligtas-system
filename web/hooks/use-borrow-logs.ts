@@ -43,6 +43,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
     const [searchQuery, setSearchQuery] = useState('')
     const [statusFilter, setStatusFilter] = useState<TransactionStatus>(initialFilter)
     const [dateFilter, setDateFilter] = useState<string>('')
+    const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
     const [currentPage, setCurrentPage] = useState(1)
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
     const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
@@ -126,10 +127,11 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
     const sessions = useMemo(() => {
         if (!filteredLogs.length) return []
 
-        // 1. Sort by borrower then time
+        // 1. Sort by transaction date — direction controlled by sortOrder
         const sorted = [...filteredLogs].sort((a, b) => {
-            if (a.borrower_name !== b.borrower_name) return a.borrower_name.localeCompare(b.borrower_name)
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            const timeA = new Date(a.borrow_date || a.created_at).getTime()
+            const timeB = new Date(b.borrow_date || b.created_at).getTime()
+            return sortOrder === 'latest' ? timeB - timeA : timeA - timeB
         })
 
         const sessionsList: BorrowSession[] = []
@@ -177,9 +179,11 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                 if (aHasTarget) return -1
                 if (bHasTarget) return 1
             }
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            const timeA = new Date(a.created_at).getTime()
+            const timeB = new Date(b.created_at).getTime()
+            return sortOrder === 'latest' ? timeB - timeA : timeA - timeB
         })
-    }, [filteredLogs, triageId])
+    }, [filteredLogs, triageId, sortOrder])
 
     const stats: LogStats = useMemo(() => {
         const now = new Date();
@@ -247,6 +251,8 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         setStatusFilter,
         dateFilter,
         setDateFilter,
+        sortOrder,
+        setSortOrder,
         currentPage,
         setCurrentPage,
         totalPages,

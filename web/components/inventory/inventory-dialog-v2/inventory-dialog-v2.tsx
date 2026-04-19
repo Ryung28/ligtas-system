@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -28,6 +28,17 @@ interface InventoryDialogV2Props {
 export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSuccess, focusRestockPolicy = false, showRestockWarningOnOpen = false }: InventoryDialogV2Props) {
     const { categories, locations, parents, isLoading: isDataLoading } = useInventoryDataV2(isOpen)
     const state = useInventoryStateV2(existingItem)
+
+    const selectedCategoryName = useMemo(() => {
+        const row = categories.find((c: { id: string }) => c.id === state.categoryId)
+        if (row) return (row as { category_name?: string }).category_name ?? ''
+        // Legacy: category field sometimes stores the label (e.g. "Goods") instead of UUID
+        return String(state.categoryId ?? '').trim()
+    }, [categories, state.categoryId])
+
+    /** Goods are consumables — show brand + expiry even when item type is Equipment */
+    const showGoodsExpiryFields =
+        selectedCategoryName.trim().toLowerCase() === 'goods'
     const img = useInventoryImageV2(existingItem?.image_url)
     const statusSectionRef = useRef<HTMLDivElement | null>(null)
     const [policyErrors, setPolicyErrors] = useState<{ ready: string; target: string; threshold: string }>({ ready: '', target: '', threshold: '' })
@@ -127,6 +138,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         formData.append('model_number', state.modelNumber)
         formData.append('brand', state.brand)
         if (state.expiryDate) formData.append('expiry_date', state.expiryDate)
+        if (state.expiryDate && state.expiryAlertDays) formData.append('expiry_alert_days', String(state.expiryAlertDays))
 
         // Legacy variant and model fields have been structurally severed.
 
@@ -185,9 +197,22 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                         />
 
                         {state.itemType === 'equipment' ? (
-                            <V2MetadataFields serialNumber={state.serialNumber} onSerialChange={state.setSerialNumber} modelNumber={state.modelNumber} onModelChange={state.setModelNumber} />
+                            <>
+                                <V2MetadataFields serialNumber={state.serialNumber} onSerialChange={state.setSerialNumber} modelNumber={state.modelNumber} onModelChange={state.setModelNumber} />
+                                {showGoodsExpiryFields && (
+                                    <V2ConsumableFields
+                                        brand={state.brand} onBrandChange={state.setBrand}
+                                        expiryDate={state.expiryDate} onExpiryChange={state.setExpiryDate}
+                                        expiryAlertDays={state.expiryAlertDays} onExpiryAlertDaysChange={state.setExpiryAlertDays}
+                                    />
+                                )}
+                            </>
                         ) : (
-                            <V2ConsumableFields brand={state.brand} onBrandChange={state.setBrand} expiryDate={state.expiryDate} onExpiryChange={state.setExpiryDate} />
+                            <V2ConsumableFields
+                                brand={state.brand} onBrandChange={state.setBrand}
+                                expiryDate={state.expiryDate} onExpiryChange={state.setExpiryDate}
+                                expiryAlertDays={state.expiryAlertDays} onExpiryAlertDaysChange={state.setExpiryAlertDays}
+                            />
                         )}
 
                         <div ref={statusSectionRef}>

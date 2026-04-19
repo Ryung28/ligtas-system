@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:async/async.dart';
 import 'package:mobile/src/core/extensions/supabase_client_extension.dart';
+import 'package:mobile/src/core/utils/storage_location_labels.dart';
 import '../../domain/entities/analyst_metrics.dart';
 import '../../domain/entities/resource_anomaly.dart';
 import '../../domain/entities/activity_event.dart';
@@ -20,26 +21,39 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   @override
   Future<AnalystMetrics> getMetrics({String? warehouseId}) async {
     try {
-      // 🛰️ RPC COMMAND: Offload counting logic to the database SSOT
-      final response = await _supabase.rpc(
-        'get_analyst_metrics',
-        params: {'p_warehouse_id': warehouseId},
-      );
+      // Client-side counts (avoids `get_analyst_metrics` RPC, which assumed
+      // `assigned_warehouse` on views that only expose `location` / RLS scoping).
+      var invQ = _supabase.from('active_inventory').select('id');
+      if (warehouseId != null) {
+        invQ = invQ.eq('location', warehouseId);
+      }
 
-      final data = response as Map<String, dynamic>;
+      Future<List<dynamic>> borrowByStatus(String status) async {
+        var q = _supabase.from('borrow_logs').select('id').eq('status', status);
+        if (warehouseId != null) {
+          q = q.eq('warehouse_id', warehouseId);
+        }
+        final rows = await q;
+        return List<dynamic>.from(rows as List);
+      }
+
+      final inv = await invQ;
+      final pending = await borrowByStatus('pending');
+      final borrowed = await borrowByStatus('borrowed');
+      final overdue = await borrowByStatus('overdue');
 
       return AnalystMetrics(
-        totalAssets: (data['total_assets'] ?? 0) as int,
+        totalAssets: inv.length,
         assetsTrendPercent: 0.0,
-        pendingApprovals: (data['pending_approvals'] ?? 0) as int,
-        activeLoans: (data['active_loans'] ?? 0) as int,
+        pendingApprovals: pending.length,
+        activeLoans: borrowed.length,
         loansTrendPercent: 0.0,
-        overdueCount: (data['overdue_count'] ?? 0) as int,
+        overdueCount: overdue.length,
         overdueTrendPercent: 0.0,
         anomalyCount: 0,
       );
     } catch (e) {
-      debugPrint('🚨 [AnalystRepo] RPC Metrics Error: $e');
+      debugPrint('🚨 [AnalystRepo] Metrics Error: $e');
       throw Exception('Failed to fetch analyst metrics: $e');
     }
   }
@@ -70,7 +84,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         await _supabase.checkConnection();
 
         final invStream = warehouseId != null
-            ? _supabase.from('active_inventory').stream(primaryKey: ['id']).eq('assigned_warehouse', warehouseId)
+            ? _supabase.from('active_inventory').stream(primaryKey: ['id']).eq('location', warehouseId)
             : _supabase.from('active_inventory').stream(primaryKey: ['id']);
 
         final logStream = warehouseId != null
@@ -168,10 +182,10 @@ class AnalystRepositoryImpl implements IAnalystRepository {
           .map((item) {
             final meta = item['metadata'] as Map<String, dynamic>? ?? {};
             // 🛡️ SAFE PARSE: IDs often come as Strings in JSONB
-            final rawId = meta['item_id'] ?? meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'];
-            if (rawId is int) return rawId;
-            if (rawId is String) return int.tryParse(rawId);
-            return null;
+        final rawId = meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id'];
+        if (rawId is int) return rawId;
+        if (rawId is String) return int.tryParse(rawId);
+        return null;
           })
           .whereType<int>()
           .toList();
@@ -183,7 +197,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       for (final item in data) {
         try {
           final meta = item['metadata'] as Map<String, dynamic>? ?? {};
-          final rawId = (meta['item_id'] ?? meta['inventory_id'] ?? meta['id'] ?? item['inventory_id']);
+          final rawId = (meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id']);
           final invId = rawId is int ? rawId : (rawId is String ? int.tryParse(rawId) : null);
           
           final liveData = invId != null ? liveMap[invId] : null;
@@ -194,6 +208,8 @@ class AnalystRepositoryImpl implements IAnalystRepository {
           anomalies.add(ResourceAnomaly(
             id: item['id'].toString(),
             inventoryId: invId,
+            itemId: (liveData?['item_id'] as num?)?.toInt() ?? (meta['item_id'] as num?)?.toInt(),
+            locationRegistryId: (liveData?['location_registry_id'] as num?)?.toInt(),
             itemName: liveData?['item_name']?.toString() ?? item['title']?.toString() ?? 'System Alert',
             reason: item['message']?.toString() ?? 'Check required.',
             imageUrl: _resolveRawPath(liveData?['image_url'] ?? meta['image_url']),
@@ -242,7 +258,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       // 🛡️ DATA TRUST: Since we have the exact IDs, we query them directly to avoid RLS-flicker
       final response = await _supabase
           .from('inventory')
-          .select('id, item_name, image_url, target_stock, stock_total, stock_available, low_stock_threshold, qty_good, qty_damaged, qty_maintenance, qty_lost')
+          .select('id, item_id, location_registry_id, item_name, image_url, target_stock, stock_total, stock_available, low_stock_threshold, qty_good, qty_damaged, qty_maintenance, qty_lost')
           .filter('id', 'in', ids);
       
       final Map<int, Map<String, dynamic>> map = {};
@@ -332,7 +348,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         released_by_name,
         borrower_organization,
         borrower_contact,
-        inventory:inventory_id(image_url)
+        inventory:inventory_id(image_url, storage_location)
       ''');
       if (warehouseId != null) {
         query = query.eq('warehouse_id', warehouseId);
@@ -447,7 +463,10 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     String? warehouseId,
   }) async {
     try {
-      var query = _supabase.from('borrow_logs').select();
+      var query = _supabase.from('borrow_logs').select('''
+        *,
+        inventory:inventory_id(image_url, storage_location)
+      ''');
 
       if (warehouseId != null) {
         query = query.eq('warehouse_id', warehouseId);
@@ -696,7 +715,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
 
   PostgrestFilterBuilder<List<Map<String, dynamic>>> _inventoryQuery({String? warehouseId}) {
     final q = _supabase.from('active_inventory').select('id');
-    return warehouseId != null ? q.eq('assigned_warehouse', warehouseId) : q;
+    return warehouseId != null ? q.eq('location', warehouseId) : q;
   }
 
   PostgrestFilterBuilder<List<Map<String, dynamic>>> _borrowLogsQuery({String? warehouseId}) {
@@ -719,6 +738,24 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       debugPrint('[AnalystRepo] Image batch fetch failed: $e');
       return {};
     }
+  }
+
+  /// Matches web `transaction-detail-body`: `borrowed_from_warehouse` → `warehouse_id` → join `inventory.storage_location`.
+  String? _borrowSiteLocation(Map<String, dynamic> item) {
+    final borrowedFrom = item['borrowed_from_warehouse']?.toString().trim();
+    if (borrowedFrom != null && borrowedFrom.isNotEmpty) {
+      return formatStorageLocationLabel(borrowedFrom);
+    }
+    final wh = item['warehouse_id']?.toString().trim();
+    if (wh != null && wh.isNotEmpty) {
+      return formatStorageLocationLabel(wh);
+    }
+    final inv = item['inventory'];
+    if (inv is Map<String, dynamic>) {
+      final loc = inv['storage_location']?.toString().trim();
+      if (loc != null && loc.isNotEmpty) return formatStorageLocationLabel(loc);
+    }
+    return null;
   }
 
   ActivityEvent _mapToActivityEvent(Map<String, dynamic> item) {
@@ -764,8 +801,8 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       timestamp: DateTime.parse(item['updated_at'] as String? ?? DateTime.now().toIso8601String()),
       priority: status == 'pending' || status == 'overdue' ? 'CRITICAL' : 'ROUTINE',
       quantityDelta: delta,
-      locationSource: 'WH-Alpha',
-      locationTarget: 'Central Hub',
+      locationSource: _borrowSiteLocation(item),
+      locationTarget: null,
       actorName: actor,
       // 🛰️ MAP LOGISTICS CONTEXT
       approvedByName: item['approved_by_name'] as String?,

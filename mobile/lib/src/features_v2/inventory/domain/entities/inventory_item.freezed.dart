@@ -33,6 +33,7 @@ mixin _$InventoryItem {
   String? get imageUrl => throw _privateConstructorUsedError;
   DateTime? get lastUpdated => throw _privateConstructorUsedError;
   DateTime? get expiryDate => throw _privateConstructorUsedError;
+  int get expiryAlertDays => throw _privateConstructorUsedError;
   bool get isPendingSync => throw _privateConstructorUsedError;
   bool get restockAlertEnabled =>
       throw _privateConstructorUsedError; // Health buckets (mirrors web qty_* columns)
@@ -76,6 +77,7 @@ abstract class $InventoryItemCopyWith<$Res> {
       String? imageUrl,
       DateTime? lastUpdated,
       DateTime? expiryDate,
+      int expiryAlertDays,
       bool isPendingSync,
       bool restockAlertEnabled,
       int qtyGood,
@@ -119,6 +121,7 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
     Object? imageUrl = freezed,
     Object? lastUpdated = freezed,
     Object? expiryDate = freezed,
+    Object? expiryAlertDays = null,
     Object? isPendingSync = null,
     Object? restockAlertEnabled = null,
     Object? qtyGood = null,
@@ -200,6 +203,10 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
           ? _value.expiryDate
           : expiryDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      expiryAlertDays: null == expiryAlertDays
+          ? _value.expiryAlertDays
+          : expiryAlertDays // ignore: cast_nullable_to_non_nullable
+              as int,
       isPendingSync: null == isPendingSync
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
@@ -274,6 +281,7 @@ abstract class _$$InventoryItemImplCopyWith<$Res>
       String? imageUrl,
       DateTime? lastUpdated,
       DateTime? expiryDate,
+      int expiryAlertDays,
       bool isPendingSync,
       bool restockAlertEnabled,
       int qtyGood,
@@ -315,6 +323,7 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
     Object? imageUrl = freezed,
     Object? lastUpdated = freezed,
     Object? expiryDate = freezed,
+    Object? expiryAlertDays = null,
     Object? isPendingSync = null,
     Object? restockAlertEnabled = null,
     Object? qtyGood = null,
@@ -396,6 +405,10 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
           ? _value.expiryDate
           : expiryDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      expiryAlertDays: null == expiryAlertDays
+          ? _value.expiryAlertDays
+          : expiryAlertDays // ignore: cast_nullable_to_non_nullable
+              as int,
       isPendingSync: null == isPendingSync
           ? _value.isPendingSync
           : isPendingSync // ignore: cast_nullable_to_non_nullable
@@ -465,6 +478,7 @@ class _$InventoryItemImpl extends _InventoryItem {
       this.imageUrl,
       this.lastUpdated,
       this.expiryDate,
+      this.expiryAlertDays = 15,
       this.isPendingSync = false,
       this.restockAlertEnabled = true,
       this.qtyGood = 0,
@@ -526,6 +540,9 @@ class _$InventoryItemImpl extends _InventoryItem {
   final DateTime? expiryDate;
   @override
   @JsonKey()
+  final int expiryAlertDays;
+  @override
+  @JsonKey()
   final bool isPendingSync;
   @override
   @JsonKey()
@@ -565,7 +582,7 @@ class _$InventoryItemImpl extends _InventoryItem {
 
   @override
   String toString() {
-    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, expiryDate: $expiryDate, isPendingSync: $isPendingSync, restockAlertEnabled: $restockAlertEnabled, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
+    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, expiryDate: $expiryDate, expiryAlertDays: $expiryAlertDays, isPendingSync: $isPendingSync, restockAlertEnabled: $restockAlertEnabled, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
   }
 
   @override
@@ -601,6 +618,8 @@ class _$InventoryItemImpl extends _InventoryItem {
                 other.lastUpdated == lastUpdated) &&
             (identical(other.expiryDate, expiryDate) ||
                 other.expiryDate == expiryDate) &&
+            (identical(other.expiryAlertDays, expiryAlertDays) ||
+                other.expiryAlertDays == expiryAlertDays) &&
             (identical(other.isPendingSync, isPendingSync) ||
                 other.isPendingSync == isPendingSync) &&
             (identical(other.restockAlertEnabled, restockAlertEnabled) ||
@@ -642,6 +661,7 @@ class _$InventoryItemImpl extends _InventoryItem {
         imageUrl,
         lastUpdated,
         expiryDate,
+        expiryAlertDays,
         isPendingSync,
         restockAlertEnabled,
         qtyGood,
@@ -681,6 +701,7 @@ abstract class _InventoryItem extends InventoryItem {
       final String? imageUrl,
       final DateTime? lastUpdated,
       final DateTime? expiryDate,
+      final int expiryAlertDays,
       final bool isPendingSync,
       final bool restockAlertEnabled,
       final int qtyGood,
@@ -728,6 +749,8 @@ abstract class _InventoryItem extends InventoryItem {
   DateTime? get lastUpdated;
   @override
   DateTime? get expiryDate;
+  @override
+  int get expiryAlertDays;
   @override
   bool get isPendingSync;
   @override

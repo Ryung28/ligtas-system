@@ -1,7 +1,8 @@
 "use client"
 
 import Image from 'next/image'
-import { Package, Grid, Camera, X, List, Loader2 } from 'lucide-react'
+import { Package, LayoutGrid, Camera, X, Loader2 } from 'lucide-react'
+import { resolveCategoryIcon } from '@/lib/category-icons'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -63,13 +64,37 @@ export function V2IdentityFields({
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">Category</Label>
                         <Select value={categoryId} onValueChange={onCategoryChange}>
-                            <SelectTrigger className="h-11 rounded-2xl font-bold border-slate-200">
-                                <SelectValue placeholder="Select type..." />
+                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 font-bold">
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    {isLoadingCategories ? (
+                                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
+                                    ) : (
+                                        !categoryId && (
+                                            <LayoutGrid className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
+                                        )
+                                    )}
+                                    <SelectValue placeholder={isLoadingCategories ? 'Loading...' : 'Select type...'} />
+                                </div>
                             </SelectTrigger>
-                            <SelectContent className="bg-white rounded-xl">
-                                {categories.map((cat: any) => (
-                                    <SelectItem key={cat.id} value={cat.id} className="font-bold py-3">{cat.category_name}</SelectItem>
-                                ))}
+                            <SelectContent className="rounded-xl bg-white">
+                                {isLoadingCategories ? (
+                                    <div className="flex items-center justify-center gap-2 py-6 text-sm font-bold text-slate-400">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        Loading categories…
+                                    </div>
+                                ) : (
+                                    categories.map((cat: { id: string; category_name: string }) => {
+                                        const CatIcon = resolveCategoryIcon(cat.category_name)
+                                        return (
+                                            <SelectItem key={cat.id} value={cat.id} className="py-3 font-bold">
+                                                <span className="flex items-center gap-2.5">
+                                                    <CatIcon className="h-4 w-4 shrink-0 text-slate-500" strokeWidth={2} />
+                                                    {cat.category_name}
+                                                </span>
+                                            </SelectItem>
+                                        )
+                                    })
+                                )}
                             </SelectContent>
                         </Select>
                     </div>

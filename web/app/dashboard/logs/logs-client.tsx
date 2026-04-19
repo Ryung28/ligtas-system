@@ -34,6 +34,8 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
         setStatusFilter,
         dateFilter,
         setDateFilter,
+        sortOrder,
+        setSortOrder,
         currentPage,
         setCurrentPage,
         totalPages,
@@ -114,6 +116,8 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
                         setDateFilter={setDateFilter}
                         searchQuery={searchQuery}
                         setSearchQuery={setSearchQuery}
+                        sortOrder={sortOrder}
+                        setSortOrder={setSortOrder}
                     />
                 </CardHeader>
 

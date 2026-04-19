@@ -318,6 +318,7 @@ export async function returnItem(
     logId: number, 
     auditData?: {
         receivedByName: string
+        returnedByName?: string
         returnCondition: 'good' | 'fair' | 'damaged' | 'maintenance' | 'lost'
         returnNotes: string | null
     }
@@ -344,6 +345,7 @@ export async function returnItem(
                 status: 'returned',
                 actual_return_date: new Date().toISOString(),
                 received_by_name: auditData?.receivedByName || null,
+                returned_by_name: auditData?.returnedByName || null,
                 received_by_user_id: user?.id || null,
                 return_condition: auditData?.returnCondition || 'good',
                 return_notes: auditData?.returnNotes || null,

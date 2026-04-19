@@ -46,7 +46,21 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session: rawSession }, error } = await supabase.auth.getSession()
+    
+    // 🛡️ Safety Shield: Handle corrupted session strings (TypeError fix)
+    let session = null;
+    if (rawSession) {
+        if (typeof rawSession === 'string') {
+            console.error('[Middleware] Corrupted session string detected. Clearing cookies.');
+            // Clear all auth cookies if we find a naked string where an object should be
+            const response = NextResponse.redirect(new URL('/login', request.url));
+            const authCookies = request.cookies.getAll().filter(c => c.name.includes('auth-token'));
+            authCookies.forEach(c => response.cookies.delete(c.name));
+            return response;
+        }
+        session = rawSession;
+    }
 
     const isDashboardPath = pathname.startsWith('/dashboard')
     const isMobilePath = pathname.startsWith('/m')

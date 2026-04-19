@@ -2,12 +2,12 @@
 
 import * as React from 'react'
 import { Input } from '@/components/ui/input'
-import { Search } from 'lucide-react'
+import { ArrowDownUp, Search } from 'lucide-react'
 import { TransactionStatus } from '@/lib/types/inventory'
 import { DatePicker } from '@/components/ui/date-picker'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface LogFiltersProps {
     filter: TransactionStatus
@@ -16,6 +16,8 @@ interface LogFiltersProps {
     setDateFilter: (d: string) => void
     searchQuery: string
     setSearchQuery: (s: string) => void
+    sortOrder: 'latest' | 'oldest'
+    setSortOrder: (o: 'latest' | 'oldest') => void
 }
 
 function LogFilterButton({ children, onClick, isActive }: { children: React.ReactNode, onClick: () => void, isActive: boolean }) {
@@ -53,7 +55,9 @@ export function LogFilters({
     dateFilter,
     setDateFilter,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    sortOrder,
+    setSortOrder,
 }: Omit<LogFiltersProps, 'filter' | 'setFilter'>) {
     const [mounted, setMounted] = React.useState(false)
     const activeDate = dateFilter ? new Date(dateFilter) : undefined
@@ -88,6 +92,18 @@ export function LogFilters({
                     )}
                 />
             </div>
+
+            {/* Sort Toggle */}
+            <button
+                onClick={() => setSortOrder(sortOrder === 'latest' ? 'oldest' : 'latest')}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 h-10 rounded-lg border text-[10px] font-black uppercase tracking-[0.1em] transition-all shrink-0",
+                    "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                )}
+            >
+                <ArrowDownUp className="h-3.5 w-3.5" />
+                {sortOrder === 'latest' ? 'Latest First' : 'Oldest First'}
+            </button>
         </div>
     )
 }

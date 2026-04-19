@@ -21,8 +21,9 @@ export function ReportsClient({ initialStats }: ReportsClientProps) {
         return res.data
     }, {
         fallbackData: initialStats || undefined,
-        revalidateOnFocus: false,
-        revalidateOnReconnect: true
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
+        refreshInterval: 60_000,
     })
 
     const stats = statsResponse || null

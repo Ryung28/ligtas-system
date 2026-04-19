@@ -109,121 +109,111 @@ class TacticalNotificationCard extends ConsumerWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24, right: 16),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isRead ? const Color(0xFFF9FAFB) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: sentinel.tactile.card,
-                  border: isRead ? null : Border.all(
-                    color: dotColor.withOpacity(0.05),
-                    width: 1,
-                  ),
+                  boxShadow: isRead ? null : sentinel.tactile.card,
+                  border: isRead 
+                    ? Border.all(color: Colors.transparent)
+                    : Border.all(
+                        color: dotColor.withOpacity(0.05),
+                        width: 1,
+                      ),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
-                    onTap: () => _handleTriage(context, ref),
-                    onLongPress: () => _showDeleteDialog(context, ref),
+                child: Opacity(
+                  opacity: isRead ? 0.6 : 1.0,
+                  child: Material(
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Top Metadata Row
-                          Row(
-                            children: [
-                              _buildPriorityPill(
-                                isCritical ? 'CRITICAL' : (isWarning ? 'WARNING' : 'INFORMATION'),
-                                pillBgColor,
-                                pillTextColor,
+                    child: InkWell(
+                      onTap: isRead ? null : () => _handleTriage(context, ref),
+                      onLongPress: () => _showDeleteDialog(context, ref),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Top Metadata Row
+                            Row(
+                              children: [
+                                _buildPriorityPill(
+                                  isRead ? 'RESOLVED' : (isCritical ? 'CRITICAL' : (isWarning ? 'WARNING' : 'INFORMATION')),
+                                  isRead ? Colors.grey.withOpacity(0.1) : pillBgColor,
+                                  isRead ? Colors.grey : pillTextColor,
+                                ),
+                                const Spacer(),
+                                Text(
+                                  timeago.format(createdAt, locale: 'en_short').toUpperCase(),
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: sentinel.onSurfaceVariant.withOpacity(0.4),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Gap(12),
+
+                            // Title
+                            Text(
+                              notification.title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: isRead ? Colors.grey : sentinel.navy,
+                                height: 1.2,
                               ),
-                              const Spacer(),
-                              Text(
-                                timeago.format(createdAt, locale: 'en_short').toUpperCase(),
-                                style: GoogleFonts.lexend(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: sentinel.onSurfaceVariant.withOpacity(0.4),
-                                  letterSpacing: 0.5,
+                            ),
+                            const Gap(8),
+
+                            // Resource/Metadata Subtitle
+                            _buildMetadataRow(sentinel, isRead),
+                            
+                            // Message Body
+                            const Gap(12),
+                            Text(
+                              notification.message,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: sentinel.onSurfaceVariant.withOpacity(0.7),
+                                height: 1.5,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+
+                            // Action Buttons
+                            if (!isRead) ...[
+                              const Gap(20),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 44,
+                                child: ElevatedButton(
+                                  onPressed: () => _handleTriage(context, ref),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1E293B),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                  child: Text(
+                                    'DISMISS ALERT',
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                          const Gap(12),
-
-                          // Title
-                          Text(
-                            notification.title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              color: sentinel.navy,
-                              height: 1.2,
-                            ),
-                          ),
-                          const Gap(8),
-
-                          // Resource/Metadata Subtitle
-                          _buildMetadataRow(sentinel),
-                          
-                          // Message Body
-                          const Gap(12),
-                          Text(
-                            notification.message,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: sentinel.onSurfaceVariant.withOpacity(0.7),
-                              height: 1.5,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-
-                          // Action Buttons
-                          if (!isRead) ...[
-                            const Gap(20),
-                            if (notification.actionLabel == 'RESTOCK' || notification.actionLabel == 'VIEW INTEL') 
-                              // Full width single button for specific types
-                              _buildActionButton(
-                                label: notification.actionLabel == 'RESTOCK' ? 'VIEW SUPPLY MAP' : (notification.actionLabel ?? 'VIEW INTEL'),
-                                onPressed: () => _handleTriage(context, ref),
-                                isPrimary: true,
-                                color: const Color(0xFF0369A1), // Deep Tactical Blue
-                                icon: notification.actionLabel == 'RESTOCK' ? Icons.visibility_outlined : null,
-                                isFullWidth: true,
-                              )
-                            else
-                              // Two buttons for others (Respond/Dismiss)
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildActionButton(
-                                      label: 'Respond',
-                                      onPressed: () => _handleTriage(context, ref),
-                                      isPrimary: true,
-                                      color: const Color(0xFF0369A1), // Deep Tactical Blue
-                                    ),
-                                  ),
-                                  const Gap(12),
-                                  Expanded(
-                                    child: _buildActionButton(
-                                      label: 'Dismiss',
-                                      onPressed: () {
-                                        HapticFeedback.lightImpact();
-                                        ref.read(markNotificationAsReadProvider(notification.id).future);
-                                        ref.invalidate(systemNotificationsProvider);
-                                      },
-                                      isPrimary: false,
-                                      color: sentinel.navy.withOpacity(0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -256,7 +246,7 @@ class TacticalNotificationCard extends ConsumerWidget {
   }
 
 
-  Widget _buildMetadataRow(LigtasColors sentinel) {
+  Widget _buildMetadataRow(LigtasColors sentinel, bool isRead) {
     final meta = notification.metadata;
     final itemName = meta['item_name'] ?? meta['search_query'];
     if (itemName == null) return const SizedBox.shrink();
@@ -273,8 +263,8 @@ class TacticalNotificationCard extends ConsumerWidget {
                 child: Container(
                   width: 32,
                   height: 32,
-                  color: sentinel.containerLow,
-                  child: Icon(Icons.inventory_2_outlined, size: 16, color: sentinel.navy.withOpacity(0.5)),
+                  color: isRead ? Colors.grey.withOpacity(0.05) : sentinel.containerLow,
+                  child: Icon(Icons.inventory_2_outlined, size: 16, color: isRead ? Colors.grey.withOpacity(0.3) : sentinel.navy.withOpacity(0.5)),
                 ),
               ),
             ),
@@ -287,7 +277,7 @@ class TacticalNotificationCard extends ConsumerWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: sentinel.onSurfaceVariant.withOpacity(0.8),
+                    color: isRead ? Colors.grey.withOpacity(0.5) : sentinel.onSurfaceVariant.withOpacity(0.8),
                   ),
                 ),
               ],
@@ -297,6 +287,7 @@ class TacticalNotificationCard extends ConsumerWidget {
       ),
     );
   }
+
 
   Widget _buildActionButton({
     required String label,
@@ -343,13 +334,10 @@ class TacticalNotificationCard extends ConsumerWidget {
 
   void _handleTriage(BuildContext context, WidgetRef ref) {
     HapticFeedback.mediumImpact();
+    // 🛡️ TACTICAL ISOLATION: Remove navigation, only handle resolution
     if (!notification.isRead) {
       ref.read(markNotificationAsReadProvider(notification.id).future);
       ref.invalidate(systemNotificationsProvider);
-    }
-
-    if (notification.actionTarget != null) {
-      context.push(notification.actionTarget!);
     }
   }
 

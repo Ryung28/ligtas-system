@@ -5,11 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { 
-    ChevronDown, 
-    ChevronRight as ChevronRightIcon, 
-    Package, 
-    ChevronLeft, 
+import {
+    ChevronDown,
+    ChevronRight as ChevronRightIcon,
+    Package,
+    ChevronLeft,
     ChevronRight,
     CheckCircle2,
     XCircle,
@@ -38,6 +38,8 @@ import { bulkReturnItems, revertReturnItem, releaseReservedItem } from '@/src/fe
 import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
 import { toast } from 'sonner'
 import { useSearchParams } from 'next/navigation'
+
+import { TransactionDetailBody } from '@/src/features/transactions/components/transaction-detail-body'
 
 interface LogSessionTableProps {
     sessions: BorrowSession[]
@@ -72,11 +74,32 @@ export function LogSessionTable({
     const searchParams = useSearchParams()
     const triageId = searchParams.get('id')
 
-    // --- Selection Logic ---
-    const allReturnableIds = sessions.flatMap(s => 
+    // --- Selection & Batch Data ---
+    const allReturnableIds = sessions.flatMap(s =>
         s.items.filter(i => i.status !== 'returned').map(i => i.id)
     )
-    
+
+    const selectedItemsData = React.useMemo(() => {
+        return sessions
+            .flatMap(s => s.items)
+            .filter(i => selectedLogIds.has(i.id))
+            .map(i => ({
+                logId: i.id,
+                itemName: i.item_name,
+                quantity: i.quantity,
+                inventoryId: i.inventory_id,
+                imageUrl: (i as any).inventory?.image_url,
+                borrowedFrom: (i as any).borrowed_from_warehouse || (i as any).inventory?.storage_location
+            }))
+    }, [sessions, selectedLogIds])
+
+    const batchBorrowerName = React.useMemo(() => {
+        if (selectedLogIds.size === 0) return ""
+        const firstId = Array.from(selectedLogIds)[0]
+        const session = sessions.find(s => s.items.some(i => i.id === firstId))
+        return session?.borrower_name || "Borrower"
+    }, [sessions, selectedLogIds])
+
     const isAllSelected = allReturnableIds.length > 0 && allReturnableIds.every(id => selectedLogIds.has(id))
     const isSomeSelected = allReturnableIds.some(id => selectedLogIds.has(id)) && !isAllSelected
 
@@ -100,7 +123,7 @@ export function LogSessionTable({
     const toggleSession = (items: BorrowLog[]) => {
         const returnableIds = items.filter(i => i.status !== 'returned').map(i => i.id)
         const allAlreadySelected = returnableIds.length > 0 && returnableIds.every(id => selectedLogIds.has(id))
-        
+
         const newSelected = new Set(selectedLogIds)
         if (allAlreadySelected) {
             returnableIds.forEach(id => newSelected.delete(id))
@@ -112,7 +135,7 @@ export function LogSessionTable({
 
     const handleBatchReturn = () => {
         if (selectedLogIds.size === 0) return
-        
+
         startTransition(async () => {
             const result = await bulkReturnItems(Array.from(selectedLogIds))
             if (result.success) {
@@ -126,7 +149,7 @@ export function LogSessionTable({
     // UI Helpers
     const getStatusBadge = (status: string) => {
         const baseClass = "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-white border border-zinc-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)]";
-        
+
         switch (status) {
             case 'borrowed':
                 return <span className={baseClass}><span className="text-blue-600">Borrowed</span></span>
@@ -213,11 +236,8 @@ export function LogSessionTable({
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-zinc-50/50 hover:bg-zinc-50/50 border-b border-zinc-100/80">
-                                <TableHead className={cn(
-                                    "transition-all duration-300 pl-4 py-1.5 text-center overflow-hidden whitespace-nowrap",
-                                    (isSomeSelected || isAllSelected) ? "w-[45px] opacity-100" : "w-0 opacity-0 -ml-4"
-                                )}>
-                                    <Checkbox 
+                                <TableHead className="w-[45px] pl-4 py-1.5 text-center overflow-hidden whitespace-nowrap opacity-100">
+                                    <Checkbox
                                         checked={isAllSelected || (isSomeSelected ? 'indeterminate' : false)}
                                         onCheckedChange={toggleAllVisible}
                                         className="h-4 w-4 border-zinc-300 data-[state=checked]:bg-zinc-950 data-[state=checked]:border-zinc-950"
@@ -330,21 +350,22 @@ export function LogSessionTable({
                                 <XCircle className="h-4 w-4 mr-2" />
                                 Clear
                             </Button>
-                            <Button
-                                size="sm"
-                                onClick={handleBatchReturn}
-                                disabled={isPending}
-                                className="bg-white text-zinc-950 hover:bg-zinc-200 h-9 px-6 rounded-xl font-black text-[12px] uppercase tracking-wide shadow-lg group relative overflow-hidden"
+
+                            <ReturnCommandSheet
+                                items={selectedItemsData}
+                                borrowerName={batchBorrowerName}
+                                onActionSuccess={() => setSelectedLogIds(new Set())}
                             >
-                                {isPending ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
+                                <Button
+                                    size="sm"
+                                    className="bg-white text-zinc-950 hover:bg-zinc-200 h-9 px-6 rounded-xl font-black text-[12px] uppercase tracking-wide shadow-lg group relative overflow-hidden"
+                                >
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-600" />
                                         Batch Return
                                     </div>
-                                )}
-                            </Button>
+                                </Button>
+                            </ReturnCommandSheet>
                         </div>
                     </div>
                 </div>
@@ -381,7 +402,7 @@ function LogSessionRow({
     const allItemsSelected = hasReturnable && returnableItems.every((i: any) => selectedLogIds.has(i.id))
     const someItemsSelected = hasReturnable && returnableItems.some((i: any) => selectedLogIds.has(i.id)) && !allItemsSelected
     const selectedSessionItems = session.items.filter((i: any) => selectedLogIds.has(i.id) && i.status !== 'returned')
-    
+
     // 🛡️ ANCHOR REF: Targeted item location tracking
     const targetedItemRef = useRef<HTMLDivElement>(null)
 
@@ -391,9 +412,9 @@ function LogSessionRow({
             const hasTarget = session.items.some((item: any) => String(item.id) === String(triageId))
             if (hasTarget) {
                 const timer = setTimeout(() => {
-                    targetedItemRef.current?.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
+                    targetedItemRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
                     })
                 }, 350)
                 return () => clearTimeout(timer)
@@ -405,22 +426,20 @@ function LogSessionRow({
         <React.Fragment>
             <TableRow
                 className={cn(
-                  "hover:bg-zinc-50/40 group border-b border-zinc-100/40 cursor-pointer select-none transition-all duration-500 h-11",
-                  isHighlighted && "animate-highlight-pulse border-l-[4px] z-10"
+                    "hover:bg-zinc-50/40 group border-b border-zinc-100/40 cursor-pointer select-none transition-all duration-500 h-11",
+                    isHighlighted && "animate-highlight-pulse border-l-[4px] z-10"
                 )}
                 onClick={onToggleExpand}
             >
-                <TableCell 
+                <TableCell
                     className={cn(
                         "p-0 transition-all duration-300 overflow-hidden whitespace-nowrap text-center",
-                        (isSomeSelected || isAllSelected || selectedLogIds.size > 0 || allItemsSelected || someItemsSelected) 
-                            ? "w-[45px] opacity-100 pl-4" 
-                            : hasReturnable ? "w-0 opacity-0 group-hover:w-[45px] group-hover:opacity-100 group-hover:pl-4" : "w-0 opacity-0"
-                    )} 
+                        hasReturnable ? "w-[45px] opacity-100 pl-4" : "w-0 opacity-0"
+                    )}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {hasReturnable ? (
-                        <Checkbox 
+                        <Checkbox
                             checked={allItemsSelected || (someItemsSelected ? 'indeterminate' : false)}
                             onCheckedChange={toggleSession}
                             className="h-4 w-4 border-zinc-200 data-[state=checked]:bg-zinc-900 group-hover:border-zinc-400 transition-colors"
@@ -511,7 +530,7 @@ function LogSessionRow({
                 <TableCell className="pl-1.5 pr-4 14in:pr-6 py-1.5 text-right">
                     <div className="flex justify-end">
                         {(() => {
-                            const isLiveOverdue = session.status === 'borrowed' && session.items.some((item: any) => 
+                            const isLiveOverdue = session.status === 'borrowed' && session.items.some((item: any) =>
                                 item.expected_return_date && new Date(item.expected_return_date) < new Date()
                             );
                             return getStatusBadge(isLiveOverdue ? 'overdue' : session.status);
@@ -524,219 +543,149 @@ function LogSessionRow({
                 {isExpanded && (
                     <TableRow className="bg-slate-50/10 hover:bg-slate-50/10 border-none overflow-hidden">
                         <TableCell colSpan={9} className="p-0 border-b border-zinc-100 overflow-hidden">
-                            <motion.div 
+                            <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
                                 className="overflow-hidden"
                             >
-                                <div className="px-6 py-5 flex gap-8">
-                                    {/* Sidebar: Borrower Profile */}
-                                    <div className="w-64 flex-shrink-0 space-y-4">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Personnel Details</p>
-                                            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <InitialsAvatar name={session.borrower_name} size={10} />
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-sm font-black text-slate-900 leading-tight truncate">{session.borrower_name}</p>
-                                                            {(session.created_origin ?? session.platform_origin) === 'Web' ? (
-                                                                <Monitor className="h-2.5 w-2.5 text-blue-400" />
-                                                            ) : (session.created_origin ?? session.platform_origin) === 'Mobile' ? (
-                                                                <Smartphone className="h-2.5 w-2.5 text-orange-400" />
-                                                            ) : null}
+                                <div className="p-7 bg-white border-b border-zinc-100/50">
+                                    <div className="flex flex-col xl:flex-row gap-8">
+                                        {/* 👤 LEFT RAIL: PERSONNEL DETAILS */}
+                                        <div className="w-full xl:w-[280px] space-y-5 shrink-0">
+                                            <div className="space-y-3">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Personnel Details</p>
+                                                <div className="bg-white rounded-[26px] border border-slate-100 p-5 shadow-sm border-b-2 border-b-slate-100/30">
+                                                    <div className="flex items-center gap-4 mb-6">
+                                                        <InitialsAvatar name={session.borrower_name} size={11} />
+                                                        <div>
+                                                            <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-none mb-1">{session.borrower_name}</h3>
+                                                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">{session.borrower_organization || 'External'}</p>
                                                         </div>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">{session.borrower_organization || 'External Member'}</p>
+                                                    </div>
+
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center gap-3 text-slate-600">
+                                                            <div className="h-7 w-7 rounded-lg bg-slate-50 flex items-center justify-center">
+                                                                <Phone className="w-3.5 h-3.5 text-slate-300" />
+                                                            </div>
+                                                            <span className="text-[12px] font-bold tracking-tight">{session.borrower_contact || 'No Contact'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 text-slate-600">
+                                                            <div className="h-7 w-7 rounded-lg bg-slate-50 flex items-center justify-center">
+                                                                <Building className="w-3.5 h-3.5 text-slate-300" />
+                                                            </div>
+                                                            <span className="text-[12px] font-bold tracking-tight line-clamp-1">{session.borrower_organization || 'Department'}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-8 pt-6 border-t border-slate-50 space-y-5">
+                                                        <div className="space-y-1.5 opacity-90">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Authorized By</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <ShieldCheck className="w-3 h-3 text-blue-500" />
+                                                                <span className="text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.approved_by_name?.split(' ')[0] || 'System'}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1.5 opacity-90">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Issued By</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                                                <span className="text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.released_by_name?.split(' ')[0] || 'Staff'}</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="pt-3 space-y-2.5 border-t border-slate-50">
-                                                    <div className="flex items-center gap-2">
-                                                        <Phone className="h-3 w-3 text-slate-400" />
-                                                        <p className="text-[11px] font-bold text-slate-600">{session.borrower_contact || 'None'}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Building className="h-3 w-3 text-slate-400" />
-                                                        <p className="text-[11px] font-bold text-slate-600 truncate">{session.borrower_organization || 'Office not set'}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="pt-3 space-y-3 border-t border-slate-50">
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-1.5 opacity-50">
-                                                            <ShieldCheck className="h-3 w-3 text-blue-500" />
-                                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Approved By</span>
+                                                {session.items[0]?.purpose && (
+                                                    <div className="bg-blue-50/20 rounded-2xl p-4 border border-blue-100/30 shadow-sm animate-in fade-in slide-in-from-left-2">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <MessageSquare className="w-3 h-3 text-blue-500" />
+                                                            <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Declared Purpose</span>
                                                         </div>
-                                                        <p className="text-[11px] font-black text-slate-800 pl-4.5">{session.approved_by_name || 'System Auto'}</p>
+                                                        <p className="text-[13px] text-blue-900 font-medium italic leading-relaxed">
+                                                            &ldquo;{session.items[0].purpose}&rdquo;
+                                                        </p>
                                                     </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-1.5 opacity-50">
-                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Released By</span>
-                                                        </div>
-                                                        <p className="text-[11px] font-black text-slate-800 pl-4.5">{session.released_by_name || 'Handoff Pending'}</p>
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
 
-                                        {session.items.some((i: any) => i.purpose) && (
-                                            <div className="bg-blue-50/50 rounded-2xl p-3 border border-blue-100/50">
-                                                <div className="flex items-center gap-1.5 mb-1.5">
-                                                    <MessageSquare className="h-3 w-3 text-blue-400" />
-                                                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Declared Purpose</span>
-                                                </div>
-                                                <p className="text-[11px] text-slate-600 italic leading-snug">
-                                                    &ldquo;{session.items.find((i: any) => i.purpose)?.purpose}&rdquo;
-                                                </p>
+                                        {/* 📦 RIGHT RAIL: EQUIPMENT LIST */}
+                                        <div className="flex-1 space-y-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Equipment List ({session.items.length})</p>
                                             </div>
-                                        )}
-                                    </div>
 
-                                    <div className="flex-1">
-                                        <div className="mb-3 flex items-center justify-between gap-3">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Equipment List ({session.items.length})</p>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {session.items.map((item: BorrowLog) => {
-                                                const isReturned = item.status === 'returned'
-                                                const isOverdue = item.status === 'borrowed' && item.expected_return_date && new Date(item.expected_return_date) < new Date()
-                                                const isTargeted = triageId && String(item.id) === String(triageId)
-
-                                                return (
-                                                    <div 
-                                                        key={item.id} 
-                                                        ref={isTargeted ? targetedItemRef : null}
+                                            <div className="space-y-2.5">
+                                                {session.items.map((item: BorrowLog) => (
+                                                    <div
+                                                        key={item.id}
                                                         className={cn(
-                                                            "relative overflow-hidden bg-white rounded-2xl border p-4 flex items-center gap-5 transition-all duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] shadow-sm",
-                                                            isTargeted ? "ring-2 ring-blue-500 bg-blue-50/30 border-blue-200" :
-                                                            selectedLogIds.has(item.id)
-                                                                ? "border-slate-300 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.12)] -translate-y-[2px] scale-[1.004] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-slate-700/80"
-                                                                : "border-slate-100"
+                                                            "group bg-white rounded-[24px] border border-slate-100 p-4 transition-all hover:bg-slate-50/50 flex items-center gap-5",
+                                                            item.id === Number(triageId) && "border-blue-500 ring-4 ring-blue-500/5 shadow-blue-500/10 bg-blue-50/10"
                                                         )}
+                                                        ref={item.id === Number(triageId) ? targetedItemRef : null}
                                                     >
-                                                        {!isReturned ? (
-                                                            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <Checkbox
-                                                                    checked={selectedLogIds.has(item.id)}
-                                                                    onCheckedChange={() => toggleLogId(item.id)}
-                                                                    className="h-4 w-4 border-zinc-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-4 h-4 shrink-0" />
-                                                        )}
+                                                        {/* Multi-Select Handle */}
+                                                        <div className="pl-1">
+                                                            <Checkbox
+                                                                checked={selectedLogIds.has(item.id)}
+                                                                onCheckedChange={() => toggleLogId(item.id)}
+                                                                disabled={item.status === 'returned'}
+                                                                className="h-5 w-5 rounded-md border-slate-300 data-[state=checked]:bg-zinc-950 data-[state=checked]:border-zinc-950"
+                                                            />
+                                                        </div>
 
-                                                        <TacticalAssetImage 
-                                                            url={(item as any).inventory?.image_url} 
-                                                            alt={item.item_name}
-                                                            size="md"
-                                                            className="rounded-xl shadow-sm"
-                                                        />
+                                                        <div className="relative h-16 w-16 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shrink-0 group-hover:scale-105 transition-all shadow-xs flex items-center justify-center">
+                                                            <TacticalAssetImage
+                                                                url={item.image_url}
+                                                                alt={item.item_name}
+                                                                size="full"
+                                                            />
+                                                        </div>
 
+                                                        {/* Metadata */}
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <p className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">{item.item_name}</p>
-                                                                <div className={cn(
-                                                                    "text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-tighter border",
-                                                                    isReturned ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                                                                    isOverdue ? "bg-rose-50 text-rose-600 border-rose-100" :
-                                                                    "bg-blue-50 text-blue-600 border-blue-100"
+                                                            <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-tight mb-1">{item.item_name}</h4>
+                                                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                                                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wide">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    Quantity: <span className="text-slate-900">{item.quantity}</span>
+                                                                </span>
+                                                                <span className={cn(
+                                                                    "text-[10px] font-bold flex items-center gap-1.5 uppercase tracking-wide",
+                                                                    getUrgencyColor(item.expected_return_date, item.status)
                                                                 )}>
-                                                                    {isReturned ? 'Returned' : 'Borrowed'}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Clock className="h-3 w-3 text-slate-400" />
-                                                                    <span className="text-[11px] font-bold text-slate-500">QUANTITY: {item.quantity}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Calendar className="h-3 w-3 text-slate-400" />
-                                                                    <span className={cn(
-                                                                        "text-[11px] font-bold",
-                                                                        isOverdue ? "text-rose-600" : "text-slate-500"
-                                                                    )}>
-                                                                        {isReturned ? `Returned: ${formatDateTime(item.actual_return_date)}` : `Due: ${formatDate(item.expected_return_date)}`}
-                                                                    </span>
-                                                                </div>
+                                                                    <Calendar className="w-3 h-3" />
+                                                                    Due: {formatDate(item.expected_return_date)}
+                                                                </span>
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 pl-4 border-l border-slate-50">
-                                                            {isReturned ? (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (confirm(`ARE YOU SURE? Revert ${item.item_name} to Borrowed?`)) {
-                                                                            startTransition(async () => {
-                                                                                const res = await revertReturnItem(item.id);
-                                                                                if (res.success) toast.success(res.message);
-                                                                                else toast.error(res.error);
-                                                                            });
-                                                                        }
-                                                                    }}
-                                                                    disabled={isPending}
-                                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600"
-                                                                 >
-                                                                    {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                                                                </Button>
-                                                            ) : (item.status === 'reserved' || item.status === 'staged') ? (
-                                                                <Button
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        startTransition(async () => {
-                                                                            const res = await releaseReservedItem(item.id);
-                                                                            if (res.success) toast.success(res.message);
-                                                                            else toast.error(res.error);
-                                                                        });
-                                                                    }}
-                                                                    disabled={isPending}
-                                                                    className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-black uppercase px-3 rounded-lg"
-                                                                >
-                                                                    Release
-                                                                </Button>
-                                                            ) : (
+                                                        {/* Status + Actions */}
+                                                        <div className="flex items-center gap-4 pr-1">
+                                                            {getStatusBadge(item.status)}
+                                                            {item.status !== 'returned' && item.status !== 'pending' && (
                                                                 <ReturnCommandSheet
                                                                     logId={item.id}
                                                                     itemName={item.item_name}
-                                                                    borrowerName={item.borrower_name}
+                                                                    borrowerName={item.borrower_name || session.borrower_name}
                                                                     quantity={item.quantity}
                                                                     inventoryId={item.inventory_id}
-                                                                    borrowedFrom={item.borrowed_from_warehouse}
-                                                                />
+                                                                >
+                                                                    <Button variant="outline" size="sm" className="h-8.5 px-5 rounded-xl border-slate-200 text-blue-600 font-bold text-[10px] gap-2 hover:bg-white hover:border-blue-200 shadow-sm transition-all active:scale-95">
+                                                                        <RotateCcw className="w-3 h-3" />
+                                                                        Return Item
+                                                                    </Button>
+                                                                </ReturnCommandSheet>
                                                             )}
                                                         </div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-
-                                        {selectedSessionItems.length > 0 && (
-                                            <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 flex items-center justify-between shadow-[0_4px_14px_rgba(15,23,42,0.06)]">
-                                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
-                                                    Selected: {selectedSessionItems.length} item{selectedSessionItems.length > 1 ? 's' : ''}
-                                                </span>
-                                                <ReturnCommandSheet
-                                                    borrowerName={session.borrower_name}
-                                                    items={selectedSessionItems.map((item: any) => ({
-                                                        logId: item.id,
-                                                        itemName: item.item_name,
-                                                        quantity: item.quantity,
-                                                        inventoryId: item.inventory_id,
-                                                        imageUrl: getInventoryImageUrl((item as any).inventory?.image_url),
-                                                        borrowedFrom: item.borrowed_from_warehouse,
-                                                    }))}
-                                                    triggerLabel={`Return Selected (${selectedSessionItems.length})`}
-                                                    triggerClassName="h-8 bg-slate-900 text-white hover:bg-black hover:text-white border-slate-900"
-                                                />
+                                                ))}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>

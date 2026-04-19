@@ -18,6 +18,7 @@ export function useInventoryStateV2(initialItem?: any) {
     // 2. Consumable Meta
     const [brand, setBrand] = useState(initialItem?.brand || '')
     const [expiryDate, setExpiryDate] = useState(initialItem?.expiry_date ? new Date(initialItem.expiry_date).toISOString().split('T')[0] : '')
+    const [expiryAlertDays, setExpiryAlertDays] = useState<number | string>(initialItem?.expiry_alert_days ?? 15)
 
     // Variation State has been permanently REMOVED to maintain flat-hierarchy parity with Mobile Tactical Terminal.
 
@@ -87,7 +88,7 @@ export function useInventoryStateV2(initialItem?: any) {
     return {
         name, setName, categoryId, setCategoryId, description, setDescription, itemType, setItemType,
         serialNumber, setSerialNumber, modelNumber, setModelNumber,
-        brand, setBrand, expiryDate, setExpiryDate,
+        brand, setBrand, expiryDate, setExpiryDate, expiryAlertDays, setExpiryAlertDays,
         targetStock, setTargetStock, lowStockThreshold, setLowStockThreshold,
         restockAlertEnabled, setRestockAlertEnabled,
         distributions, updateSiteQty, totals,

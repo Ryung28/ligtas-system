@@ -11,8 +11,9 @@ import 'package:mobile/src/features/analyst_dashboard/domain/entities/resource_a
 import 'package:mobile/src/features/analyst_dashboard/presentation/controllers/analyst_dashboard_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/providers/inventory_provider.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/providers/manager_action_sheet_v2/manager_action_prefill_provider.dart';
-import 'package:mobile/src/features_v2/inventory/domain/entities/inventory_admin_fields.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum _ActionMode { restock, triage }
 
@@ -53,9 +54,26 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
   bool _isProcessing = false;
   late _ActionMode _mode;
   int? _selectedWarehouseId;
+  int? _hydratedLocationRegistryId;
+  int? _hydratedItemId;
   String? _returnCondition = 'good';
 
   ResourceAnomaly get _a => widget.anomaly;
+
+  /// Hub tied to this alert's inventory row (authoritative for where stock is written).
+  int? get _rowLocationRegistryId =>
+      _a.locationRegistryId ?? _hydratedLocationRegistryId;
+
+  /// Item id for hub ledger preview ([hubStockSnapshotProvider]).
+  int? get _snapshotItemId => _a.itemId ?? _hydratedItemId;
+
+  String _hubLabel(List<StorageHub> hubs, int? id) {
+    if (id == null) return 'Unknown location';
+    for (final h in hubs) {
+      if (h.id == id) return h.name;
+    }
+    return 'Location #$id';
+  }
 
   bool get _isOverdue =>
       _a.category == AnomalyCategory.overdue ||
@@ -80,10 +98,51 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
     _maintenanceController.text = '0';
     _lostController.text = '0';
 
-    // 🛡️ DEFAULT CONTEXT: Try to find a warehouse from the user profile
+    // Prefer the inventory row's hub, then analyst's assigned warehouse.
     final user = ref.read(currentUserProvider);
-    if (user?.assignedWarehouse != null) {
-      _selectedWarehouseId = int.tryParse(user!.assignedWarehouse!);
+    _selectedWarehouseId = widget.anomaly.locationRegistryId ??
+        int.tryParse(user?.assignedWarehouse ?? '');
+
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _hydrateInjectionContext());
+  }
+
+  Future<void> _hydrateInjectionContext() async {
+    final invId = widget.anomaly.inventoryId;
+    if (invId == null) return;
+
+    final needsHydration = widget.anomaly.locationRegistryId == null ||
+        widget.anomaly.itemId == null;
+
+    if (!needsHydration) {
+      if (mounted &&
+          _selectedWarehouseId == null &&
+          _rowLocationRegistryId != null) {
+        setState(() => _selectedWarehouseId = _rowLocationRegistryId);
+      }
+      return;
+    }
+
+    try {
+      final row = await Supabase.instance.client
+          .from('inventory')
+          .select('location_registry_id, item_id')
+          .eq('id', invId)
+          .maybeSingle();
+
+      if (!mounted || row == null) return;
+
+      setState(() {
+        _hydratedLocationRegistryId =
+            (row['location_registry_id'] as num?)?.toInt();
+        _hydratedItemId = (row['item_id'] as num?)?.toInt();
+        _selectedWarehouseId = widget.anomaly.locationRegistryId ??
+            _hydratedLocationRegistryId ??
+            int.tryParse(
+                ref.read(currentUserProvider)?.assignedWarehouse ?? '');
+      });
+    } catch (e) {
+      debugPrint('[AnomalyActionHero] injection context hydration failed: $e');
     }
   }
 
@@ -174,7 +233,7 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
           label: 'HANDED BY',
           value: releasedBy,
           zone: 'Transaction',
-          isHalfWidth: true,
+          isHalfWidth: false, // Changed to false to prevent truncation
         ),
         DetailRowData(
           icon: Icons.calendar_month_rounded,
@@ -887,6 +946,7 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
 
   Widget _buildLocationSelector(LigtasColors sentinel) {
     final hubsAsync = ref.watch(managerStorageHubsProvider);
+    final onyx = const Color(0xFF001A33);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -898,39 +958,104 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
                 color: sentinel.onSurfaceVariant.withOpacity(0.5),
                 letterSpacing: 1.0)),
         const Gap(12),
-        Container(
-          decoration: _premiumShadow(),
-          child: hubsAsync.when(
-            data: (hubs) => DropdownButtonFormField<int>(
-              value: hubs.any((h) => h.id == _selectedWarehouseId) ? _selectedWarehouseId : null,
-              icon: Icon(Icons.arrow_drop_down_rounded, color: sentinel.navy),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                prefixIcon: Icon(Icons.warehouse_rounded, size: 18, color: sentinel.navy.withOpacity(0.5)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-              ),
-              items: hubs.map((h) => DropdownMenuItem<int>(
-                value: h.id,
-                child: Text(h.name, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700)),
-              )).toList(),
-              onChanged: (val) => setState(() => _selectedWarehouseId = val),
-              hint: Text('Select target location...', style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.black26)),
-            ),
-            loading: () => const LinearProgressIndicator(),
-            error: (_, __) => const Text('Failed to load hubs'),
-          ),
+        hubsAsync.when(
+          data: (hubs) {
+            final showCurrent = _rowLocationRegistryId != null ||
+                _selectedWarehouseId != null;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showCurrent) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF0EA5E9).withOpacity(0.25)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.place_outlined,
+                            size: 20, color: sentinel.navy.withOpacity(0.7)),
+                        const Gap(10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('CURRENT LOCATION (THIS ALERT)',
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w900,
+                                    color: onyx.withOpacity(0.45),
+                                    letterSpacing: 0.6)),
+                              const Gap(4),
+                              Text(
+                                _hubLabel(
+                                    hubs, _rowLocationRegistryId ?? _selectedWarehouseId),
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: onyx,
+                                    height: 1.25),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Gap(12),
+                ],
+                Container(
+                  decoration: _premiumShadow(),
+                  child: DropdownButtonFormField<int>(
+                    value: hubs.any((h) => h.id == _selectedWarehouseId)
+                        ? _selectedWarehouseId
+                        : null,
+                    icon: Icon(Icons.arrow_drop_down_rounded, color: sentinel.navy),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: Icon(Icons.warehouse_rounded,
+                          size: 18, color: sentinel.navy.withOpacity(0.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    ),
+                    items: hubs
+                        .map((h) => DropdownMenuItem<int>(
+                              value: h.id,
+                              child: Text(h.name,
+                                  style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14, fontWeight: FontWeight.w700)),
+                            ))
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedWarehouseId = val),
+                    hint: Text('Preview another hub (optional)…',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14, color: Colors.black26)),
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const LinearProgressIndicator(),
+          error: (_, __) => const Text('Failed to load hubs'),
         ),
       ],
     );
   }
 
   Widget _buildHubSnapshot(LigtasColors sentinel) {
-    if (_a.itemId == null || _selectedWarehouseId == null) return const SizedBox.shrink();
+    final itemId = _snapshotItemId;
+    if (itemId == null || _selectedWarehouseId == null) {
+      return const SizedBox.shrink();
+    }
 
     final snapshot = ref.watch(hubStockSnapshotProvider(
-      itemId: _a.itemId!,
+      itemId: itemId,
       warehouseId: _selectedWarehouseId!,
     ));
 
@@ -1302,10 +1427,159 @@ class _AnomalyActionHeroState extends ConsumerState<AnomalyActionHero> {
 
     if (_selectedWarehouseId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select an injection hub.')));
+          const SnackBar(content: Text('Injection hub could not be resolved.')));
       return;
     }
 
+    late final List<StorageHub> hubs;
+    try {
+      hubs = await ref.read(managerStorageHubsProvider.future);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Could not load hubs for confirmation. Try again.')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    final rowLoc = _rowLocationRegistryId;
+    final injectionHubId = rowLoc ?? _selectedWarehouseId!;
+    final hubDisplayName = _hubLabel(hubs, injectionHubId);
+    final previewHubName = _hubLabel(hubs, _selectedWarehouseId);
+
+    final previewMismatch = rowLoc != null &&
+        _selectedWarehouseId != null &&
+        rowLoc != _selectedWarehouseId;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final onyx = const Color(0xFF001A33);
+        return AlertDialog(
+          title: Text('Confirm injection',
+              style: GoogleFonts.lexend(
+                  fontSize: 18, fontWeight: FontWeight.w900, color: onyx)),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Stock will be added to this inventory record:',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: onyx.withOpacity(0.65)),
+                ),
+                const Gap(10),
+                Text(_a.itemName,
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: onyx)),
+                const Gap(4),
+                Text('Inventory #${_a.inventoryId}',
+                    style: GoogleFonts.lexend(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: onyx.withOpacity(0.45))),
+                const Gap(14),
+                Text('Hub (authoritative)',
+                    style: GoogleFonts.lexend(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: onyx.withOpacity(0.45),
+                        letterSpacing: 0.6)),
+                const Gap(4),
+                Text(hubDisplayName,
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: onyx)),
+                if (previewMismatch) ...[
+                  const Gap(12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: const Color(0xFFF59E0B).withOpacity(0.35)),
+                    ),
+                    child: Text(
+                      'Your preview hub is "$previewHubName". The write still applies only to "$hubDisplayName".',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: onyx.withOpacity(0.85),
+                          height: 1.35),
+                    ),
+                  ),
+                ],
+                const Gap(14),
+                Text('Quantities',
+                    style: GoogleFonts.lexend(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: onyx.withOpacity(0.45),
+                        letterSpacing: 0.6)),
+                const Gap(6),
+                Text(
+                  'Good $goodQty · Damaged $damagedQty · Maintenance $maintQty · Lost $lostQty',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: onyx.withOpacity(0.85)),
+                ),
+                const Gap(6),
+                Text('Total $total units',
+                    style: GoogleFonts.lexend(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: onyx)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel',
+                  style: GoogleFonts.lexend(
+                      fontWeight: FontWeight.w800, color: onyx.withOpacity(0.55))),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Confirm injection',
+                  style: GoogleFonts.lexend(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _executeRestock(
+      total: total,
+      goodQty: goodQty,
+      damagedQty: damagedQty,
+      maintQty: maintQty,
+      lostQty: lostQty,
+    );
+  }
+
+  Future<void> _executeRestock({
+    required int total,
+    required int goodQty,
+    required int damagedQty,
+    required int maintQty,
+    required int lostQty,
+  }) async {
     setState(() => _isProcessing = true);
     HapticFeedback.mediumImpact();
 

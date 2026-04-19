@@ -554,6 +554,7 @@ List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
     final qtyLost        = model.qtyLost;
     final expiryRaw      = json['expiry_date'] as String?;
     final expiryDate     = expiryRaw != null ? DateTime.tryParse(expiryRaw) : null;
+    final expiryAlertDays = (json['expiry_alert_days'] as num?)?.toInt() ?? 15;
 
     return InventoryItem(
       id: model.id,
@@ -574,6 +575,7 @@ List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
       restockAlertEnabled: model.restockAlertEnabled,
       lastUpdated: model.updatedAt,
       expiryDate: expiryDate,
+      expiryAlertDays: expiryAlertDays,
       qtyGood: qtyGood,
       qtyDamaged: qtyDamaged,
       qtyMaintenance: qtyMaintenance,

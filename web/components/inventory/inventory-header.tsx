@@ -20,9 +20,11 @@ interface InventoryHeaderProps {
     selectionMode?: boolean
     onToggleSelectionMode?: () => void
     onAddItem?: () => void
+    activeStatus?: string | null
+    onStatusChange?: (status: string | null) => void
 }
 
-export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode, onAddItem }: InventoryHeaderProps) {
+export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode, onAddItem, activeStatus, onStatusChange }: InventoryHeaderProps) {
     const stats = useMemo(() => {
         const totalItems = items.length
         const lowStockItems = items.filter(item => isLowStock(item)).length
@@ -101,10 +103,37 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
 
             {/* Inline Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <InlineStat label="Total Items" value={stats.totalItems} icon={Package} />
-                <InlineStat label="Total Stock" value={stats.totalStock} icon={Layers} color="blue" />
-                <InlineStat label="Low Stock" value={stats.lowStockItems} icon={AlertTriangle} color="amber" alert={stats.lowStockItems > 0} />
-                <InlineStat label="Out of Stock" value={stats.outOfStockItems} icon={XCircle} color="rose" alert={stats.outOfStockItems > 0} />
+                <InlineStat 
+                    label="Total Items" 
+                    value={stats.totalItems} 
+                    icon={Package} 
+                    isActive={!activeStatus || activeStatus === 'all'}
+                    onClick={() => onStatusChange?.(null)}
+                />
+                <InlineStat 
+                    label="Total Stock" 
+                    value={stats.totalStock} 
+                    icon={Layers} 
+                    color="blue" 
+                />
+                <InlineStat 
+                    label="Low Stock" 
+                    value={stats.lowStockItems} 
+                    icon={AlertTriangle} 
+                    color="amber" 
+                    alert={stats.lowStockItems > 0} 
+                    isActive={activeStatus === 'low_stock'}
+                    onClick={() => onStatusChange?.(activeStatus === 'low_stock' ? null : 'low_stock')}
+                />
+                <InlineStat 
+                    label="Out of Stock" 
+                    value={stats.outOfStockItems} 
+                    icon={XCircle} 
+                    color="rose" 
+                    alert={stats.outOfStockItems > 0} 
+                    isActive={activeStatus === 'out_of_stock'}
+                    onClick={() => onStatusChange?.(activeStatus === 'out_of_stock' ? null : 'out_of_stock')}
+                />
             </div>
         </div>
     )
@@ -115,13 +144,17 @@ function InlineStat({
     value, 
     icon: Icon, 
     color = 'slate',
-    alert = false
+    alert = false,
+    isActive = false,
+    onClick
 }: { 
     label: string
     value: number
     icon: any
     color?: string
     alert?: boolean
+    isActive?: boolean
+    onClick?: () => void
 }) {
     const colorClasses: Record<string, string> = {
         slate: 'text-slate-500',
@@ -140,7 +173,12 @@ function InlineStat({
     const valueColor = alert && color === 'rose' ? 'text-red-600' : alert && color === 'amber' ? 'text-orange-600' : 'text-slate-900'
 
     return (
-        <div className="relative overflow-hidden bg-white border-none ring-1 ring-zinc-200/60 shadow-sm hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] hover:ring-zinc-300 transition-all duration-300 rounded-2xl group">
+        <div 
+            onClick={onClick}
+            className={`relative overflow-hidden bg-white border-none ring-1 shadow-sm transition-all duration-300 rounded-2xl group ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] active:scale-95' : ''} ${
+                isActive ? 'ring-2 ring-blue-500 bg-blue-50/30' : 'ring-zinc-200/60 hover:ring-zinc-300'
+            }`}
+        >
             <div className="p-2.5 14in:p-3 flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center mb-1">

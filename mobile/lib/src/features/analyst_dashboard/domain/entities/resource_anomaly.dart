@@ -12,6 +12,8 @@ class ResourceAnomaly {
   final String id;
   final int? inventoryId; // Local record ID (specfic warehouse row)
   final int? itemId;      // Global item ID (cross-warehouse reference)
+  /// [storage_locations] / [inventory.location_registry_id] for this row.
+  final int? locationRegistryId;
   final String itemName;
   final String reason;
   final AnomalyCategory category;
@@ -44,6 +46,7 @@ class ResourceAnomaly {
     required this.id,
     this.inventoryId,
     this.itemId,
+    this.locationRegistryId,
     required this.itemName,
     required this.reason,
     this.category = AnomalyCategory.depletion,
@@ -115,8 +118,9 @@ class ResourceAnomaly {
       
       return ResourceAnomaly(
         id: json['id'].toString(),
-        inventoryId: (metadata['inventory_id'] ?? json['inventory_id']) as int?,
-        itemId: (metadata['item_id']) as int?,
+        inventoryId: _readNullableInt(metadata['inventory_id'] ?? json['inventory_id']),
+        itemId: _readNullableInt(metadata['item_id']),
+        locationRegistryId: _readNullableInt(metadata['location_registry_id']),
         itemName: json['title']?.toString() ?? 'System Alert',
         reason: json['message']?.toString() ?? 'Check required.',
         imageUrl: metadata['image_url']?.toString(),
@@ -149,6 +153,14 @@ class ResourceAnomaly {
       debugPrint('🚨 LIGTAS-CORE: Faulty anomaly deserialization: $e');
       rethrow;
     }
+  }
+
+  static int? _readNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   static AnomalyCategory _mapCategory(String? val) {

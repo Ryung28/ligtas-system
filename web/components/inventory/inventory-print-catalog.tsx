@@ -3,8 +3,10 @@
 import { useRef, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileText, Loader2 } from 'lucide-react'
-import { InventoryItem, supabase } from '@/lib/supabase'
+import { InventoryItem } from '@/lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
+import { fetchInventory } from '@/lib/queries/inventory'
+import { toast } from 'sonner'
 
 interface InventoryPrintCatalogProps {
     items: InventoryItem[]
@@ -162,33 +164,54 @@ export function InventoryPrintCatalog({ items }: InventoryPrintCatalogProps) {
         }
     }, [isSyncing, syncItems, printWindow])
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
         if (items.length === 0) {
-            alert('No items to print')
+            toast.error('No items to print.')
             return
         }
 
-        // STEP 1: Open window immediately (User Gesture context)
+        // Open window immediately — must happen synchronously inside user gesture
         const win = window.open('', '_blank')
         if (!win) {
-            alert('Please allow pop-ups to print the catalog')
+            toast.error('Please allow pop-ups to print the catalog.')
             return
         }
-        
-        // Immediate Feedback in the new window
+
         win.document.write(`
             <html>
-                <head><title>Preparing Gallery...</title></head>
+                <head><title>Preparing Catalog...</title></head>
                 <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#64748b; background:#f8fafc;">
                     <div style="width:40px; height:40px; border:3px solid #f1f5f9; border-top-color:#3b82f6; border-radius:50%; animation:spin 1s linear infinite;"></div>
-                    <p style="margin-top:16px; font-weight:600; letter-spacing:0.05em; font-size:14px;">GENERATING CATALOG...</p>
+                    <p style="margin-top:16px; font-weight:600; letter-spacing:0.05em; font-size:14px;">FETCHING LIVE DATA...</p>
                     <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
                 </body>
             </html>
         `)
-        
+
+        setIsSyncing(true)
         setPrintWindow(win)
-        setSyncItems(items) // 🏛️ INHERITANCE: Use optimized memory data instantly
+
+        try {
+            // Point-in-time fresh fetch — bypasses the 30s SWR cache
+            const freshItems = await fetchInventory()
+
+            if ((freshItems as InventoryItem[]).length === 0) {
+                win.close()
+                setPrintWindow(null)
+                setIsSyncing(false)
+                toast.error('No inventory items found. Add items before printing.')
+                return
+            }
+
+            setSyncItems(freshItems as InventoryItem[])
+            setIsSyncing(false) // unblocks the useEffect handshake
+        } catch (err) {
+            console.error('[PrintCatalog] Fetch failed:', err)
+            win.close()
+            setPrintWindow(null)
+            setIsSyncing(false)
+            toast.error('Failed to fetch inventory data. Check your connection and try again.')
+        }
     }
 
     // Group items for the hidden render

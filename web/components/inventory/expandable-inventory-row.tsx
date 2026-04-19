@@ -6,8 +6,9 @@ import Image from 'next/image'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Edit2, Trash2, Maximize2, Package, ChevronDown, Warehouse, ArrowRightLeft } from 'lucide-react'
+import { Edit2, Trash2, Maximize2, Package, ChevronDown, Warehouse, ArrowRightLeft, Clock } from 'lucide-react'
 import { InventoryItem, InventoryVariant } from '@/lib/supabase'
+import { getExpiryInfo } from '@/lib/expiry-utils'
 import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { QRDialog } from './qr-dialog'
 import { EditableStorageLocation } from './editable-storage-location'
@@ -108,6 +109,7 @@ export function ExpandableInventoryRow({
 
     const stockStatus = getStockDisplay(item)
     const isProblematic = stockStatus.label === 'OUT OF STOCK' || stockStatus.label === 'LOW STOCK'
+    const expiry = getExpiryInfo((item as any).expiry_date, (item as any).expiry_alert_days)
 
     return (
         <>
@@ -117,7 +119,8 @@ export function ExpandableInventoryRow({
                 className={cn(
                     "hover:bg-gray-50/50 group transition-all duration-200 border-b border-gray-100 odd:bg-gray-50/20 animate-in fade-in slide-in-from-bottom-2", 
                     isHighlighted && "animate-highlight-pulse border-l-[4px] z-10", 
-                    isDistributed && "cursor-pointer"
+                    isDistributed && "cursor-pointer",
+                    !isHighlighted && expiry.rowStripeClass,
                 )} 
                 style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'backwards' }}
             >
@@ -195,6 +198,15 @@ export function ExpandableInventoryRow({
                                          stockStatus.label === 'OUT OF STOCK' ? "bg-rose-500 text-white" : "bg-amber-500 text-white"
                                      )}>
                                          {stockStatus.label}
+                                     </Badge>
+                                 )}
+                                 {(expiry.status === 'expired' || expiry.status === 'critical' || expiry.status === 'warning') && (
+                                     <Badge className={cn(
+                                         "text-[10px] font-black tracking-tight px-2.5 min-h-6 h-6 py-0 border flex items-center gap-1.5 rounded-md",
+                                         expiry.badgeClass
+                                     )}>
+                                         <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                                         {expiry.label}
                                      </Badge>
                                  )}
                                  <span className="text-[18px] font-black text-gray-950 tabular-nums tracking-tighter">

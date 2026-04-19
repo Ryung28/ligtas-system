@@ -45,9 +45,10 @@ export function ReportSections({ onConfigure }: ReportSectionsProps) {
             type: 'logs', 
             title: 'Transaction Logs', 
             subtitle: 'Borrow & return history', 
-            description: 'Complete audit trail with chain of custody', 
-            includes: ['Borrow date/time', 'Borrower', 'Approved by', 'Handed by', 'Return date/time', 'Received by', 'Status'], 
-            icon: ClipboardList, 
+            description: 'Complete audit trail with chain of custody',
+            includes: ['Borrow date/time', 'Borrower', 'Approved by', 'Handed by', 'Return date/time', 'Physically returned by', 'Received by', 'Status'],
+            icon: ClipboardList,
+ 
             color: 'emerald', 
             category: 'transaction' 
         },

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { deleteItem } from '@/src/features/catalog'
 import { InventoryHeader } from '@/components/inventory/inventory-header'
@@ -30,6 +31,21 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const [selectedItems, setSelectedItems] = useState<number[]>([])
     const [selectionMode, setSelectionMode] = useState(false)
     const [activeItem, setActiveItem] = useState<InventoryItem | null | 'new'>(null)
+    
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const pathname = usePathname()
+    const activeStatus = searchParams.get('status')
+
+    const handleStatusChange = (status: string | null) => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (status) {
+            params.set('status', status)
+        } else {
+            params.delete('status')
+        }
+        router.push(`${pathname}?${params.toString()}`)
+    }
     
     // Use server data during initial load, then switch to live data
     // 🏛️ DATA FLOW FIX: Stop redundant aggregation here. 
@@ -116,6 +132,8 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                     selectionMode={selectionMode}
                     onToggleSelectionMode={toggleSelectionMode}
                     onAddItem={() => setActiveItem('new')}
+                    activeStatus={activeStatus}
+                    onStatusChange={handleStatusChange}
                 />
 
                 <InventoryTable

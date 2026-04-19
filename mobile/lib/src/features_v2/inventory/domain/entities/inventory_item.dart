@@ -23,6 +23,7 @@ class InventoryItem with _$InventoryItem {
     String? imageUrl,
     DateTime? lastUpdated,
     DateTime? expiryDate,
+    @Default(15) int expiryAlertDays,
     @Default(false) bool isPendingSync,
     @Default(true) bool restockAlertEnabled,
 
@@ -67,7 +68,7 @@ class InventoryItem with _$InventoryItem {
     if (qtyDamaged > 0 || qtyMaintenance > 0 || qtyLost > 0) return true;
     if (expiryDate != null) {
       final daysLeft = expiryDate!.difference(DateTime.now()).inDays;
-      if (daysLeft <= 30) return true;
+      if (daysLeft <= expiryAlertDays) return true;
     }
     return false;
   }
@@ -75,7 +76,11 @@ class InventoryItem with _$InventoryItem {
   /// Alert label shown on the card badge (priority order matches web).
   String get alertLabel {
     if (isOutOffStock) return 'OUT OF STOCK';
-    if (expiryDate != null && expiryDate!.difference(DateTime.now()).inDays <= 30) return 'EXPIRING SOON';
+    if (expiryDate != null) {
+      final daysLeft = expiryDate!.difference(DateTime.now()).inDays;
+      if (daysLeft < 0) return 'EXPIRED';
+      if (daysLeft <= expiryAlertDays) return 'EXPIRING SOON';
+    }
     if (qtyDamaged > 0 || qtyMaintenance > 0 || qtyLost > 0) return 'NEEDS ATTENTION';
     if (isLowStock) return 'LOW STOCK';
     return '';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { ReactNode, useEffect, useMemo, useState, useTransition } from 'react';
 import { 
     RotateCcw, 
     AlertTriangle,
@@ -48,18 +48,20 @@ interface ReturnCommandSheetProps {
     itemName?: string;
     borrowerName: string;
     quantity?: number;
-    inventoryId?: number;
+    inventoryId?: number | null;
     borrowedFrom?: string | null;
     items?: Array<{
         logId: number;
         itemName: string;
         quantity: number;
-        inventoryId: number;
+        inventoryId: number | null;
         imageUrl?: string | null;
         borrowedFrom?: string | null;
     }>;
     triggerLabel?: string;
     triggerClassName?: string;
+    children?: ReactNode;
+    onActionSuccess?: () => void;
 }
 
 export function ReturnCommandSheet({
@@ -71,7 +73,9 @@ export function ReturnCommandSheet({
     borrowedFrom,
     items,
     triggerLabel,
-    triggerClassName
+    triggerClassName,
+    children,
+    onActionSuccess
 }: ReturnCommandSheetProps) {
     const { user } = useUser();
     const [open, setOpen] = useState(false);
@@ -125,7 +129,7 @@ export function ReturnCommandSheet({
             try {
                 const supabase = createClient();
                 if (isBatchMode) {
-                    const inventoryIds = Array.from(new Set(targetItems.map((item) => item.inventoryId)));
+                    const inventoryIds = Array.from(new Set(targetItems.map((item) => item.inventoryId).filter((id): id is number => id !== null)));
                     const { data } = await supabase
                         .from('inventory')
                         .select('id, item_name, category, image_url, storage_location')
@@ -160,12 +164,12 @@ export function ReturnCommandSheet({
     }, [open, inventoryId, isBatchMode, targetItems]);
 
     useEffect(() => {
-        if (!open) {
+        if (open) {
             setBatchResult(null);
             setItemConditionOverrides({});
-            setReturnedBy(borrowerName); // Reset to borrower on open
+            setReturnedBy(borrowerName); // Sync on open so stale state never persists
         }
-    }, [open, borrowerName]);
+    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!open) return;
@@ -256,6 +260,7 @@ export function ReturnCommandSheet({
                         : `Recovery confirmed at ${returnedAtLabel}.`
                 );
                 setOpen(false);
+                onActionSuccess?.();
             } else {
                 toast.error(`Completed with issues: ${successCount} succeeded, ${failureCount} failed.`);
             }
@@ -270,16 +275,18 @@ export function ReturnCommandSheet({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className={cn(
-                        "h-8 gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-100 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm",
-                        triggerClassName
-                    )}
-                >
-                    <RotateCcw className="h-3.5 w-3.5" /> {triggerLabel || (isBatchMode ? `Return Selected (${targetItems.length})` : 'Return Item')}
-                </Button>
+                {children || (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className={cn(
+                            "h-8 gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-100 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm",
+                            triggerClassName
+                        )}
+                    >
+                        <RotateCcw className="h-3.5 w-3.5" /> {triggerLabel || (isBatchMode ? `Return Selected (${targetItems.length})` : 'Return Item')}
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[860px] p-0 border-none bg-white rounded-3xl overflow-hidden shadow-2xl">
                 <form onSubmit={handleReturn}>
