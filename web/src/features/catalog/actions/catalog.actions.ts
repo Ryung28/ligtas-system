@@ -49,6 +49,7 @@ export async function addItem(formData: FormData) {
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
             qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
             qty_lost: Number(formData.get('qty_lost')) || 0,
+            packaging_json: formData.get('packaging_json') ? JSON.parse(formData.get('packaging_json') as string) : null,
         }
 
         // 🛡️ RECONCILIATION: Ensure stock_total matches the sum of buckets
@@ -115,6 +116,7 @@ export async function addItem(formData: FormData) {
                         low_stock_threshold: validatedData.low_stock_threshold,
                         target_stock: validatedData.target_stock,
                         restock_alert_enabled: restockAlertEnabled,
+                        packaging_json: rawData.packaging_json,
                     }])
                     .select()
                     .single()
@@ -148,6 +150,7 @@ export async function addItem(formData: FormData) {
                 qty_maintenance: rawData.qty_maintenance,
                 qty_lost: rawData.qty_lost,
                 status: 'Good', // Base status is Good; sub-buckets handle triage
+                packaging_json: (rawData as any).packaging_json,
                 image_url: validatedData.image_url,
                 serial_number: validatedData.serial_number,
                 equipment_type: validatedData.equipment_type,
@@ -240,6 +243,9 @@ export async function bulkAddItems(items: Array<{
     stock_total: number
     stock_available?: number
     qty_good?: number
+    qty_damaged?: number
+    qty_maintenance?: number
+    qty_lost?: number
     status: string
     storage_location?: string
     serial_number?: string
@@ -258,11 +264,11 @@ export async function bulkAddItems(items: Array<{
             category: item.category,
             item_type: item.item_type ?? 'equipment',
             stock_total: item.stock_total,
-            stock_available: item.qty_good ?? item.stock_total,
-            qty_good: item.qty_good ?? item.stock_total,
-            qty_damaged: 0,
-            qty_maintenance: 0,
-            qty_lost: 0,
+            stock_available: item.qty_good ?? item.stock_available ?? item.stock_total,
+            qty_good: item.qty_good ?? item.stock_available ?? item.stock_total,
+            qty_damaged: item.qty_damaged ?? 0,
+            qty_maintenance: item.qty_maintenance ?? 0,
+            qty_lost: item.qty_lost ?? 0,
             status: item.status,
             storage_location: item.storage_location ?? null,
             serial_number: item.serial_number ?? null,
@@ -328,6 +334,7 @@ export async function updateItem(formData: FormData) {
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
             qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
             qty_lost: Number(formData.get('qty_lost')) || 0,
+            packaging_json: formData.get('packaging_json') ? JSON.parse(formData.get('packaging_json') as string) : null,
         }
 
         // 🔒 IDENTITY LOCK: Get current name/category for targeting siblings
@@ -381,7 +388,8 @@ export async function updateItem(formData: FormData) {
                     qty_lost: dist.qtyLost,
                     stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
                     stock_available: dist.qtyGood,
-                    status: 'Good'
+                    status: 'Good',
+                    packaging_json: rawData.packaging_json,
                 }
 
                 const { error: dbError } = dist.id 
@@ -420,6 +428,7 @@ export async function updateItem(formData: FormData) {
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
                     restock_alert_enabled: rawData.restock_alert_enabled,
+                    packaging_json: rawData.packaging_json,
                 })
                 .eq('id', id)
             
@@ -505,5 +514,46 @@ export async function splitInventoryItem(id: number, _splitQty: number, _targetS
         success: false,
         message: "Split Mode is deprecated.",
         error: "Split Mode is deprecated. Use the 'Status Distribution' ledger in the Edit dialog instead. 🟢"
+    }
+}
+/**
+ * GET INVENTORY ALERTS
+ * Unified retrieval of mission-critical intelligence from v_inventory_actionable_alerts view.
+ * Used for Overview Page Action Center.
+ */
+export async function getInventoryAlerts() {
+    try {
+        // Query the intelligence view
+        const { data, error } = await supabase
+            .from('v_inventory_actionable_alerts')
+            .select('*')
+            .eq('needs_action', true);
+
+        if (error) {
+            console.error('Error fetching inventory alerts:', error);
+            return { success: false, error: 'Database intelligence fetch failed.' };
+        }
+
+        const alerts = data || [];
+        
+        const summary = {
+            out_of_stock: alerts.filter(i => i.is_out_of_stock).length,
+            low_stock: alerts.filter(i => i.is_low_stock).length,
+            expiring_soon: alerts.filter(i => i.is_expiring).length,
+            expired: alerts.filter(i => i.is_expired).length,
+            damaged: alerts.filter(i => i.is_damaged).length,
+            maintenance: alerts.filter(i => i.is_maintenance).length,
+            missing: alerts.filter(i => i.is_missing).length,
+            total_active_alerts: alerts.length
+        };
+
+        return { 
+            success: true, 
+            data: summary,
+            items: alerts.slice(0, 10) // Return top 10 most critical for quick triage
+        };
+    } catch (error) {
+        console.error('Unexpected error in getInventoryAlerts:', error);
+        return { success: false, error: 'An unexpected system error occurred.' };
     }
 }

@@ -3,8 +3,8 @@ import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { Icons, TYPE_CONFIG } from '../constants/notification.config'
 import { NotificationCardProps } from '../types/notification.types'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { User, Activity, Clock, ChevronRight, Hash, Trash2 } from 'lucide-react'
 
 import { resolveSystemRoute } from '@/lib/utils/route-resolver'
 
@@ -18,10 +18,8 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
     border: "rgba(148, 163, 184, 0.1)",
   }
 
-  const isCritical = ['stock_out', 'item_overdue', 'borrow_rejected'].includes(notif.type);
   const meta = notif.metadata || {}
 
-  // 🛡️ SSOT RESOLVER: Use shared logic
   const target = resolveSystemRoute({
     type: notif.type,
     metadata: notif.metadata,
@@ -30,143 +28,109 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
     title: notif.title
   })
 
-  const handleLinkClick = (e: React.MouseEvent) => {
-    // 🛡️ TACTICAL ISOLATION: Side effects only, let the Link handle navigation
-    if (!notif.isRead) onMarkRead(notif.id)
-    if (onClose) onClose()
-  }
-
-  const getActionLabel = (type: string) => {
-    switch(type) {
-      case 'stock_low':
-      case 'stock_out':
-      case 'low_stock': return 'RESTOCK';
-      case 'item_overdue': return 'RECALL';
-      case 'user_pending':
-      case 'user_request': return 'REVIEW';
-      case 'borrow_approved':
-      case 'item_returned': return 'ARCHIVE';
-      default: return 'DETAILS';
-    }
-  }
-
-  const actionLabel = getActionLabel(notif.type);
-
   return (
     <Link 
       href={target || '#'}
-      onClick={handleLinkClick}
+      onClick={() => { if (!notif.isRead) onMarkRead(notif.id); if (onClose) onClose(); }}
       className={cn(
-        "group relative flex items-start gap-3 p-3 transition-all cursor-pointer border-b border-slate-100/50 hover:bg-slate-50",
-        !notif.isRead && "bg-blue-50/20"
+        "group relative flex flex-col p-[13px] transition-all duration-300 cursor-pointer overflow-visible mb-2",
+        "rounded-[20px] border border-slate-200",
+        !notif.isRead 
+          ? "bg-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.1)] ring-1 ring-blue-500/10" 
+          : "bg-slate-100/60 shadow-sm border-slate-100 grayscale-[0.3] opacity-80",
+        "hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 mx-1 mt-5"
       )}
     >
-      {/* Intent Strip (The Admin Edge) */}
+      {/* 🛡️ TACTICAL SPATIAL ICON */}
       <div 
-        className="absolute left-0 top-[10%] bottom-[10%] w-[2.5px] rounded-r-full"
-        style={{ backgroundColor: cfg.accent }}
-      />
+        className={cn(
+            "absolute -top-3.5 left-5 w-8 h-8 rounded-[10px] flex items-center justify-center shadow-lg ring-[4px] ring-white transition-transform group-hover:scale-110 z-10",
+            notif.isRead && "opacity-50 grayscale"
+        )}
+        style={{ background: cfg.bg, color: cfg.accent }}
+      >
+        {React.cloneElement(cfg.icon as React.ReactElement<{ size: number; strokeWidth: number }>, { size: 14, strokeWidth: 3 })}
+      </div>
 
-      <div className="relative flex-shrink-0">
-        <div 
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 border border-slate-200/50 shadow-sm"
-          style={{ background: cfg.bg, color: cfg.accent }}
-        >
-          {React.cloneElement(cfg.icon as React.ReactElement<{ size: number; strokeWidth: number }>, { size: 16, strokeWidth: 2 })}
+      {/* HEADER COMMAND ROW */}
+      <div className="flex items-center justify-between gap-4 mb-2.5 pt-0.5 pl-10">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-[9px] font-black uppercase tracking-[0.1em] px-2 py-0.5 rounded-md bg-white border border-slate-100 text-slate-500">
+            {cfg.label}
+          </span>
+          <span className="text-slate-300">·</span>
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <Clock className="w-3.5 h-3.5 opacity-40 text-slate-500" />
+            <span className="text-[9px] font-black tabular-nums tracking-tighter">
+                {notif.time ? formatDistanceToNow(new Date(notif.time), { addSuffix: true }).toUpperCase() : 'NOW'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+            {!notif.isRead && (
+                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-pulse shrink-0" />
+            )}
+            <div className={cn(
+                "shrink-0 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] bg-white border border-slate-200 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm",
+                !notif.isRead ? "text-slate-900" : "text-slate-400"
+            )}>
+                OPEN
+            </div>
         </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider font-mono opacity-90" style={{ color: cfg.accent }}>
-            {cfg.label}
-          </span>
-          {isCritical && (
-            <span className="px-1.5 py-0.5 rounded-[4px] bg-[#991b1b15] text-[#991b1b] text-[8px] font-black tracking-tighter uppercase border border-[#991b1b20]">
-              CRITICAL
-            </span>
-          )}
-          <span className="text-[10px] text-slate-400">•</span>
-          <span className="text-[10px] text-slate-400 font-medium tabular-nums">
-            {formatDistanceToNow(new Date(notif.time))}
-          </span>
-          {!notif.isRead && (
-             <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cfg.accent }} />
-          )}
-        </div>
-
-        <div className="mb-1">
+      <div className="space-y-1.5 pl-1">
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 opacity-20"><Activity className="w-4.5 h-4.5 text-slate-900" /></div>
           <h4 className={cn(
-            "text-sm font-black truncate tracking-tight text-slate-900 group-hover:text-black transition-colors uppercase"
+            "text-[13px] font-black tracking-tight uppercase leading-none truncate",
+            !notif.isRead ? "text-slate-900" : "text-slate-500"
           )}>
             {notif.title}
           </h4>
         </div>
-        
-        <div className="mb-2">
-          <p className="text-[11px] text-slate-700 truncate font-bold font-sans">
-            {meta.borrower_name || notif.title}
-          </p>
-          {meta.borrower_organization && (
-            <span className="text-[7px] inline-block bg-slate-100 text-slate-500 px-1 py-0.5 rounded-[2px] font-black uppercase tracking-widest leading-none border border-slate-200 mt-1">
-              {meta.borrower_organization}
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+           <div className="shrink-0 opacity-20">
+            {notif.type.includes('user') ? <User className="w-4.5 h-4.5 text-slate-900" /> : <ChevronRight className="w-4.5 h-4.5 text-slate-900" />}
+           </div>
+           <p className={cn(
+            "text-[11px] font-bold leading-tight truncate",
+            !notif.isRead ? "text-slate-600" : "text-slate-400"
+           )}>
+             {meta.borrower_name || notif.title}
+           </p>
         </div>
-
-        {(() => {
-          const itemName = meta.item_name || meta.search_query || (notif.title.includes(':') ? notif.title.split(':').pop()?.trim() : null);
-          const quantity = meta.quantity || (notif.message?.match(/\(Qty:\s*(\d+)\)/i)?.[1]);
-          
-          if (!itemName) return null;
-
-          return (
-            <div className="mb-2">
-              <span className="inline-flex items-center gap-1.5 text-zinc-900 font-bold bg-zinc-50 px-1.5 py-1 rounded-[4px] border border-zinc-200 uppercase text-[9px] tracking-tight shadow-sm">
-                  <span className="opacity-60 text-[8px]">ITEM:</span>
-                  {itemName}
-                  {quantity && (
-                    <span className="text-zinc-400 bg-white px-1 rounded-[2px] border border-zinc-100 font-mono italic">x{quantity}</span>
-                  )}
-              </span>
-            </div>
-          );
-        })()}
-        
-        {meta.id && (
-          <p className="text-[8px] text-slate-300 font-mono mt-1.5 font-bold tracking-tighter uppercase">
-            TXN: #{meta.id.toString().slice(-6)}
-          </p>
-        )}
       </div>
 
-      <div className="flex items-center self-center pl-2 gap-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="opacity-0 group-hover:opacity-100 transition-all h-7 px-2.5 text-[9px] font-black uppercase tracking-[0.15em] border border-slate-200/80 bg-white hover:bg-slate-50"
-          style={{ color: cfg.accent }}
-          asChild
-        >
-          <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-            {actionLabel}
-          </span>
-        </Button>
-        
+      {/* FOOTER DATA SHELF */}
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100/50 pt-2.5 pb-0.5">
+        <div className="flex items-center gap-5">
+             {(() => {
+                const itemName = meta.item_name || meta.search_query || (notif.title.includes(':') ? notif.title.split(':').pop()?.trim() : null);
+                if (!itemName) return null;
+                return (
+                    <div className="inline-flex items-center gap-2 font-black uppercase text-[10px] tracking-tight">
+                        <span className="opacity-20 text-[8px] text-slate-500">UNIT:</span>
+                        <span className={cn("truncate max-w-[200px]", !notif.isRead ? "text-slate-800" : "text-slate-400")}>{itemName}</span>
+                    </div>
+                );
+            })()}
+            {meta.id && (
+                <div className="flex items-center gap-1.5 text-[10px] font-black font-mono uppercase tracking-tighter text-slate-300">
+                    <Hash className="w-3.5 h-3.5 opacity-20 text-blue-600" />
+                    {meta.id.toString().slice(-6)}
+                </div>
+            )}
+        </div>
         {onDelete && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete(notif.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1 hover:bg-red-50 rounded-md active:scale-90"
-            aria-label="Delete log"
-          >
-            {React.cloneElement(Icons.trash as React.ReactElement<{ size: number; strokeWidth: number }>, { size: 12, strokeWidth: 2.5 })}
+          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(notif.id); }} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-600 transition-all p-1.5 hover:bg-red-50 rounded-lg active:scale-90">
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>
     </Link>
   )
 }
+
+export default NotificationCard;

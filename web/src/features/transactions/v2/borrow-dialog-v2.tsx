@@ -52,19 +52,22 @@ export function BorrowDialogV2() {
     const handleConfirm = async () => {
         if (!identity || isEmpty) return;
         
-        const logs = cart.map(c => ({
-            inventory_id: c.item.id,
-            inventory_variant_id: c.selectedVariantId || null,
-            item_name: c.item.item_name,
-            quantity: c.quantity,
-            borrower_name: identity.borrower_name,
-            borrower_contact: identity.contact_number,
-            borrower_organization: identity.office_department,
-            purpose: identity.purpose,
-            released_by_name: identity.released_by,
-            transaction_type: 'borrow',
-            status: 'borrowed'
-        }));
+        const logs = cart.map(c => {
+            const isConsumable = c.item.item_type === 'consumable'
+            return {
+                inventory_id: c.item.id,
+                inventory_variant_id: c.selectedVariantId || null,
+                item_name: c.item.item_name,
+                quantity: c.quantity,
+                borrower_name: identity.borrower_name,
+                borrower_contact: identity.contact_number,
+                borrower_organization: identity.office_department,
+                purpose: identity.purpose,
+                released_by_name: identity.released_by,
+                transaction_type: isConsumable ? 'dispense' : 'borrow',
+                status: isConsumable ? 'dispensed' : 'borrowed'
+            }
+        });
 
         const result = await createBatchBorrow(logs);
         if (result.success) {

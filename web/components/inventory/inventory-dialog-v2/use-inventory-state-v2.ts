@@ -20,12 +20,85 @@ export function useInventoryStateV2(initialItem?: any) {
     const [expiryDate, setExpiryDate] = useState(initialItem?.expiry_date ? new Date(initialItem.expiry_date).toISOString().split('T')[0] : '')
     const [expiryAlertDays, setExpiryAlertDays] = useState<number | string>(initialItem?.expiry_alert_days ?? 15)
 
-    // Variation State has been permanently REMOVED to maintain flat-hierarchy parity with Mobile Tactical Terminal.
-
     // 4. Planning Thresholds
     const [targetStock, setTargetStock] = useState<number | string>(initialItem?.target_stock ?? 0)
     const [lowStockThreshold, setLowStockThreshold] = useState<number | string>(initialItem?.low_stock_threshold ?? 20)
     const [restockAlertEnabled, setRestockAlertEnabled] = useState<boolean>(initialItem?.restock_alert_enabled ?? true)
+    
+    // 4.5. Packaging State (Enterprise Mode - Named & Mixed)
+    const [packaging, setPackaging] = useState<{
+        enabled: boolean;
+        containerType: string;
+        containerCount: number | string;
+        unitsPerContainer: number | string;
+        batches: Array<{ id: string, label: string, units: number }>;
+    }>(() => {
+        const p = initialItem?.packaging_json;
+        if (p) return p;
+        return {
+            enabled: false,
+            containerType: 'Box',
+            containerCount: 0,
+            unitsPerContainer: 0,
+            batches: []
+        };
+    })
+
+    const updatePackaging = (updates: any) => {
+        setPackaging(prev => {
+            const next = { ...prev, ...updates };
+            
+            // Auto-generate batches if count/units change and we haven't manually added extra ones
+            if (updates.containerCount !== undefined || updates.unitsPerContainer !== undefined) {
+                const count = Math.max(0, Number(next.containerCount) || 0);
+                const upc = Math.max(0, Number(next.unitsPerContainer) || 0);
+                next.batches = Array(count).fill(0).map((_, i) => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    label: `${next.containerType} ${i + 1}`,
+                    units: upc
+                }));
+            }
+            
+            if (next.enabled) {
+                const total = next.batches.reduce((sum, b) => sum + b.units, 0);
+                updateSiteQty(0, 'qtyGood', total);
+            }
+            return next;
+        });
+    }
+
+    const updateBatchUnits = (index: number, val: number) => {
+        setPackaging(prev => {
+            const nextBatches = [...prev.batches];
+            if (nextBatches[index]) {
+                nextBatches[index] = { ...nextBatches[index], units: Math.max(0, val) };
+            }
+            const total = nextBatches.reduce((sum, b) => sum + b.units, 0);
+            updateSiteQty(0, 'qtyGood', total);
+            return { ...prev, batches: nextBatches };
+        });
+    }
+
+    const updateBatchLabel = (index: number, label: string) => {
+        setPackaging(prev => {
+            const nextBatches = [...prev.batches];
+            if (nextBatches[index]) {
+                nextBatches[index] = { ...nextBatches[index], label };
+            }
+            return { ...prev, batches: nextBatches };
+        });
+    }
+
+    const addExtraBatch = () => {
+        setPackaging(prev => {
+            const nextBatches = [...prev.batches, {
+                id: Math.random().toString(36).substr(2, 9),
+                label: `Extra ${prev.containerType}`,
+                units: 0
+            }];
+            return { ...prev, batches: nextBatches, containerCount: nextBatches.length };
+        });
+    }
 
     // 5. Logistics Distribution Matrix
     const [distributions, setDistributions] = useState<any[]>(() => {
@@ -65,23 +138,18 @@ export function useInventoryStateV2(initialItem?: any) {
     }
 
     const addDistribution = (location: any) => {
-        // Prevent duplicate locations
         if (distributions.some(d => d.locationId === location.id)) return
         setDistributions(prev => [
             ...prev,
             {
-                locationId: location.id,
-                locationName: location.location_name,
-                qtyGood: 0,
-                qtyDamaged: 0,
-                qtyMaintenance: 0,
-                qtyLost: 0
+                locationId: location.id, locationName: location.location_name,
+                qtyGood: 0, qtyDamaged: 0, qtyMaintenance: 0, qtyLost: 0
             }
         ])
     }
 
     const removeDistribution = (index: number) => {
-        if (distributions.length <= 1) return // Keep at least one
+        if (distributions.length <= 1) return
         setDistributions(prev => prev.filter((_, i) => i !== index))
     }
 
@@ -91,6 +159,7 @@ export function useInventoryStateV2(initialItem?: any) {
         brand, setBrand, expiryDate, setExpiryDate, expiryAlertDays, setExpiryAlertDays,
         targetStock, setTargetStock, lowStockThreshold, setLowStockThreshold,
         restockAlertEnabled, setRestockAlertEnabled,
+        packaging, updatePackaging, updateBatchUnits, updateBatchLabel, addExtraBatch,
         distributions, updateSiteQty, totals,
         addDistribution, removeDistribution
     }

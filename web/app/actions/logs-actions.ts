@@ -22,7 +22,8 @@ export async function getBorrowLogsAction() {
                 inventory:inventory_id (
                     item_name,
                     image_url,
-                    item_type
+                    item_type,
+                    packaging_json
                 )
             `)
             .order('created_at', { ascending: false })
@@ -73,7 +74,8 @@ export async function getBorrowLogByIdAction(id: string) {
                     model_number,
                     brand,
                     expiry_date,
-                    storage_location
+                    storage_location,
+                    packaging_json
                 )
             `)
             .eq('id', id)

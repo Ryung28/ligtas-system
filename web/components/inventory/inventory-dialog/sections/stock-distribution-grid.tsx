@@ -36,22 +36,36 @@ export function StockDistributionGrid({
     onRemoveSite,
     savedLocations
 }: StockDistributionGridProps) {
+    const totals = siteDistributions.reduce(
+        (acc, dist) => ({
+            qtyGood: acc.qtyGood + (Number(dist.qtyGood) || 0),
+            qtyDamaged: acc.qtyDamaged + (Number(dist.qtyDamaged) || 0),
+            qtyMaintenance: acc.qtyMaintenance + (Number(dist.qtyMaintenance) || 0),
+            qtyLost: acc.qtyLost + (Number(dist.qtyLost) || 0),
+        }),
+        { qtyGood: 0, qtyDamaged: 0, qtyMaintenance: 0, qtyLost: 0 }
+    )
+
     return (
         <div className="space-y-4">
             {/* LEDGER HEADER */}
             {siteDistributions.length > 0 && (
-                <div className="flex items-center px-2">
+                <div className="flex items-center px-2 gap-2">
                     <p className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Facility / Site</p>
-                    <p className="w-24 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center pr-10">On Hand</p>
+                    <p className="w-20 text-[10px] font-black text-emerald-600 uppercase tracking-widest text-center">Ready</p>
+                    <p className="w-20 text-[10px] font-black text-rose-500 uppercase tracking-widest text-center">Dmg</p>
+                    <p className="w-20 text-[10px] font-black text-amber-600 uppercase tracking-widest text-center">Repr</p>
+                    <p className="w-20 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Lost</p>
+                    <div className="w-8" />
                 </div>
             )}
 
             {/* SITE ROWS */}
             <div className="space-y-1.5">
                 {siteDistributions.map((dist, idx) => (
-                    <div 
+                    <div
                         key={`${dist.locationName}-${idx}`}
-                        className="flex items-center gap-3 p-2 h-14 rounded-xl border border-slate-100 bg-slate-50/30 group transition-all hover:bg-white hover:border-slate-200 hover:shadow-sm"
+                        className="flex items-center gap-2 p-2 min-h-14 rounded-xl border border-slate-100 bg-slate-50/30 group transition-all hover:bg-white hover:border-slate-200 hover:shadow-sm"
                     >
                         {/* Icon & Site Name */}
                         <div className="h-9 w-9 shrink-0 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-500 group-hover:border-blue-100 transition-colors">
@@ -71,7 +85,31 @@ export function StockDistributionGrid({
                                 type="number"
                                 value={dist.qtyGood}
                                 onChange={(e) => onUpdateQty(idx, 'qtyGood', e.target.value)}
-                                className="h-9 w-24 font-black text-sm bg-white border-slate-200 rounded-lg text-center focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                                className="h-9 w-20 font-black text-sm bg-white border-emerald-100 text-emerald-700 rounded-lg text-center focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                        </div>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                value={dist.qtyDamaged}
+                                onChange={(e) => onUpdateQty(idx, 'qtyDamaged', e.target.value)}
+                                className="h-9 w-20 font-black text-sm bg-white border-rose-100 text-rose-600 rounded-lg text-center focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                        </div>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                value={dist.qtyMaintenance}
+                                onChange={(e) => onUpdateQty(idx, 'qtyMaintenance', e.target.value)}
+                                className="h-9 w-20 font-black text-sm bg-white border-amber-100 text-amber-700 rounded-lg text-center focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                        </div>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                value={dist.qtyLost}
+                                onChange={(e) => onUpdateQty(idx, 'qtyLost', e.target.value)}
+                                className="h-9 w-20 font-black text-sm bg-white border-slate-200 text-slate-600 rounded-lg text-center focus:ring-4 focus:ring-slate-500/10 focus:border-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                         </div>
 
@@ -89,6 +127,15 @@ export function StockDistributionGrid({
                 ))}
             </div>
 
+            {siteDistributions.length > 0 && (
+                <div className="flex items-center justify-end gap-2 text-[11px] font-black uppercase tracking-wide pr-12">
+                    <span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">Ready {totals.qtyGood}</span>
+                    <span className="px-2 py-1 rounded-md bg-rose-50 text-rose-600">Dmg {totals.qtyDamaged}</span>
+                    <span className="px-2 py-1 rounded-md bg-amber-50 text-amber-700">Repr {totals.qtyMaintenance}</span>
+                    <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600">Lost {totals.qtyLost}</span>
+                </div>
+            )}
+
             {/* FOOTER: ADD SITE */}
             <div className="pt-2">
                 <Select onValueChange={(val) => {
@@ -99,11 +146,19 @@ export function StockDistributionGrid({
                         <PlusCircle className="h-4 w-4" />
                         <span className="uppercase tracking-widest">Assign to another site</span>
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl shadow-2xl border-slate-200">
+                    <SelectContent
+                        className="rounded-xl shadow-2xl border-slate-200 max-h-56 overflow-y-auto p-1"
+                        position="popper"
+                        sideOffset={6}
+                    >
                         {savedLocations
                             .filter(loc => !siteDistributions.some(d => d.locationId === loc.id?.toString() || d.locationName === loc.location_name))
                             .map(loc => (
-                                <SelectItem key={loc.id || loc.location_name} value={loc.id?.toString() || loc.location_name} className="font-bold text-[13px] py-3">
+                                <SelectItem
+                                    key={loc.id || loc.location_name}
+                                    value={loc.id?.toString() || loc.location_name}
+                                    className="font-semibold text-[12px] py-1.5 leading-tight"
+                                >
                                     {loc.location_name.replace(/_/g, ' ')}
                                 </SelectItem>
                             ))}

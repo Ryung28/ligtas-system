@@ -74,22 +74,6 @@ export async function finalizeReturn(logId: number, audit: any, quantity: number
 
     if (updateError) return handleError(updateError);
 
-    // 2. Adjust Stock
-    const { data: item, error: itemError } = await supabase
-        .from('inventory')
-        .select('stock_available')
-        .eq('id', inventoryId)
-        .single();
-
-    if (itemError) return handleError(itemError);
-
-    const { error: stockError } = await supabase
-        .from('inventory')
-        .update({ stock_available: (item?.stock_available || 0) + quantity })
-        .eq('id', inventoryId);
-
-    if (stockError) return handleError(stockError);
-
     revalidatePath('/dashboard/logs');
     revalidatePath('/dashboard/inventory');
 

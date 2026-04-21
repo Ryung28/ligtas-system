@@ -29,7 +29,6 @@ export function isLowStock(item: Partial<InventoryItem>): boolean {
     if (["damaged", "lost", "deleted"].includes(st)) return false
 
     const eff = getEffectiveLowStockThreshold(item)
-    if (available < 5) return true
     if (eff == null) return false
     return available <= eff
 }

@@ -1,12 +1,16 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, Package, Clock, ShieldAlert, ArrowUpRight, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Package, Clock, ShieldAlert, ArrowUpRight, CheckCircle2, RefreshCw, AlertTriangle, Thermometer, ShieldCheck } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { createBrowserClient } from '@supabase/ssr'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { isLowStock } from '@/lib/inventory-utils'
+import { isExpiringSoon } from '@/lib/expiry-utils'
+import type { InventoryItem } from '@/lib/supabase'
+import { getInventoryAlerts } from '../../src/features/catalog/actions/catalog.actions'
 
 interface SystemIntel {
     id: string
@@ -56,10 +60,102 @@ const CATEGORY_CONFIG = {
 
 import { resolveSystemRoute } from '@/lib/utils/route-resolver'
 
-export function LogisticsIntelQueue() {
-    const { data: intel = [], isLoading, mutate } = useSWR('system_intel', fetchIntel, {
-        refreshInterval: 10000, // Background refresh
+/** Narrow `system_intel` rows to inventory alert sub-types (metadata must include stock/expiry fields). */
+type InventoryIntelFilter = 'all' | 'out_of_stock' | 'low_stock' | 'expiring'
+
+function metadataAsInventoryPartial(metadata: Record<string, unknown> | null | undefined): Partial<InventoryItem> {
+    if (!metadata || typeof metadata !== 'object') return {}
+    const m = metadata as Record<string, unknown>
+    return {
+        stock_available: typeof m.stock_available === 'number' ? m.stock_available : Number(m.stock_available ?? 0),
+        target_stock: typeof m.target_stock === 'number' ? m.target_stock : Number(m.target_stock ?? 0),
+        low_stock_threshold: typeof m.low_stock_threshold === 'number' ? m.low_stock_threshold : Number(m.low_stock_threshold ?? 0),
+        restock_alert_enabled: m.restock_alert_enabled !== false,
+        status: typeof m.status === 'string' ? m.status : undefined,
+        expiry_date: typeof m.expiry_date === 'string' ? m.expiry_date : undefined,
+        expiry_alert_days:
+            m.expiry_alert_days == null ? undefined : typeof m.expiry_alert_days === 'number' ? m.expiry_alert_days : Number(m.expiry_alert_days),
+    }
+}
+
+/** Action Center lists one `system_intel` row per pending `access_requests` row; duplicates (same user, multiple pending rows) inflate the count vs Users. Keep the first row per person after the global sort (newest-first within INFO). */
+function dedupeAccessIntelRows(items: SystemIntel[]): SystemIntel[] {
+    const seen = new Set<string>()
+    return items.filter((item) => {
+        if (item.category !== 'ACCESS') return true
+        const uid = String(item.metadata?.borrower_user_id ?? item.metadata?.email ?? '').trim()
+        if (!uid) return true
+        if (seen.has(uid)) return false
+        seen.add(uid)
+        return true
     })
+}
+
+function inventoryRowMatchesFilter(item: SystemIntel, filter: InventoryIntelFilter): boolean {
+    if (item.category !== 'INVENTORY') return false
+    const m = item.metadata || {}
+    const row = metadataAsInventoryPartial(m)
+    const stock = row.stock_available ?? 0
+
+    switch (filter) {
+        case 'out_of_stock':
+            return stock <= 0
+        case 'low_stock':
+            return isLowStock(row)
+        case 'expiring':
+            return isExpiringSoon(row.expiry_date, row.expiry_alert_days)
+        default:
+            return true
+    }
+}
+
+export function LogisticsIntelQueue() {
+    const { data: intel = [], isLoading: isIntelLoading, mutate } = useSWR('system_intel', fetchIntel, {
+        refreshInterval: 10000,
+    })
+
+    const { data: alertData, isLoading: isAlertsLoading } = useSWR('inventory_actionable_alerts', async () => {
+        const result = await getInventoryAlerts()
+        return result.success ? result : null
+    }, { refreshInterval: 15000 })
+
+    const [inventoryFilter, setInventoryFilter] = useState<InventoryIntelFilter>('all')
+
+    const intelDedupedAccess = useMemo(() => dedupeAccessIntelRows(intel), [intel])
+
+    // 🎯 INTEL FUSION: Merge system logs with live actionable view items
+    const displayedIntel = useMemo(() => {
+        let baseItems = intelDedupedAccess;
+
+        // If we have live view items, we prioritize them for the INVENTORY category
+        // to ensure real-time accuracy even if logs haven't been generated yet.
+        if (alertData?.items) {
+            const liveInventoryItems: SystemIntel[] = alertData.items.map((item: any) => ({
+                id: `live-${item.id}`,
+                category: 'INVENTORY' as const,
+                priority: item.is_out_of_stock ? 'CRITICAL' : 'WARNING' as const,
+                title: item.item_name,
+                message: item.is_out_of_stock ? 'OUT OF STOCK' : item.is_low_stock ? 'LOW STOCK' : 'EXPIRING',
+                metadata: {
+                    item_id: item.id,
+                    item_name: item.item_name,
+                    stock_available: item.stock_available,
+                    target_stock: item.target_stock,
+                    expiry_date: item.expiry_date
+                },
+                created_at: new Date().toISOString() // Live items are "now"
+            }));
+
+            // Filter out old inventory logs to avoid duplicates if we have live data
+            const nonInventoryLogs = baseItems.filter(i => i.category !== 'INVENTORY');
+            baseItems = [...liveInventoryItems, ...nonInventoryLogs];
+        }
+
+        if (inventoryFilter === 'all') return baseItems
+        return baseItems.filter((row) => inventoryRowMatchesFilter(row, inventoryFilter))
+    }, [intelDedupedAccess, alertData, inventoryFilter])
+
+    const isLoading = isIntelLoading || isAlertsLoading;
 
     // Realtime Pulse
     useEffect(() => {
@@ -75,16 +171,73 @@ export function LogisticsIntelQueue() {
         }
     }, [mutate])
 
+    const filterChip = (id: InventoryIntelFilter, label: string) => {
+        const active = inventoryFilter === id
+        return (
+            <button
+                type="button"
+                key={id}
+                onClick={() => setInventoryFilter(id)}
+                className={`rounded-lg px-2.5 py-1 text-[9px] font-black uppercase tracking-wide transition-all border ${
+                    active
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+            >
+                {label}
+            </button>
+        )
+    }
+
+    const stats = alertData?.data;
+
     return (
         <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm">
-            <div className="flex-1 overflow-y-auto px-2 divide-y divide-slate-100/60 scrollbar-hide max-h-[380px]">
+            {/* 🛡️ TACTICAL STATUS HUB */}
+            <div className="grid grid-cols-4 gap-2 p-2 bg-slate-50/50 border-b border-slate-100">
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <span className="text-[14px] font-black text-rose-600 leading-none">{stats?.out_of_stock || 0}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">OOS</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <span className="text-[14px] font-black text-amber-600 leading-none">{stats?.low_stock || 0}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Low</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <span className="text-[14px] font-black text-orange-600 leading-none">{stats?.expiring_soon || 0}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Expire</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white border border-slate-100 shadow-sm">
+                    <span className="text-[14px] font-black text-slate-900 leading-none">{stats?.damaged || 0}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Issue</span>
+                </div>
+            </div>
+
+            <div className="shrink-0 px-2 pt-2 pb-1.5 border-b border-slate-100/80">
+                <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Inventory alerts</p>
+                    {stats?.total_active_alerts && stats.total_active_alerts > 0 && (
+                        <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span className="text-[8px] font-bold text-red-600 uppercase tracking-tight">{stats.total_active_alerts} Critical</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    {filterChip('all', 'All')}
+                    {filterChip('out_of_stock', 'Out of stock')}
+                    {filterChip('low_stock', 'Low stock')}
+                    {filterChip('expiring', 'Expiring')}
+                </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 divide-y divide-slate-100/60 scrollbar-hide max-h-[340px]">
                 <AnimatePresence mode="popLayout">
                     {isLoading ? (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-40 text-slate-400 gap-3">
                             <RefreshCw className="h-5 w-5 animate-spin" />
                             <span className="text-xs font-medium uppercase tracking-widest">Updating data...</span>
                         </motion.div>
-                    ) : intel.length === 0 ? (
+                    ) : intelDedupedAccess.length === 0 ? (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center h-40 text-slate-400 gap-4">
                             <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-100">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
@@ -94,8 +247,16 @@ export function LogisticsIntelQueue() {
                                 <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400 italic">No tasks pending</p>
                             </div>
                         </motion.div>
+                    ) : displayedIntel.length === 0 ? (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-36 px-4 text-center text-slate-400 gap-2">
+                            <Package className="h-8 w-8 opacity-40" />
+                            <p className="text-xs font-bold text-slate-600">No alerts in this view</p>
+                            <p className="text-[10px] font-medium text-slate-400 max-w-[220px]">
+                                Try another filter, or open Inventory for the full registry.
+                            </p>
+                        </motion.div>
                     ) : (
-                        intel.map((item, i) => {
+                        displayedIntel.map((item, i) => {
                             const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.INVENTORY
                             const Icon = config.icon
 
@@ -164,15 +325,18 @@ export function LogisticsIntelQueue() {
 
                                             <p className="text-[11px] text-slate-500 font-medium line-clamp-2 opacity-90 font-sans leading-relaxed">
                                                 {(() => {
-                                                    const rawMessage = (item.message || "");
+                                                    if (item.category === 'ACCESS') {
+                                                        return 'Needs approval: open Mobile App Users, then Pending Requests.'
+                                                    }
+                                                    const rawMessage = item.message || ''
                                                     const cleanMessage = rawMessage
                                                         .replace(/New borrow request from .*?:|New borrow request from .*?\s|New borrow request from/gi, '')
                                                         .replace(/\d+\)\s*/g, '')
-                                                        .replace(new RegExp(item.metadata?.item_name || "___NONE___", 'gi'), '')
+                                                        .replace(new RegExp(item.metadata?.item_name || '___NONE___', 'gi'), '')
                                                         .replace(/\(Qty:\s*\d+\)/gi, '')
-                                                        .trim();
-                                                    
-                                                    return cleanMessage || "Details pending.";
+                                                        .trim()
+
+                                                    return cleanMessage || 'Details pending.'
                                                 })()}
                                             </p>
                                         </div>

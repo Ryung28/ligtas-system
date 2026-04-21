@@ -22,6 +22,7 @@ import {
     ShieldCheck,
     Clock,
     Calendar,
+    MapPin,
     Monitor,
     Smartphone
 } from 'lucide-react'
@@ -38,8 +39,12 @@ import { bulkReturnItems, revertReturnItem, releaseReservedItem } from '@/src/fe
 import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
 import { toast } from 'sonner'
 import { useSearchParams } from 'next/navigation'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { PackagingPill } from '../inventory/_components/packaging-pill'
 
 import { TransactionDetailBody } from '@/src/features/transactions/components/transaction-detail-body'
+
+const ITEM_PREVIEW_LIMIT = 4
 
 interface LogSessionTableProps {
     sessions: BorrowSession[]
@@ -402,6 +407,9 @@ function LogSessionRow({
     const allItemsSelected = hasReturnable && returnableItems.every((i: any) => selectedLogIds.has(i.id))
     const someItemsSelected = hasReturnable && returnableItems.some((i: any) => selectedLogIds.has(i.id)) && !allItemsSelected
     const selectedSessionItems = session.items.filter((i: any) => selectedLogIds.has(i.id) && i.status !== 'returned')
+    const [isItemsPreviewOpen, setIsItemsPreviewOpen] = useState(false)
+    const itemsPreviewCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const isPointerInsidePreviewRef = useRef(false)
 
     // 🛡️ ANCHOR REF: Targeted item location tracking
     const targetedItemRef = useRef<HTMLDivElement>(null)
@@ -421,6 +429,36 @@ function LogSessionRow({
             }
         }
     }, [isExpanded, triageId, session.items])
+
+    useEffect(() => {
+        return () => {
+            if (itemsPreviewCloseTimerRef.current) {
+                clearTimeout(itemsPreviewCloseTimerRef.current)
+            }
+        }
+    }, [])
+
+    const openItemsPreview = () => {
+        if (itemsPreviewCloseTimerRef.current) {
+            clearTimeout(itemsPreviewCloseTimerRef.current)
+            itemsPreviewCloseTimerRef.current = null
+        }
+        isPointerInsidePreviewRef.current = true
+        setIsItemsPreviewOpen(true)
+    }
+
+    const closeItemsPreview = () => {
+        isPointerInsidePreviewRef.current = false
+        if (itemsPreviewCloseTimerRef.current) {
+            clearTimeout(itemsPreviewCloseTimerRef.current)
+        }
+        // Tiny delay prevents flicker while cursor moves to overlay.
+        itemsPreviewCloseTimerRef.current = setTimeout(() => {
+            if (!isPointerInsidePreviewRef.current) {
+                setIsItemsPreviewOpen(false)
+            }
+        }, 120)
+    }
 
     return (
         <React.Fragment>
@@ -480,10 +518,73 @@ function LogSessionRow({
                     <span className="text-[9px] font-bold text-zinc-400 uppercase leading-none block mt-0.5">Release</span>
                 </TableCell>
                 <TableCell className="px-1.5 py-1.5">
-                    <div className="flex items-center gap-1">
-                        <Package className="h-3.5 w-3.5 text-gray-400" />
-                        <span className="text-[13px] font-bold text-gray-900 leading-none">{session.items.length} ITEMS</span>
-                    </div>
+                    <Popover open={isItemsPreviewOpen} onOpenChange={setIsItemsPreviewOpen}>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-zinc-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onMouseEnter={openItemsPreview}
+                                onMouseLeave={closeItemsPreview}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        setIsItemsPreviewOpen((prev) => !prev)
+                                    } else if (e.key === 'Escape') {
+                                        setIsItemsPreviewOpen(false)
+                                    }
+                                }}
+                                aria-label={`View ${session.items.length} item details`}
+                            >
+                                <Package className="h-3.5 w-3.5 text-gray-400" />
+                                <span className="text-[13px] font-bold text-gray-900 leading-none">{session.items.length} ITEMS</span>
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            align="start"
+                            side="top"
+                            className="w-[300px] p-3 border-zinc-200 shadow-xl"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseEnter={openItemsPreview}
+                            onMouseLeave={closeItemsPreview}
+                            onCloseAutoFocus={(e) => e.preventDefault()}
+                        >
+                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-2">
+                                Equipment Preview
+                            </p>
+                            <div className="space-y-2">
+                                {session.items.slice(0, ITEM_PREVIEW_LIMIT).map((item: BorrowLog, idx: number) => (
+                                    <motion.div
+                                        key={item.id}
+                                        initial={{ opacity: 0, y: 4 }}
+                                        animate={{ opacity: 1, y: 0, transition: { duration: 0.18, delay: idx * 0.04 } }}
+                                        whileHover={{ x: 2 }}
+                                        className="flex items-center gap-2.5 rounded-md p-1 transition-colors hover:bg-zinc-50"
+                                    >
+                                        <div className="h-8 w-8 rounded-md overflow-hidden border border-zinc-200 bg-zinc-50 shrink-0">
+                                            <TacticalAssetImage
+                                                url={item.image_url}
+                                                alt={item.item_name}
+                                                size="full"
+                                            />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-bold text-zinc-900 truncate">{item.item_name}</p>
+                                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
+                                                Qty: {item.quantity}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                            {session.items.length > ITEM_PREVIEW_LIMIT && (
+                                <p className="mt-2 text-[10px] font-bold text-zinc-500 uppercase tracking-wide">
+                                    +{session.items.length - ITEM_PREVIEW_LIMIT} more item(s)
+                                </p>
+                            )}
+                        </PopoverContent>
+                    </Popover>
                 </TableCell>
                 <TableCell className="px-1.5 py-1.5">
                     <div className="flex flex-col">
@@ -550,10 +651,10 @@ function LogSessionRow({
                                 transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
                                 className="overflow-hidden"
                             >
-                                <div className="p-7 bg-white border-b border-zinc-100/50">
-                                    <div className="flex flex-col xl:flex-row gap-8">
+                                <div className="p-7 bg-white border-b border-zinc-100/50 overflow-x-auto">
+                                    <div className="flex flex-row gap-8 min-w-[1100px]">
                                         {/* 👤 LEFT RAIL: PERSONNEL DETAILS */}
-                                        <div className="w-full xl:w-[280px] space-y-5 shrink-0">
+                                        <div className="w-[280px] space-y-5 shrink-0">
                                             <div className="space-y-3">
                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Personnel Details</p>
                                                 <div className="bg-white rounded-[26px] border border-slate-100 p-5 shadow-sm border-b-2 border-b-slate-100/30">
@@ -613,7 +714,7 @@ function LogSessionRow({
                                         </div>
 
                                         {/* 📦 RIGHT RAIL: EQUIPMENT LIST */}
-                                        <div className="flex-1 space-y-4">
+                                        <div className="flex-1 min-w-0 space-y-4">
                                             <div className="flex items-center justify-between mb-2">
                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Equipment List ({session.items.length})</p>
                                             </div>
@@ -646,13 +747,24 @@ function LogSessionRow({
                                                             />
                                                         </div>
 
-                                                        {/* Metadata */}
                                                         <div className="flex-1 min-w-0">
-                                                            <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-tight mb-1">{item.item_name}</h4>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-tight truncate">{item.item_name}</h4>
+                                                                {(item as any).inventory?.packaging_json?.enabled && (
+                                                                    <PackagingPill 
+                                                                        packaging={(item as any).inventory.packaging_json} 
+                                                                        className="scale-90"
+                                                                    />
+                                                                )}
+                                                            </div>
                                                             <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
                                                                 <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wide">
                                                                     <Clock className="w-3 h-3" />
                                                                     Quantity: <span className="text-slate-900">{item.quantity}</span>
+                                                                </span>
+                                                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wide">
+                                                                    <MapPin className="w-3 h-3" />
+                                                                    Location: <span className="text-slate-900">{String((item as any).borrowed_from_warehouse || (item as any).inventory?.storage_location || 'N/A').replace(/_/g, ' ')}</span>
                                                                 </span>
                                                                 <span className={cn(
                                                                     "text-[10px] font-bold flex items-center gap-1.5 uppercase tracking-wide",

@@ -99,7 +99,7 @@ export function BorrowerDossier({ borrower, onRefresh }: BorrowerDossierProps) {
     if (!borrower) return <DossierEmptyState />
 
     // Strict Connection Logic for Tabs
-    const activeBorrows = history.filter(l => l.status === 'borrowed')
+    const activeBorrows = history.filter(l => l.status === 'borrowed' || l.status === 'overdue')
     const completedBorrows = history.filter(l => l.status === 'returned')
     const consumablesIssued = history.filter(l => l.status === 'dispensed')
 
@@ -226,7 +226,7 @@ export function BorrowerDossier({ borrower, onRefresh }: BorrowerDossierProps) {
                 <div className="bg-white rounded-xl p-4 text-center border border-blue-100 shadow-sm">
                     <p className="text-[9px] font-black text-blue-500 uppercase tracking-[0.1em]">Still Borrowed</p>
                     <p className="text-2xl font-black text-blue-700 leading-tight mt-1">
-                        {borrower.active_items ?? 0}
+                        {borrower.active_items < 0 ? 0 : (borrower.active_borrows ?? 0)}
                     </p>
                 </div>
                 <div className="bg-white rounded-xl p-4 text-center border border-indigo-100 shadow-sm">

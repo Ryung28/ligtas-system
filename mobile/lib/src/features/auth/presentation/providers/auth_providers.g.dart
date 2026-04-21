@@ -9,7 +9,7 @@ part of 'auth_providers.dart';
 String _$authStateHash() => r'572b9bf99a814f1240394282388546d70bab544c';
 
 /// 🛡️ THE MASTER AUTH PROVIDER
-/// Aliased for backward compatibility and to provide a clean AsyncValue<AuthState>
+/// Aliased for backward compatibility and to provide a clean `AsyncValue` of [AuthState].
 ///
 /// Copied from [authState].
 @ProviderFor(authState)
@@ -23,10 +23,9 @@ final authStateProvider = AutoDisposeProvider<AsyncValue<AuthState>>.internal(
 );
 
 typedef AuthStateRef = AutoDisposeProviderRef<AsyncValue<AuthState>>;
-String _$currentUserHash() => r'dc37383d248b627d88e53bacbd3dadf94a729583';
+String _$currentUserHash() => r'3c7e0b6439561f76ae797b88d5551ff1aa96734b';
 
-/// 👤 THE USER IDENTITY PROVIDER
-/// Extracts the active UserModel if authenticated or pending.
+/// 👤 THE USER IDENTITY PROVIDER — only after admin approval (profile status `active`).
 ///
 /// Copied from [currentUser].
 @ProviderFor(currentUser)

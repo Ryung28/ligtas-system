@@ -29,6 +29,7 @@ export interface BorrowerNameFieldProps {
     className?: string
     manual?: boolean
     onManualChange?: (manual: boolean) => void
+    onSelect?: (borrower: BorrowerStats) => void
 }
 
 const inputLikeTrigger =
@@ -44,6 +45,7 @@ export function BorrowerNameField({
     className,
     manual: manualProp,
     onManualChange,
+    onSelect,
 }: BorrowerNameFieldProps) {
     const [pickerOpen, setPickerOpen] = React.useState(false)
     const [internalManual, setInternalManual] = React.useState(false)
@@ -86,6 +88,7 @@ export function BorrowerNameField({
 
     const handleSelect = (b: BorrowerStats) => {
         onChange(b.borrower_name)
+        onSelect?.(b)
         setPickerOpen(false)
         setQuery('')
     }

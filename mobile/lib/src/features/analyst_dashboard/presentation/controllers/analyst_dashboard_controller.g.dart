@@ -267,7 +267,7 @@ final analystRepositoryProvider =
 );
 
 typedef AnalystRepositoryRef = AutoDisposeProviderRef<IAnalystRepository>;
-String _$hubStockSnapshotHash() => r'20c3b7d3fb08d36d872142d55aaf4f050e72f2ab';
+String _$hubStockSnapshotHash() => r'f005cd05e3f3d257ed4d83719cca053cb8aa5e50';
 
 /// 🛰️ HUB SNAPSHOT PROVIDER: Surgical lookup of a specific hub's stock distribution
 ///
@@ -424,6 +424,139 @@ class _HubStockSnapshotProviderElement
   int get itemId => (origin as HubStockSnapshotProvider).itemId;
   @override
   int get warehouseId => (origin as HubStockSnapshotProvider).warehouseId;
+}
+
+String _$stationManifestHash() => r'3e1012e4696a9564f7e7e2a31d7cffc97c4c5f6c';
+
+/// See also [stationManifest].
+@ProviderFor(stationManifest)
+const stationManifestProvider = StationManifestFamily();
+
+/// See also [stationManifest].
+class StationManifestFamily
+    extends Family<AsyncValue<List<StationManifestItem>>> {
+  /// See also [stationManifest].
+  const StationManifestFamily();
+
+  /// See also [stationManifest].
+  StationManifestProvider call({
+    required String stationId,
+  }) {
+    return StationManifestProvider(
+      stationId: stationId,
+    );
+  }
+
+  @override
+  StationManifestProvider getProviderOverride(
+    covariant StationManifestProvider provider,
+  ) {
+    return call(
+      stationId: provider.stationId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'stationManifestProvider';
+}
+
+/// See also [stationManifest].
+class StationManifestProvider
+    extends AutoDisposeFutureProvider<List<StationManifestItem>> {
+  /// See also [stationManifest].
+  StationManifestProvider({
+    required String stationId,
+  }) : this._internal(
+          (ref) => stationManifest(
+            ref as StationManifestRef,
+            stationId: stationId,
+          ),
+          from: stationManifestProvider,
+          name: r'stationManifestProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$stationManifestHash,
+          dependencies: StationManifestFamily._dependencies,
+          allTransitiveDependencies:
+              StationManifestFamily._allTransitiveDependencies,
+          stationId: stationId,
+        );
+
+  StationManifestProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.stationId,
+  }) : super.internal();
+
+  final String stationId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<StationManifestItem>> Function(StationManifestRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: StationManifestProvider._internal(
+        (ref) => create(ref as StationManifestRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        stationId: stationId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<StationManifestItem>> createElement() {
+    return _StationManifestProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is StationManifestProvider && other.stationId == stationId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, stationId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+mixin StationManifestRef
+    on AutoDisposeFutureProviderRef<List<StationManifestItem>> {
+  /// The parameter `stationId` of this provider.
+  String get stationId;
+}
+
+class _StationManifestProviderElement
+    extends AutoDisposeFutureProviderElement<List<StationManifestItem>>
+    with StationManifestRef {
+  _StationManifestProviderElement(super.provider);
+
+  @override
+  String get stationId => (origin as StationManifestProvider).stationId;
 }
 
 String _$analystDashboardControllerHash() =>

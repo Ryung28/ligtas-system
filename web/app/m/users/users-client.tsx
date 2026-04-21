@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { MobileHeader } from '@/components/mobile/mobile-header'
 import { EmptyState, ErrorState } from '@/components/mobile/primitives'
-import { useUserManagement, type UserProfile } from '@/hooks/use-user-management'
+import { useUserManagement, buildPendingBorrowersQueue, type UserProfile } from '@/hooks/use-user-management'
 import { useUser } from '@/providers/auth-provider'
 import { useDebounce } from '@/hooks/use-debounce'
 import { roleCan, mFocus } from '@/lib/mobile/tokens'
@@ -30,6 +30,7 @@ export function UsersClient() {
 
     const {
         users,
+        pendingRequests,
         authorizedEmails,
         stats,
         isLoading,
@@ -48,6 +49,22 @@ export function UsersClient() {
     const [selected, setSelected] = useState<UserProfile | null>(null)
     const [inviteOpen, setInviteOpen] = useState(false)
     const debounced = useDebounce(searchQuery, 250)
+    const q = debounced.trim().toLowerCase()
+
+    const pendingBase = useMemo(
+        () => buildPendingBorrowersQueue(users, pendingRequests),
+        [users, pendingRequests],
+    )
+    const pending = useMemo(
+        () =>
+            pendingBase.filter(
+                (u) =>
+                    !q ||
+                    (u.full_name || '').toLowerCase().includes(q) ||
+                    (u.email || '').toLowerCase().includes(q),
+            ),
+        [pendingBase, q],
+    )
 
     // Access guard — must come BEFORE list filtering
     if (!isLoading && currentUser && !canManage) {
@@ -67,14 +84,10 @@ export function UsersClient() {
         return <UsersSkeleton />
     }
 
-    const q = debounced.trim().toLowerCase()
     const matches = (u: Partial<UserProfile>) =>
         !q ||
         (u.full_name || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q)
-
-    // Buckets
-    const pending = users.filter((u) => u.status === 'pending').filter(matches)
 
     const activeStaff = users.filter(
         (u) => u.status === 'active' && (u.role === 'admin' || u.role === 'editor'),

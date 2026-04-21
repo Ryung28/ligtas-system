@@ -129,46 +129,61 @@ export const NotificationItemComponent: React.FC<NotificationItemProps> = ({ ite
           }
         }}
         className={cn(
-          "py-3.5 flex items-center gap-4 cursor-pointer transition-all hover:bg-slate-50/50 group outline-none border-b border-slate-100 last:border-0",
-          !item.isRead ? "opacity-100" : "opacity-60 hover:opacity-100"
+          "relative p-4 flex items-start gap-4 cursor-pointer transition-all duration-300 group outline-none",
+          "bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5",
+          "border-l-[6px]",
+          borderColors[item.type as keyof typeof borderColors] || "border-l-slate-300",
+          item.isRead ? "opacity-75" : "opacity-100"
         )}
       >
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 mt-1">
           <div className={cn(
-            "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-300 shadow-sm ring-1 ring-white",
+            "h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm ring-1 ring-white/50",
             !item.isRead ? colors[item.type as keyof typeof colors] : "bg-slate-100",
             !item.isRead ? "text-white" : "text-slate-400"
           )}>
-            <IconComponent className="w-4 h-4" />
+            <IconComponent className="w-5 h-5" />
           </div>
-          {!item.isRead && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500 border border-white"></span>
-            </span>
-          )}
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <span className={cn(
-              "text-[8px] font-black tracking-[0.1em] uppercase",
-              !item.isRead ? "text-blue-600" : "text-slate-400"
-            )}>
-              {item.type.replace('_', ' ')}
-            </span>
-            <span className="text-[9px] font-bold text-slate-400 tabular-nums">
-              {item.time ? formatDistanceToNow(new Date(item.time), { addSuffix: false }).toUpperCase() : 'NOW'}
-            </span>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={cn(
+                "text-[9px] font-black tracking-[0.15em] uppercase truncate",
+                !item.isRead ? "text-emerald-600" : "text-slate-400"
+              )}>
+                {item.type.includes('stock') ? 'INVENTORY' : item.type.includes('user') ? 'ACCESS' : 'LOGISTICS'}
+              </span>
+              <span className="text-slate-300">·</span>
+              <span className="text-[9px] font-bold text-slate-400 tabular-nums uppercase">
+                {item.time ? formatDistanceToNow(new Date(item.time), { addSuffix: true }).toUpperCase() : 'JUST NOW'}
+              </span>
+            </div>
+            {!item.isRead && (
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/10"></span>
+            )}
           </div>
+
           <h4 className={cn(
-            "text-xs font-bold truncate transition-colors leading-tight",
+            "text-[13px] font-black uppercase tracking-tight truncate transition-colors leading-tight mb-0.5",
             !item.isRead ? "text-slate-900" : "text-slate-500"
           )}>
             {item.title}
           </h4>
-          <p className="text-[11px] text-slate-400 font-medium truncate opacity-80">
+
+          <p className="text-[12px] text-slate-500 font-medium leading-relaxed opacity-90 mb-3">
             {item.message}
           </p>
+
+          {/* 🛡️ DATA TAGS: Premium Context Labels */}
+          {(item.metadata?.item_name || item.metadata?.borrower_name || item.metadata?.id) && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[9px] font-black text-slate-600 uppercase tracking-wider">
+                ITEM: <span className="ml-1 text-slate-900">{item.metadata?.item_name || item.metadata?.id || 'ALPHA-DATA'}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {onDelete && (
@@ -177,10 +192,10 @@ export const NotificationItemComponent: React.FC<NotificationItemProps> = ({ ite
               e.stopPropagation();
               onDelete(item.id);
             }}
-            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all p-1.5 hover:bg-red-50 rounded-lg active:scale-95"
+            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all p-2 hover:bg-red-50 rounded-xl active:scale-95 mt-0.5"
             aria-label="Delete log"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>

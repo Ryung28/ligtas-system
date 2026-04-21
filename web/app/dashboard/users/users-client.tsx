@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Shield, Users, Smartphone } from 'lucide-react'
 import { UserHeader } from '@/components/users/user-header'
 import { SummaryCard } from '@/components/dashboard/summary-card'
-import { useUserManagement } from '@/hooks/use-user-management'
+import { useUserManagement, buildPendingBorrowersQueue } from '@/hooks/use-user-management'
 import { StaffManagementCard } from '@/components/users/staff-management-card'
 import { BorrowerManagementCard } from '@/components/users/borrower-management-card'
 import { getCurrentUser } from '@/lib/auth'
@@ -17,6 +17,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     const [currentUser, setCurrentUser] = useState<any>(null)
     const {
         users: liveUsers,
+        pendingRequests,
         stats,
         isLoading,
         isValidating,
@@ -67,10 +68,13 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
         return [...activeStaff, ...pendingInvites] as any[]
     }, [users, authorizedEmails])
 
-    // Filter pending borrowers (requests)
-    const pendingBorrowers = useMemo(() => {
-        return users.filter(user => user.status?.toLowerCase() === 'pending')
-    }, [users])
+    // Pending queue must match Action Center (`system_intel` ACCESS = pending `access_requests`),
+    // not only `user_profiles.status` — otherwise duplicate or drifted access rows show extra cards
+    // while this tab still shows "2".
+    const pendingBorrowers = useMemo(
+        () => buildPendingBorrowersQueue(users, pendingRequests),
+        [users, pendingRequests]
+    )
 
     // Filter active borrowers (mobile app users)
     const activeBorrowers = useMemo(() => {

@@ -89,12 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       next.whenData((authState) {
         authState.mapOrNull(
           authenticated: (user) {
-            // 🛡️ ARCHITECT'S NOTE: Manual context.go('/') removed. 
-            // We now rely on GoRouter behavior to trigger redirects automatically 
-            // via the authRepository/authController subscription defined in app.dart.
-          },
-          pendingApproval: (user) {
-            context.push('/pending-approval');
+            // GoRouter redirect sends active users to /dashboard or /manager.
           },
           error: (state) {
             TacticalNotice.show(

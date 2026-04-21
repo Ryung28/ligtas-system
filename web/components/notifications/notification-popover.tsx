@@ -60,7 +60,7 @@ export const NotificationPopover: React.FC = () => {
         </div>
 
         {/* 🛡️ THE CHANNEL: Scrollable list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/20 scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400 transition-colors">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-100/80 scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400 transition-colors">
           {/* 🚨 TACTICAL ERROR BOUNDARY: Surface silent failures */}
           <div aria-live="polite">
             {error && (

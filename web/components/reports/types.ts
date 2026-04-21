@@ -10,6 +10,7 @@ export type ReportType =
 export interface ReportStats {
     totalItems: number
     lowStock: number
+    outOfStock: number
     borrowed: number
     overdue: number
     expiringSoon: number
@@ -25,6 +26,8 @@ export interface ReportConfig {
     includePageNumbers?: boolean
     includeWatermark: boolean
     sortOrder?: 'latest' | 'oldest'
+    orientation?: 'portrait' | 'landscape'
+    density: 'compact' | 'standard' | 'tactical'
 }
 
 export interface ReportDefinition {

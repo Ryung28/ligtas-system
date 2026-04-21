@@ -1,13 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
+import '../../navigation/providers/navigation_provider.dart';
 import '../../../core/design_system/app_theme.dart';
 
-class ScannerView extends StatefulWidget {
+class ScannerView extends ConsumerStatefulWidget {
   final Function(String) onQrCodeDetected;
   final String? overlayText;
   
@@ -18,10 +20,10 @@ class ScannerView extends StatefulWidget {
   });
 
   @override
-  State<ScannerView> createState() => _ScannerViewState();
+  ConsumerState<ScannerView> createState() => _ScannerViewState();
 }
 
-class _ScannerViewState extends State<ScannerView> {
+class _ScannerViewState extends ConsumerState<ScannerView> {
   late MobileScannerController controller;
   bool _isProcessing = false;
   bool _isTorchOn = false;
@@ -34,11 +36,20 @@ class _ScannerViewState extends State<ScannerView> {
       facing: CameraFacing.back,
       torchEnabled: false,
     );
+
+    // 🛡️ TACTICAL: Suppress dock during camera lifecycle
+    Future.microtask(() {
+      if (mounted) ref.read(isDockSuppressedProvider.notifier).state = true;
+    });
   }
 
   @override
   void dispose() {
     controller.dispose();
+    // 🛡️ RESTORATION: Ensure dock is released regardless of disposal path
+    Future.microtask(() {
+      ref.read(isDockSuppressedProvider.notifier).state = false;
+    });
     super.dispose();
   }
 

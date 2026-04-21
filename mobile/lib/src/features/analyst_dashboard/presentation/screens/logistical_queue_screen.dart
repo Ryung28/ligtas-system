@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/design_system/app_theme.dart';
 import '../../domain/entities/resource_anomaly.dart';
-import '../_components/anomaly_action_hero.dart';
+import 'package:mobile/src/features_v2/anomaly_action_v2/anomaly_action_sheet_v2.dart';
 import '../providers/alert_queue_providers.dart';
 import '../widgets/alert_queue_empty_state.dart';
 import '../widgets/alert_tactile_card.dart';
@@ -44,7 +44,7 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
       _triageExecuted = true;
       Future.microtask(() {
         if (!mounted) return;
-        _openActionSheet(context, match);
+        _openActionSheet(context, ref, match);
       });
     }
   }
@@ -55,13 +55,12 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
     super.dispose();
   }
 
-  void _openActionSheet(BuildContext context, ResourceAnomaly anomaly) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => AnomalyActionHero(anomaly: anomaly),
-    );
+  void _openActionSheet(
+    BuildContext context,
+    WidgetRef ref,
+    ResourceAnomaly anomaly,
+  ) {
+    AnomalyActionSheetV2.show(context, ref, anomaly);
   }
 
   @override
@@ -79,7 +78,7 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
     final counts = ref.watch(alertQueueFilterCountsProvider);
     final entryComplete = ref.watch(alertQueueEntryCompleteProvider);
 
-    const filters = ['All', 'Critical', 'Inventory', 'Logistics', 'Overdue', 'Access'];
+    const filters = ['All', 'Critical', 'Inventory', 'Logistics', 'Overdue'];
 
     return Scaffold(
       backgroundColor: sentinel.containerLow,
@@ -253,7 +252,7 @@ class _LogisticalQueueScreenState extends ConsumerState<LogisticalQueueScreen> {
                               index: index,
                               sentinel: sentinel,
                               entryComplete: entryComplete,
-                              onTap: () => _openActionSheet(context, anomaly),
+                              onTap: () => _openActionSheet(context, ref, anomaly),
                             );
                           },
                         ),

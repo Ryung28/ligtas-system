@@ -237,17 +237,15 @@ class TacticalStepper extends StatelessWidget {
   }
 }
 
-/// Injection hub dropdown + optional ledger preview (parity with monolith hub section).
+/// Location for adding stock + optional on-site stock preview.
 class HubDeploymentContext extends ConsumerWidget {
   final int? selectedWarehouseId;
-  final int? rowLocationRegistryId;
   final ValueChanged<int?> onWarehouseChanged;
   final int? snapshotItemId;
 
   const HubDeploymentContext({
     super.key,
     required this.selectedWarehouseId,
-    required this.rowLocationRegistryId,
     required this.onWarehouseChanged,
     required this.snapshotItemId,
   });
@@ -255,14 +253,13 @@ class HubDeploymentContext extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sentinel = Theme.of(context).sentinel;
-    final onyx = const Color(0xFF001A33);
     final hubsAsync = ref.watch(managerStorageHubsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'INJECTION HUB',
+          'Add stock to',
           style: GoogleFonts.lexend(
               fontSize: 10,
               fontWeight: FontWeight.w900,
@@ -272,62 +269,7 @@ class HubDeploymentContext extends ConsumerWidget {
         const Gap(12),
         hubsAsync.when(
           data: (hubs) {
-            final showCurrent =
-                rowLocationRegistryId != null || selectedWarehouseId != null;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showCurrent) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F9FF),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: const Color(0xFF0EA5E9).withOpacity(0.25)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.place_outlined,
-                            size: 20,
-                            color: sentinel.navy.withOpacity(0.7)),
-                        const Gap(10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('CURRENT LOCATION (THIS ALERT)',
-                                  style: GoogleFonts.lexend(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w900,
-                                    color: onyx.withOpacity(0.45),
-                                    letterSpacing: 0.6,
-                                  )),
-                              const Gap(4),
-                              Text(
-                                AnomalySharedUI.hubLabel(
-                                  hubs,
-                                  rowLocationRegistryId ?? selectedWarehouseId,
-                                ),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: onyx,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Gap(12),
-                ],
-                Container(
+            return Container(
                   decoration: AnomalySharedUI.premiumShadow(),
                   child: DropdownButtonFormField<int>(
                     value: hubs.any((h) => h.id == selectedWarehouseId)
@@ -357,17 +299,15 @@ class HubDeploymentContext extends ConsumerWidget {
                         .toList(),
                     onChanged: onWarehouseChanged,
                     hint: Text(
-                      'Preview another hub (optional)…',
+                      'Choose a location…',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 14, color: Colors.black26),
                     ),
                   ),
-                ),
-              ],
-            );
+                );
           },
           loading: () => const LinearProgressIndicator(),
-          error: (_, __) => const Text('Failed to load hubs'),
+          error: (_, __) => const Text('Could not load locations.'),
         ),
         const Gap(12),
         _HubLedgerPreview(
@@ -418,7 +358,7 @@ class _HubLedgerPreview extends ConsumerWidget {
                     size: 14, color: sentinel.navy.withOpacity(0.4)),
                 const Gap(8),
                 Text(
-                  'No existing stock found at this hub.',
+                  'No stock at this location.',
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -446,14 +386,15 @@ class _HubLedgerPreview extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'HUB LEDGER (CURRENT HOLDINGS)',
-                style: GoogleFonts.lexend(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF64748B),
-                    letterSpacing: 0.5),
+                'Stock at this site',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF64748B),
+                  height: 1.25,
+                ),
               ),
-              const Gap(10),
+              const Gap(12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

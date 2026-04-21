@@ -235,6 +235,13 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
         return { success: false, message: error.message }
     }
 
+    const { error: syncErr } = await supabase.rpc('sync_pending_access_request_for_user', {
+        p_user_id: parsed.data.userId,
+    })
+    if (syncErr) {
+        console.warn('[UserAction:reactivate] sync access_requests:', syncErr.message)
+    }
+
     return { success: true, message: 'User reactivated.' }
 }
 
@@ -289,10 +296,33 @@ export async function authorizeUserAction(
                 .eq('id', profile.id)
 
             if (patchError) throw patchError
+
+            const { error: syncErr } = await supabase.rpc('sync_pending_access_request_for_user', {
+                p_user_id: profile.id,
+            })
+            if (syncErr) {
+                console.warn('[UserAction:authorize] sync access_requests:', syncErr.message)
+            }
+
             return { success: true, message: `${cleanEmail} was previously suspended but is now REACTIVATED.` }
         }
     } catch (err) {
         console.warn('[UserAction:authorize] Self-healing warning:', err)
+    }
+
+    const { data: profileForSync } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .ilike('email', cleanEmail)
+        .maybeSingle()
+
+    if (profileForSync?.id) {
+        const { error: syncErr } = await supabase.rpc('sync_pending_access_request_for_user', {
+            p_user_id: profileForSync.id,
+        })
+        if (syncErr) {
+            console.warn('[UserAction:authorize] sync access_requests:', syncErr.message)
+        }
     }
 
     return { success: true, message: `${cleanEmail} is now authorized.` }

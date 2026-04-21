@@ -99,14 +99,24 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
 
   String? _itemName;
 
+  int get _itemId => widget.payload.maybeMap(
+        equipment: (e) => e.itemId,
+        orElse: () => 0,
+      );
+
+  String get _initialItemName => widget.payload.maybeMap(
+        equipment: (e) => e.itemName,
+        orElse: () => 'Unknown',
+      );
+
   Future<void> _fetchStatus() async {
     try {
       final supabase = SupabaseService.client;
       final service = QuickBorrowService();
 
       final results = await Future.wait<dynamic>([
-        supabase.from('inventory').select('item_name, stock_available, image_url, category').eq('id', widget.payload.itemId).single(),
-        service.getActiveBorrows(widget.payload.itemId),
+        supabase.from('inventory').select('item_name, stock_available, image_url, category').eq('id', _itemId).single(),
+        service.getActiveBorrows(_itemId),
       ]);
       
       final inventoryResponse = results[0] as Map<String, dynamic>;
@@ -151,6 +161,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     }
   }
 
+  // 🛡️ TACTICAL CONFIRMATION: Finalizes either a Borrow or a Return transaction
   Future<void> _onConfirm() async {
     if (_requestedQuantity <= 0) return;
     if (!_formKey.currentState!.validate()) return;
@@ -158,39 +169,51 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     setState(() => _isLoading = true);
 
     final service = QuickBorrowService();
-    final Map<String, dynamic> result;
     
-    if (_isReturnMode && _selectedLog != null) {
-      result = await service.executeReturn(
-        logId: _selectedLog!['id'],
-        itemId: widget.payload.itemId,
-        totalBorrowedQuantity: _selectedLog!['quantity'],
-        returnQuantity: _requestedQuantity,
-        status: _returnCondition,
-        notes: _notesController.text,
-      );
-    } else {
-      result = await service.executeQuickBorrow(
-        itemId: widget.payload.itemId,
-        itemName: _itemName ?? widget.payload.itemName,
-        quantity: _requestedQuantity,
-        borrowerName: _nameController.text,
-        borrowerContact: _contactController.text,
-        borrowerOrganization: _orgController.text,
-        purpose: _transactionPurpose == 'Other' ? _purposeController.text : _transactionPurpose,
-        durationDays: _durationDays,
-      );
-    }
-
-    if (mounted) {
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message']), backgroundColor: _isReturnMode ? AppTheme.secondaryOrange : AppTheme.emeraldGreen, behavior: SnackBarBehavior.floating),
+    try {
+      final Map<String, dynamic> results;
+      
+      if (_isReturnMode && _selectedLog != null) {
+        results = await service.executeReturn(
+          logId: _selectedLog!['id'],
+          itemId: _itemId,
+          totalBorrowedQuantity: _selectedLog!['quantity'],
+          returnQuantity: _requestedQuantity,
+          status: _returnCondition,
+          notes: _notesController.text,
         );
-        Navigator.of(context).pop(true);
       } else {
+        results = await service.executeQuickBorrow(
+          itemId: _itemId,
+          itemName: _itemName ?? _initialItemName,
+          quantity: _requestedQuantity,
+          borrowerName: _nameController.text,
+          borrowerContact: _contactController.text,
+          borrowerOrganization: _orgController.text,
+          purpose: _transactionPurpose == 'Other' ? _purposeController.text : _transactionPurpose,
+          durationDays: _durationDays,
+        );
+      }
+
+      if (mounted) {
+        if (results['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(results['message'] ?? 'Transaction Successful'),
+              backgroundColor: _isReturnMode ? AppTheme.secondaryOrange : AppTheme.emeraldGreen,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.of(context).pop(true);
+        } else {
+          setState(() => _isLoading = false);
+          _showErrorDialog(results['error'] ?? 'Unknown Transaction Error');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorDialog(result['error']);
+        _showErrorDialog(e.toString());
       }
     }
   }
@@ -362,7 +385,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     return Stack(
       children: [
         Hero(
-          tag: 'inv_img_${widget.payload.itemId}',
+          tag: 'inv_img_$_itemId',
           child: Container(
             height: 220, // 🛡️ BIGGER: Visual asset showcase
             width: double.infinity,
@@ -394,7 +417,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
             children: [
               Text(_isReturnMode ? 'RETURNING ITEM' : 'ITEM FOUND', style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white70, letterSpacing: 2.0)),
               const Gap(4),
-              Text(_itemName ?? widget.payload.itemName, style: GoogleFonts.lexend(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(_itemName ?? _initialItemName, style: GoogleFonts.lexend(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5), maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ),
         ),

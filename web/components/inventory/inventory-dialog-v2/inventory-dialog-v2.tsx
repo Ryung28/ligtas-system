@@ -36,6 +36,11 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         return String(state.categoryId ?? '').trim()
     }, [categories, state.categoryId])
 
+    const isBulkCategory = useMemo(() => {
+        const name = selectedCategoryName.toLowerCase().trim()
+        return name === 'medical' || name === 'goods'
+    }, [selectedCategoryName])
+
     /** Goods are consumables — show brand + expiry even when item type is Equipment */
     const showGoodsExpiryFields =
         selectedCategoryName.trim().toLowerCase() === 'goods'
@@ -152,6 +157,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         formData.set('target_stock', state.targetStock.toString())
         formData.set('low_stock_threshold', state.lowStockThreshold.toString())
         formData.set('restock_alert_enabled', String(state.restockAlertEnabled))
+        formData.set('packaging_json', JSON.stringify(state.packaging))
 
         // 5. Geographic Resolution (Legacy Line 328)
         formData.set('site_distributions', JSON.stringify(state.distributions))
@@ -224,6 +230,13 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                                 targetStock={state.targetStock} setTargetStock={state.setTargetStock} lowStockThreshold={state.lowStockThreshold} setLowStockThreshold={state.setLowStockThreshold}
                                 restockAlertEnabled={state.restockAlertEnabled} setRestockAlertEnabled={state.setRestockAlertEnabled}
                                 policyErrors={policyErrors}
+                                packaging={state.packaging}
+                                updatePackaging={state.updatePackaging}
+                                updateBatch={state.updateBatchUnits}
+                                updateBatchLabel={state.updateBatchLabel}
+                                addExtraBatch={state.addExtraBatch}
+                                showPackaging={isBulkCategory}
+                                categoryName={selectedCategoryName}
                             />
                         </div>
 

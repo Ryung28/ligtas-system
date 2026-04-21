@@ -20,6 +20,7 @@ export interface AvailableItem {
         stock_total: number;
     }>;
     status: string;
+    packaging_json?: any;
 }
 
 /**
@@ -29,20 +30,19 @@ export interface AvailableItem {
  * The Manager's Strategy: "Logistical Buffering"
  * Loads the entire available catalog once and provides high-speed local filtering.
  */
-// 🏛️ PERSISTENT LOGISTICS CACHE: Lives outside the hook to survive re-mounts
-let CATALOG_CACHE_BUFFER: AvailableItem[] = [];
+// 🏛️ PERSISTENT LOGISTICS CACHE: Lives inside the hook to survive re-mounts
+// REMOVED GLOBAL BUFFER to prevent "stale stock" ghosting reported by users.
 let LAST_SYNC_TIME = 0;
-const CACHE_TTL = 30000; // 30 seconds fresh buffer
+const CACHE_TTL = 2000; // 2 seconds fresh buffer for high-speed dispatching
 
 export function useAvailableCatalog(autoLoad = true) {
-    const [items, setItems] = useState<AvailableItem[]>(CATALOG_CACHE_BUFFER);
+    const [items, setItems] = useState<AvailableItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchCatalog = useCallback(async (force = false) => {
-        // Return cached version if still fresh and not forced
-        if (!force && CATALOG_CACHE_BUFFER.length > 0 && (Date.now() - LAST_SYNC_TIME < CACHE_TTL)) {
-            setItems(CATALOG_CACHE_BUFFER);
+        // Return current state if still extremely fresh
+        if (!force && items.length > 0 && (Date.now() - LAST_SYNC_TIME < CACHE_TTL)) {
             return;
         }
 
@@ -52,11 +52,11 @@ export function useAvailableCatalog(autoLoad = true) {
             const result = await getAvailableItems();
             if (result.success && result.data) {
                 const rawItems = result.data as any[];
-                
+
                 // SMART NAME-GROUPING ENGINE
                 // Group everything by name to collapse duplicates into a single card
                 const groupedByName: Record<string, any[]> = {};
-                
+
                 rawItems.forEach(item => {
                     const nameKey = item.item_name.toLowerCase().trim();
                     if (!groupedByName[nameKey]) {
@@ -90,13 +90,13 @@ export function useAvailableCatalog(autoLoad = true) {
                         ...primary,
                         primary_stock_available: primary.stock_available || 0,
                         aggregate_available: (primary.stock_available || 0) + variantStock,
-                        variants: variants
+                        variants: variants,
+                        packaging_json: group.find(item => item.packaging_json?.enabled)?.packaging_json || primary.packaging_json
                     };
                 });
 
-                CATALOG_CACHE_BUFFER = normalized as AvailableItem[];
                 LAST_SYNC_TIME = Date.now();
-                setItems(CATALOG_CACHE_BUFFER);
+                setItems(normalized as AvailableItem[]);
             } else {
                 const errMsg = result.error || 'Failed to sync with logistics engine.';
                 setError(errMsg);
@@ -123,8 +123,8 @@ export function useAvailableCatalog(autoLoad = true) {
     const filterCatalog = (search: string) => {
         if (!search) return items;
         const normalized = search.toLowerCase();
-        return items.filter(i => 
-            i.item_name.toLowerCase().includes(normalized) || 
+        return items.filter(i =>
+            i.item_name.toLowerCase().includes(normalized) ||
             (i.category && i.category.toLowerCase().includes(normalized))
         );
     };

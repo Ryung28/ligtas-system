@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/core/design_system/widgets/top_notice.dart';
 import 'package:mobile/src/core/design_system/widgets/tactical_forensic_detail_sheet.dart';
 import 'package:mobile/src/features/analyst_dashboard/domain/entities/resource_anomaly.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/controllers/analyst_dashboard_controller.dart';
@@ -99,16 +100,19 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
     try {
       final row = await Supabase.instance.client
           .from('inventory')
-          .select('location_registry_id, item_id')
+          .select('id, location_registry_id, parent_id')
           .eq('id', invId)
           .maybeSingle();
 
       if (!mounted || row == null) return;
 
+      final pid = (row['parent_id'] as num?)?.toInt();
+      final rid = (row['id'] as num?)?.toInt();
+
       setState(() {
         _hydratedLocationRegistryId =
             (row['location_registry_id'] as num?)?.toInt();
-        _hydratedItemId = (row['item_id'] as num?)?.toInt();
+        _hydratedItemId = pid ?? rid;
         _selectedWarehouseId = widget.anomaly.locationRegistryId ??
             _hydratedLocationRegistryId ??
             int.tryParse(
@@ -147,14 +151,20 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
     final total = goodQty + damagedQty + maintQty + lostQty;
 
     if (total <= 0 || _a.inventoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please enter injection quantities.')));
+      TopNotice.show(
+        context,
+        message: 'Please enter stock amounts first.',
+        type: TopNoticeType.warning,
+      );
       return;
     }
 
     if (_selectedWarehouseId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Injection hub could not be resolved.')));
+      TopNotice.show(
+        context,
+        message: 'Select a location first.',
+        type: TopNoticeType.warning,
+      );
       return;
     }
 
@@ -163,8 +173,11 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
       hubs = await ref.read(managerStorageHubsProvider.future);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Could not load hubs for confirmation. Try again.')));
+        TopNotice.show(
+          context,
+          message: 'Could not load locations. Try again.',
+          type: TopNoticeType.error,
+        );
       }
       return;
     }
@@ -226,17 +239,19 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Success: $total units injected.',
-              style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700)),
-          backgroundColor: AppTheme.emeraldGreen,
-          behavior: SnackBarBehavior.floating,
-        ));
+        TopNotice.show(
+          context,
+          message: 'Added $total units.',
+          type: TopNoticeType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Injection protocol failed: $e')));
+        TopNotice.show(
+          context,
+          message: 'Could not add stock: $e',
+          type: TopNoticeType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -270,20 +285,268 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Health triage saved',
-              style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700)),
-          backgroundColor: AppTheme.emeraldGreen,
-          behavior: SnackBarBehavior.floating,
-        ));
+        TopNotice.show(
+          context,
+          message: 'Health triage saved.',
+          type: TopNoticeType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Triage update failed.')));
+        TopNotice.show(
+          context,
+          message: 'Triage update failed.',
+          type: TopNoticeType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  /// Changing preview away from this alert's hub requires confirmation.
+  Future<void> _handleWarehouseChanged(int? nextId) async {
+    final rowLoc = _rowLocationRegistryId;
+    final diverges =
+        rowLoc != null && nextId != null && nextId != rowLoc;
+
+    if (!diverges) {
+      setState(() => _selectedWarehouseId = nextId);
+      return;
+    }
+
+    late final List<StorageHub> hubs;
+    try {
+      hubs = await ref.read(managerStorageHubsProvider.future);
+    } catch (_) {
+      if (mounted) {
+        TopNotice.show(
+          context,
+          message: 'Could not load location names.',
+          type: TopNoticeType.error,
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    final previewName = _hubLabel(hubs, nextId);
+    final alertHubName = _hubLabel(hubs, rowLoc);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.34),
+      builder: (ctx) {
+        final onyx = const Color(0xFF001A33);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 30,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: onyx.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const Gap(16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: onyx.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.warehouse_rounded,
+                            size: 18,
+                            color: onyx,
+                          ),
+                        ),
+                        const Gap(10),
+                        Expanded(
+                          child: Text(
+                            'You switched location',
+                            style: GoogleFonts.lexend(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: onyx,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Gap(8),
+                    Text(
+                      'Quick check before you continue.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: onyx.withOpacity(0.56),
+                      ),
+                    ),
+                    const Gap(14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: onyx.withOpacity(0.06)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Location you are viewing now',
+                            style: GoogleFonts.lexend(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: onyx.withOpacity(0.45),
+                              letterSpacing: 0.7,
+                            ),
+                          ),
+                          const Gap(6),
+                          Text(
+                            previewName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: onyx,
+                            ),
+                          ),
+                          const Gap(10),
+                          Text(
+                            'Location this alert belongs to',
+                            style: GoogleFonts.lexend(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: onyx.withOpacity(0.45),
+                              letterSpacing: 0.7,
+                            ),
+                          ),
+                          const Gap(6),
+                          Text(
+                            alertHubName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: onyx,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Gap(12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B).withOpacity(0.35),
+                        ),
+                      ),
+                      child: Text(
+                        'You are viewing "$previewName".\nStock will be added to "$alertHubName".',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: onyx.withOpacity(0.84),
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                    const Gap(18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(color: onyx.withOpacity(0.14)),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.lexend(
+                                fontWeight: FontWeight.w800,
+                                color: onyx.withOpacity(0.62),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Gap(10),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                            label: Text(
+                              'Continue',
+                              style: GoogleFonts.lexend(fontWeight: FontWeight.w800),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: onyx,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (confirmed == true) {
+      setState(() => _selectedWarehouseId = nextId);
+    } else {
+      setState(() {});
+      TopNotice.show(
+        context,
+        message: 'Preview unchanged. This alert stays at $alertHubName.',
+        type: TopNoticeType.info,
+      );
     }
   }
 
@@ -320,10 +583,10 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
           ],
           HubDeploymentContext(
             selectedWarehouseId: _selectedWarehouseId,
-            rowLocationRegistryId: _rowLocationRegistryId,
             snapshotItemId: _snapshotItemId,
-            onWarehouseChanged: (id) =>
-                setState(() => _selectedWarehouseId = id),
+            onWarehouseChanged: (id) {
+              _handleWarehouseChanged(id);
+            },
           ),
           const Gap(16),
           if (_mode == ActionMode.restock)
@@ -342,7 +605,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
         AnomalyStrategicOverview(anomaly: _a),
         const Gap(16),
         Text(
-          'INJECTION QUANTITIES',
+          'Add stock amounts',
           style: GoogleFonts.lexend(
               fontSize: 10,
               fontWeight: FontWeight.w900,
@@ -354,7 +617,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
           children: [
             Expanded(
                 child: TacticalStepper(
-                    label: 'GOOD STOCK',
+                    label: 'GOOD',
                     controller: _goodController,
                     icon: Icons.check_circle_outline_rounded,
                     color: AppTheme.emeraldGreen,
@@ -376,7 +639,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
           children: [
             Expanded(
                 child: TacticalStepper(
-                    label: 'MAINTENANCE',
+                    label: 'NEEDS REPAIR',
                     controller: _maintenanceController,
                     icon: Icons.build_outlined,
                     color: AppTheme.warningAmber,
@@ -385,7 +648,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
             const Gap(10),
             Expanded(
                 child: TacticalStepper(
-                    label: 'LOST/SHRINK',
+                    label: 'LOST / MISSING',
                     controller: _lostController,
                     icon: Icons.history_rounded,
                     color: AppTheme.errorRed,
@@ -396,7 +659,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
         const Gap(16),
         AnomalySharedUI.buildConfirmButton(
           sentinel: sentinel,
-          label: 'CONFIRM INJECTION',
+          label: 'Add stock',
           icon: Icons.send_rounded,
           isProcessing: _isProcessing,
           onPressed: _handleRestock,

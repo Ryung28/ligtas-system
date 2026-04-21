@@ -20,6 +20,7 @@ export const borrowItemSchema = z.object({
     released_by: z.string().optional(),
     expected_return_date: z.string().optional().nullable(),
     pickup_scheduled_at: z.string().optional().nullable(),
+    source_batch: z.any().optional().nullable(),
 })
 
 export const batchBorrowSchema = z.object({
@@ -38,6 +39,7 @@ export const batchBorrowSchema = z.object({
         quantity: z.number().min(1),
         item_type: z.enum(['equipment', 'consumable']).default('equipment'),
         inventory_variant_id: z.number().optional().nullable(),
+        source_batch: z.any().optional().nullable(),
     })).min(1, 'At least one item is required'),
 })
 

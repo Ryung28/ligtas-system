@@ -41,8 +41,6 @@ final alertQueueFilteredProvider = Provider<List<ResourceAnomaly>>((ref) {
         return a.category == AnomalyCategory.logistics;
       case 'Overdue':
         return a.category == AnomalyCategory.overdue;
-      case 'Access':
-        return a.category == AnomalyCategory.access;
       default:
         return true;
     }
@@ -62,14 +60,12 @@ final alertQueueFilterCountsProvider = Provider<Map<String, int>>((ref) {
   var inventory = 0;
   var logistics = 0;
   var overdue = 0;
-  var access = 0;
   for (final a in alerts) {
     if (a.severity == AnomalySeverity.critical) critical++;
     switch (a.category) {
       case AnomalyCategory.depletion:  inventory++; break;
       case AnomalyCategory.logistics:  logistics++; break;
       case AnomalyCategory.overdue:    overdue++; break;
-      case AnomalyCategory.access:     access++; break;
       default: break;
     }
   }
@@ -79,6 +75,5 @@ final alertQueueFilterCountsProvider = Provider<Map<String, int>>((ref) {
     'Inventory': inventory,
     'Logistics': logistics,
     'Overdue': overdue,
-    'Access': access,
   };
 });

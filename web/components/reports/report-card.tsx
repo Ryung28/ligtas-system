@@ -21,35 +21,42 @@ export function ReportCard({ report, onConfigure }: ReportCardProps) {
     }
 
     return (
-        <Card className="bg-white/90 backdrop-blur-xl border-slate-100 hover:shadow-lg transition-all duration-300">
-            <CardContent className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                    <div className={`p-2.5 rounded-lg border ${colorClasses[report.color]}`}>
-                        <Icon className="h-4 w-4" />
+        <Card className="h-full bg-white/90 backdrop-blur-xl border-slate-100 hover:shadow-lg transition-all duration-300 flex flex-col">
+            <CardContent className="p-4 flex-1 flex flex-col">
+                <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                        <div className={`p-2.5 rounded-lg border ${colorClasses[report.color]}`}>
+                            <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-sm text-slate-900 truncate">{report.title}</h3>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{report.subtitle}</p>
+                        </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-slate-900 truncate">{report.title}</h3>
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{report.subtitle}</p>
+                    
+                    <p className="text-xs text-slate-600 leading-relaxed">{report.description}</p>
+                    
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Includes:</p>
+                        <ul className="space-y-0.5">
+                            {report.includes.map((item, i) => (
+                                <li key={i} className="text-[11px] text-slate-600 flex items-start gap-1.5">
+                                    <span className="text-emerald-500 mt-0.5 font-bold">✓</span>
+                                    <span>{item}</span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </div>
                 
-                <p className="text-xs text-slate-600">{report.description}</p>
-                
-                <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Includes:</p>
-                    <ul className="space-y-0.5">
-                        {report.includes.map((item, i) => (
-                            <li key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
-                                <span className="text-emerald-500 mt-0.5">✓</span>
-                                <span>{item}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                
-                <div className="flex gap-2 pt-2">
-                    <Button onClick={onConfigure} size="sm" className="w-full h-8 text-xs">
-                        <Settings className="h-3 w-3 mr-1.5" />
+                {/* ⚓ Anchored Button Row */}
+                <div className="mt-auto pt-5">
+                    <Button 
+                        onClick={onConfigure} 
+                        size="sm" 
+                        className="w-full h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 shadow-sm"
+                    >
+                        <Settings className="h-3.5 w-3.5 mr-2" />
                         Configure & Print
                     </Button>
                 </div>

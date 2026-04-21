@@ -43,17 +43,17 @@ export function TacticalAssetPreview({ item, className, size = 'md' }: TacticalA
             {/* METADATA */}
             <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <h3 className="text-[10px] font-black text-slate-900 truncate uppercase tracking-tighter leading-none">
+                    <h3 className="text-[11px] font-black text-slate-900 truncate uppercase tracking-tighter leading-none">
                         {item.item_name}
                     </h3>
                 </div>
                 <div className="flex items-center gap-1.5 opacity-80">
-                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                         {item.category}
                     </span>
                     {item.aggregate_available !== undefined && (
                         <div className="flex items-center gap-1 pl-1.5 border-l border-slate-100">
-                            <span className="text-[7px] font-black text-emerald-600 uppercase tracking-widest">
+                            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
                                 {item.aggregate_available} AT SITE
                             </span>
                         </div>

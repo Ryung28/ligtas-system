@@ -4,13 +4,19 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
 import 'package:mobile/src/features/auth/data/repositories/auth_repository.dart';
 import 'package:mobile/src/core/errors/app_exceptions.dart';
-import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 import 'package:mobile/src/core/local_storage/isar_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'auth_controller.g.dart';
+
+/// Shown after sign-in when `user_profiles.status` is not yet `active` (admin approval required).
+const String _kPendingApprovalMessage =
+    'Your account is pending administrator approval. You can sign in after an admin approves your access.';
+
+const String _kSuspendedMessage =
+    'Your account has been suspended. Contact an administrator if you need help.';
 
 @riverpod
 class AuthController extends _$AuthController {
@@ -21,18 +27,20 @@ class AuthController extends _$AuthController {
   FutureOr<AuthState> build() async {
     // 🛡️ TACTICAL LISTEN: Bind Supabase Auth Events to Riverpod State
     _sub?.cancel();
-    
-    // We only attach ONE stable listener for auth changes
+
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       final session = data.session;
-      
+
       debugPrint('📡 Auth Lifecycle: [${event.name}] Session is ${session != null ? "ACTIVE" : "NONE"}');
-      
+
       if (session != null) {
-        // We wait for the session to be fully ready before refreshing profile
         await refreshProfile();
       } else {
+        if (state.isLoading) return;
+        final keepError =
+            state.valueOrNull?.maybeMap(error: (_) => true, orElse: () => false) ?? false;
+        if (keepError) return;
         if (state.hasValue && state.value is! Initial) {
           state = AsyncValue.data(AuthState.initial());
         }
@@ -45,37 +53,38 @@ class AuthController extends _$AuthController {
 
     final repo = ref.read(authRepositoryProvider);
     final user = await repo.getCurrentUser();
-    
-    if (user != null) {
-      return _mapUserToAuthState(user);
+
+    if (user != null && !user.isActive) {
+      final msg = user.isSuspended ? _kSuspendedMessage : _kPendingApprovalMessage;
+      await repo.signOut();
+      return AuthState.error(msg);
+    }
+    if (user != null && user.isActive) {
+      return AuthState.authenticated(user);
     }
     return const AuthState.initial();
   }
 
-  /// 🛡️ SANITIZATION: Centralized Status Triage
-  AuthState _mapUserToAuthState(UserModel user) {
-    if (user.isActive) {
-      return AuthState.authenticated(user);
-    } else if (user.isPending) {
-      return AuthState.pendingApproval(user);
-    } else if (user.isSuspended) {
-      return const AuthState.error("Account access restricted. Please contact Admin.");
-    }
-    return const AuthState.initial();
-  }
   Future<void> refreshProfile() async {
-    // 🛡️ ATOMIC TRIAGE: Force loading state to prevent stale/default role detection
-    state = const AsyncValue.loading(); 
-    
+    state = const AsyncValue.loading();
+
     try {
       final repo = ref.read(authRepositoryProvider);
       final user = await repo.getCurrentUser();
-      
-      if (user != null) {
-        state = AsyncValue.data(_mapUserToAuthState(user));
-      } else {
-        state = AsyncValue.data(AuthState.initial());
+
+      if (user == null) {
+        state = AsyncValue.data(const AuthState.initial());
+        return;
       }
+
+      if (!user.isActive) {
+        final msg = user.isSuspended ? _kSuspendedMessage : _kPendingApprovalMessage;
+        state = AsyncValue.data(AuthState.error(msg));
+        await repo.signOut();
+        return;
+      }
+
+      state = AsyncValue.data(AuthState.authenticated(user));
     } catch (e) {
       debugPrint('[AuthController] Profile Triage Failure: $e');
       state = AsyncValue.data(AuthState.error(e.toString()));

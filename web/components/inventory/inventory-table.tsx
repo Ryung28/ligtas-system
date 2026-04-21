@@ -372,6 +372,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
         if (s.includes('lost')) return { color: 'bg-slate-400', label: 'Missing' }
         return { color: 'bg-emerald-500', label: 'Operational' }
     }
+    const tableColSpan = onSelectionChange ? 6 : 5
 
     return (
         <Card className="bg-white border-none rounded-xl overflow-hidden flex flex-col shadow-sm">
@@ -470,6 +471,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                 )}
                                 <TableHead className="pl-3 14in:pl-4 pr-2 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Item Name</TableHead>
                                 <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Location</TableHead>
+                                <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em]">Expire Date</TableHead>
                                 <TableHead className="px-3 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Status / Condition</TableHead>
                                 <TableHead className="pl-2 pr-3 14in:pr-4 py-4 font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-right">Actions</TableHead>
                             </TableRow>
@@ -478,14 +480,14 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i} className="animate-pulse">
-                                        <TableCell colSpan={6} className="p-4">
+                                        <TableCell colSpan={tableColSpan} className="p-4">
                                             <div className="h-12 bg-gray-100/30 rounded-xl" />
                                         </TableCell>
                                     </TableRow>
                                 ))
                             ) : paginatedItems.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-96 text-center">
+                                    <TableCell colSpan={tableColSpan} className="h-96 text-center">
                                         <div className="flex flex-col items-center justify-center p-12 animate-in fade-in duration-200">
                                             <div className="relative mb-6">
                                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full blur-2xl opacity-50" />

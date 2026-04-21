@@ -6,20 +6,18 @@ import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 part 'auth_providers.g.dart';
 
 /// 🛡️ THE MASTER AUTH PROVIDER
-/// Aliased for backward compatibility and to provide a clean AsyncValue<AuthState>
+/// Aliased for backward compatibility and to provide a clean `AsyncValue` of [AuthState].
 @riverpod
 AsyncValue<AuthState> authState(AuthStateRef ref) {
   return ref.watch(authControllerProvider);
 }
 
-/// 👤 THE USER IDENTITY PROVIDER
-/// Extracts the active UserModel if authenticated or pending.
+/// 👤 THE USER IDENTITY PROVIDER — only after admin approval (profile status `active`).
 @riverpod
 UserModel? currentUser(CurrentUserRef ref) {
   final authState = ref.watch(authControllerProvider).valueOrNull;
   return authState?.whenOrNull(
     authenticated: (user) => user,
-    pendingApproval: (user) => user,
   );
 }
 

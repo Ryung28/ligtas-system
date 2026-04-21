@@ -7,8 +7,8 @@ import { supabase, getInventoryImageUrl } from '@/lib/supabase'
  * These queries power the inventory dashboard and dropdowns.
  */
 
-export async function getInventoryItems(options: { 
-    category?: string, 
+export async function getInventoryItems(options: {
+    category?: string,
     status?: 'all' | 'pending',
     search?: string
 } = {}) {
@@ -71,7 +71,8 @@ export async function getAvailableItems() {
                 image_url,
                 storage_location,
                 parent_id,
-                unit
+                unit,
+                packaging_json
             `)
             .is('deleted_at', null)
             .order('item_name', { ascending: true })
@@ -102,15 +103,15 @@ export async function getCategories() {
 
         // Predefined categories to always show (Cold-Start Protection)
         const predefinedCategories = ['Medical', 'Tools', 'Rescue', 'PPE', 'Logistics', 'Goods', 'System', 'Equipment']
-        
+
         // Get unique categories from database
         const dbCategoriesSet = new Set(data?.map(item => item.category).filter(Boolean) || [])
         const dbCategories = Array.from(dbCategoriesSet)
-        
+
         // Merge and deduplicate
         const allCategoriesSet = new Set([...predefinedCategories, ...dbCategories])
         const allCategories = Array.from(allCategoriesSet)
-        
+
         return {
             success: true,
             data: allCategories.sort(),

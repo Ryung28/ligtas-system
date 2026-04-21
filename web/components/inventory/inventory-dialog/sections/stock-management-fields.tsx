@@ -72,7 +72,7 @@ export function StockManagementFields({
                                 <Input
                                     type="number" min={0} value={qtyGood}
                                     onChange={(e) => setQtyGood(e.target.value)}
-                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
+                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
                         </div>
@@ -86,7 +86,7 @@ export function StockManagementFields({
                                 <Input
                                     type="number" min={0} value={qtyDamaged}
                                     onChange={(e) => setQtyDamaged(e.target.value)}
-                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10"
+                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
                         </div>
@@ -100,7 +100,7 @@ export function StockManagementFields({
                                 <Input
                                     type="number" min={0} value={qtyMaintenance}
                                     onChange={(e) => setQtyMaintenance(e.target.value)}
-                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10"
+                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
                         </div>
@@ -114,7 +114,7 @@ export function StockManagementFields({
                                 <Input
                                     type="number" min={0} value={qtyLost}
                                     onChange={(e) => setQtyLost(e.target.value)}
-                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-slate-500 focus:ring-4 focus:ring-slate-500/10"
+                                    className="h-10 pl-9 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-950 focus:border-slate-500 focus:ring-4 focus:ring-slate-500/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
                         </div>

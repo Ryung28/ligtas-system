@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, ListPlus, Package, Layers, AlertTriangle, XCircle, Trash2, CheckSquare, Settings2 } from 'lucide-react'
 import { BulkAddDialog } from './bulk-add-dialog'
-import { InventoryPrintCatalog } from './inventory-print-catalog'
+import { TacticalStationDialog } from './tactical-station-dialog'
 import { LocationManagerDialog } from './location-manager-dialog'
 import { InventoryItem } from '@/lib/supabase'
 import { isLowStock } from '@/lib/inventory-utils'
@@ -76,7 +76,7 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
                             </Button>
                             
                             <LocationManagerDialog />
-                            <InventoryPrintCatalog items={items} />
+                            <TacticalStationDialog items={items} />
                             <DispatchCommandSheet />
                             
                             <BulkAddDialog

@@ -48,9 +48,8 @@ export function ReportSections({ onConfigure }: ReportSectionsProps) {
             description: 'Complete audit trail with chain of custody',
             includes: ['Borrow date/time', 'Borrower', 'Approved by', 'Handed by', 'Return date/time', 'Physically returned by', 'Received by', 'Status'],
             icon: ClipboardList,
- 
             color: 'emerald', 
-            category: 'transaction' 
+            category: 'activity' 
         },
         { 
             type: 'overdue', 
@@ -60,10 +59,8 @@ export function ReportSections({ onConfigure }: ReportSectionsProps) {
             includes: ['Item name', 'Borrower', 'Days overdue', 'Expected return', 'Contact info', 'Priority'], 
             icon: Clock, 
             color: 'red', 
-            category: 'transaction' 
+            category: 'activity' 
         },
-        
-        // Management Reports
         { 
             type: 'summary', 
             title: 'System Summary', 
@@ -72,21 +69,22 @@ export function ReportSections({ onConfigure }: ReportSectionsProps) {
             includes: ['Total items', 'Units on-hand', 'Units lent', 'Category breakdown', 'Readiness status'], 
             icon: BarChart3, 
             color: 'violet', 
-            category: 'management' 
+            category: 'activity' 
         },
     ]
 
     const sections = [
-        { title: 'Inventory Reports', category: 'inventory' as const },
-        { title: 'Transaction Reports', category: 'transaction' as const },
-        { title: 'Management Reports', category: 'management' as const },
+        { title: 'Inventory Registry & Alerts', category: 'inventory' },
+        { title: 'Operational Logs & System Analytics', category: 'activity' },
     ]
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {sections.map((section) => (
                 <div key={section.category}>
-                    <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">{section.title}</h2>
+                    <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-l-4 border-slate-300 pl-3">
+                        {section.title}
+                    </h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {reports.filter(r => r.category === section.category).map((report) => (
                             <ReportCard

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/core/design_system/widgets/top_notice.dart';
 import 'package:mobile/src/features/analyst_dashboard/domain/entities/resource_anomaly.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/controllers/analyst_dashboard_controller.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
@@ -216,17 +217,17 @@ class _ForceReturnDialogState extends ConsumerState<ForceReturnDialog> {
     if (result.success) {
       Navigator.pop(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Return processed successfully',
-              style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700)),
-          backgroundColor: AppTheme.emeraldGreen,
-          behavior: SnackBarBehavior.floating));
+      TopNotice.show(
+        context,
+        message: 'Return processed successfully.',
+        type: TopNoticeType.success,
+      );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(result.error ?? 'Force return failed.',
-              style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700)),
-          backgroundColor: AppTheme.errorRed,
-          behavior: SnackBarBehavior.floating));
+      TopNotice.show(
+        context,
+        message: result.error ?? 'Force return failed.',
+        type: TopNoticeType.error,
+      );
     }
   }
 }

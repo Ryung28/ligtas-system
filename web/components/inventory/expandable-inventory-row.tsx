@@ -12,7 +12,7 @@ import { getExpiryInfo } from '@/lib/expiry-utils'
 import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { QRDialog } from './qr-dialog'
 import { EditableStorageLocation } from './editable-storage-location'
-import { getPendingRequestsByItemId, type PendingRequest } from '@/src/features/transactions'
+import { getPendingRequestsByItemId, type PendingRequest, getActiveLoansByIds, type ActiveLoan } from '@/src/features/transactions'
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -23,6 +23,7 @@ import { useStorageLocations } from '@/hooks/use-storage-locations'
 
 // Sub-components
 import { CompositeStockBar } from './_components/composite-stock-bar'
+import { UnifiedStatusHub } from './_components/unified-status-hub'
 
 function SiteHealthFootnote({ variant }: { variant: InventoryVariant | undefined }) {
     if (!variant) return null
@@ -79,6 +80,9 @@ export function ExpandableInventoryRow({
     
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
     const [isLoadingPending, setIsLoadingPending] = useState(false)
+    const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([])
+    const [isLoadingActiveLoans, setIsLoadingActiveLoans] = useState(false)
+    const [isBorrowedPopoverOpen, setIsBorrowedPopoverOpen] = useState(false)
 
     // 🏛️ SENIOR GEOGRAPHIC DETECTOR: Consolidated variants list (one row per physical site).
     const allSites = item.variants || []
@@ -107,9 +111,30 @@ export function ExpandableInventoryRow({
         }
     }
 
+    const fetchActiveLoans = async () => {
+        const allIds = item.variants?.flatMap(v => v.ids) || [item.id]
+        if (allIds.length > 0 && activeLoans.length === 0) {
+            setIsLoadingActiveLoans(true)
+            try {
+                const result = await getActiveLoansByIds(allIds)
+                if (result.success && result.data) setActiveLoans(result.data)
+            } finally {
+                setIsLoadingActiveLoans(false)
+            }
+        }
+    }
+
     const stockStatus = getStockDisplay(item)
     const isProblematic = stockStatus.label === 'OUT OF STOCK' || stockStatus.label === 'LOW STOCK'
     const expiry = getExpiryInfo((item as any).expiry_date, (item as any).expiry_alert_days)
+    const isGoodsCategory = item.category?.toLowerCase().trim() === 'goods'
+    const expiryDateText = (item as any).expiry_date
+        ? new Date((item as any).expiry_date).toLocaleDateString('en-PH', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+        })
+        : 'Not set'
 
     return (
         <>
@@ -144,8 +169,8 @@ export function ExpandableInventoryRow({
                                     const CategoryIcon = getCategoryIcon(item.category)
                                     return <CategoryIcon className="h-3.5 w-3.5 text-gray-400" strokeWidth={2.5} />
                                 })()}
-                                <span className="text-[12px] font-bold text-gray-500 truncate max-w-[120px] uppercase tracking-wide">{item.category}</span>
-                            </div>
+                                 <span className="text-[12px] font-bold text-gray-500 truncate max-w-[120px] uppercase tracking-wide">{item.category}</span>
+                             </div>
                         </div>
                     </div>
                 </TableCell>
@@ -174,6 +199,14 @@ export function ExpandableInventoryRow({
                     </div>
                 </TableCell>
 
+                <TableCell className="px-3 py-5">
+                    <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-gray-800 leading-none">
+                            {isGoodsCategory ? expiryDateText : '—'}
+                        </span>
+                    </div>
+                </TableCell>
+
                 <TableCell className="px-3 py-5 text-right">
                     <div className="flex items-center justify-end gap-6 14in:gap-8">
                          {/* HEALTH MATRIX */}
@@ -185,30 +218,24 @@ export function ExpandableInventoryRow({
                                 isLoadingPending={isLoadingPending} 
                                 isInternalOpen={isInternalOpen} 
                                 setIsInternalOpen={setIsInternalOpen} 
-                                fetchPending={fetchPending} 
+                                fetchPending={fetchPending}
+                                activeLoans={activeLoans}
+                                isLoadingActiveLoans={isLoadingActiveLoans}
+                                isBorrowedPopoverOpen={isBorrowedPopoverOpen}
+                                setIsBorrowedPopoverOpen={setIsBorrowedPopoverOpen}
+                                fetchActiveLoans={fetchActiveLoans} 
                             />
                          </div>
 
                          {/* STOCK CONTEXT */}
-                         <div className="flex flex-col items-end gap-1 min-w-[80px] 14in:min-w-[90px]">
-                              <div className="flex items-center gap-2">
-                                 {isProblematic && (
-                                     <Badge className={cn(
-                                         "text-[8px] font-black tracking-tighter px-1 h-4",
-                                         stockStatus.label === 'OUT OF STOCK' ? "bg-rose-500 text-white" : "bg-amber-500 text-white"
-                                     )}>
-                                         {stockStatus.label}
-                                     </Badge>
-                                 )}
-                                 {(expiry.status === 'expired' || expiry.status === 'critical' || expiry.status === 'warning') && (
-                                     <Badge className={cn(
-                                         "text-[10px] font-black tracking-tight px-2.5 min-h-6 h-6 py-0 border flex items-center gap-1.5 rounded-md",
-                                         expiry.badgeClass
-                                     )}>
-                                         <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
-                                         {expiry.label}
-                                     </Badge>
-                                 )}
+                         <div className="flex flex-col items-end gap-1 min-w-[80px] 14in:min-w-[110px]">
+                              <div className="flex items-center 14in:flex-col 14in:items-end gap-2 14in:gap-1">
+                                 <UnifiedStatusHub 
+                                     item={item} 
+                                     expiry={expiry} 
+                                     stockStatus={{ label: stockStatus.label, isProblematic }} 
+                                     className="shrink-0"
+                                 />
                                  <span className="text-[18px] font-black text-gray-950 tabular-nums tracking-tighter">
                                      {displayAvailable}
                                  </span>
@@ -233,7 +260,7 @@ export function ExpandableInventoryRow({
             {/* 🏛️ DISTRIBUTION LEDGER: Expanded View for Multi-Site Scrutiny */}
             {isDistributed && isDetailsOpen && (
                 <TableRow className="bg-white border-b border-gray-100 animate-in slide-in-from-top-1 duration-200">
-                    <TableCell colSpan={showCheckbox ? 5 : 4} className="p-0">
+                    <TableCell colSpan={showCheckbox ? 6 : 5} className="p-0">
                         <div className="py-8 px-12 14in:px-16 flex flex-col gap-8 bg-gray-50/20">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">

@@ -79,6 +79,14 @@ export async function GET(request: Request) {
                         approved_at: new Date().toISOString()
                     }, { onConflict: 'id' })
 
+                // Keep access_requests in sync so system_intel ACCESS queue does not show stale "pending" rows.
+                const { error: syncAccessErr } = await supabase.rpc('sync_pending_access_request_for_user', {
+                    p_user_id: user.id,
+                })
+                if (syncAccessErr) {
+                    console.warn('[Auth] sync_pending_access_request_for_user:', syncAccessErr.message)
+                }
+
                 console.log(`[Auth] Authorized & Promoted ${user.email} as ${whitelistEntry.role}`)
             }
 

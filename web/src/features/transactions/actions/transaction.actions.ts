@@ -12,34 +12,31 @@ import { borrowItemSchema, batchBorrowSchema } from '../schemas/transaction.sche
  * Includes tactical safeguards and automatic stock management via DB triggers.
  */
 
-export async function borrowItem(formData: FormData) {
+export async function borrowItem(input: BorrowItemInput | FormData) {
     try {
         const supabase = await createSupabaseServer()
         const { data: { user } } = await supabase.auth.getUser()
         
-        // Parse and validate form data
-        const rawData = {
-            borrower_name: formData.get('borrower_name'),
-            contact_number: formData.get('contact_number'),
-            office_department: formData.get('office_department'),
-            item_id: formData.get('item_id'),
-            quantity: formData.get('quantity'),
-            purpose: formData.get('purpose') || '',
-            approved_by: formData.get('approved_by') || '',
-            released_by: formData.get('released_by') || '',
-            expected_return_date: formData.get('expected_return_date') || null,
-            pickup_scheduled_at: formData.get('pickup_scheduled_at') || null,
-        }
+        let validatedData: BorrowItemInput;
 
-        // Validate item_id is present before parsing
-        if (!rawData.item_id || rawData.item_id === '') {
-            return {
-                success: false,
-                error: 'Please select an item',
+        if (input instanceof FormData) {
+            const rawData = {
+                borrower_name: input.get('borrower_name'),
+                contact_number: input.get('contact_number'),
+                office_department: input.get('office_department'),
+                item_id: input.get('item_id'),
+                quantity: input.get('quantity'),
+                purpose: input.get('purpose') || '',
+                approved_by: input.get('approved_by') || '',
+                released_by: input.get('released_by') || '',
+                expected_return_date: input.get('expected_return_date') || null,
+                pickup_scheduled_at: input.get('pickup_scheduled_at') || null,
+                source_batch: input.get('source_batch') ? JSON.parse(input.get('source_batch') as string) : null
             }
+            validatedData = borrowItemSchema.parse(rawData)
+        } else {
+            validatedData = borrowItemSchema.parse(input)
         }
-
-        const validatedData = borrowItemSchema.parse(rawData)
 
         // Step 1: Check if enough stock is available and get item type
         const { data: inventoryItem, error: checkError } = await supabase
@@ -99,6 +96,7 @@ export async function borrowItem(formData: FormData) {
                     platform_origin: 'Web',
                     created_origin: 'Web',
                     last_updated_origin: 'Web',
+                    source_batch: validatedData.source_batch || null,
                     created_at: now,
                 },
             ])
@@ -115,6 +113,42 @@ export async function borrowItem(formData: FormData) {
             return {
                 success: false,
                 error: `Failed to create borrow record: ${logError.message}`,
+            }
+        }
+
+        // AGGREGATE GRANULAR BATCH DEDUCTION (If applicable)
+        if (validatedData.source_batch) {
+            const { data: item, error: fetchErr } = await supabase
+                .from('inventory')
+                .select('packaging_json')
+                .eq('id', validatedData.item_id)
+                .single();
+
+            if (fetchErr) {
+                console.error('Batch sync fetch error:', fetchErr);
+            } else if (item?.packaging_json?.enabled && item.packaging_json.batches) {
+                const newPackaging = { ...item.packaging_json };
+                const batchIndex = newPackaging.batches.findIndex((b: any) => b.id === validatedData.source_batch.batch_id);
+                
+                if (batchIndex !== -1) {
+                    const targetBatch = newPackaging.batches[batchIndex];
+                    
+                    // 🛡️ TACTICAL SAFEGUARD: Initialize max_units if it doesn't exist
+                    if (targetBatch.max_units === undefined) {
+                        targetBatch.max_units = targetBatch.units;
+                    }
+                    
+                    targetBatch.units = Math.max(0, targetBatch.units - validatedData.quantity);
+                    
+                    const { error: updateErr } = await supabase
+                        .from('inventory')
+                        .update({ packaging_json: newPackaging })
+                        .eq('id', validatedData.item_id);
+
+                    if (updateErr) {
+                        console.error('Batch sync update error:', updateErr);
+                    }
+                }
             }
         }
 
@@ -254,8 +288,45 @@ export async function batchBorrowItems(data: {
                 platform_origin: 'Web',
                 created_origin: 'Web',
                 last_updated_origin: 'Web',
+                source_batch: item.source_batch || null,
                 created_at: now,
             })
+
+            // AGGREGATE GRANULAR BATCH DEDUCTION (Internal Batch Selection)
+            if (item.source_batch) {
+                const { data: fullItem, error: fetchBatchErr } = await supabase
+                    .from('inventory')
+                    .select('packaging_json')
+                    .eq('id', item.item_id)
+                    .single();
+
+                if (fetchBatchErr) {
+                    console.error('Batch sync fetch error:', fetchBatchErr);
+                } else if (fullItem?.packaging_json?.enabled && fullItem.packaging_json.batches) {
+                    const newPackaging = { ...fullItem.packaging_json };
+                    const batchIndex = newPackaging.batches.findIndex((b: any) => b.id === item.source_batch.batch_id);
+                    
+                    if (batchIndex !== -1) {
+                        const targetBatch = newPackaging.batches[batchIndex];
+                        
+                        // 🛡️ TACTICAL SAFEGUARD: Initialize max_units if it doesn't exist
+                        if (targetBatch.max_units === undefined) {
+                            targetBatch.max_units = targetBatch.units;
+                        }
+
+                        targetBatch.units = Math.max(0, targetBatch.units - item.quantity);
+                        
+                        const { error: updateErr } = await supabase
+                            .from('inventory')
+                            .update({ packaging_json: newPackaging })
+                            .eq('id', item.item_id);
+
+                        if (updateErr) {
+                            console.error('Batch sync update error:', updateErr);
+                        }
+                    }
+                }
+            }
         }
 
         if (errors.length > 0) {

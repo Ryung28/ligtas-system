@@ -31,14 +31,13 @@ import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
 import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 import 'package:mobile/src/features/auth/screens/login_screen.dart';
 import 'package:mobile/src/features/auth/screens/register_screen.dart';
-import 'package:mobile/src/features/auth/screens/pending_approval_screen.dart';
-import 'package:mobile/src/features/auth/screens/access_denied_screen.dart';
 import 'package:mobile/src/features/notifications/data/services/user_notification_service.dart';
 import 'package:mobile/src/features_v2/chat/presentation/screens/chat_screen.dart';
 import 'package:mobile/src/features/scanner/presentation/screens/transaction_screen.dart';
 import 'package:mobile/src/core/navigation/navigator_key.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/analyst_terminal_screen.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/activity_ledger_screen.dart';
+import 'package:mobile/src/features/analyst_dashboard/presentation/screens/station_provisioning_screen.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/logistical_queue_screen.dart';
 // AnalystHistoryScreen liquidated as per Anti-Monolith Protocol. Hub is now ActivityLedgerScreen for audits.
 
@@ -79,7 +78,6 @@ class _LigtasAppState extends ConsumerState<LigtasApp> with WidgetsBindingObserv
         final AuthState authState = next.value!;
         authState.whenOrNull(
           authenticated: (user) => UserNotificationService().handleAuthStateChange(user.id),
-          pendingApproval: (user) => UserNotificationService().handleAuthStateChange(user.id),
         );
       }
     });
@@ -144,46 +142,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 🛡️ UNIFIED LOGIN: Redirect after successful landing on public routes
       // 🛡️ SPLASH PROTECTION: Do not redirect if we are currently showing the splash screen
       if (isLoggedIn && isPublicRoute && state.uri.path != '/splash') {
-        if (user.isPending) {
-          return '/pending';
-        } else if (user.isSuspended) {
-          return '/denied';
-        } else if (user.isActive) {
-          // 🛡️ ATOMIC TRIAGE: Prevent redirect until role is provisioned
+        if (user.isActive) {
           if (user.role == 'loading') return null;
-
-          // Smart Role-Tiered Landing
           return user.canEdit ? '/manager' : '/dashboard';
         }
       }
 
-      // Logged in - check status for protected routes
+      // Logged in — only active users reach here (see currentUserProvider).
       if (isLoggedIn && !isPublicRoute) {
-        final isStatusRoute = state.uri.path == '/pending' || 
-                             state.uri.path == '/denied';
-        
-        if (user.isPending && state.uri.path != '/pending') {
-          return '/pending';
-        }
-        
-        if (user.isSuspended && state.uri.path != '/denied') {
-          return '/denied';
-        }
-        
-        // 🛡️ CANONICAL SILO ENFORCER
-        // Protect the Manager Silo while allowing Managers to visit Responder views.
         if (user.isActive) {
           if (user.role == 'loading') return null;
 
           final onManagerRoute = state.uri.path.startsWith('/manager');
-          
-          // 🔒 SECURITY GUARD: Responders cannot enter the Manager Terminal
+
           if (!user.canEdit && onManagerRoute) return '/dashboard';
-          
-          // 🔓 PERMISSIVE ACCESS: Managers can visit /dashboard, /inventory, /requests, etc.
-          // We removed the line that forced Managers back to /manager.
-          
-          if (isStatusRoute) return user.canEdit ? '/manager' : '/dashboard';
         }
       }
       return null;
@@ -211,11 +183,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/pending',
-        builder: (context, state) => const PendingApprovalScreen(),
+        redirect: (context, state) => '/login',
       ),
       GoRoute(
         path: '/denied',
-        builder: (context, state) => const AccessDeniedScreen(),
+        redirect: (context, state) => '/login',
       ),
       ShellRoute(
         navigatorKey: GlobalKey<NavigatorState>(),
@@ -251,6 +223,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'activity',
                 builder: (context, state) => const ActivityLedgerScreen(),
+              ),
+              GoRoute(
+                path: 'station/:id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  final name = state.uri.queryParameters['name'] ?? 'Station';
+                  // To be created next
+                  return StationProvisioningScreen(stationId: id, stationName: name);
+                },
               ),
             ],
           ),

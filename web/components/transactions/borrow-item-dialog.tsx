@@ -31,6 +31,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { borrowItem, returnItem, batchBorrowItems } from '@/src/features/transactions'
 import { getAvailableItems } from '@/src/features/catalog'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
+import { BatchSelector } from '@/src/features/transactions/_components/batch-selector'
 
 interface AvailableItem {
     id: number
@@ -48,11 +49,21 @@ interface AvailableItem {
         stock_available: number
         stock_total: number
     }>
+    unit?: string
+    packaging_json?: {
+        enabled: boolean
+        batches: Array<{
+            id: string
+            label: string
+            units: number
+        }>
+    } | null
 }
 
 interface CartItem {
-    item: AvailableItem
-    quantity: number
+    cart_key: string;
+    item: AvailableItem;
+    quantity: number;
 }
 
 export function BorrowItemDialog() {
@@ -62,6 +73,7 @@ export function BorrowItemDialog() {
     const [isLoadingItems, setIsLoadingItems] = useState(false)
     const [selectedItem, setSelectedItem] = useState<AvailableItem | null>(null)
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
+    const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
     const [selectedQuantity, setSelectedQuantity] = useState(1)
     const [borrowerName, setBorrowerName] = useState('')
     const [intakeMode, setIntakeMode] = useState<'immediate' | 'scheduled'>('immediate')
@@ -181,7 +193,8 @@ export function BorrowItemDialog() {
                     items: cart.map(c => ({
                         item_id: c.item.id,
                         quantity: c.quantity,
-                        item_type: c.item.item_type || 'equipment'
+                        item_type: c.item.item_type || 'equipment',
+                        source_batch: (c.item as any).source_batch || null
                     }))
                 })
 
@@ -235,13 +248,18 @@ export function BorrowItemDialog() {
         startTransition(async () => {
             let result;
 
-            if (isSmartReturn) {
                 result = await returnItem(existingBorrow.id, {
                     receivedByName: '',
                     returnCondition: returnCondition.toLowerCase() as any,
                     returnNotes: returnNotes
                 })
             } else {
+                if (selectedBatchId) {
+                    formData.append('source_batch', JSON.stringify({
+                        batch_id: selectedBatchId,
+                        label: selectedItem?.packaging_json?.batches?.find(b => b.id === selectedBatchId)?.label
+                    }))
+                }
                 result = await borrowItem(formData)
             }
 
@@ -265,6 +283,7 @@ export function BorrowItemDialog() {
         const item = availableItems.find((i) => i.id.toString() === itemId)
         setSelectedItem(item || null)
         setSelectedVariantId(null) // Reset variant when item changes
+        setSelectedBatchId(null) // Reset batch when item changes
     }
 
     const handleAddToCart = () => {
@@ -306,31 +325,32 @@ export function BorrowItemDialog() {
             return
         }
 
-        // Check if item already in cart
-        const existingIndex = cart.findIndex(c => c.item.id === targetId)
-        if (existingIndex >= 0) {
-            toast.error('Item already in cart. Remove it first to change quantity.')
-            return
-        }
+        const cart_key = `${targetId}-${selectedBatchId || 'none'}`
+        
+        // Remove existing entry for same key if any
+        const filteredCart = cart.filter(c => c.cart_key !== cart_key)
+
 
         // Create a localized item object for the cart
-        const cartItem: AvailableItem = {
+        const cartItem: any = {
             ...selectedItem,
             id: targetId,
             item_name: selectedVariantId && selectedVariantId !== 'primary' 
                 ? `${selectedItem.item_name} (${selectedItem.variants.find(v => v.id.toString() === selectedVariantId)?.location})`
-                : selectedItem.item_name
+                : selectedItem.item_name,
+            source_batch: selectedBatchId ? { batch_id: selectedBatchId, label: selectedItem.packaging_json?.batches?.find((b: any) => b.id === selectedBatchId)?.label } : null
         }
 
-        setCart([...cart, { item: cartItem, quantity: selectedQuantity }])
+        setCart([...filteredCart, { cart_key, item: cartItem, quantity: selectedQuantity }])
         setSelectedItem(null)
         setSelectedVariantId(null)
+        setSelectedBatchId(null)
         setSelectedQuantity(1)
         toast.success(`Added ${cartItem.item_name} to cart`)
     }
 
-    const handleRemoveFromCart = (itemId: number) => {
-        setCart(cart.filter(c => c.item.id !== itemId))
+    const handleRemoveFromCart = (cartKey: string) => {
+        setCart(cart.filter(c => c.cart_key !== cartKey))
     }
 
     return (
@@ -524,6 +544,18 @@ export function BorrowItemDialog() {
                                 </div>
                             )}
 
+                            {/* 📦 BATCH PICKER (Shared Component) */}
+                            {selectedItem && (
+                                <div className="col-span-12">
+                                    <BatchSelector 
+                                        packagingJson={selectedItem.packaging_json || null}
+                                        selectedBatchId={selectedBatchId}
+                                        onSelectBatch={setSelectedBatchId}
+                                        unitLabel={selectedItem.unit}
+                                    />
+                                </div>
+                            )}
+
                             {/* Quantity - 2 columns */}
                             <div className="col-span-6 md:col-span-2 space-y-2">
                                 <Label htmlFor="quantity" className="text-sm font-semibold text-slate-700">
@@ -673,7 +705,7 @@ export function BorrowItemDialog() {
                                     <div className="space-y-2">
                                         {cart.map((cartItem, index) => (
                                             <div
-                                                key={cartItem.item.id}
+                                                key={cartItem.cart_key}
                                                 className="group relative flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-3.5 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md"
                                                 style={{
                                                     animationDelay: `${index * 50}ms`,
@@ -706,7 +738,7 @@ export function BorrowItemDialog() {
                                                     type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => handleRemoveFromCart(cartItem.item.id)}
+                                                    onClick={() => handleRemoveFromCart(cartItem.cart_key)}
                                                     className="h-8 w-8 shrink-0 rounded-lg p-0 text-slate-400 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 md:opacity-0"
                                                 >
                                                     <X className="h-4 w-4" />
@@ -903,26 +935,27 @@ export function BorrowItemDialog() {
                         )}
                     </div>
 
-                    <DialogFooter className="gap-2 pt-4 border-t border-gray-100 -mx-6 px-6">
+                    <DialogFooter className="sticky bottom-0 bg-white/80 backdrop-blur-md pt-4 border-t border-slate-100 mt-6 -mx-6 px-6 pb-4 z-20">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={() => setOpen(false)}
                             disabled={isPending}
+                            className="rounded-xl"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             disabled={isPending || (cart.length === 0 && !selectedItem)}
-                            className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all ${
+                            className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all active:scale-[0.98] ${
                                 isSmartReturn 
                                     ? 'bg-orange-600 hover:bg-orange-700 text-white' 
                                     : cart.length > 0
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
                                     : isConsumable
                                     ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
                             }`}
                         >
                             {isPending ? (

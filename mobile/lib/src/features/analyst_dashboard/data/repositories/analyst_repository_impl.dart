@@ -11,6 +11,15 @@ import '../../domain/entities/resource_anomaly.dart';
 import '../../domain/entities/activity_event.dart';
 import '../../domain/entities/logistics_action.dart';
 import '../../domain/repositories/i_analyst_repository.dart';
+import '../../domain/entities/station_manifest.dart';
+
+/// Variants reference master rows via [parent_id]; standalone rows use [id]. There is no `inventory.item_id`.
+int? _inventoryGroupIdFromRow(Map<String, dynamic>? row) {
+  if (row == null) return null;
+  final parent = (row['parent_id'] as num?)?.toInt();
+  final id = (row['id'] as num?)?.toInt();
+  return parent ?? id;
+}
 
 class AnalystRepositoryImpl implements IAnalystRepository {
   final Ref _ref;
@@ -196,6 +205,10 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       final anomalies = <ResourceAnomaly>[];
       for (final item in data) {
         try {
+          // Mobile analyst terminal is operational-only: skip access-governance alerts.
+          final categoryRaw = item['category']?.toString().toUpperCase();
+          if (categoryRaw == 'ACCESS') continue;
+
           final meta = item['metadata'] as Map<String, dynamic>? ?? {};
           final rawId = (meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id']);
           final invId = rawId is int ? rawId : (rawId is String ? int.tryParse(rawId) : null);
@@ -208,7 +221,8 @@ class AnalystRepositoryImpl implements IAnalystRepository {
           anomalies.add(ResourceAnomaly(
             id: item['id'].toString(),
             inventoryId: invId,
-            itemId: (liveData?['item_id'] as num?)?.toInt() ?? (meta['item_id'] as num?)?.toInt(),
+            itemId: _inventoryGroupIdFromRow(liveData) ??
+                (meta['item_id'] as num?)?.toInt(),
             locationRegistryId: (liveData?['location_registry_id'] as num?)?.toInt(),
             itemName: liveData?['item_name']?.toString() ?? item['title']?.toString() ?? 'System Alert',
             reason: item['message']?.toString() ?? 'Check required.',
@@ -258,7 +272,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       // 🛡️ DATA TRUST: Since we have the exact IDs, we query them directly to avoid RLS-flicker
       final response = await _supabase
           .from('inventory')
-          .select('id, item_id, location_registry_id, item_name, image_url, target_stock, stock_total, stock_available, low_stock_threshold, qty_good, qty_damaged, qty_maintenance, qty_lost')
+          .select('id, parent_id, location_registry_id, item_name, image_url, target_stock, stock_total, stock_available, low_stock_threshold, qty_good, qty_damaged, qty_maintenance, qty_lost')
           .filter('id', 'in', ids);
       
       final Map<int, Map<String, dynamic>> map = {};
@@ -896,5 +910,57 @@ class AnalystRepositoryImpl implements IAnalystRepository {
 
     // 🏛️ HANDLE RELATIVE PATHS (Cleanup)
     return pathOrUrl.trim().replaceAll(RegExp(r'^\/+'), '');
+  }
+
+  @override
+  Future<List<StationManifestItem>> getStationManifest({required String stationId}) async {
+    try {
+      final isNumeric = int.tryParse(stationId) != null;
+      
+      var query = _supabase
+          .from('station_manifest')
+          .select('''
+            station_id,
+            item_id,
+            inventory:item_id(
+              item_name,
+              category,
+              image_url,
+              stock_available,
+              target_stock
+            ),
+            station:station_id!inner(
+              id,
+              station_code
+            )
+          ''');
+
+      if (isNumeric) {
+        query = query.eq('station_id', int.parse(stationId));
+      } else {
+        query = query.eq('station.station_code', stationId);
+      }
+
+      final List<dynamic> data = await query;
+      
+      return data.map((item) {
+        final inv = item['inventory'] as Map<String, dynamic>? ?? {};
+        final target = (inv['target_stock'] as num?)?.toInt() ?? 1; // 🛡️ Logical fallback to 1 if unset
+        
+        return StationManifestItem(
+          id: '${item['station_id']}_${item['item_id']}',
+          stationId: item['station_id'].toString(),
+          inventoryId: item['item_id'] as int,
+          quantityRequired: target,
+          itemName: inv['item_name']?.toString() ?? 'Unknown Item',
+          itemCategory: inv['category']?.toString(),
+          imageUrl: _resolveRawPath(inv['image_url']?.toString()),
+          currentStock: (inv['stock_available'] as num?)?.toInt() ?? 0,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('🛡️ [Analyst-Repo] Manifest fetch failed: $e');
+      return [];
+    }
   }
 }

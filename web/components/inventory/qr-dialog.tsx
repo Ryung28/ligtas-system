@@ -22,13 +22,7 @@ interface QRDialogProps {
 export function QRDialog({ item, trigger }: QRDialogProps) {
     const qrRef = useRef<HTMLDivElement>(null)
 
-    const qrValue = JSON.stringify({
-        protocol: 'ligtas',
-        version: '1.0',
-        action: 'borrow',
-        itemId: item.id,
-        itemName: item.item_name
-    })
+    const qrValue = `ligtas://item/${item.id}?name=${encodeURIComponent(item.item_name)}&v=2.0`
 
     const handleDownload = () => {
         // Find the canvas element

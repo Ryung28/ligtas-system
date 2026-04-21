@@ -23,7 +23,7 @@ import '../widgets/resource_anomalies_section.dart';
 import '../widgets/recent_activity_logs.dart';
 import '../../domain/entities/resource_anomaly.dart';
 import '../../../../features_v2/inventory/presentation/widgets/tactical_asset_image.dart';
-import '../_components/anomaly_action_hero.dart';
+import 'package:mobile/src/features_v2/anomaly_action_v2/anomaly_action_sheet_v2.dart';
 import '../../../navigation/providers/navigation_provider.dart';
 
 /// ⚙️ SENSITIVITY STATE: Local filter for anomaly alerts
@@ -170,12 +170,12 @@ class _IsolatedHeader extends ConsumerWidget {
 
 void _showTriageSheet(BuildContext context, WidgetRef ref, ResourceAnomaly anomaly) async {
   HapticFeedback.mediumImpact();
-  await AnomalyActionHero.show(context, ref, anomaly);
+  await AnomalyActionSheetV2.show(context, ref, anomaly);
 }
 
 void _showRestockSheet(BuildContext context, WidgetRef ref, ResourceAnomaly anomaly) async {
   HapticFeedback.mediumImpact();
-  await AnomalyActionHero.show(context, ref, anomaly);
+  await AnomalyActionSheetV2.show(context, ref, anomaly);
 }
 
 void _showAlertTuning(BuildContext context, WidgetRef ref) {

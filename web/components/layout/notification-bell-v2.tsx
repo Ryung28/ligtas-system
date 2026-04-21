@@ -36,6 +36,8 @@ export function NotificationBellV2() {
   const filtered = notifications.filter((n: NotificationItem) =>
     FILTER_MAP[activeFilter].includes(n.type)
   )
+  const unreadNotifications = filtered.filter((n: NotificationItem) => !n.isRead)
+  const readNotifications = filtered.filter((n: NotificationItem) => n.isRead)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,10 +119,9 @@ export function NotificationBellV2() {
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="relative w-full h-full rounded-l-[28px] overflow-hidden flex flex-col"
           style={{ 
-            background: "rgba(240,242,248,0.95)", 
-            backdropFilter: "blur(32px)", 
-            border: "1px solid rgba(255,255,255,0.7)",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.8)",
+            background: "#f1f5f9", 
+            borderLeft: "1px solid rgba(0,0,0,0.1)",
+            boxShadow: "-12px 0 40px rgba(0,0,0,0.05)",
             willChange: "transform, opacity"
           }}
         >
@@ -149,23 +150,76 @@ export function NotificationBellV2() {
                     <p className="text-sm font-medium">No notifications</p>
                   </motion.div>
                 ) : (
-                  filtered.map((notif: NotificationItem, i: number) => (
-                    <motion.div
-                      key={notif.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, pointerEvents: 'none' }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <NotificationCard 
-                        notif={notif} 
-                        index={i}
-                        onMarkRead={markAsRead} 
-                        onDelete={deleteNotification} 
-                        onClose={() => setIsOpen(false)}
-                      />
-                    </motion.div>
-                  ))
+                  <motion.div
+                    key="notification-groups"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="space-y-2"
+                  >
+                    {unreadNotifications.length > 0 && (
+                      <motion.div
+                        key="unread-section-header"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="px-1 pt-0.5 pb-1.5"
+                      >
+                        <p className="text-[10px] font-black tracking-wider text-slate-600 uppercase">
+                          Unread
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-400">
+                          These are unread messages
+                        </p>
+                      </motion.div>
+                    )}
+                    {unreadNotifications.map((notif: NotificationItem, i: number) => (
+                      <motion.div
+                        key={notif.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, pointerEvents: 'none' }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <NotificationCard
+                          notif={notif}
+                          index={i}
+                          onMarkRead={markAsRead}
+                          onDelete={deleteNotification}
+                          onClose={() => setIsOpen(false)}
+                        />
+                      </motion.div>
+                    ))}
+                    {readNotifications.length > 0 && (
+                      <motion.div
+                        key="read-section-header"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="px-1 pt-2 pb-1"
+                      >
+                        <p className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+                          Read
+                        </p>
+                      </motion.div>
+                    )}
+                    {readNotifications.map((notif: NotificationItem, i: number) => (
+                      <motion.div
+                        key={notif.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, pointerEvents: 'none' }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <NotificationCard
+                          notif={notif}
+                          index={i}
+                          onMarkRead={markAsRead}
+                          onDelete={deleteNotification}
+                          onClose={() => setIsOpen(false)}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>

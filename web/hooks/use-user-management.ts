@@ -81,6 +81,35 @@ export const fetchPendingUserRequests = async () => {
     return (data as AccessRequest[]) || []
 }
 
+/** Same people Action Center uses (pending `access_requests`), one row per user, plus profile-pending rows with no request row. */
+export function buildPendingBorrowersQueue(users: UserProfile[], pendingRequests: AccessRequest[]): UserProfile[] {
+    const sortedRequests = [...pendingRequests].sort(
+        (a, b) => new Date(b.requested_at || 0).getTime() - new Date(a.requested_at || 0).getTime()
+    )
+    const fromRequests = new Map<string, UserProfile>()
+    for (const ar of sortedRequests) {
+        if (fromRequests.has(ar.user_id)) continue
+        const profile = users.find((u) => u.id === ar.user_id)
+        fromRequests.set(ar.user_id, {
+            id: ar.user_id,
+            email: ar.email,
+            full_name: ar.full_name ?? profile?.full_name,
+            role: profile?.role ?? 'responder',
+            status: 'pending',
+            created_at: ar.requested_at || profile?.created_at || new Date().toISOString(),
+            department: profile?.department,
+            assigned_warehouse: profile?.assigned_warehouse ?? null,
+        })
+    }
+    const covered = new Set(fromRequests.keys())
+    const profileOnlyPending = users.filter(
+        (u) => u.status?.toLowerCase() === 'pending' && !covered.has(u.id)
+    )
+    return [...fromRequests.values(), ...profileOnlyPending].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+}
+
 export function useUserManagement() {
     // 🛰️ Auth Awareness: We track the session to signal SWR revalidation
     const [sessionId, setSessionId] = React.useState<string | null>(null)
@@ -243,16 +272,17 @@ export function useUserManagement() {
 
     const stats = useMemo(() => {
         const activeUsers = users.filter(u => u.status === 'active')
+        const pendingQueue = buildPendingBorrowersQueue(users, pendingRequests)
         return {
             totalStaff: activeUsers.length,
-            pendingCount: users.filter(u => u.status === 'pending').length,
+            pendingCount: pendingQueue.length,
             suspendedCount: users.filter(u => u.status === 'suspended').length,
             adminsCount: activeUsers.filter(u => u.role === 'admin').length,
             editorsCount: activeUsers.filter(u => u.role === 'editor').length,
             viewersCount: activeUsers.filter(u => u.role === 'viewer' || u.role === 'responder').length,
             whitelistedCount: authorizedEmails.length,
         }
-    }, [users, authorizedEmails])
+    }, [users, authorizedEmails, pendingRequests])
 
     return {
         users,

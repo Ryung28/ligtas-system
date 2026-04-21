@@ -2,6 +2,7 @@ import '../entities/analyst_metrics.dart';
 import '../entities/resource_anomaly.dart';
 import '../entities/activity_event.dart';
 import '../entities/logistics_action.dart';
+import '../entities/station_manifest.dart';
 
 /// Abstract Repository Interface (Domain Layer)
 /// Optimized for Sentinel Real-Time Logistical Awareness
@@ -112,6 +113,9 @@ abstract class IAnalystRepository {
     String returnCondition = 'good',
     String? returnNotes,
   });
+
+  /// 🏥 STATION PROVISIONING: Fetch the manifest and current status of a tactical station
+  Future<List<StationManifestItem>> getStationManifest({required String stationId});
 }
 
 class ForceReturnResult {

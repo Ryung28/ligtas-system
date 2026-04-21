@@ -187,7 +187,7 @@ export function BorrowerTable({
                                             <p className={`text-xs font-black tabular-nums ${
                                                 isActive ? 'text-indigo-900' : 'text-gray-900'
                                             }`}>
-                                                {borrower.active_items ?? 0} <span className={isActive ? 'text-indigo-400' : 'text-gray-400'}>/</span> {borrower.returned_count ?? 0}
+                                                {borrower.active_items < 0 ? 0 : (borrower.active_borrows ?? 0)} <span className={isActive ? 'text-indigo-400' : 'text-gray-400'}>/</span> {borrower.returned_count ?? 0}
                                             </p>
                                         </TableCell>
                                     </TableRow>

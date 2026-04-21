@@ -19,6 +19,8 @@ export interface BorrowerStats {
     is_verified_user: boolean
     user_role: string | null
     user_status: string | null
+    last_contact: string | null
+    last_organization: string | null
 }
 
 const supabase = createBrowserClient(
@@ -152,12 +154,14 @@ export async function getBorrowerHistory(borrowerUserId: string | null, borrower
         `)
 
     if (borrowerUserId && borrowerUserId !== 'null') {
-        query = query.or(`borrower_user_id.eq.${borrowerUserId},borrower_name.eq."${borrowerName}"`)
+        query = query.or(`borrower_user_id.eq.${borrowerUserId},borrower_name.ilike."${borrowerName}"`)
     } else {
-        query = query.eq('borrower_name', borrowerName)
+        query = query.ilike('borrower_name', borrowerName)
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false })
+    const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(50)
 
     if (error) throw error
     return data || []

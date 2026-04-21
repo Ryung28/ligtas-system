@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/design_system/widgets/app_toast.dart';
 import '../../scanner/widgets/scanner_view.dart';
 import '../../scanner/models/qr_payload.dart';
+import '../../scanner/services/scanner_switchboard.dart';
 import '../../scanner/widgets/scan_result_sheet.dart';
 import '../../../core/design_system/app_theme.dart';
 
@@ -123,17 +124,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       return;
     }
 
-    // Suppress dock while showing result sheet
-    ref.read(isDockSuppressedProvider.notifier).state = true;
-    
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ScanResultSheet(payload: payload),
-    );
-    
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    // 🚀 UNIFIED DISPATCH: Delegate to Switchboard
+    if (mounted) {
+      LigtasScannerSwitchboard.dispatch(context, ref, payload);
+    }
   }
 
   @override

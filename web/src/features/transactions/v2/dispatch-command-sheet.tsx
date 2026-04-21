@@ -2,7 +2,8 @@
 
 import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, UserPlus, Warehouse } from 'lucide-react'
+import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, UserPlus, Warehouse, Search, Info, MapPin, Box, Calendar } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase-browser'
 import { toast } from 'sonner'
 import { STORAGE_LOCATION_LABELS, StorageLocation, getInventoryImageUrl } from '@/lib/supabase'
@@ -28,12 +29,14 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BatchSelector } from '../_components/batch-selector'
 import { BorrowerNameField } from '../_components/borrower-name-field'
+import { BorrowerStats } from '@/hooks/use-borrower-registry'
 import { cn } from '@/lib/utils'
 import { TacticalAssetPreview } from '@/src/shared/ui/tactical-asset-preview'
 
-// V3 API Bridge (Mapped to exactly what the old file expected)
-import { createBatchBorrow as batchBorrowItems, createBorrowRecord as borrowItem } from '../api/transaction-repository'
+// V3 API Bridge (Mapped to domain actions for atomic stock management)
+import { batchBorrowItems, borrowItem } from '../actions/transaction.actions'
 import { useAvailableCatalog } from '../hooks/use-available-catalog'
 import { useBorrowCart } from '../hooks/use-borrow-cart'
 
@@ -58,8 +61,9 @@ interface AvailableItem {
 }
 
 interface CartItem {
-    item: AvailableItem
-    quantity: number
+    cart_key: string;
+    item: AvailableItem;
+    quantity: number;
 }
 
 export function DispatchCommandSheet() {
@@ -73,6 +77,7 @@ export function DispatchCommandSheet() {
     const [selectedItem, setSelectedItem] = useState<AvailableItem | null>(null)
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
     const [selectedQuantity, setSelectedQuantity] = useState<number | "">(1)
+    const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
     const [borrowerName, setBorrowerName] = useState('')
     const [borrowerManualEntry, setBorrowerManualEntry] = useState(false)
     const [contactNumber, setContactNumber] = useState('')
@@ -81,6 +86,16 @@ export function DispatchCommandSheet() {
     const [returnType, setReturnType] = useState<'anytime' | 'date'>('anytime')
     const [releasedBy, setReleasedBy] = useState('Brandon James C. Galabin')
     const [approvedBy, setApprovedBy] = useState('')
+    const [officeDepartment, setOfficeDepartment] = useState('')
+
+    const handleBorrowerSelect = (borrower: BorrowerStats) => {
+        if (borrower.last_contact) {
+            setContactNumber(borrower.last_contact);
+        }
+        if (borrower.last_organization) {
+            setOfficeDepartment(borrower.last_organization);
+        }
+    };
 
     const supabase = createClient()
     const router = useRouter()
@@ -140,41 +155,37 @@ export function DispatchCommandSheet() {
 
         startTransition(async () => {
             let result;
+            
+            const commonData = {
+                borrower_name: bName,
+                contact_number: cNumber,
+                office_department: oDept,
+                purpose: purpose,
+                released_by: releasedByInput,
+                approved_by: approvedByVal,
+                expected_return_date: returnType === 'date' ? expectedReturnDate : null,
+                pickup_scheduled_at: intakeMode === 'scheduled' ? pickupDate : null,
+            };
 
             if (cart.length > 0) {
-                const logs = cart.map(c => ({
-                    inventory_id: c.item.id,
-                    item_name: c.item.item_name,
+                const items = cart.map(c => ({
+                    item_id: c.item.id,
                     quantity: c.quantity,
-                    borrower_name: bName,
-                    borrower_contact: cNumber,
-                    borrower_organization: oDept,
-                    purpose: purpose,
-                    released_by_name: releasedByInput,
-                    approved_by_name: approvedByVal,
-                    transaction_type: 'borrow' as const,
-                    status: (intakeMode === 'scheduled' ? 'reserved' : 'borrowed') as any,
-                    pickup_scheduled_at: intakeMode === 'scheduled' ? pickupDate : null,
-                    expected_return_date: returnType === 'date' ? expectedReturnDate : null
+                    item_type: c.item.item_type || 'equipment',
+                    source_batch: (c.item as any).source_batch || null
                 }));
-                result = await batchBorrowItems(logs);
+                
+                result = await batchBorrowItems({
+                    ...commonData,
+                    items
+                });
             } else if (selectedItem) {
-                const log = {
-                    inventory_id: selectedItem.id,
-                    item_name: selectedItem.item_name,
+                result = await borrowItem({
+                    ...commonData,
+                    item_id: selectedItem.id,
                     quantity: Number(selectedQuantity) || 1,
-                    borrower_name: bName,
-                    borrower_contact: cNumber,
-                    borrower_organization: oDept,
-                    purpose: purpose,
-                    released_by_name: releasedByInput,
-                    approved_by_name: approvedByVal,
-                    transaction_type: 'borrow' as const,
-                    status: (intakeMode === 'scheduled' ? 'reserved' : 'borrowed') as any,
-                    pickup_scheduled_at: intakeMode === 'scheduled' ? pickupDate : null,
-                    expected_return_date: returnType === 'date' ? expectedReturnDate : null
-                };
-                result = await borrowItem(log);
+                    source_batch: selectedBatchId ? { batch_id: selectedBatchId, label: selectedItem.packaging_json?.batches?.find((b: any) => b.id === selectedBatchId)?.label } : null
+                });
             } else {
                 toast.error('No items selected for dispatch');
                 return;
@@ -189,6 +200,7 @@ export function DispatchCommandSheet() {
                 setBorrowerName('')
                 setBorrowerManualEntry(false)
                 setContactNumber('')
+                setOfficeDepartment('')
                 router.refresh()
             } else {
                 toast.error(result.error || 'Failed to process dispatch')
@@ -200,6 +212,7 @@ export function DispatchCommandSheet() {
         const item = availableItems.find((i) => i.id.toString() === itemId)
         setSelectedItem(item as any || null)
         setSelectedVariantId(null)
+        setSelectedBatchId(null)
     }
 
     const handleAddToCart = () => {
@@ -226,20 +239,31 @@ export function DispatchCommandSheet() {
             return;
         }
 
-        const cartItem: AvailableItem = {
+        const cartItem: any = {
             ...selectedItem,
             id: targetId,
             item_name: selectedVariantId 
                 ? `${selectedItem.item_name} (${selectedItem.variants?.find(v => String(v.id) === selectedVariantId)?.storage_location || 'Distributed'})`
-                : selectedItem.item_name
+                : selectedItem.item_name,
+            source_batch: selectedBatchId ? { batch_id: selectedBatchId, label: (selectedItem as any).packaging_json?.batches?.find((b: any) => b.id === selectedBatchId)?.label } : null
         }
 
         const quantity = Number(selectedQuantity) || 1
-        setCart([...cart, { item: cartItem, quantity }])
+        const cart_key = `${targetId}-${selectedBatchId || 'none'}`
+        
+        // Remove existing entry for same key if any to prevent duplicates in list
+        const filteredCart = cart.filter(c => c.cart_key !== cart_key)
+        setCart([...filteredCart, { cart_key, item: cartItem, quantity }])
+        
         setSelectedItem(null)
         setSelectedVariantId(null)
+        setSelectedBatchId(null)
         setSelectedQuantity(1)
         toast.success(`Added ${cartItem.item_name} to cart`)
+    }
+
+    const handleRemoveFromCart = (cartKey: string) => {
+        setCart(cart.filter(c => c.cart_key !== cartKey))
     }
 
     if (!mounted) return null
@@ -252,20 +276,23 @@ export function DispatchCommandSheet() {
                     Borrow Item
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-                <form onSubmit={handleSubmit}>
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-heading font-bold text-gray-900 tracking-tight">
-                            {isConsumable ? "💊 Dispense Consumable" : "📦 Dispatch Item"}
-                        </DialogTitle>
-                        <DialogDescription className="text-slate-500 font-medium">
-                            {isConsumable
-                                ? "Dispense one-time use items. No return required."
-                                : "Assign inventory items to operational personnel and update registry levels."}
-                        </DialogDescription>
-                    </DialogHeader>
+            <DialogContent className="sm:max-w-[850px] w-[95vw] h-[90vh] p-0 overflow-hidden flex flex-col border-none shadow-2xl bg-white">
+                <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+                    <div className="px-8 pt-8 pb-4 shrink-0 bg-white border-b border-slate-100">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                                <ClipboardList className="h-5 w-5 text-blue-600" />
+                                {isConsumable ? "💊 Dispense Consumable" : "📦 Tactical Dispatch Ledger"}
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-500 font-medium">
+                                {isConsumable
+                                    ? "Dispense one-time use items from regional stockpiles."
+                                    : "Execute rapid inventory issuance to personnel. Traceability is guaranteed via batch logs."}
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
 
-                    <div className="grid gap-6 py-4">
+                    <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
                         {/* 🚀 TACTICAL MODE TOGGLE */}
                         {!isConsumable && (
                             <Tabs value={intakeMode} onValueChange={(val: any) => setIntakeMode(val)} className="w-full">
@@ -331,6 +358,7 @@ export function DispatchCommandSheet() {
                                     id="borrower_name"
                                     value={borrowerName}
                                     onChange={setBorrowerName}
+                                    onSelect={handleBorrowerSelect}
                                     disabled={isPending}
                                     dialogOpen={open}
                                     manual={borrowerManualEntry}
@@ -398,95 +426,121 @@ export function DispatchCommandSheet() {
                                         disabled={isPending || isLoadingItems}
                                     />
                                 </div>
-                                {selectedItem && (
-                                    <TacticalAssetPreview 
-                                        item={{
-                                            item_name: selectedItem.item_name,
-                                            category: selectedItem.category,
-                                            image_url: selectedItem.image_url,
-                                            item_type: selectedItem.item_type,
-                                            storage_location: selectedItem.storage_location,
-                                            aggregate_available: selectedItem.aggregate_available
-                                        }} 
-                                        className="border-blue-100 bg-blue-50/20"
-                                    />
-                                )}
+                                    <AnimatePresence mode="wait">
+                                        {selectedItem && (
+                                            <motion.div 
+                                                key="preview"
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                            >
+                                                <TacticalAssetPreview 
+                                                    item={{
+                                                        item_name: selectedItem.item_name,
+                                                        category: selectedItem.category,
+                                                        image_url: selectedItem.image_url,
+                                                        item_type: selectedItem.item_type,
+                                                        storage_location: selectedItem.storage_location,
+                                                        aggregate_available: selectedItem.aggregate_available
+                                                    }} 
+                                                    className="border-blue-100 bg-blue-50/20"
+                                                />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                                {selectedItem && (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        {/* LOCATION PICKER */}
-                                        <div className="space-y-3">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">2. Take from where?</Label>
-                                            <div className="flex flex-wrap gap-2">
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setSelectedVariantId(null)}
-                                                    className={cn(
-                                                        "flex-1 min-w-[140px] px-4 py-3 rounded-xl border-2 transition-all text-left",
-                                                        selectedVariantId === null 
-                                                            ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50" 
-                                                            : "bg-white border-slate-100 hover:border-slate-200"
-                                                    )}
-                                                >
-                                                    <p className={cn("text-[11px] font-bold", selectedVariantId === null ? "text-blue-700" : "text-slate-600")}>
-                                                        {selectedItem.storage_location || 'Main Hub'}
-                                                    </p>
-                                                    <p className="text-[9px] text-slate-400 font-medium">Ready: {selectedItem.primary_stock_available}</p>
-                                                </button>
-
-                                                {selectedItem.variants?.map(v => (
-                                                    <button
-                                                        key={v.id}
+                                <AnimatePresence>
+                                    {selectedItem && (
+                                        <motion.div 
+                                            key="config-panel"
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className="space-y-4"
+                                        >
+                                            {/* LOCATION PICKER */}
+                                            <div className="space-y-3">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">2. Take from where?</Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button 
                                                         type="button"
-                                                        onClick={() => setSelectedVariantId(String(v.id))}
-                                                        disabled={v.stock_available <= 0}
+                                                        onClick={() => setSelectedVariantId(null)}
                                                         className={cn(
                                                             "flex-1 min-w-[140px] px-4 py-3 rounded-xl border-2 transition-all text-left",
-                                                            selectedVariantId === String(v.id) 
+                                                            selectedVariantId === null 
                                                                 ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50" 
-                                                                : v.stock_available <= 0
-                                                                    ? "bg-slate-50 border-slate-50 opacity-40 cursor-not-allowed"
-                                                                    : "bg-white border-slate-100 hover:border-slate-200"
+                                                                : "bg-white border-slate-100 hover:border-slate-200"
                                                         )}
                                                     >
-                                                        <p className={cn("text-[11px] font-bold", selectedVariantId === String(v.id) ? "text-blue-700" : "text-slate-600")}>
-                                                            {v.storage_location}
+                                                        <p className={cn("text-[11px] font-bold", selectedVariantId === null ? "text-blue-700" : "text-slate-600")}>
+                                                            {selectedItem.storage_location || 'Main Hub'}
                                                         </p>
-                                                        <p className="text-[9px] text-slate-400 font-medium">Ready: {v.stock_available}</p>
+                                                        <p className="text-[9px] text-slate-400 font-medium">Ready: {selectedItem.primary_stock_available}</p>
                                                     </button>
-                                                ))}
-                                            </div>
-                                        </div>
 
-                                        {/* QTY & ACTION */}
-                                        <div className="flex items-end gap-3 pt-2">
-                                            <div className="flex-1 space-y-2">
-                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">3. How many?</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    value={selectedQuantity} 
-                                                    onChange={e => setSelectedQuantity(e.target.value === "" ? "" : Number(e.target.value))}
-                                                    className="h-12 text-lg font-bold rounded-xl"
-                                                />
+                                                    {selectedItem.variants?.map(v => (
+                                                        <button
+                                                            key={v.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedVariantId(String(v.id))}
+                                                            disabled={v.stock_available <= 0}
+                                                            className={cn(
+                                                                "flex-1 min-w-[140px] px-4 py-3 rounded-xl border-2 transition-all text-left",
+                                                                selectedVariantId === String(v.id) 
+                                                                    ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50" 
+                                                                    : v.stock_available <= 0
+                                                                        ? "bg-slate-50 border-slate-50 opacity-40 cursor-not-allowed"
+                                                                        : "bg-white border-slate-100 hover:border-slate-200"
+                                                            )}
+                                                        >
+                                                            <p className={cn("text-[11px] font-bold", selectedVariantId === String(v.id) ? "text-blue-700" : "text-slate-600")}>
+                                                                {v.storage_location}
+                                                            </p>
+                                                            <p className="text-[9px] text-slate-400 font-medium">Ready: {v.stock_available}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <Button 
-                                                type="button" 
-                                                onClick={handleAddToCart}
-                                                className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95"
-                                            >
-                                                Add to List
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
+
+                                            {/* 📦 BATCH PICKER (Shared Component) */}
+                                            <BatchSelector 
+                                                packagingJson={selectedItem.packaging_json}
+                                                selectedBatchId={selectedBatchId}
+                                                onSelectBatch={setSelectedBatchId}
+                                                unitLabel={selectedItem.unit}
+                                            />
+
+                                            {/* QTY & ACTION */}
+                                            <div className="flex items-end gap-3 pt-2">
+                                                <div className="flex-1 space-y-2">
+                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">3. How many?</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={selectedQuantity} 
+                                                        onChange={e => setSelectedQuantity(e.target.value === "" ? "" : Number(e.target.value))}
+                                                        className="h-12 text-lg font-bold rounded-xl"
+                                                    />
+                                                </div>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleAddToCart}
+                                                    className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95"
+                                                >
+                                                    Add to list
+                                                </Button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
                             {/* RIGHT SIDE: THE LIST (MANIFEST) */}
                             <div className="lg:col-span-2">
                                 <div className="h-full min-h-[200px] bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 p-4 flex flex-col">
                                     <div className="flex items-center justify-between mb-4">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Items for Respondent</Label>
-                                        {cart.length > 0 && <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{cart.length} items</span>}
+                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Items for Respondent</Label>
+                                        {cart.length > 0 && <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{cart.length} items</span>}
                                     </div>
 
                                     {cart.length === 0 ? (
@@ -497,14 +551,14 @@ export function DispatchCommandSheet() {
                                     ) : (
                                         <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1">
                                             {cart.map((c) => (
-                                                <div key={c.item.id} className="group bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between shadow-sm hover:border-blue-200 transition-all">
+                                                <div key={c.cart_key} className="group bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between shadow-sm hover:border-blue-200 transition-all">
                                                     <div className="min-w-0 pr-2">
-                                                        <p className="text-xs font-bold text-slate-900 truncate">{c.item.item_name}</p>
-                                                        <p className="text-[9px] text-slate-400 font-medium uppercase">{c.quantity}x • From {c.item.item_name.split('(')[1]?.replace(')', '') || 'Main Hub'}</p>
+                                                        <p className="text-[13px] font-bold text-slate-900 truncate">{c.item.item_name}</p>
+                                                        <p className="text-[10px] text-slate-400 font-medium uppercase">{c.quantity}x • From {c.item.item_name.split('(')[1]?.replace(')', '') || 'Main Hub'}</p>
                                                     </div>
                                                     <button 
                                                         type="button"
-                                                        onClick={() => v3RemoveFromCart(c.item.id)} // This will be handled by local state in parent or useEffect in real app, keeping logic consistent
+                                                        onClick={() => handleRemoveFromCart(c.cart_key)}
                                                         className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all"
                                                     >
                                                         <X className="w-4 h-4" />
@@ -518,7 +572,7 @@ export function DispatchCommandSheet() {
                                         <Button 
                                             variant="ghost" 
                                             onClick={() => {v3ClearCart(); setCart([]);}}
-                                            className="mt-4 text-[10px] font-bold text-slate-400 hover:text-red-600 transition-colors uppercase tracking-widest"
+                                            className="mt-4 text-[11px] font-bold text-slate-400 hover:text-red-600 transition-colors uppercase tracking-widest"
                                         >
                                             Clear All
                                         </Button>
@@ -530,7 +584,7 @@ export function DispatchCommandSheet() {
                         {!isConsumable && (
                             <div className="grid gap-2">
                                 <Label htmlFor="office_department" className="text-sm font-semibold text-gray-700">Office/Department <span className="text-red-500">*</span></Label>
-                                <Input id="office_department" name="office_department" placeholder="E.g., CDRRMO Team Alpha" required disabled={isPending} className="rounded-lg border-gray-300" />
+                                <Input id="office_department" name="office_department" placeholder="E.g., CDRRMO Team Alpha" required disabled={isPending} value={officeDepartment} onChange={(e) => setOfficeDepartment(e.target.value)} className="rounded-lg border-gray-300" />
                             </div>
                         )}
 
@@ -583,10 +637,34 @@ export function DispatchCommandSheet() {
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2 pt-4 border-t border-gray-100 -mx-6 px-6">
-                        <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
-                        <Button type="submit" disabled={isPending || (cart.length === 0 && !selectedItem)} className={`gap-2 rounded-xl min-w-[160px] font-bold shadow-lg transition-all ${cart.length > 0 ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
-                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : cart.length > 0 ? <><ShoppingCart className="h-4 w-4" /> Borrow {cart.length} Items</> : <><ClipboardList className="h-4 w-4" /> Confirm Dispatch</>}
+                    <DialogFooter className="px-8 py-6 bg-white border-t border-slate-100 shrink-0">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setOpen(false)}
+                            disabled={isPending}
+                            className="rounded-xl h-12 px-6 font-bold text-slate-500 hover:bg-slate-50 transition-all"
+                        >
+                            Cancel Operation
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={isPending || (cart.length === 0 && !selectedItem)}
+                            className="bg-blue-600 hover:bg-blue-700 h-12 text-white gap-2 flex-1 md:flex-none md:min-w-[200px] rounded-xl font-black shadow-xl shadow-blue-200 transition-all active:scale-[0.98] text-sm uppercase tracking-wider"
+                        >
+                            {isPending ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : cart.length > 0 ? (
+                                <>
+                                    <ShoppingCart className="h-5 w-5" />
+                                    Finalize Dispatch ({cart.length})
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldCheck className="h-5 w-5" />
+                                    Confirm Single Issuance
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </form>

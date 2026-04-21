@@ -8,6 +8,8 @@ export '../../domain/repositories/i_analyst_repository.dart' show ForceReturnRes
 import '../../data/repositories/analyst_repository_impl.dart';
 import 'package:mobile/src/features/auth/providers/auth_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../domain/entities/station_manifest.dart';
+
 
 part 'analyst_dashboard_controller.g.dart';
 
@@ -227,12 +229,13 @@ Future<Map<String, int>> hubStockSnapshot(
 }) async {
   final supabase = Supabase.instance.client;
   
-  // Lookup the specific row for this item at this location registry
+  // Same product across hubs: variant rows point at master via parent_id; masters use id.
+  // DB has no inventory.item_id — match parent_id OR id at the target registry.
   final response = await supabase
       .from('inventory')
       .select('qty_good, qty_damaged, qty_maintenance, qty_lost')
-      .eq('item_id', itemId)
       .eq('location_registry_id', warehouseId)
+      .or('parent_id.eq.$itemId,id.eq.$itemId')
       .maybeSingle();
 
   if (response == null) return {};
@@ -285,3 +288,10 @@ class AnalystDashboardException implements Exception {
   @override
   String toString() => 'AnalystDashboardException: $message';
 }
+
+@riverpod
+Future<List<StationManifestItem>> stationManifest(StationManifestRef ref, {required String stationId}) {
+  final repository = ref.watch(analystRepositoryProvider);
+  return repository.getStationManifest(stationId: stationId);
+}
+

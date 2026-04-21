@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import {
     Plus, ListPlus, Save, Trash2, ChevronDown, Package,
-    MapPin, Calendar, Bell, ShoppingBag, AlertCircle, CheckCircle2,
-    Hash, Layers, Warehouse, PenLine,
+    Calendar, Bell, ShoppingBag, AlertCircle, CheckCircle2,
+    Hash, Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,7 @@ import { getStorageLocations } from '@/app/actions/storage-locations'
 import { resolveCategoryIcon } from '@/lib/category-icons'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { StockDistributionGrid } from './inventory-dialog/sections/stock-distribution-grid'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,8 +36,14 @@ interface BulkItemRow {
     category: string
     item_type: ItemType
     qty: string
-    location: string        // selected location_name or 'custom'
-    customLocation: string  // text when location === 'custom'
+    siteDistributions: Array<{
+        locationId?: string
+        locationName: string
+        qtyGood: number
+        qtyDamaged: number
+        qtyMaintenance: number
+        qtyLost: number
+    }>
     serial_number: string
     model_number: string
     brand: string
@@ -50,14 +57,21 @@ interface BulkItemRow {
 
 const uid = () => Math.random().toString(36).slice(2, 9)
 
+const defaultDistribution = (locationName = 'lower_warehouse') => ({
+    locationName,
+    qtyGood: 1,
+    qtyDamaged: 0,
+    qtyMaintenance: 0,
+    qtyLost: 0,
+})
+
 const BLANK = (category = ''): BulkItemRow => ({
     id: uid(),
     name: '',
     category,
     item_type: 'equipment',
     qty: '1',
-    location: '',
-    customLocation: '',
+    siteDistributions: [defaultDistribution()],
     serial_number: '',
     model_number: '',
     brand: '',
@@ -95,7 +109,15 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
             }
         })
         getStorageLocations().then(res => {
-            setLocations((res.data as StorageLocationRecord[]) || [])
+            const fetched = (res.data as StorageLocationRecord[]) || []
+            setLocations(fetched)
+            if (fetched.length > 0) {
+                const fallback = fetched[0].location_name
+                setRows(prev => prev.map(r => ({
+                    ...r,
+                    siteDistributions: r.siteDistributions?.length ? r.siteDistributions : [defaultDistribution(fallback)],
+                })))
+            }
         })
     }, [open])
 
@@ -108,12 +130,65 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
 
     const addRow = () => {
         const lastCat = rows.at(-1)?.category || categories[0] || ''
-        setRows(prev => [...prev, BLANK(lastCat)])
+        const fallback = locations[0]?.location_name || 'lower_warehouse'
+        setRows(prev => [...prev, { ...BLANK(lastCat), siteDistributions: [defaultDistribution(fallback)] }])
     }
 
     const removeRow = (id: string) => {
         if (rows.length === 1) return
         setRows(prev => prev.filter(r => r.id !== id))
+    }
+
+    const recalcQty = (dists: BulkItemRow['siteDistributions']) =>
+        dists.reduce(
+            (sum, d) =>
+                sum +
+                (Number(d.qtyGood) || 0) +
+                (Number(d.qtyDamaged) || 0) +
+                (Number(d.qtyMaintenance) || 0) +
+                (Number(d.qtyLost) || 0),
+            0
+        )
+
+    const updateSiteQtyForRow = (rowId: string, index: number, bucket: string, value: number | string) => {
+        const parsed = value === '' ? 0 : Math.max(0, Number(value) || 0)
+        setRows(prev => prev.map(r => {
+            if (r.id !== rowId) return r
+            const updated = [...r.siteDistributions]
+            updated[index] = { ...updated[index], [bucket]: parsed }
+            return { ...r, siteDistributions: updated, qty: String(recalcQty(updated)), error: undefined }
+        }))
+    }
+
+    const addSiteForRow = (rowId: string, location: StorageLocationRecord) => {
+        setRows(prev => prev.map(r => {
+            if (r.id !== rowId) return r
+            const exists = r.siteDistributions.some(
+                d => d.locationName === location.location_name || d.locationId === location.id?.toString()
+            )
+            if (exists) return r
+            const updated = [
+                ...r.siteDistributions,
+                {
+                    locationId: location.id?.toString(),
+                    locationName: location.location_name,
+                    qtyGood: 0,
+                    qtyDamaged: 0,
+                    qtyMaintenance: 0,
+                    qtyLost: 0,
+                },
+            ]
+            return { ...r, siteDistributions: updated, qty: String(recalcQty(updated)), error: undefined }
+        }))
+    }
+
+    const removeSiteForRow = (rowId: string, index: number) => {
+        setRows(prev => prev.map(r => {
+            if (r.id !== rowId) return r
+            if (r.siteDistributions.length <= 1) return r
+            const updated = r.siteDistributions.filter((_, i) => i !== index)
+            return { ...r, siteDistributions: updated, qty: String(recalcQty(updated)), error: undefined }
+        }))
     }
 
     // ── validation ─────────────────────────────────────────────────────────────
@@ -125,13 +200,13 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
             
             if (r.name.trim().length < 2) { error = 'Name must be at least 2 characters.'; ok = false }
             else if (!r.category)         { error = 'Select a category.'; ok = false }
-            else if (!r.location)         { error = 'Select a stock location.'; ok = false }
-            else if (r.location === 'custom' && !r.customLocation.trim()) { 
-                error = 'Enter custom location.'; ok = false 
-            }
             
             const qty = parseInt(r.qty) || 0
             if (!error && qty < 1) { error = 'Quantity must be ≥ 1.'; ok = false }
+            const hasLocation = r.siteDistributions.some(d => d.locationName)
+            if (!error && !hasLocation) { error = 'Add at least one stock location.'; ok = false }
+            const distTotal = recalcQty(r.siteDistributions)
+            if (!error && distTotal !== qty) { error = `Distributed total (${distTotal}) must match qty (${qty}).`; ok = false }
             
             // Auto-expand rows with errors so the user sees what's wrong
             return { ...r, error, expanded: error ? true : r.expanded }
@@ -146,28 +221,36 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
         if (!validate()) { toast.error('Fix the highlighted rows before saving.'); return }
 
         setIsSub(true)
-        const payload = namedRows.map(r => {
-            const qty = Math.max(1, parseInt(r.qty) || 1)
+        const payload = namedRows.flatMap(r => {
             const showExpiry = needsExpiryFields(r)
-            return {
-                name:             r.name.trim(),
-                category:         r.category,
-                item_type:        r.item_type,
-                stock_total:      qty,
-                stock_available:  qty,
-                qty_good:         qty,
-                status:           'Good',
-                storage_location: r.location === 'custom'
-                    ? (r.customLocation.trim() || undefined)
-                    : (r.location || undefined),
-                serial_number:    r.item_type === 'equipment' && r.serial_number.trim() ? r.serial_number.trim() : undefined,
-                model_number:     r.item_type === 'equipment' && r.model_number.trim() ? r.model_number.trim() : undefined,
-                brand:            showExpiry && r.brand.trim() ? r.brand.trim() : undefined,
-                expiry_date:      showExpiry && r.expiry_date ? r.expiry_date : undefined,
-                expiry_alert_days: showExpiry && r.expiry_date
-                    ? Math.max(1, parseInt(r.expiry_alert_days) || 15)
-                    : undefined,
-            }
+            return r.siteDistributions.map(dist => {
+                const qtyGood = Number(dist.qtyGood) || 0
+                const qtyDamaged = Number(dist.qtyDamaged) || 0
+                const qtyMaintenance = Number(dist.qtyMaintenance) || 0
+                const qtyLost = Number(dist.qtyLost) || 0
+                const stockTotal = qtyGood + qtyDamaged + qtyMaintenance + qtyLost
+
+                return {
+                    name:             r.name.trim(),
+                    category:         r.category,
+                    item_type:        r.item_type,
+                    stock_total:      stockTotal,
+                    stock_available:  qtyGood,
+                    qty_good:         qtyGood,
+                    qty_damaged:      qtyDamaged,
+                    qty_maintenance:  qtyMaintenance,
+                    qty_lost:         qtyLost,
+                    status:           'Good',
+                    storage_location: dist.locationName || undefined,
+                    serial_number:    r.item_type === 'equipment' && r.serial_number.trim() ? r.serial_number.trim() : undefined,
+                    model_number:     r.item_type === 'equipment' && r.model_number.trim() ? r.model_number.trim() : undefined,
+                    brand:            showExpiry && r.brand.trim() ? r.brand.trim() : undefined,
+                    expiry_date:      showExpiry && r.expiry_date ? r.expiry_date : undefined,
+                    expiry_alert_days: showExpiry && r.expiry_date
+                        ? Math.max(1, parseInt(r.expiry_alert_days) || 15)
+                        : undefined,
+                }
+            }).filter(entry => entry.stock_total > 0)
         })
 
         const result = await bulkAddItems(payload as any)
@@ -177,7 +260,8 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
             toast.success(result.message)
             setOpen(false)
             onSuccess?.()
-            setRows([BLANK(), BLANK(), BLANK()])
+            const fallback = locations[0]?.location_name || 'lower_warehouse'
+            setRows([BLANK(), BLANK(), BLANK()].map(r => ({ ...r, siteDistributions: [defaultDistribution(fallback)] })))
         } else {
             toast.error(result.error)
         }
@@ -235,6 +319,7 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
                     {rows.map((row, index) => {
                         const showExpiry  = needsExpiryFields(row)
                         const isExpanded  = row.expanded
+                        const distributedTotal = recalcQty(row.siteDistributions)
 
                         return (
                             <div
@@ -300,9 +385,9 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
                                         <Input
                                             type="number"
                                             min="1"
-                                            value={row.qty}
-                                            onChange={e => update(row.id, 'qty', e.target.value)}
-                                            className="h-9 border-transparent hover:border-gray-200 focus:border-blue-400 bg-transparent text-right text-[13px] font-black text-gray-900 px-2 rounded-lg"
+                                            value={distributedTotal}
+                                            readOnly
+                                            className="h-9 border-transparent bg-transparent text-right text-[13px] font-black text-gray-900 px-2 rounded-lg pointer-events-none"
                                         />
                                     </div>
 
@@ -373,53 +458,20 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
                                             </div>
                                         </div>
 
-                                        {/* Location */}
-                                        <div className="flex items-start gap-3 pl-2">
-                                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600 w-20 shrink-0 pt-2.5">
-                                                Location <span className="text-red-500">*</span>
+                                        <div className="pl-2 space-y-2">
+                                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">
+                                                Stock Across Locations
                                             </Label>
-                                            <div className="flex-1 space-y-1.5">
-                                                <div className="relative">
-                                                    <Warehouse className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 z-10 pointer-events-none" />
-                                                    <Select
-                                                        value={row.location}
-                                                        onValueChange={v => update(row.id, 'location', v)}
-                                                    >
-                                                        <SelectTrigger className="h-9 pl-8 rounded-xl border-gray-200 bg-white text-[12px] font-semibold hover:border-blue-300 focus:border-blue-400">
-                                                            <SelectValue placeholder="Select a location…" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="rounded-xl">
-                                                            {locations.length === 0 ? (
-                                                                <div className="px-3 py-2 text-[12px] text-gray-400">No locations saved yet</div>
-                                                            ) : (
-                                                                locations.map(loc => (
-                                                                    <SelectItem key={loc.id} value={loc.location_name} className="text-[12px] font-semibold py-2">
-                                                                        <span className="flex items-center gap-2">
-                                                                            <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                                                                            {loc.location_name}
-                                                                        </span>
-                                                                    </SelectItem>
-                                                                ))
-                                                            )}
-                                                            <SelectItem value="custom" className="text-[12px] font-bold text-blue-600 py-2">
-                                                                <span className="flex items-center gap-2">
-                                                                    <PenLine className="h-3.5 w-3.5" />
-                                                                    Custom location…
-                                                                </span>
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                {row.location === 'custom' && (
-                                                    <Input
-                                                        value={row.customLocation}
-                                                        onChange={e => update(row.id, 'customLocation', e.target.value)}
-                                                        placeholder="e.g. Hub A, Vehicle Bay…"
-                                                        className="h-9 rounded-xl border-blue-200 bg-blue-50/30 text-[12px] font-semibold focus:border-blue-400"
-                                                        autoFocus
-                                                    />
-                                                )}
-                                            </div>
+                                            <StockDistributionGrid
+                                                siteDistributions={row.siteDistributions}
+                                                onUpdateQty={(siteIndex, bucket, value) => updateSiteQtyForRow(row.id, siteIndex, bucket, value)}
+                                                onAddSite={(loc) => addSiteForRow(row.id, loc)}
+                                                onRemoveSite={(siteIndex) => removeSiteForRow(row.id, siteIndex)}
+                                                savedLocations={locations}
+                                            />
+                                            <p className="text-[11px] font-semibold text-slate-500">
+                                                Total distributed units: <span className="text-slate-900">{distributedTotal}</span>
+                                            </p>
                                         </div>
 
                                         {/* Serial + Model — Equipment only */}
