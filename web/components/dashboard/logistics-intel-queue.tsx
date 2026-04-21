@@ -11,6 +11,7 @@ import { isLowStock } from '@/lib/inventory-utils'
 import { isExpiringSoon } from '@/lib/expiry-utils'
 import type { InventoryItem } from '@/lib/supabase'
 import { getInventoryAlerts } from '../../src/features/catalog/actions/catalog.actions'
+import { resolveSystemRoute } from '@/lib/utils/route-resolver'
 
 interface SystemIntel {
     id: string
@@ -58,9 +59,7 @@ const CATEGORY_CONFIG = {
     ACCESS: { icon: ShieldAlert, color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-200', href: '/dashboard/users' }
 }
 
-import { resolveSystemRoute } from '@/lib/utils/route-resolver'
-
-/** Narrow `system_intel` rows to inventory alert sub-types (metadata must include stock/expiry fields). */
+// 🛡️ RELEVANCE ENGINE: Categorize and prioritize alerts
 type InventoryIntelFilter = 'all' | 'out_of_stock' | 'low_stock' | 'expiring'
 
 function metadataAsInventoryPartial(metadata: Record<string, unknown> | null | undefined): Partial<InventoryItem> {
@@ -257,17 +256,20 @@ export function LogisticsIntelQueue() {
                         </motion.div>
                     ) : (
                         displayedIntel.map((item, i) => {
-                            const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.INVENTORY
-                            const Icon = config.icon
+                            const safeCategory = (item.category || 'INVENTORY').toUpperCase()
+                            const config = CATEGORY_CONFIG[safeCategory as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.INVENTORY
+                            const Icon = config.icon || Package
 
                             const target = resolveSystemRoute({
-                                type: item.priority === 'CRITICAL' ? 'logistics_alert' : item.category.toLowerCase(),
-                                category: item.category,
-                                metadata: item.metadata,
+                                type: (item as any).type || (item.priority === 'CRITICAL' ? 'logistics_alert' : safeCategory.toLowerCase()),
+                                category: safeCategory,
+                                metadata: item.metadata || {},
                                 reference_id: item.metadata?.borrow_id || item.metadata?.log_id || (item as any).reference_id,
                                 id: item.id,
                                 title: item.title
                             })
+
+                            const href = target || config.href || '/dashboard/inventory'
 
                             return (
                                 <motion.div
@@ -279,8 +281,8 @@ export function LogisticsIntelQueue() {
                                     transition={{ duration: 0.2 }}
                                 >
                                     <Link 
-                                        href={target || config.href}
-                                        className="group flex items-center gap-4 py-4 px-2 hover:bg-slate-50/80 transition-colors cursor-pointer"
+                                        href={href}
+                                        className="group flex items-center gap-4 py-4 px-2 hover:bg-slate-50/80 transition-colors"
                                     >
                                         <div className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center border ${config.bg} ${config.border} ${config.color} shadow-sm ring-1 ring-white`}>
                                             <Icon className="h-4 w-4" />

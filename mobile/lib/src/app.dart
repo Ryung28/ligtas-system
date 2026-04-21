@@ -39,6 +39,7 @@ import 'package:mobile/src/features/analyst_dashboard/presentation/screens/analy
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/activity_ledger_screen.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/station_provisioning_screen.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/logistical_queue_screen.dart';
+import 'package:mobile/src/features/fast_dispatch/presentation/screens/fast_dispatch_screen.dart';
 // AnalystHistoryScreen liquidated as per Anti-Monolith Protocol. Hub is now ActivityLedgerScreen for audits.
 
 class LigtasApp extends ConsumerStatefulWidget {
@@ -223,6 +224,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'activity',
                 builder: (context, state) => const ActivityLedgerScreen(),
+              ),
+              GoRoute(
+                path: 'dispatch',
+                builder: (context, state) => const FastDispatchScreen(),
               ),
               GoRoute(
                 path: 'station/:id',

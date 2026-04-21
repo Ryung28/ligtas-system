@@ -651,10 +651,10 @@ function LogSessionRow({
                                 transition={{ duration: 0.3, ease: [0.33, 1, 0.68, 1] }}
                                 className="overflow-hidden"
                             >
-                                <div className="p-7 bg-white border-b border-zinc-100/50 overflow-x-auto">
-                                    <div className="flex flex-row gap-8 min-w-[1100px]">
+                                <div className="p-3 14in:p-5 bg-white border-b border-zinc-100/50">
+                                    <div className="flex flex-col md:flex-row gap-4 14in:gap-6">
                                         {/* 👤 LEFT RAIL: PERSONNEL DETAILS */}
-                                        <div className="w-[280px] space-y-5 shrink-0">
+                                        <div className="w-full md:w-[250px] space-y-4 shrink-0">
                                             <div className="space-y-3">
                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Personnel Details</p>
                                                 <div className="bg-white rounded-[26px] border border-slate-100 p-5 shadow-sm border-b-2 border-b-slate-100/30">
@@ -721,12 +721,12 @@ function LogSessionRow({
 
                                             <div className="space-y-2.5">
                                                 {session.items.map((item: BorrowLog) => (
-                                                    <div
-                                                        key={item.id}
-                                                        className={cn(
-                                                            "group bg-white rounded-[24px] border border-slate-100 p-4 transition-all hover:bg-slate-50/50 flex items-center gap-5",
-                                                            item.id === Number(triageId) && "border-blue-500 ring-4 ring-blue-500/5 shadow-blue-500/10 bg-blue-50/10"
-                                                        )}
+                                                        <div
+                                                            key={item.id}
+                                                            className={cn(
+                                                                "group bg-white rounded-[20px] 14in:rounded-[24px] border border-zinc-100 p-3 14in:p-4 transition-all hover:bg-slate-50/50 flex items-center gap-3 14in:gap-5",
+                                                                item.id === Number(triageId) && "border-blue-500 ring-4 ring-blue-500/5 shadow-blue-500/10 bg-blue-50/10"
+                                                            )}
                                                         ref={item.id === Number(triageId) ? targetedItemRef : null}
                                                     >
                                                         {/* Multi-Select Handle */}
