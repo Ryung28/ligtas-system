@@ -2,11 +2,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/dispatch_session.dart';
 import '../repository/dispatch_repository.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../../auth/presentation/providers/auth_providers.dart';
 
 part 'dispatch_controller.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class FastDispatchController extends _$FastDispatchController {
   @override
   FutureOr<DispatchState> build() {
@@ -22,38 +22,76 @@ class FastDispatchController extends _$FastDispatchController {
     ));
   }
 
-  /// 🛠️ Add equipment to cart
-  void addItem(int id, String name) {
+  /// 🧾 Keep borrower state in sync with manual form input
+  void updateBorrowerDraft({
+    String? name,
+    String? contact,
+    String? office,
+  }) {
     final currentState = state.value ?? const DispatchState();
-    
-    // Check if exists, increase qty
-    final existingIndex = currentState.items.indexWhere((i) => i.inventoryId == id);
-    final newItems = List<DispatchItem>.from(currentState.items);
-    
-    if (existingIndex >= 0) {
-      newItems[existingIndex] = newItems[existingIndex].copyWith(
-        quantity: newItems[existingIndex].quantity + 1,
-      );
-    } else {
-      newItems.add(DispatchItem(inventoryId: id, itemName: name));
-    }
+    final existing = currentState.borrower;
+    final nextName = name ?? existing?.name ?? '';
+    final nextContact = contact ?? existing?.contact ?? '';
+    final nextOffice = office ?? existing?.office ?? '';
 
-    state = AsyncData(currentState.copyWith(items: newItems));
-  }
-
-  /// ❌ Remove item from cart
-  void removeItem(int id) {
-    final currentState = state.value ?? const DispatchState();
     state = AsyncData(currentState.copyWith(
-      items: currentState.items.where((i) => i.inventoryId != id).toList(),
+      borrower: BorrowerInfo(
+        id: existing?.id ?? 'manual-${DateTime.now().millisecondsSinceEpoch}',
+        name: nextName,
+        contact: nextContact,
+        office: nextOffice,
+        isDraft: true,
+      ),
+      error: null,
     ));
   }
 
+  /// ✍️ Update Approval
+  void updateApprovedBy(String value) {
+    final currentState = state.value ?? const DispatchState();
+    state = AsyncData(currentState.copyWith(approvedBy: value));
+  }
+
+  /// 🛠️ Select equipment for dispatch
+  void selectItem(int id, String name, {String? imageUrl}) {
+    final currentState = state.value ?? const DispatchState();
+    state = AsyncData(currentState.copyWith(
+      selectedItem: DispatchItem(inventoryId: id, itemName: name, imageUrl: imageUrl),
+    ));
+  }
+
+  /// 🔢 Update selected quantity for current equipment
+  void updateItemQuantity(int quantity) {
+    final currentState = state.value ?? const DispatchState();
+    final item = currentState.selectedItem;
+    if (item == null) return;
+
+    state = AsyncData(currentState.copyWith(
+      selectedItem: item.copyWith(quantity: quantity.clamp(1, 999)),
+      error: null,
+    ));
+  }
+
+  /// ❌ Clear selection
+  void clearSelection() {
+    final currentState = state.value ?? const DispatchState();
+    state = AsyncData(currentState.copyWith(selectedItem: null));
+  }
+
   /// 📤 Finalize Transaction
-  Future<void> submit(String approvedBy) async {
+  Future<void> submit() async {
     final currentState = state.value;
-    if (currentState == null || currentState.borrower == null || currentState.items.isEmpty) {
-      state = AsyncData(currentState!.copyWith(error: 'Incomplete dispatch data'));
+    if (currentState == null || currentState.selectedItem == null) {
+      state = AsyncData((currentState ?? const DispatchState()).copyWith(error: 'No item selected'));
+      return;
+    }
+    final borrower = currentState.borrower;
+    final hasValidBorrower = borrower != null &&
+        borrower.name.trim().isNotEmpty &&
+        borrower.contact.trim().isNotEmpty &&
+        (borrower.office?.trim().isNotEmpty ?? false);
+    if (!hasValidBorrower) {
+      state = AsyncData(currentState.copyWith(error: 'Complete borrower name, contact, and office'));
       return;
     }
 
@@ -61,14 +99,15 @@ class FastDispatchController extends _$FastDispatchController {
     
     try {
       final repo = DispatchRepository(Supabase.instance.client);
-      final user = ref.read(authStateProvider).value?.user;
-      final releasedBy = user?.email ?? 'Unknown Manager';
+      final user = ref.read(currentUserProvider);
+      final releasedBy = user?.fullName ?? user?.email ?? 'Unknown Manager';
 
       await repo.submitDispatch(
-        borrower: currentState.borrower!,
-        items: currentState.items,
-        approvedBy: approvedBy,
+        borrower: borrower,
+        item: currentState.selectedItem!,
+        approvedBy: currentState.approvedBy ?? '',
         releasedBy: releasedBy,
+        releasedByUserId: user?.id,
       );
 
       // Reset on success

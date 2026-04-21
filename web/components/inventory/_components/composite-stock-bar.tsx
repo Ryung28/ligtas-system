@@ -129,10 +129,10 @@ export function CompositeStockBar({
                             </button>
                         </PopoverTrigger>
                         <PopoverContent side="bottom" align="start" className="w-64 p-0 rounded-xl overflow-hidden shadow-2xl border-gray-200 z-[100]" onClick={(e) => e.stopPropagation()}>
-                            <div className="p-3 bg-gray-50/50 border-b border-gray-100 text-[11px] font-black text-gray-950 uppercase tracking-tight">Approval Queue</div>
+                            <div className="p-3 bg-gray-50/50 border-b border-gray-100 text-[11px] font-black text-gray-950 uppercase tracking-tight">Pending Requests</div>
                             <div className="max-h-[200px] overflow-y-auto p-1.5 space-y-1">
                                 {isLoadingPending ? (
-                                    <div className="py-6 text-center text-[10px] font-bold text-gray-400">Syncing queue...</div>
+                                    <div className="py-6 text-center text-[10px] font-bold text-gray-400">Loading requests...</div>
                                 ) : pendingRequests.map((r) => (
                                     <div key={r.id} className="p-3 rounded-lg bg-white border border-gray-100 flex items-center justify-between shadow-sm">
                                         <span className="text-[12px] font-black text-gray-950">{r.borrower_name}</span>
@@ -159,12 +159,12 @@ export function CompositeStockBar({
                             </button>
                         </PopoverTrigger>
                         <PopoverContent side="bottom" align="start" className="w-72 p-0 rounded-xl overflow-hidden shadow-2xl border-gray-200 z-[110]" onClick={(e) => e.stopPropagation()}>
-                            <div className="p-3 bg-blue-50/50 border-b border-blue-100 text-[11px] font-black text-blue-900 uppercase tracking-tight">Currently Borrowed</div>
+                            <div className="p-3 bg-blue-50/50 border-b border-blue-100 text-[11px] font-black text-blue-900 uppercase tracking-tight">Borrowed Items</div>
                             <div className="max-h-[300px] overflow-y-auto p-1.5 space-y-1">
                                 {isLoadingActiveLoans ? (
                                     <div className="py-6 text-center text-[10px] font-bold text-gray-400">Fetching borrowers...</div>
                                 ) : activeLoans.length === 0 ? (
-                                    <div className="py-6 text-center text-[10px] font-bold text-gray-400">No active borrow records found.</div>
+                                    <div className="py-6 text-center text-[10px] font-bold text-gray-400">No items borrowed.</div>
                                 ) : (
                                     Array.from(groupedActiveLoans.values()).map((loan) => (
                                         <div key={`${loan.borrower_name}-${loan.status}`} className={cn(

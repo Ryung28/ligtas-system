@@ -33,7 +33,7 @@ function SiteHealthFootnote({ variant }: { variant: InventoryVariant | undefined
     if (!d && !m && !l) {
         return (
             <p className="mt-3 text-[9px] font-bold uppercase tracking-widest text-emerald-700/90">
-                All units serviceable at this site
+                All units ready for use
             </p>
         )
     }
@@ -268,8 +268,8 @@ export function ExpandableInventoryRow({
                                         <Warehouse className="h-5 w-5 text-gray-900" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <h4 className="text-[16px] font-black text-gray-950 leading-tight tracking-tight">Facility Distribution</h4>
-                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em]">Shared across {totalSiteCount} active sites</p>
+                                        <h4 className="text-[16px] font-black text-gray-950 leading-tight tracking-tight">Site Distribution</h4>
+                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em]">Found in {totalSiteCount} locations</p>
                                     </div>
                                 </div>
                             </div>

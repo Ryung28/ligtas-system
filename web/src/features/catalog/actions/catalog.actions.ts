@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { supabase } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { z } from 'zod'
 import { addItemSchema } from '../schemas/catalog.schema'
 
@@ -14,6 +15,8 @@ import { addItemSchema } from '../schemas/catalog.schema'
 
 export async function addItem(formData: FormData) {
     try {
+        // 🔐 SESSION-AWARE CLIENT: Required for RLS to pass auth.uid() checks
+        const supabase = await createSupabaseServer()
         const thresholdRaw = formData.get('low_stock_threshold')
         const parsedThreshold =
             thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
@@ -53,9 +56,17 @@ export async function addItem(formData: FormData) {
         }
 
         // 🛡️ RECONCILIATION: Ensure stock_total matches the sum of buckets
-        const calculatedTotal = rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost
+        const calculatedTotal = Number(rawData.qty_good) + Number(rawData.qty_damaged) + Number(rawData.qty_maintenance) + Number(rawData.qty_lost)
         const finalStockTotal = Math.max(Number(rawData.stock_total) || 0, calculatedTotal)
-        const validatedData = addItemSchema.parse(rawData)
+        
+        // Finalize rawData for validation
+        const finalRawData = {
+            ...rawData,
+            stock_total: finalStockTotal,
+            stock_available: Number(rawData.qty_good)
+        }
+
+        const validatedData = addItemSchema.parse(finalRawData)
 
         // Validate that current stock doesn't exceed total stock
         if (validatedData.stock_available > finalStockTotal) {
@@ -256,6 +267,7 @@ export async function bulkAddItems(items: Array<{
     description?: string
 }>) {
     try {
+        const supabase = await createSupabaseServer()
         const validatedItems = z.array(addItemSchema).parse(items)
 
         const insertData = validatedItems.map(item => ({
@@ -305,6 +317,8 @@ import { siteDistributionSchema } from '../schemas/catalog.schema'
 
 export async function updateItem(formData: FormData) {
     try {
+        // 🔐 SESSION-AWARE CLIENT: Required for RLS to pass auth.uid() checks
+        const supabase = await createSupabaseServer()
         const id = formData.get('id')
         if (!id) throw new Error('Item ID is required')
         const thresholdRaw = formData.get('low_stock_threshold')
@@ -340,7 +354,7 @@ export async function updateItem(formData: FormData) {
         // 🔒 IDENTITY LOCK: Get current name/category for targeting siblings
         const { data: itemBefore, error: fetchError } = await supabase
             .from('inventory')
-            .select('item_name, category')
+            .select('id, item_name, category, parent_id')
             .eq('id', id)
             .single()
 
@@ -364,6 +378,7 @@ export async function updateItem(formData: FormData) {
             const idsToDelete = existingIds.filter(eid => !activeIds.includes(eid))
 
             // 2. Verified Sequential Sync (Rule 62)
+            const parentIdToUse = itemBefore.parent_id || itemBefore.id
             for (const dist of distributions) {
                 const payload = {
                     item_name: rawData.name,
@@ -390,6 +405,8 @@ export async function updateItem(formData: FormData) {
                     stock_available: dist.qtyGood,
                     status: 'Good',
                     packaging_json: rawData.packaging_json,
+                    // If inserting a news distribution, link it to the current item's parent cluster
+                    parent_id: dist.id === itemBefore.id ? itemBefore.parent_id : parentIdToUse
                 }
 
                 const { error: dbError } = dist.id 
@@ -454,6 +471,7 @@ export async function updateItem(formData: FormData) {
 
 export async function updateItemLocation(itemId: number, newLocation: string) {
     try {
+        const supabase = await createSupabaseServer()
         const { error } = await supabase
             .from('inventory')
             .update({ storage_location: newLocation })
@@ -470,6 +488,7 @@ export async function updateItemLocation(itemId: number, newLocation: string) {
 
 export async function deleteItem(id: number) {
     try {
+        const supabase = await createSupabaseServer()
         // 🚨 STRICT PROTOCOL: Check for active borrows before archiving
         const { data: activeBorrows, error: checkError } = await supabase
             .from('borrow_logs')

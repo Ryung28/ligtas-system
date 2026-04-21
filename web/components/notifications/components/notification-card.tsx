@@ -19,6 +19,17 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
   }
 
   const meta = notif.metadata || {}
+  const parsedQtyFromMessage = (() => {
+    if (typeof notif.message !== 'string') return null
+    const match = notif.message.match(/\(Qty:\s*(\d+)\)/i)
+    return match ? Number(match[1]) : null
+  })()
+  const quantity =
+    typeof meta.quantity === 'number'
+      ? meta.quantity
+      : Number.isFinite(Number(meta.quantity))
+      ? Number(meta.quantity)
+      : parsedQtyFromMessage
 
   const target = resolveSystemRoute({
     type: notif.type,
@@ -121,6 +132,24 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
                     <Hash className="w-3.5 h-3.5 opacity-20 text-blue-600" />
                     {meta.id.toString().slice(-6)}
                 </div>
+            )}
+            {notif.type === 'item_returned' && (
+                quantity && quantity > 0 ? (
+                  <div className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em]",
+                    !notif.isRead ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-400"
+                  )}>
+                    <span className="opacity-70">Qty</span>
+                    <span>x{quantity}</span>
+                  </div>
+                ) : (
+                  <div className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em]",
+                    !notif.isRead ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-400"
+                  )}>
+                    <span>Qty unavailable</span>
+                  </div>
+                )
             )}
         </div>
         {onDelete && (

@@ -26,6 +26,7 @@ class LigtasQrPayload with _$LigtasQrPayload {
     required String personId,
     required String personName,
     @Default('Field Staff') String role,
+    String? phone,
   }) = _PersonPayload;
 
   factory LigtasQrPayload.fromJson(Map<String, dynamic> json) => _$LigtasQrPayloadFromJson(json);
@@ -64,6 +65,7 @@ class LigtasQrPayload with _$LigtasQrPayload {
             personId: id,
             personName: uri.queryParameters['name'] ?? 'Unknown Personnel',
             role: uri.queryParameters['role'] ?? 'Field Staff',
+            phone: uri.queryParameters['phone'],
           );
         }
       } catch (e) {

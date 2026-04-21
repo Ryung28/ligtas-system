@@ -28,6 +28,7 @@ _$DispatchItemImpl _$$DispatchItemImplFromJson(Map<String, dynamic> json) =>
     _$DispatchItemImpl(
       inventoryId: (json['inventoryId'] as num).toInt(),
       itemName: json['itemName'] as String,
+      imageUrl: json['imageUrl'] as String?,
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
     );
 
@@ -35,5 +36,6 @@ Map<String, dynamic> _$$DispatchItemImplToJson(_$DispatchItemImpl instance) =>
     <String, dynamic>{
       'inventoryId': instance.inventoryId,
       'itemName': instance.itemName,
+      'imageUrl': instance.imageUrl,
       'quantity': instance.quantity,
     };

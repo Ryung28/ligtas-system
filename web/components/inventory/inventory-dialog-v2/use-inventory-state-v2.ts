@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 /**
  * LIGTAS V2 STATE HOOK (ULTIMATE PARITY)
@@ -48,7 +48,7 @@ export function useInventoryStateV2(initialItem?: any) {
         setPackaging(prev => {
             const next = { ...prev, ...updates };
             
-            // Auto-generate batches if count/units change and we haven't manually added extra ones
+            // Auto-generate batches if count/units change
             if (updates.containerCount !== undefined || updates.unitsPerContainer !== undefined) {
                 const count = Math.max(0, Number(next.containerCount) || 0);
                 const upc = Math.max(0, Number(next.unitsPerContainer) || 0);
@@ -58,14 +58,44 @@ export function useInventoryStateV2(initialItem?: any) {
                     units: upc
                 }));
             }
-            
-            if (next.enabled) {
-                const total = next.batches.reduce((sum, b) => sum + b.units, 0);
-                updateSiteQty(0, 'qtyGood', total);
-            }
             return next;
         });
     }
+
+    // 5. Logistics Distribution Matrix
+    const [distributions, setDistributions] = useState<any[]>(() => {
+        const variants = initialItem?.variants || []
+        if (variants.length > 0) {
+            return variants.map((v: any) => ({
+                id: v.id, locationId: v.location_id, locationName: v.location || v.location_name,
+                qtyGood: v.qty_good ?? 0, qtyDamaged: v.qty_damaged ?? 0,
+                qtyMaintenance: v.qty_maintenance ?? 0, qtyLost: v.qty_lost ?? 0
+            }))
+        }
+        return [{
+            id: initialItem?.id,
+            locationId: initialItem?.location_registry_id || initialItem?.location_id || (initialItem ? null : 10),
+            locationName: initialItem?.storage_location || 'lower_warehouse',
+            qtyGood: initialItem?.qty_good || 0, qtyDamaged: initialItem?.qty_damaged || 0,
+            qtyMaintenance: initialItem?.qty_maintenance || 0, qtyLost: initialItem?.qty_lost || 0
+        }]
+    })
+
+    // 🔄 SYNC ENGINE: Packaging -> Distributions
+    // Ensures Bulk Mode totals are atomically synced to the primary distribution
+    // This solves the issue where consumable stock updates failed to persist due to stale state.
+    useEffect(() => {
+        if (packaging.enabled) {
+            const total = packaging.batches.reduce((sum, b) => sum + (Number(b.units) || 0), 0)
+            setDistributions(prev => {
+                if (prev.length === 0) return prev
+                if (prev[0].qtyGood === total) return prev
+                const next = [...prev]
+                next[0] = { ...next[0], qtyGood: total }
+                return next
+            })
+        }
+    }, [packaging.enabled, packaging.batches])
 
     const updateBatchUnits = (index: number, val: number) => {
         setPackaging(prev => {
@@ -73,8 +103,6 @@ export function useInventoryStateV2(initialItem?: any) {
             if (nextBatches[index]) {
                 nextBatches[index] = { ...nextBatches[index], units: Math.max(0, val) };
             }
-            const total = nextBatches.reduce((sum, b) => sum + b.units, 0);
-            updateSiteQty(0, 'qtyGood', total);
             return { ...prev, batches: nextBatches };
         });
     }
@@ -100,25 +128,6 @@ export function useInventoryStateV2(initialItem?: any) {
         });
     }
 
-    // 5. Logistics Distribution Matrix
-    const [distributions, setDistributions] = useState<any[]>(() => {
-        const variants = initialItem?.variants || []
-        if (variants.length > 0) {
-            return variants.map((v: any) => ({
-                id: v.id, locationId: v.location_id, locationName: v.location || v.location_name,
-                qtyGood: v.qty_good ?? 0, qtyDamaged: v.qty_damaged ?? 0,
-                qtyMaintenance: v.qty_maintenance ?? 0, qtyLost: v.qty_lost ?? 0
-            }))
-        }
-        return [{
-            id: initialItem?.id,
-            locationId: initialItem?.location_registry_id || initialItem?.location_id || (initialItem ? null : 10),
-            locationName: initialItem?.storage_location || 'lower_warehouse',
-            qtyGood: initialItem?.qty_good || 0, qtyDamaged: initialItem?.qty_damaged || 0,
-            qtyMaintenance: initialItem?.qty_maintenance || 0, qtyLost: initialItem?.qty_lost || 0
-        }]
-    })
-
     // 6. Computed Balancer
     const totals = useMemo(() => ({
         qtyGood: distributions.reduce((s, d) => s + (Number(d.qtyGood) || 0), 0),
@@ -132,9 +141,12 @@ export function useInventoryStateV2(initialItem?: any) {
 
     // Handlers
     const updateSiteQty = (index: number, bucket: string, val: number | string) => {
-        const next = [...distributions]
-        next[index] = { ...next[index], [bucket]: val === '' ? '' : Number(val) }
-        setDistributions(next)
+        setDistributions(prev => {
+            const next = [...prev]
+            if (!next[index]) return prev
+            next[index] = { ...next[index], [bucket]: val === '' ? '' : Number(val) }
+            return next
+        })
     }
 
     const addDistribution = (location: any) => {

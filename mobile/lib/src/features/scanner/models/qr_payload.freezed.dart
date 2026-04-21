@@ -37,7 +37,8 @@ mixin _$LigtasQrPayload {
             int itemId, String itemName)
         equipment,
     required TResult Function(String stationId, String locationName) station,
-    required TResult Function(String personId, String personName, String role)
+    required TResult Function(
+            String personId, String personName, String role, String? phone)
         person,
   }) =>
       throw _privateConstructorUsedError;
@@ -47,7 +48,9 @@ mixin _$LigtasQrPayload {
             int itemId, String itemName)?
         equipment,
     TResult? Function(String stationId, String locationName)? station,
-    TResult? Function(String personId, String personName, String role)? person,
+    TResult? Function(
+            String personId, String personName, String role, String? phone)?
+        person,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -56,7 +59,9 @@ mixin _$LigtasQrPayload {
             String itemName)?
         equipment,
     TResult Function(String stationId, String locationName)? station,
-    TResult Function(String personId, String personName, String role)? person,
+    TResult Function(
+            String personId, String personName, String role, String? phone)?
+        person,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -240,7 +245,8 @@ class _$EquipmentPayloadImpl extends _EquipmentPayload
             int itemId, String itemName)
         equipment,
     required TResult Function(String stationId, String locationName) station,
-    required TResult Function(String personId, String personName, String role)
+    required TResult Function(
+            String personId, String personName, String role, String? phone)
         person,
   }) {
     return equipment(protocol, version, action, itemId, itemName);
@@ -253,7 +259,9 @@ class _$EquipmentPayloadImpl extends _EquipmentPayload
             int itemId, String itemName)?
         equipment,
     TResult? Function(String stationId, String locationName)? station,
-    TResult? Function(String personId, String personName, String role)? person,
+    TResult? Function(
+            String personId, String personName, String role, String? phone)?
+        person,
   }) {
     return equipment?.call(protocol, version, action, itemId, itemName);
   }
@@ -265,7 +273,9 @@ class _$EquipmentPayloadImpl extends _EquipmentPayload
             String itemName)?
         equipment,
     TResult Function(String stationId, String locationName)? station,
-    TResult Function(String personId, String personName, String role)? person,
+    TResult Function(
+            String personId, String personName, String role, String? phone)?
+        person,
     required TResult orElse(),
   }) {
     if (equipment != null) {
@@ -439,7 +449,8 @@ class _$StationPayloadImpl extends _StationPayload
             int itemId, String itemName)
         equipment,
     required TResult Function(String stationId, String locationName) station,
-    required TResult Function(String personId, String personName, String role)
+    required TResult Function(
+            String personId, String personName, String role, String? phone)
         person,
   }) {
     return station(stationId, locationName);
@@ -452,7 +463,9 @@ class _$StationPayloadImpl extends _StationPayload
             int itemId, String itemName)?
         equipment,
     TResult? Function(String stationId, String locationName)? station,
-    TResult? Function(String personId, String personName, String role)? person,
+    TResult? Function(
+            String personId, String personName, String role, String? phone)?
+        person,
   }) {
     return station?.call(stationId, locationName);
   }
@@ -464,7 +477,9 @@ class _$StationPayloadImpl extends _StationPayload
             String itemName)?
         equipment,
     TResult Function(String stationId, String locationName)? station,
-    TResult Function(String personId, String personName, String role)? person,
+    TResult Function(
+            String personId, String personName, String role, String? phone)?
+        person,
     required TResult orElse(),
   }) {
     if (station != null) {
@@ -537,7 +552,7 @@ abstract class _$$PersonPayloadImplCopyWith<$Res> {
           _$PersonPayloadImpl value, $Res Function(_$PersonPayloadImpl) then) =
       __$$PersonPayloadImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String personId, String personName, String role});
+  $Res call({String personId, String personName, String role, String? phone});
 }
 
 /// @nodoc
@@ -554,6 +569,7 @@ class __$$PersonPayloadImplCopyWithImpl<$Res>
     Object? personId = null,
     Object? personName = null,
     Object? role = null,
+    Object? phone = freezed,
   }) {
     return _then(_$PersonPayloadImpl(
       personId: null == personId
@@ -568,6 +584,10 @@ class __$$PersonPayloadImplCopyWithImpl<$Res>
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
               as String,
+      phone: freezed == phone
+          ? _value.phone
+          : phone // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -579,6 +599,7 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
       {required this.personId,
       required this.personName,
       this.role = 'Field Staff',
+      this.phone,
       final String? $type})
       : $type = $type ?? 'person',
         super._();
@@ -593,13 +614,15 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
   @override
   @JsonKey()
   final String role;
+  @override
+  final String? phone;
 
   @JsonKey(name: 'runtimeType')
   final String $type;
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LigtasQrPayload.person(personId: $personId, personName: $personName, role: $role)';
+    return 'LigtasQrPayload.person(personId: $personId, personName: $personName, role: $role, phone: $phone)';
   }
 
   @override
@@ -609,7 +632,8 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('type', 'LigtasQrPayload.person'))
       ..add(DiagnosticsProperty('personId', personId))
       ..add(DiagnosticsProperty('personName', personName))
-      ..add(DiagnosticsProperty('role', role));
+      ..add(DiagnosticsProperty('role', role))
+      ..add(DiagnosticsProperty('phone', phone));
   }
 
   @override
@@ -621,12 +645,14 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
                 other.personId == personId) &&
             (identical(other.personName, personName) ||
                 other.personName == personName) &&
-            (identical(other.role, role) || other.role == role));
+            (identical(other.role, role) || other.role == role) &&
+            (identical(other.phone, phone) || other.phone == phone));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, personId, personName, role);
+  int get hashCode =>
+      Object.hash(runtimeType, personId, personName, role, phone);
 
   @JsonKey(ignore: true)
   @override
@@ -641,10 +667,11 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
             int itemId, String itemName)
         equipment,
     required TResult Function(String stationId, String locationName) station,
-    required TResult Function(String personId, String personName, String role)
+    required TResult Function(
+            String personId, String personName, String role, String? phone)
         person,
   }) {
-    return person(personId, personName, role);
+    return person(personId, personName, role, phone);
   }
 
   @override
@@ -654,9 +681,11 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
             int itemId, String itemName)?
         equipment,
     TResult? Function(String stationId, String locationName)? station,
-    TResult? Function(String personId, String personName, String role)? person,
+    TResult? Function(
+            String personId, String personName, String role, String? phone)?
+        person,
   }) {
-    return person?.call(personId, personName, role);
+    return person?.call(personId, personName, role, phone);
   }
 
   @override
@@ -666,11 +695,13 @@ class _$PersonPayloadImpl extends _PersonPayload with DiagnosticableTreeMixin {
             String itemName)?
         equipment,
     TResult Function(String stationId, String locationName)? station,
-    TResult Function(String personId, String personName, String role)? person,
+    TResult Function(
+            String personId, String personName, String role, String? phone)?
+        person,
     required TResult orElse(),
   }) {
     if (person != null) {
-      return person(personId, personName, role);
+      return person(personId, personName, role, phone);
     }
     return orElse();
   }
@@ -721,7 +752,8 @@ abstract class _PersonPayload extends LigtasQrPayload {
   const factory _PersonPayload(
       {required final String personId,
       required final String personName,
-      final String role}) = _$PersonPayloadImpl;
+      final String role,
+      final String? phone}) = _$PersonPayloadImpl;
   const _PersonPayload._() : super._();
 
   factory _PersonPayload.fromJson(Map<String, dynamic> json) =
@@ -730,6 +762,7 @@ abstract class _PersonPayload extends LigtasQrPayload {
   String get personId;
   String get personName;
   String get role;
+  String? get phone;
   @JsonKey(ignore: true)
   _$$PersonPayloadImplCopyWith<_$PersonPayloadImpl> get copyWith =>
       throw _privateConstructorUsedError;

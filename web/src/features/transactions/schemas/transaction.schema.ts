@@ -20,6 +20,7 @@ export const borrowItemSchema = z.object({
     released_by: z.string().optional(),
     expected_return_date: z.string().optional().nullable(),
     pickup_scheduled_at: z.string().optional().nullable(),
+    inventory_variant_id: z.coerce.number().optional().nullable(),
     source_batch: z.any().optional().nullable(),
 })
 

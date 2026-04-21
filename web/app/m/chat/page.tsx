@@ -1,6 +1,10 @@
 import React, { Suspense } from 'react'
-import MobileChatClient from './chat-client'
+import nextDynamic from 'next/dynamic'
 import { ReportsSkeleton as ChatSkeleton } from '../reports/reports-skeleton'
+
+const MobileChatClient = nextDynamic(() => import('./chat-client'), {
+    loading: () => <ChatSkeleton />
+})
 
 export const dynamic = 'force-dynamic'
 

@@ -1,7 +1,11 @@
-import { ProfileClient } from './profile-client'
+import nextDynamic from 'next/dynamic'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
+
+const ProfileClient = nextDynamic(() => import('./profile-client').then(mod => mod.ProfileClient), {
+    loading: () => <ProfileSkeleton />
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +15,7 @@ export default async function ProfilePage() {
     if (!initialProfile) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
-                <p className="text-slate-500">Failed to load profile. Please try again.</p>
+                <p className="text-slate-500 font-semibold tracking-tight">Failed to load profile. Please try again.</p>
             </div>
         )
     }

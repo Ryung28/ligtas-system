@@ -26,6 +26,7 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
                 office_department: input.get('office_department'),
                 item_id: input.get('item_id'),
                 quantity: input.get('quantity'),
+                inventory_variant_id: input.get('inventory_variant_id'),
                 purpose: input.get('purpose') || '',
                 approved_by: input.get('approved_by') || '',
                 released_by: input.get('released_by') || '',
@@ -70,6 +71,36 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
 
         const isConsumable = inventoryItem.item_type === 'consumable'
         const isScheduled = !!validatedData.pickup_scheduled_at;
+        const variantId = validatedData.inventory_variant_id;
+
+        // Step 1.5: SATELLITE STOCK CHECK (Single Item Path)
+        if (variantId) {
+            const { data: variantItem, error: variantError } = await supabase
+                .from('inventory')
+                .select('stock_available, storage_location')
+                .eq('id', variantId)
+                .single()
+
+            if (variantError || !variantItem) {
+                return { success: false, error: 'Location data not found' }
+            }
+
+            if (variantItem.stock_available < validatedData.quantity) {
+                return { success: false, error: `${inventoryItem.item_name} at ${variantItem.storage_location}: Only ${variantItem.stock_available} units available` }
+            }
+
+            // Sync stock from variant row
+            await supabase
+                .from('inventory')
+                .update({ stock_available: variantItem.stock_available - validatedData.quantity })
+                .eq('id', variantId)
+        } else {
+            // Subtract from primary row (Note: Stock triggers might handle this, but we explicitly sync for parity)
+            await supabase
+                .from('inventory')
+                .update({ stock_available: inventoryItem.stock_available - validatedData.quantity })
+                .eq('id', validatedData.item_id)
+        }
 
         // Step 2: Insert borrow log
         const now = new Date().toISOString();
@@ -78,6 +109,7 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
             .insert([
                 {
                     inventory_id: validatedData.item_id,
+                    inventory_variant_id: variantId || null,
                     item_name: inventoryItem.item_name,
                     quantity: validatedData.quantity,
                     borrower_name: validatedData.borrower_name,

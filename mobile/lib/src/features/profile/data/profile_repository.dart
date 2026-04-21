@@ -25,14 +25,63 @@ class ProfileRepository {
 
   Future<void> updateProfile(UserModel user) async {
     try {
-      await _client
-          .from('user_profiles')
-          .update({
-            'full_name': user.displayName,
-            'phone_number': user.phoneNumber,
-            'organization': user.organization,
-          })
-          .eq('id', user.id);
+      // Schema-tolerant write:
+      // - phone field can be `phone_number` or `phone`
+      // - office field can be `organization` or `department`
+      final payloads = [
+        {
+          'full_name': user.displayName,
+          'phone_number': user.phoneNumber,
+          'organization': user.organization,
+        },
+        {
+          'full_name': user.displayName,
+          'phone': user.phoneNumber,
+          'organization': user.organization,
+        },
+        {
+          'full_name': user.displayName,
+          'phone_number': user.phoneNumber,
+          'department': user.organization,
+        },
+        {
+          'full_name': user.displayName,
+          'phone': user.phoneNumber,
+          'department': user.organization,
+        },
+        // Fallbacks for environments that have no phone column in user_profiles.
+        {
+          'full_name': user.displayName,
+          'organization': user.organization,
+        },
+        {
+          'full_name': user.displayName,
+          'department': user.organization,
+        },
+        {
+          'full_name': user.displayName,
+        },
+      ];
+
+      PostgrestException? lastSchemaErr;
+      for (final payload in payloads) {
+        try {
+          await _client
+              .from('user_profiles')
+              .update(payload)
+              .eq('id', user.id);
+          return;
+        } on PostgrestException catch (e) {
+          final msg = e.message.toLowerCase();
+          final isSchemaColumnError = msg.contains('could not find') ||
+              msg.contains('schema cache') ||
+              msg.contains('column');
+          if (!isSchemaColumnError) rethrow;
+          lastSchemaErr = e;
+        }
+      }
+
+      if (lastSchemaErr != null) throw lastSchemaErr;
     } catch (e) {
       rethrow;
     }

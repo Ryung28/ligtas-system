@@ -54,6 +54,12 @@ class _AnalystTerminalScreenState extends ConsumerState<AnalystTerminalScreen> {
   @override
   Widget build(BuildContext context) {
     final sentinel = Theme.of(context).sentinel;
+    final user = ref.watch(currentUserProvider);
+    final missingProfileFields = <String>[
+      if ((user?.fullName.trim().isEmpty ?? true)) 'name',
+      if ((user?.phoneNumber?.trim().isEmpty ?? true)) 'phone',
+      if ((user?.organization?.trim().isEmpty ?? true)) 'office',
+    ];
     final hasEntered = ref.watch(analystTerminalEntryProvider);
     final duration = hasEntered ? 0.ms : 600.ms;
 
@@ -85,6 +91,14 @@ class _AnalystTerminalScreenState extends ConsumerState<AnalystTerminalScreen> {
                     ),
                   ),
 
+                  if (missingProfileFields.isNotEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _AnalystProfileIncompleteBanner(missingFields: missingProfileFields),
+                      ),
+                    ),
+
                   // ── 2. METRIC MONITORING (Independent Refresh) ──
                   const _MetricSliver(),
 
@@ -98,6 +112,63 @@ class _AnalystTerminalScreenState extends ConsumerState<AnalystTerminalScreen> {
                   const SliverGap(100), // Bottom padding for navigation clearance
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalystProfileIncompleteBanner extends StatelessWidget {
+  final List<String> missingFields;
+  const _AnalystProfileIncompleteBanner({required this.missingFields});
+
+  @override
+  Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFB45309)),
+          const Gap(8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profile incomplete',
+                  style: GoogleFonts.lexend(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: sentinel.navy.withOpacity(0.85),
+                  ),
+                ),
+                const Gap(2),
+                Text(
+                  'Missing: ${missingFields.join(', ')}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: sentinel.navy.withOpacity(0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push('/profile/personal-info'),
+            child: Text(
+              'Complete now',
+              style: GoogleFonts.lexend(fontWeight: FontWeight.w900, fontSize: 10, color: sentinel.navy),
             ),
           ),
         ],

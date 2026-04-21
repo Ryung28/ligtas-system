@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/errors/app_exceptions.dart';
 import '../../../core/design_system/app_theme.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
 import '../controllers/profile_controller.dart';
 
 class PersonalInfoScreen extends ConsumerStatefulWidget {
@@ -22,6 +24,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   late TextEditingController _orgController;
   bool _isEditing = false;
   bool _initialized = false;
+  bool _hasAttemptedSave = false;
 
   @override
   void initState() {
@@ -52,7 +55,11 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   }
 
   Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() => _hasAttemptedSave = true);
+    if (!_formKey.currentState!.validate()) {
+      AppToast.showError(context, 'Please check the highlighted fields.');
+      return;
+    }
     try {
       await ref.read(profileControllerProvider.notifier).updateProfile(
             displayName: _nameController.text.trim(),
@@ -60,12 +67,15 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
             organization: _orgController.text.trim(),
           );
       if (mounted) {
-        setState(() => _isEditing = false);
-        _showSnackBar(context, 'DATA SYNCHRONIZED ✓');
+        setState(() {
+          _isEditing = false;
+          _hasAttemptedSave = false;
+        });
+        AppToast.showSuccess(context, 'Profile updated successfully.');
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar(context, ExceptionHandler.getDisplayMessage(e), isError: true);
+        AppToast.showError(context, ExceptionHandler.getDisplayMessage(e));
       }
     }
   }
@@ -75,20 +85,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     _nameController.text = user?.fullName ?? '';
     _phoneController.text = user?.phoneNumber ?? '';
     _orgController.text = user?.organization ?? '';
-    setState(() => _isEditing = false);
-  }
-
-  void _showSnackBar(BuildContext context, String message, {bool isError = false}) {
-    final sentinel = Theme.of(context).sentinel;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: GoogleFonts.lexend(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5)),
-        backgroundColor: isError ? sentinel.error : sentinel.navy,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(24),
-      ),
-    );
+    setState(() {
+      _isEditing = false;
+      _hasAttemptedSave = false;
+    });
   }
 
   @override
@@ -113,6 +113,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 physics: const BouncingScrollPhysics(),
                 child: Form(
                   key: _formKey,
+                  autovalidateMode: _hasAttemptedSave ? AutovalidateMode.always : AutovalidateMode.disabled,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -123,7 +124,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                             _buildAvatar(sentinel, initials),
                             const Gap(20),
                             Text(
-                              user?.fullName?.toUpperCase() ?? 'IDENTIFYING...',
+                              user?.fullName.toUpperCase() ?? 'IDENTIFYING...',
                               style: GoogleFonts.lexend(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
@@ -148,58 +149,111 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
                       const Gap(40),
 
-                      // ── 🛡️ FIELD MATRIX ──
-                      _FieldGroupCard(
-                        sentinel: sentinel,
-                        title: 'IDENTITY PARAMETERS',
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: sentinel.navy.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: sentinel.navy.withOpacity(0.10)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline_rounded, size: 16, color: sentinel.navy.withOpacity(0.6)),
+                            const Gap(10),
+                            Expanded(
+                              child: Text(
+                                'Tip: Keep your name, phone, and office updated here. Voucher Dispatch uses these fields when you tap "Identify as self".',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w600,
+                                  color: sentinel.navy.withOpacity(0.72),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Gap(10),
+
+                      Row(
                         children: [
-                          _TacticalField(
-                            sentinel: sentinel,
-                            label: 'FULL OPERATIVE NAME',
-                            controller: _nameController,
-                            icon: Icons.person_rounded,
-                            enabled: _isEditing,
-                            validator: (v) => v == null || v.trim().isEmpty ? 'Name required' : null,
+                          _buildCompletenessChip(
+                            sentinel,
+                            label: 'Name',
+                            done: (_nameController.text.trim().isNotEmpty),
                           ),
-                          _TacticalField(
-                            sentinel: sentinel,
-                            label: 'SECURE PHONE LINE',
-                            controller: _phoneController,
-                            icon: Icons.phone_rounded,
-                            enabled: _isEditing,
-                            keyboardType: TextInputType.phone,
+                          const Gap(8),
+                          _buildCompletenessChip(
+                            sentinel,
+                            label: 'Phone',
+                            done: (_phoneController.text.trim().isNotEmpty),
                           ),
-                          _TacticalField(
-                            sentinel: sentinel,
-                            label: 'LGU / ORGANIZATION',
-                            controller: _orgController,
-                            icon: Icons.business_rounded,
-                            enabled: _isEditing,
-                            isLast: true,
+                          const Gap(8),
+                          _buildCompletenessChip(
+                            sentinel,
+                            label: 'Office',
+                            done: (_orgController.text.trim().isNotEmpty),
                           ),
                         ],
                       ),
 
-                      const Gap(24),
+                      const Gap(20),
 
-                      // ── 🛡️ PERMISSION MATRIX ──
+                      // ── 🛡️ FIELD MATRIX ──
                       _FieldGroupCard(
                         sentinel: sentinel,
-                        title: 'AUTHORIZATION LEVEL',
+                        title: 'YOUR INFORMATION',
                         children: [
-                          _ReadOnlyRow(
+                          _TacticalField(
                             sentinel: sentinel,
-                            label: 'ACCESS ROLE',
-                            value: user?.role.toUpperCase() ?? '—',
-                            icon: Icons.shield_rounded,
-                            delay: 300,
+                            label: 'FULL NAME',
+                            controller: _nameController,
+                            icon: Icons.person_rounded,
+                            enabled: _isEditing,
+                            validator: (v) => v == null || v.trim().isEmpty ? 'Please enter your full name.' : null,
                           ),
-                          _ReadOnlyRow(
+                          _TacticalField(
                             sentinel: sentinel,
-                            label: 'JURISDICTION',
-                            value: user?.organization?.toUpperCase() ?? 'LIGTAS COMMAND',
-                            icon: Icons.map_rounded,
-                            delay: 360,
+                            label: 'PHONE NUMBER',
+                            controller: _phoneController,
+                            icon: Icons.phone_rounded,
+                            enabled: _isEditing,
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(11),
+                            ],
+                            validator: (v) {
+                              final raw = (v ?? '').trim();
+                              if (raw.isEmpty) return 'Please enter your phone number.';
+
+                              // Accept 11-digit PH local mobile (09xxxxxxxxx)
+                              final digits = raw.replaceAll(RegExp(r'\D'), '');
+                              if (!digits.startsWith('09')) {
+                                return 'Use a valid PH mobile format (09XXXXXXXXX).';
+                              }
+                              if (digits.length < 11) {
+                                final missing = 11 - digits.length;
+                                return 'Add $missing more digit${missing == 1 ? '' : 's'}.';
+                              }
+                              if (digits.length > 11) {
+                                final extra = digits.length - 11;
+                                return 'Remove $extra digit${extra == 1 ? '' : 's'}.';
+                              }
+                              return null;
+                            },
+                          ),
+                          _TacticalField(
+                            sentinel: sentinel,
+                            label: 'OFFICE / ORGANIZATION',
+                            controller: _orgController,
+                            icon: Icons.business_rounded,
+                            enabled: _isEditing,
+                            validator: (v) => v == null || v.trim().isEmpty ? 'Please enter your office or organization.' : null,
                             isLast: true,
                           ),
                         ],
@@ -346,6 +400,42 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       ],
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1);
   }
+
+  Widget _buildCompletenessChip(
+    SentinelColors sentinel, {
+    required String label,
+    required bool done,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: done ? AppTheme.successGreen.withOpacity(0.08) : sentinel.navy.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: done ? AppTheme.successGreen.withOpacity(0.35) : sentinel.navy.withOpacity(0.12),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            size: 14,
+            color: done ? AppTheme.successGreen : sentinel.navy.withOpacity(0.4),
+          ),
+          const Gap(6),
+          Text(
+            label,
+            style: GoogleFonts.lexend(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: done ? AppTheme.successGreen : sentinel.navy.withOpacity(0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _FieldGroupCard extends StatelessWidget {
@@ -392,6 +482,7 @@ class _TacticalField extends StatelessWidget {
   final IconData icon;
   final bool enabled;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
   final bool isLast;
 
@@ -402,6 +493,7 @@ class _TacticalField extends StatelessWidget {
     required this.icon,
     required this.enabled,
     this.keyboardType,
+    this.inputFormatters,
     this.validator,
     this.isLast = false,
   });
@@ -421,6 +513,7 @@ class _TacticalField extends StatelessWidget {
                   controller: controller,
                   enabled: enabled,
                   keyboardType: keyboardType,
+                  inputFormatters: inputFormatters,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -446,66 +539,5 @@ class _TacticalField extends StatelessWidget {
         if (!isLast) Divider(height: 1, color: sentinel.navy.withOpacity(0.05), indent: 56),
       ],
     );
-  }
-}
-
-class _ReadOnlyRow extends StatelessWidget {
-  final SentinelColors sentinel;
-  final String label;
-  final String value;
-  final IconData icon;
-  final int delay;
-  final bool isLast;
-
-  const _ReadOnlyRow({
-    required this.sentinel,
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.delay,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: sentinel.navy.withOpacity(0.15)),
-              const Gap(16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.lexend(
-                        fontSize: 9,
-                        color: sentinel.navy.withOpacity(0.3),
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const Gap(2),
-                    Text(
-                      value,
-                      style: GoogleFonts.lexend(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: sentinel.navy.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (!isLast) Divider(height: 1, color: sentinel.navy.withOpacity(0.05), indent: 56),
-      ],
-    ).animate().fadeIn(delay: delay.ms, duration: 400.ms);
   }
 }

@@ -9,6 +9,7 @@ import '../controllers/analyst_dashboard_controller.dart';
 import '../../domain/entities/station_manifest.dart';
 import 'package:mobile/src/features/scanner/models/qr_payload.dart';
 import 'package:mobile/src/features/scanner/widgets/scan_result_sheet.dart';
+import '../../../fast_dispatch/providers/dispatch_controller.dart';
 
 class StationProvisioningScreen extends ConsumerStatefulWidget {
   final String stationId;
@@ -207,48 +208,48 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
   Widget _buildItemCard(StationManifestItem item) {
     final isShortage = item.currentStock < item.quantityRequired;
     
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: stitchBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.inventory_2_rounded, color: isShortage ? Colors.orange : stitchNavy, size: 18),
-          ),
-          const Gap(12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.itemName.toUpperCase(), 
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: stitchNavy),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text('${item.currentStock} / ${item.quantityRequired} UNITS', 
-                  style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w700, color: isShortage ? Colors.redAccent : const Color(0xFF10B981))),
-              ],
+    return InkWell(
+      onTap: () {
+        // 🚀 ONE-TAP DISPATCH: Pre-load item into single-voucher and move to Dispatch Hub
+        ref.read(fastDispatchControllerProvider.notifier).selectItem(
+          item.inventoryId, 
+          item.itemName,
+          imageUrl: item.imageUrl,
+        );
+        context.push('/manager/dispatch');
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: stitchBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.inventory_2_rounded, color: isShortage ? Colors.orange : stitchNavy, size: 18),
             ),
-          ),
-          if (isShortage)
-            SizedBox(
-              height: 32,
-              child: TextButton(
-                onPressed: () => _openProvisioningSheet(item),
-                style: TextButton.styleFrom(
-                  backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-                child: Text('PROVISION', style: GoogleFonts.lexend(color: AppTheme.primaryBlue, fontSize: 9, fontWeight: FontWeight.w900)),
+            const Gap(12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.itemName.toUpperCase(), 
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: stitchNavy),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text('${item.currentStock} / ${item.quantityRequired} UNITS', 
+                    style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w700, color: isShortage ? Colors.redAccent : const Color(0xFF10B981))),
+                ],
               ),
             ),
-        ],
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+          ],
+        ),
       ),
     );
   }

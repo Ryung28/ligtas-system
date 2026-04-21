@@ -172,6 +172,7 @@ export function DispatchCommandSheet() {
                     item_id: c.item.id,
                     quantity: c.quantity,
                     item_type: c.item.item_type || 'equipment',
+                    inventory_variant_id: c.inventory_variant_id || null,
                     source_batch: (c.item as any).source_batch || null
                 }));
                 
@@ -183,6 +184,7 @@ export function DispatchCommandSheet() {
                 result = await borrowItem({
                     ...commonData,
                     item_id: selectedItem.id,
+                    inventory_variant_id: selectedVariantId ? Number(selectedVariantId) : null,
                     quantity: Number(selectedQuantity) || 1,
                     source_batch: selectedBatchId ? { batch_id: selectedBatchId, label: selectedItem.packaging_json?.batches?.find((b: any) => b.id === selectedBatchId)?.label } : null
                 });
@@ -241,7 +243,6 @@ export function DispatchCommandSheet() {
 
         const cartItem: any = {
             ...selectedItem,
-            id: targetId,
             item_name: selectedVariantId 
                 ? `${selectedItem.item_name} (${selectedItem.variants?.find(v => String(v.id) === selectedVariantId)?.storage_location || 'Distributed'})`
                 : selectedItem.item_name,
@@ -249,11 +250,11 @@ export function DispatchCommandSheet() {
         }
 
         const quantity = Number(selectedQuantity) || 1
-        const cart_key = `${targetId}-${selectedBatchId || 'none'}`
+        const cart_key = `${selectedItem.id}-${selectedVariantId || 'none'}-${selectedBatchId || 'none'}`
         
         // Remove existing entry for same key if any to prevent duplicates in list
         const filteredCart = cart.filter(c => c.cart_key !== cart_key)
-        setCart([...filteredCart, { cart_key, item: cartItem, quantity }])
+        setCart([...filteredCart, { cart_key, item: cartItem, quantity, inventory_variant_id: selectedVariantId ? Number(selectedVariantId) : null }])
         
         setSelectedItem(null)
         setSelectedVariantId(null)

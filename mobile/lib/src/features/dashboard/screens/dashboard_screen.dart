@@ -24,6 +24,7 @@ import '../../../core/design_system/widgets/app_toast.dart';
 import '../../../core/design_system/widgets/ligtas_error_state.dart';
 import '../../notifications/widgets/sync_error_banner.dart';
 import 'package:mobile/src/features/presence/presentation/providers/presence_provider.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -50,6 +51,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final missingProfileFields = <String>[
+      if ((user?.fullName.trim().isEmpty ?? true)) 'name',
+      if ((user?.phoneNumber?.trim().isEmpty ?? true)) 'phone',
+      if ((user?.organization?.trim().isEmpty ?? true)) 'office',
+    ];
     final userName = ref.watch(dashboardUserNameProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final controller = ref.watch(dashboardControllerProvider);
@@ -109,6 +116,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
                     ),
                   ),
+
+                  if (missingProfileFields.isNotEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _ProfileIncompleteBanner(missingFields: missingProfileFields),
+                      ),
+                    ),
 
                   // 2. Scan Hero
                   SliverPadding(
@@ -173,4 +188,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+}
+
+class _ProfileIncompleteBanner extends StatelessWidget {
+  final List<String> missingFields;
+  const _ProfileIncompleteBanner({required this.missingFields});
+
+  @override
+  Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFB45309)),
+          const Gap(8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profile incomplete',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: sentinel.navy.withOpacity(0.85),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Missing: ${missingFields.join(', ')}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: sentinel.navy.withOpacity(0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push('/profile/personal-info'),
+            child: const Text('Complete now'),
+          ),
+        ],
+      ),
+    );
+  }
 }

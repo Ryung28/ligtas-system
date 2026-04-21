@@ -60,7 +60,15 @@ function renderInventoryLikeTable(data: any[]): string {
                 </tr>`
         }
 
-        const isLow = (i.stock_available ?? 0) <= (i.low_stock_threshold || 10)
+        const target = Number(i.target_stock ?? 0)
+        const threshold = Number(i.low_stock_threshold ?? 0)
+        const available = i.stock_available ?? 0
+        const alertEnabled = i.restock_alert_enabled !== false
+        
+        const isLow = alertEnabled && target > 0 && threshold > 0 
+            ? available <= Math.ceil((target * threshold) / 100)
+            : false
+        
         rows += `<tr>
             <td style="font-weight:700;">${e(i.item_name)}</td>
             <td style="color:#64748b;">${e(i.category)}</td>

@@ -48,7 +48,7 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                         <div className="h-6 w-6 rounded-lg bg-white flex items-center justify-center border border-slate-200 shadow-sm">
                              <Boxes className="h-3.5 w-3.5 text-blue-600" />
                         </div>
-                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-tight">Cargo Distribution</span>
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-tight">Package Breakdown</span>
                     </div>
                 </div>
 
@@ -89,7 +89,7 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                 <div className="bg-gray-50/80 p-2 text-center border-t border-gray-100">
                      <p className="text-[9px] font-black text-gray-400 flex items-center justify-center gap-1.5 opacity-80">
                         <Info className="h-3 w-3" />
-                        Inventory Distribution Summary
+                        Package Overview
                      </p>
                 </div>
             </PopoverContent>

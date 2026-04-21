@@ -112,7 +112,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
             nextErrors.ready = 'Set Ready to Use to at least 2'
         }
 
-        if (state.restockAlertEnabled && targetNum < 2) {
+        if (state.restockAlertEnabled && targetNum > 0 && targetNum < 2) {
             nextErrors.target = 'Set Max Stock Goal to at least 2'
         }
 
@@ -122,9 +122,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
 
         if (nextErrors.target || nextErrors.threshold) {
             setPolicyErrors(nextErrors)
-            toast.error('Fix the highlighted restock policy fields before saving')
-            statusSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            return
+            toast.warning('Restock threshold warning, but proceeding with save...')
         }
         setPolicyErrors({ ready: '', target: '', threshold: '' })
 

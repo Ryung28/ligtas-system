@@ -120,16 +120,16 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                         <div className="h-6 w-6 rounded-lg bg-white flex items-center justify-center border border-gray-200 shadow-sm">
                              <AlertCircle className="h-3.5 w-3.5 text-gray-900" />
                         </div>
-                        <span className="text-[11px] font-black text-gray-900 uppercase tracking-tight">Item Status Summary</span>
+                        <span className="text-[11px] font-black text-gray-900 uppercase tracking-tight">Status Summary</span>
                     </div>
-                    <Badge variant="outline" className="bg-white text-[9px] font-black h-5 border-gray-200 uppercase">{count} Active</Badge>
+                    <Badge variant="outline" className="bg-white text-[9px] font-black h-5 border-gray-200 uppercase">{count} Alerts</Badge>
                 </div>
 
                 <div className="p-2 space-y-1 max-h-[400px] overflow-y-auto custom-scrollbar">
                     {/* CRITICAL ALERTS GROUP */}
                     {(hasExpiry || hasStockAlert) && (
                         <div className="space-y-1">
-                            <p className="px-2 pt-1 pb-0.5 text-[8px] font-black text-gray-400 uppercase tracking-[0.1em]">Status & Alerts</p>
+                            <p className="px-2 pt-1 pb-0.5 text-[8px] font-black text-gray-400 uppercase tracking-[0.1em]">Alerts</p>
                             
                             {hasExpiry && (
                                 <div className={cn(
@@ -145,7 +145,7 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[11px] font-black text-gray-950 uppercase tracking-tight leading-none">{expiry?.label}</span>
-                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">Expiration Warning</span>
+                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">Expiring Soon</span>
                                         </div>
                                     </div>
                                     <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
@@ -160,7 +160,7 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[11px] font-black text-gray-950 uppercase tracking-tight leading-none">{stockStatus?.label}</span>
-                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">Stock Resilience</span>
+                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">Stock Status</span>
                                         </div>
                                     </div>
                                 </div>
@@ -171,7 +171,7 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                     {/* LOGISTICS DETAIL GROUP */}
                     {hasPackaging && (
                         <div className="space-y-1">
-                            <p className="px-2 pt-2 pb-0.5 text-[8px] font-black text-slate-400 uppercase tracking-[0.1em]">Packaging & Logistics</p>
+                            <p className="px-2 pt-2 pb-0.5 text-[8px] font-black text-slate-400 uppercase tracking-[0.1em]">Packaging</p>
                             <div className="p-1 rounded-xl bg-slate-50/50 border border-slate-100">
                                 <div className="px-3 py-2 flex items-center justify-between border-b border-white/50">
                                     <div className="flex items-center gap-2">
@@ -179,10 +179,10 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                                             <Boxes className="h-3 w-3 text-blue-600" />
                                         </div>
                                         <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">
-                                            {packaging.batches.length} Total {packaging.containerType || 'Units'}s
+                                            {packaging.batches.length} {packaging.containerType || 'Box'}s Total
                                         </span>
                                     </div>
-                                    <span className="text-[9px] font-black text-blue-600/60 uppercase tracking-widest italic">Distribution</span>
+                                    <span className="text-[9px] font-black text-blue-600/60 uppercase tracking-widest italic">Breakdown</span>
                                 </div>
                                 <div className="p-1.5 space-y-1">
                                     {packaging.batches.map((batch: any) => (
@@ -219,7 +219,7 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                 <div className="bg-gray-50/80 p-2 text-center border-t border-gray-100 mt-1">
                      <p className="text-[9px] font-black text-gray-400 flex items-center justify-center gap-1.5 opacity-80">
                         <Info className="h-3 w-3" />
-                        Current Status Overview
+                        Quick Summary
                      </p>
                 </div>
             </PopoverContent>

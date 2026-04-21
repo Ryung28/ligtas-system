@@ -236,6 +236,7 @@ DispatchItem _$DispatchItemFromJson(Map<String, dynamic> json) {
 mixin _$DispatchItem {
   int get inventoryId => throw _privateConstructorUsedError;
   String get itemName => throw _privateConstructorUsedError;
+  String? get imageUrl => throw _privateConstructorUsedError;
   int get quantity => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -250,7 +251,7 @@ abstract class $DispatchItemCopyWith<$Res> {
           DispatchItem value, $Res Function(DispatchItem) then) =
       _$DispatchItemCopyWithImpl<$Res, DispatchItem>;
   @useResult
-  $Res call({int inventoryId, String itemName, int quantity});
+  $Res call({int inventoryId, String itemName, String? imageUrl, int quantity});
 }
 
 /// @nodoc
@@ -268,6 +269,7 @@ class _$DispatchItemCopyWithImpl<$Res, $Val extends DispatchItem>
   $Res call({
     Object? inventoryId = null,
     Object? itemName = null,
+    Object? imageUrl = freezed,
     Object? quantity = null,
   }) {
     return _then(_value.copyWith(
@@ -279,6 +281,10 @@ class _$DispatchItemCopyWithImpl<$Res, $Val extends DispatchItem>
           ? _value.itemName
           : itemName // ignore: cast_nullable_to_non_nullable
               as String,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
       quantity: null == quantity
           ? _value.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
@@ -295,7 +301,7 @@ abstract class _$$DispatchItemImplCopyWith<$Res>
       __$$DispatchItemImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({int inventoryId, String itemName, int quantity});
+  $Res call({int inventoryId, String itemName, String? imageUrl, int quantity});
 }
 
 /// @nodoc
@@ -311,6 +317,7 @@ class __$$DispatchItemImplCopyWithImpl<$Res>
   $Res call({
     Object? inventoryId = null,
     Object? itemName = null,
+    Object? imageUrl = freezed,
     Object? quantity = null,
   }) {
     return _then(_$DispatchItemImpl(
@@ -322,6 +329,10 @@ class __$$DispatchItemImplCopyWithImpl<$Res>
           ? _value.itemName
           : itemName // ignore: cast_nullable_to_non_nullable
               as String,
+      imageUrl: freezed == imageUrl
+          ? _value.imageUrl
+          : imageUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
       quantity: null == quantity
           ? _value.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
@@ -334,7 +345,10 @@ class __$$DispatchItemImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DispatchItemImpl implements _DispatchItem {
   const _$DispatchItemImpl(
-      {required this.inventoryId, required this.itemName, this.quantity = 1});
+      {required this.inventoryId,
+      required this.itemName,
+      this.imageUrl,
+      this.quantity = 1});
 
   factory _$DispatchItemImpl.fromJson(Map<String, dynamic> json) =>
       _$$DispatchItemImplFromJson(json);
@@ -344,12 +358,14 @@ class _$DispatchItemImpl implements _DispatchItem {
   @override
   final String itemName;
   @override
+  final String? imageUrl;
+  @override
   @JsonKey()
   final int quantity;
 
   @override
   String toString() {
-    return 'DispatchItem(inventoryId: $inventoryId, itemName: $itemName, quantity: $quantity)';
+    return 'DispatchItem(inventoryId: $inventoryId, itemName: $itemName, imageUrl: $imageUrl, quantity: $quantity)';
   }
 
   @override
@@ -361,13 +377,16 @@ class _$DispatchItemImpl implements _DispatchItem {
                 other.inventoryId == inventoryId) &&
             (identical(other.itemName, itemName) ||
                 other.itemName == itemName) &&
+            (identical(other.imageUrl, imageUrl) ||
+                other.imageUrl == imageUrl) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, inventoryId, itemName, quantity);
+  int get hashCode =>
+      Object.hash(runtimeType, inventoryId, itemName, imageUrl, quantity);
 
   @JsonKey(ignore: true)
   @override
@@ -387,6 +406,7 @@ abstract class _DispatchItem implements DispatchItem {
   const factory _DispatchItem(
       {required final int inventoryId,
       required final String itemName,
+      final String? imageUrl,
       final int quantity}) = _$DispatchItemImpl;
 
   factory _DispatchItem.fromJson(Map<String, dynamic> json) =
@@ -396,6 +416,8 @@ abstract class _DispatchItem implements DispatchItem {
   int get inventoryId;
   @override
   String get itemName;
+  @override
+  String? get imageUrl;
   @override
   int get quantity;
   @override
@@ -407,7 +429,7 @@ abstract class _DispatchItem implements DispatchItem {
 /// @nodoc
 mixin _$DispatchState {
   BorrowerInfo? get borrower => throw _privateConstructorUsedError;
-  List<DispatchItem> get items => throw _privateConstructorUsedError;
+  DispatchItem? get selectedItem => throw _privateConstructorUsedError;
   String? get approvedBy => throw _privateConstructorUsedError;
   bool get isSubmitting => throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
@@ -425,12 +447,13 @@ abstract class $DispatchStateCopyWith<$Res> {
   @useResult
   $Res call(
       {BorrowerInfo? borrower,
-      List<DispatchItem> items,
+      DispatchItem? selectedItem,
       String? approvedBy,
       bool isSubmitting,
       String? error});
 
   $BorrowerInfoCopyWith<$Res>? get borrower;
+  $DispatchItemCopyWith<$Res>? get selectedItem;
 }
 
 /// @nodoc
@@ -447,7 +470,7 @@ class _$DispatchStateCopyWithImpl<$Res, $Val extends DispatchState>
   @override
   $Res call({
     Object? borrower = freezed,
-    Object? items = null,
+    Object? selectedItem = freezed,
     Object? approvedBy = freezed,
     Object? isSubmitting = null,
     Object? error = freezed,
@@ -457,10 +480,10 @@ class _$DispatchStateCopyWithImpl<$Res, $Val extends DispatchState>
           ? _value.borrower
           : borrower // ignore: cast_nullable_to_non_nullable
               as BorrowerInfo?,
-      items: null == items
-          ? _value.items
-          : items // ignore: cast_nullable_to_non_nullable
-              as List<DispatchItem>,
+      selectedItem: freezed == selectedItem
+          ? _value.selectedItem
+          : selectedItem // ignore: cast_nullable_to_non_nullable
+              as DispatchItem?,
       approvedBy: freezed == approvedBy
           ? _value.approvedBy
           : approvedBy // ignore: cast_nullable_to_non_nullable
@@ -487,6 +510,18 @@ class _$DispatchStateCopyWithImpl<$Res, $Val extends DispatchState>
       return _then(_value.copyWith(borrower: value) as $Val);
     });
   }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $DispatchItemCopyWith<$Res>? get selectedItem {
+    if (_value.selectedItem == null) {
+      return null;
+    }
+
+    return $DispatchItemCopyWith<$Res>(_value.selectedItem!, (value) {
+      return _then(_value.copyWith(selectedItem: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -499,13 +534,15 @@ abstract class _$$DispatchStateImplCopyWith<$Res>
   @useResult
   $Res call(
       {BorrowerInfo? borrower,
-      List<DispatchItem> items,
+      DispatchItem? selectedItem,
       String? approvedBy,
       bool isSubmitting,
       String? error});
 
   @override
   $BorrowerInfoCopyWith<$Res>? get borrower;
+  @override
+  $DispatchItemCopyWith<$Res>? get selectedItem;
 }
 
 /// @nodoc
@@ -520,7 +557,7 @@ class __$$DispatchStateImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? borrower = freezed,
-    Object? items = null,
+    Object? selectedItem = freezed,
     Object? approvedBy = freezed,
     Object? isSubmitting = null,
     Object? error = freezed,
@@ -530,10 +567,10 @@ class __$$DispatchStateImplCopyWithImpl<$Res>
           ? _value.borrower
           : borrower // ignore: cast_nullable_to_non_nullable
               as BorrowerInfo?,
-      items: null == items
-          ? _value._items
-          : items // ignore: cast_nullable_to_non_nullable
-              as List<DispatchItem>,
+      selectedItem: freezed == selectedItem
+          ? _value.selectedItem
+          : selectedItem // ignore: cast_nullable_to_non_nullable
+              as DispatchItem?,
       approvedBy: freezed == approvedBy
           ? _value.approvedBy
           : approvedBy // ignore: cast_nullable_to_non_nullable
@@ -555,23 +592,15 @@ class __$$DispatchStateImplCopyWithImpl<$Res>
 class _$DispatchStateImpl implements _DispatchState {
   const _$DispatchStateImpl(
       {this.borrower,
-      final List<DispatchItem> items = const [],
+      this.selectedItem,
       this.approvedBy,
       this.isSubmitting = false,
-      this.error})
-      : _items = items;
+      this.error});
 
   @override
   final BorrowerInfo? borrower;
-  final List<DispatchItem> _items;
   @override
-  @JsonKey()
-  List<DispatchItem> get items {
-    if (_items is EqualUnmodifiableListView) return _items;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_items);
-  }
-
+  final DispatchItem? selectedItem;
   @override
   final String? approvedBy;
   @override
@@ -582,7 +611,7 @@ class _$DispatchStateImpl implements _DispatchState {
 
   @override
   String toString() {
-    return 'DispatchState(borrower: $borrower, items: $items, approvedBy: $approvedBy, isSubmitting: $isSubmitting, error: $error)';
+    return 'DispatchState(borrower: $borrower, selectedItem: $selectedItem, approvedBy: $approvedBy, isSubmitting: $isSubmitting, error: $error)';
   }
 
   @override
@@ -592,7 +621,8 @@ class _$DispatchStateImpl implements _DispatchState {
             other is _$DispatchStateImpl &&
             (identical(other.borrower, borrower) ||
                 other.borrower == borrower) &&
-            const DeepCollectionEquality().equals(other._items, _items) &&
+            (identical(other.selectedItem, selectedItem) ||
+                other.selectedItem == selectedItem) &&
             (identical(other.approvedBy, approvedBy) ||
                 other.approvedBy == approvedBy) &&
             (identical(other.isSubmitting, isSubmitting) ||
@@ -602,12 +632,7 @@ class _$DispatchStateImpl implements _DispatchState {
 
   @override
   int get hashCode => Object.hash(
-      runtimeType,
-      borrower,
-      const DeepCollectionEquality().hash(_items),
-      approvedBy,
-      isSubmitting,
-      error);
+      runtimeType, borrower, selectedItem, approvedBy, isSubmitting, error);
 
   @JsonKey(ignore: true)
   @override
@@ -619,7 +644,7 @@ class _$DispatchStateImpl implements _DispatchState {
 abstract class _DispatchState implements DispatchState {
   const factory _DispatchState(
       {final BorrowerInfo? borrower,
-      final List<DispatchItem> items,
+      final DispatchItem? selectedItem,
       final String? approvedBy,
       final bool isSubmitting,
       final String? error}) = _$DispatchStateImpl;
@@ -627,7 +652,7 @@ abstract class _DispatchState implements DispatchState {
   @override
   BorrowerInfo? get borrower;
   @override
-  List<DispatchItem> get items;
+  DispatchItem? get selectedItem;
   @override
   String? get approvedBy;
   @override

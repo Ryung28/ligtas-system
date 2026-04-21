@@ -48,6 +48,7 @@ _$PersonPayloadImpl _$$PersonPayloadImplFromJson(Map<String, dynamic> json) =>
       personId: json['personId'] as String,
       personName: json['personName'] as String,
       role: json['role'] as String? ?? 'Field Staff',
+      phone: json['phone'] as String?,
       $type: json['runtimeType'] as String?,
     );
 
@@ -56,5 +57,6 @@ Map<String, dynamic> _$$PersonPayloadImplToJson(_$PersonPayloadImpl instance) =>
       'personId': instance.personId,
       'personName': instance.personName,
       'role': instance.role,
+      'phone': instance.phone,
       'runtimeType': instance.$type,
     };

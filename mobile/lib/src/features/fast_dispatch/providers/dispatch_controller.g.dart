@@ -7,12 +7,12 @@ part of 'dispatch_controller.dart';
 // **************************************************************************
 
 String _$fastDispatchControllerHash() =>
-    r'5d32724b53d434a2a7ef5522a6f82ff1b1d5299c';
+    r'ea1670f121855f6ff03e30b1be2564162af9932e';
 
 /// See also [FastDispatchController].
 @ProviderFor(FastDispatchController)
-final fastDispatchControllerProvider = AutoDisposeAsyncNotifierProvider<
-    FastDispatchController, DispatchState>.internal(
+final fastDispatchControllerProvider =
+    AsyncNotifierProvider<FastDispatchController, DispatchState>.internal(
   FastDispatchController.new,
   name: r'fastDispatchControllerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,6 +22,6 @@ final fastDispatchControllerProvider = AutoDisposeAsyncNotifierProvider<
   allTransitiveDependencies: null,
 );
 
-typedef _$FastDispatchController = AutoDisposeAsyncNotifier<DispatchState>;
+typedef _$FastDispatchController = AsyncNotifier<DispatchState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

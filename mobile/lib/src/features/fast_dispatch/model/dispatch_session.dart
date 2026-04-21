@@ -16,10 +16,10 @@ class BorrowerInfo with _$BorrowerInfo {
 
   factory BorrowerInfo.fromPersonPayload(LigtasQrPayload payload) {
     return payload.maybeWhen(
-      person: (id, name, role) => BorrowerInfo(
+      person: (id, name, role, phone) => BorrowerInfo(
         id: id,
         name: name,
-        contact: '', // To be filled or fetched
+        contact: phone ?? '',
         office: role,
         isDraft: false,
       ),
@@ -35,6 +35,7 @@ class DispatchItem with _$DispatchItem {
   const factory DispatchItem({
     required int inventoryId,
     required String itemName,
+    String? imageUrl,
     @Default(1) int quantity,
   }) = _DispatchItem;
 
@@ -45,7 +46,7 @@ class DispatchItem with _$DispatchItem {
 class DispatchState with _$DispatchState {
   const factory DispatchState({
     BorrowerInfo? borrower,
-    @Default([]) List<DispatchItem> items,
+    DispatchItem? selectedItem,
     String? approvedBy,
     @Default(false) bool isSubmitting,
     String? error,

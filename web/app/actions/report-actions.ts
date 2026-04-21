@@ -133,8 +133,14 @@ export async function fetchReportDataAction(
         // Paginating/Limiting per rule
         query = query.limit(1000) 
 
-        const { data, error } = await query
+        let { data, error } = await query
         if (error) throw error
+
+        // 🎯 TACTICAL FILTERING: 'low-stock' only shows items below threshold
+        if (type === 'low-stock' && data) {
+            const { isLowStock } = await import('@/lib/inventory-utils')
+            data = data.filter(i => isLowStock(i as any))
+        }
 
         return { success: true, data: data || [] }
     } catch (error: any) {
