@@ -39,23 +39,8 @@ export function useRealtimeAudio() {
             })
             .subscribe()
 
-        // ── Realtime Subscription for Chat Messages ──
-        const chatChannel = supabase.channel('chat_messages_realtime')
-
-        chatChannel
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'chat_messages'
-            }, (payload) => {
-                console.log('[Realtime] New chat message detected')
-                playNotification()
-            })
-            .subscribe()
-
         return () => {
             supabase.removeChannel(borrowChannel)
-            supabase.removeChannel(chatChannel)
         }
     }, [])
 

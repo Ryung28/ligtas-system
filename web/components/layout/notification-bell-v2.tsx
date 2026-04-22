@@ -6,7 +6,6 @@ import { Bell, RefreshCw } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/hooks/use-notifications'
-import { useRealtimeAudio } from '@/hooks/use-realtime-audio'
 
 // 🛡️ SILOED FEATURE IMPORTS
 import { Category, NotificationItem } from '../notifications/types/notification.types'
@@ -22,7 +21,6 @@ import { NotificationFilters } from '../notifications/components/notification-fi
  */
 export function NotificationBellV2() {
   const { notifications, unreadCount, markAsRead, markAllRead, deleteNotification, isLoading, refresh, loadMore } = useNotifications()
-  const { playNotification } = useRealtimeAudio()
   const [activeFilter, setActiveFilter] = useState<Category>("ALL")
   const [isScanning, setIsScanning] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)

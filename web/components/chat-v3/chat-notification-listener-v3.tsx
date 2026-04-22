@@ -16,8 +16,12 @@ export function ChatNotificationListenerV3() {
 
     useEffect(() => {
         const getIdentity = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) setCurrentUserId(user.id)
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) setCurrentUserId(user.id)
+            } catch (err) {
+                console.warn('[Notification-V3] Identity fetch failed:', err)
+            }
         }
         getIdentity()
 
@@ -29,7 +33,23 @@ export function ChatNotificationListenerV3() {
                 table: 'chat_messages',
             }, async (payload) => {
                 const newMessage = payload.new
-                if (!currentUserId || newMessage.sender_id === currentUserId) return
+                try {
+                    if (!currentUserId || newMessage.sender_id === currentUserId) return
+                    if (newMessage.receiver_id !== currentUserId) return
+
+                    // Only ring for borrower/mobile -> admin messages.
+                    // If sender is not the room borrower, treat it as non-mobile origin.
+                    const { data: room } = await supabase
+                        .from('chat_rooms')
+                        .select('borrower_user_id')
+                        .eq('id', newMessage.room_id)
+                        .maybeSingle()
+
+                    if (!room?.borrower_user_id || room.borrower_user_id !== newMessage.sender_id) return
+                } catch (err) {
+                    console.warn('[Notification-V3] Chat notification evaluation failed:', err)
+                    return
+                }
 
                 // Kinetic Debounce: Max once every 2 seconds
                 const now = Date.now()
