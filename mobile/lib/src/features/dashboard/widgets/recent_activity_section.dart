@@ -274,9 +274,8 @@ class ActivityPixelCard extends ConsumerWidget {
               height: 56,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: sentinel.containerLow,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: sentinel.onSurfaceVariant.withOpacity(0.05)),
               ),
               child: Hero(
                 tag: 'activity_img_${item.id}',
@@ -284,7 +283,7 @@ class ActivityPixelCard extends ConsumerWidget {
                   ? CachedNetworkImage(
                       imageUrl: item.imageUrl!,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: sentinel.containerLow),
+                      placeholder: (context, url) => Container(color: Colors.white),
                       errorWidget: (context, url, error) => Center(
                         child: Icon(_getIcon(item.itemName), color: sentinel.onSurfaceVariant.withOpacity(0.3), size: 24),
                       ),
@@ -388,7 +387,6 @@ class _LoadingActivityState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

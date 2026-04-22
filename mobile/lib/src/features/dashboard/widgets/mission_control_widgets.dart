@@ -9,9 +9,8 @@ import 'package:mobile/src/features/dashboard/widgets/bento_tiles.dart';
 
 import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:mobile/src/features/dashboard/providers/dashboard_provider.dart';
-import 'package:mobile/src/features/loans/providers/loan_providers.dart';
 import 'package:mobile/src/features/loans/models/loan_model.dart';
-import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart' hide LoanStatus;
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:mobile/src/core/design_system/widgets/shimmer_skeleton.dart';
 
 /// Small horizontal ribbon for equipment categories - iOS Glass Style
@@ -91,7 +90,6 @@ class SystemTelemetryGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary = ref.watch(inventorySummaryProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final hasEntered = ref.watch(dashboardEntryProvider);
     final stats = statsAsync.valueOrNull;
@@ -124,8 +122,8 @@ class SystemTelemetryGrid extends ConsumerWidget {
             : [
                 BentoStatTile(
                   icon: Icons.inventory_2_rounded,
-                  label: 'TOTAL',
-                  value: '${summary['total_assets'] ?? 0}',
+                  label: 'TOTAL BORROWS',
+                  value: '${stats?.totalBorrows ?? 0}',
                   color: const Color(0xFF001A33), // stitchNavy
                   animationDelay: hasEntered ? 0 : 300,
                 ),
@@ -138,7 +136,7 @@ class SystemTelemetryGrid extends ConsumerWidget {
                 ),
                 BentoStatTile(
                   icon: Icons.sync_alt_rounded,
-                  label: 'BORROWED',
+                  label: 'ACTIVE',
                   value: '${stats?.activeLoans ?? 0}',
                   color: const Color(0xFF43474D), // stitchOnSurfaceVariant
                   animationDelay: hasEntered ? 0 : 500,
@@ -146,7 +144,7 @@ class SystemTelemetryGrid extends ConsumerWidget {
                 BentoStatTile(
                   icon: Icons.check_circle_rounded,
                   label: 'RETURNED',
-                  value: '${stats?.totalReturnedItems ?? 0}',
+                  value: '${stats?.returnedItems ?? 0}',
                   color: const Color(0xFF575F6B), // secondary
                   animationDelay: hasEntered ? 0 : 600,
                 ),

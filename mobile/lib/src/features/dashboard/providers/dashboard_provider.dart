@@ -9,24 +9,28 @@ import 'package:intl/intl.dart';
 /// Dashboard stats for borrower perspective
 class DashboardStats {
   const DashboardStats({
+    this.totalBorrows = 0,
     this.activeLoans = 0,
     this.overdueLoans = 0,
-    this.totalReturnedItems = 0,
+    this.returnedItems = 0,
   });
 
+  final int totalBorrows;
   final int activeLoans;
   final int overdueLoans;
-  final int totalReturnedItems;
+  final int returnedItems;
 
   DashboardStats copyWith({
+    int? totalBorrows,
     int? activeLoans,
     int? overdueLoans,
-    int? totalReturnedItems,
+    int? returnedItems,
   }) {
     return DashboardStats(
+      totalBorrows: totalBorrows ?? this.totalBorrows,
       activeLoans: activeLoans ?? this.activeLoans,
       overdueLoans: overdueLoans ?? this.overdueLoans,
-      totalReturnedItems: totalReturnedItems ?? this.totalReturnedItems,
+      returnedItems: returnedItems ?? this.returnedItems,
     );
   }
 }
@@ -37,22 +41,16 @@ final dashboardStatsProvider = StreamProvider<DashboardStats>((ref) {
 
   return loansAsync.when(
     data: (loans) {
+      final total = loans.length;
       final active = loans.where((l) => l.status == LoanStatus.active).length;
-      final overdue = loans.where((l) => l.status == LoanStatus.overdue).length;
-      // Returned today check
-      final now = DateTime.now();
-      final returnedToday = loans.where((l) => 
-        l.status == LoanStatus.returned && 
-        l.actualReturnDate != null &&
-        l.actualReturnDate!.day == now.day &&
-        l.actualReturnDate!.month == now.month &&
-        l.actualReturnDate!.year == now.year
-      ).length;
+      final overdue = loans.where((l) => l.status == LoanStatus.overdue || l.daysOverdue > 0).length;
+      final returned = loans.where((l) => l.status == LoanStatus.returned).length;
 
       return Stream.value(DashboardStats(
+        totalBorrows: total,
         activeLoans: active,
         overdueLoans: overdue,
-        totalReturnedItems: returnedToday,
+        returnedItems: returned,
       ));
     },
     loading: () => Stream.value(const DashboardStats()),

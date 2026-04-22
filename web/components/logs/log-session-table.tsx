@@ -624,7 +624,7 @@ function LogSessionRow({
                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">Physically Received</span>
                                                             <div className="flex items-center gap-1.5">
                                                                 <UserCircle2 className="w-2.5 h-2.5 text-amber-500" />
-                                                                <span className="text-[10px] 14in:text-[11in] font-bold text-slate-900 uppercase tracking-tight">{session.physically_received_by || session.borrower_name}</span>
+                                                                <span className="text-[10px] 14in:text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.physically_received_by || session.borrower_name}</span>
                                                             </div>
                                                         </div>
                                                     </div>

@@ -15,6 +15,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final notification = message.notification;
   final data = message.data;
 
+  // Avoid duplicate cards: when FCM already provides a native notification payload,
+  // Android/iOS render it automatically while app is background/terminated.
+  // We only synthesize a local card for data-only messages.
+  if (notification != null) {
+    return;
+  }
+
   // 2. Data-only payload extraction (Versioned Guard)
   final title = notification?.title ?? data['title'] ?? data['sender_name'] ?? 'ResQTrack Tactical Update';
   final body = notification?.body ?? data['body'] ?? data['message'] ?? 'New operation logged. Check dashboard.';

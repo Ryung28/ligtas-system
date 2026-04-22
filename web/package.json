@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "node scripts/check-tailwind-text-units.js && next lint",
+    "lint:tailwind-units": "node scripts/check-tailwind-text-units.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
