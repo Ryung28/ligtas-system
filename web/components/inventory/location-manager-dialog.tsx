@@ -140,7 +140,7 @@ export function LocationManagerDialog() {
 
                 <div className="pt-2 border-t border-zinc-100">
                     <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">
-                        LIGTAS Logistics Registry v1.0
+                        ResQTrack Logistics Registry v1.0
                     </p>
                 </div>
             </DialogContent>

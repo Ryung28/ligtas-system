@@ -26,7 +26,7 @@ export function AudioPermissionOverlay({ onEnable }: { onEnable: () => void }) {
             <div className="rounded-lg bg-white p-8 max-w-md mx-4 text-center shadow-2xl">
                 <h2 className="mb-4 text-2xl font-bold text-gray-900">Enable Notifications</h2>
                 <p className="mb-6 text-gray-600">
-                    LIGTAS needs permission to play audio notifications for:
+                    ResQTrack needs permission to play audio notifications for:
                     <br />
                     • New borrow requests
                     <br />

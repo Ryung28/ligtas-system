@@ -2,7 +2,7 @@ import dynamic from 'next/dynamic'
 import { Suspense } from 'react'
 import Loading from './loading'
 
-// ⚡ LIGTAS INSTANT-NAV PROTOCOL:
+// ⚡ ResQTrack INSTANT-NAV PROTOCOL:
 // We lazy-load the client component to ensure the server can eject 
 // the high-fidelity skeleton instantly without waiting for the JS bundle.
 const UsersClient = dynamic(() => import('./users-client').then(mod => mod.UsersClient), {

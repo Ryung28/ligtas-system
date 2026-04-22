@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'LIGTAS COMMAND';
+  String get appTitle => 'ResQTrack';
 
   @override
   String get loginGateway => 'AUTHORIZATION GATEWAY';

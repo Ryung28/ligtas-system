@@ -15,7 +15,7 @@ interface QuickSwitchV3Props {
 }
 
 /**
- * LIGTAS Awareness Bar (V3)
+ * ResQTrack Awareness Bar (V3)
  * Minimalist avatar row for one-tap switching between active sessions.
  */
 export function QuickSwitchV3({ rooms, activeRoomId, onSwitch }: QuickSwitchV3Props) {

@@ -69,7 +69,7 @@ export function PWAInstallPrompt() {
           
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 text-sm mb-1">
-              Install LIGTAS App
+              Install ResQTrack App
             </h3>
             <p className="text-xs text-gray-600 mb-3">
               Add to your home screen for quick access and offline support

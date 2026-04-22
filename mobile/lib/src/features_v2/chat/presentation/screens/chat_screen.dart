@@ -75,7 +75,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // ✅ CONSOLIDATED SNAPSHOT: Single-query identity
     final partnerMeta = ref.watch(partnerMetadataProvider(activeRoomId));
-    final partnerName = partnerMeta.valueOrNull?['full_name'] as String? ?? 'LIGTAS Admin';
+    final partnerName = partnerMeta.valueOrNull?['full_name'] as String? ?? 'ResQTrack Admin';
     final partnerId = partnerMeta.valueOrNull?['id'] as String?;
     final isMetaLoading = partnerMeta.isLoading;
 

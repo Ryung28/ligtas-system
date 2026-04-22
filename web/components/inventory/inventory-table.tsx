@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,14 +53,18 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const [localCategories, setLocalCategories] = useState<string[]>([])
     const [highlightId, setHighlightId] = useState<number | null>(null)
     const [triageItem, setTriageItem] = useState<InventoryItem | null>(null)
+    const router = useRouter()
+    const pathname = usePathname()
     const searchParams = useSearchParams()
     const triageId = searchParams.get('id')
 
     // 🛡️ ATOMIC RESOLUTION ENGINE: Listen for Deep-Links
+    // Applies one-time notification context, then cleans URL params so search does not persist.
     useEffect(() => {
         const id = searchParams.get('id')
         const search = searchParams.get('search')
         const status = searchParams.get('status')
+        const highlight = searchParams.get('highlight')
 
         if (status) {
             setStatusFilter(status as any)
@@ -95,7 +99,17 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             setHighlightId(null)
             setTriageItem(null)
         }
-    }, [searchParams, items])
+
+        // One-time consume: remove deep-link params after hydration.
+        if (id || search || highlight) {
+            const params = new URLSearchParams(searchParams.toString())
+            params.delete('id')
+            params.delete('search')
+            params.delete('highlight')
+            const next = params.toString()
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
+        }
+    }, [searchParams, items, router, pathname])
 
     const handleCategoryCreate = (name: string) => {
         if (!name) return

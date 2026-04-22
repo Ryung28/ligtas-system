@@ -167,6 +167,8 @@ export function LogSessionTable({
                 return <span className={`${baseClass} border-indigo-200 bg-indigo-50 text-indigo-700`}>Reserved</span>
             case 'pending':
                 return <span className={baseClass}><span className="text-amber-600">Pending</span></span>
+            case 'dispensed':
+                return <span className={`${baseClass} border-purple-100 bg-purple-50/50 font-black text-purple-600`}>Dispensed</span>
             default:
                 return <span className={baseClass}><span className="text-zinc-600">{status}</span></span>
         }
@@ -227,6 +229,7 @@ export function LogSessionTable({
                                 <SelectItem value="staged" className="text-[13px] rounded-md">Ready for Pickup</SelectItem>
                                 <SelectItem value="borrowed" className="text-[13px] rounded-md">Borrowed</SelectItem>
                                 <SelectItem value="returned" className="text-[13px] rounded-md">Returned</SelectItem>
+                                <SelectItem value="dispensed" className="text-[13px] rounded-md">Dispensed (One-time)</SelectItem>
                                 <SelectItem value="overdue" className="text-[13px] rounded-md">Overdue</SelectItem>
                                 <SelectItem value="cancelled" className="text-[13px] rounded-md">Cancelled</SelectItem>
                             </SelectContent>
@@ -401,7 +404,7 @@ function LogSessionRow({
     isPending,
     startTransition
 }: any) {
-    const returnableItems = session.items.filter((i: any) => i.status !== 'returned')
+    const returnableItems = session.items.filter((i: any) => i.status !== 'returned' && i.status !== 'dispensed')
     const hasReturnable = returnableItems.length > 0
     const allItemsSelected = hasReturnable && returnableItems.every((i: any) => selectedLogIds.has(i.id))
     const someItemsSelected = hasReturnable && returnableItems.some((i: any) => selectedLogIds.has(i.id)) && !allItemsSelected
@@ -685,20 +688,22 @@ function LogSessionRow({
                                                                     <MapPin className="w-3 h-3" />
                                                                     Location: <span className="text-slate-900">{String((item as any).borrowed_from_warehouse || (item as any).inventory?.storage_location || 'N/A').replace(/_/g, ' ')}</span>
                                                                 </span>
-                                                                <span className={cn(
-                                                                    "text-[10px] font-bold flex items-center gap-1.5 uppercase tracking-wide",
-                                                                    getUrgencyColor(item.expected_return_date, item.status)
-                                                                )}>
-                                                                    <Calendar className="w-3 h-3" />
-                                                                    Due: {formatDate(item.expected_return_date)}
-                                                                </span>
+                                                                {item.status !== 'dispensed' && (
+                                                                    <span className={cn(
+                                                                        "text-[10px] font-bold flex items-center gap-1.5 uppercase tracking-wide",
+                                                                        getUrgencyColor(item.expected_return_date, item.status)
+                                                                    )}>
+                                                                        <Calendar className="w-3 h-3" />
+                                                                        Due: {formatDate(item.expected_return_date)}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
 
                                                         {/* Status + Actions */}
                                                         <div className="flex items-center gap-4 pr-1">
                                                             {getStatusBadge(item.status)}
-                                                            {item.status !== 'returned' && item.status !== 'pending' && (
+                                                            {item.status !== 'returned' && item.status !== 'pending' && item.status !== 'dispensed' && (
                                                                 <ReturnCommandSheet
                                                                     logId={item.id}
                                                                     itemName={item.item_name}

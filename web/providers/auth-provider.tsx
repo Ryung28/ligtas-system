@@ -14,7 +14,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 /**
- * 🔒 LIGTAS IDENTITY PROVIDER
+ * 🔒 ResQTrack IDENTITY PROVIDER
  * 🛡️ SENIOR ARCHITECT STRATEGY: Global Session Singleton
  * This provider handles the client-side user profile hydration.
  * It prevents navigation blocking by allowing the UI to render while the 

@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ============================================================================
-// LIGTAS AUTH UTILS
+// ResQTrack AUTH UTILS
 // 🛡️ Unified Identity Resolution — Single source of truth for the
 //    "authorized_emails whitelist fallback" logic, shared by both
 //    auth.ts (client) and auth-server.ts (server).

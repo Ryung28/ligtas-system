@@ -426,7 +426,7 @@ class _HubStockSnapshotProviderElement
   int get warehouseId => (origin as HubStockSnapshotProvider).warehouseId;
 }
 
-String _$stationManifestHash() => r'3e1012e4696a9564f7e7e2a31d7cffc97c4c5f6c';
+String _$stationManifestHash() => r'1a030dcbe95500baee1091ffc43955e821d2b4b3';
 
 /// See also [stationManifest].
 @ProviderFor(stationManifest)
@@ -473,7 +473,7 @@ class StationManifestFamily
 
 /// See also [stationManifest].
 class StationManifestProvider
-    extends AutoDisposeFutureProvider<List<StationManifestItem>> {
+    extends AutoDisposeStreamProvider<List<StationManifestItem>> {
   /// See also [stationManifest].
   StationManifestProvider({
     required String stationId,
@@ -508,7 +508,7 @@ class StationManifestProvider
 
   @override
   Override overrideWith(
-    FutureOr<List<StationManifestItem>> Function(StationManifestRef provider)
+    Stream<List<StationManifestItem>> Function(StationManifestRef provider)
         create,
   ) {
     return ProviderOverride(
@@ -526,7 +526,7 @@ class StationManifestProvider
   }
 
   @override
-  AutoDisposeFutureProviderElement<List<StationManifestItem>> createElement() {
+  AutoDisposeStreamProviderElement<List<StationManifestItem>> createElement() {
     return _StationManifestProviderElement(this);
   }
 
@@ -545,13 +545,13 @@ class StationManifestProvider
 }
 
 mixin StationManifestRef
-    on AutoDisposeFutureProviderRef<List<StationManifestItem>> {
+    on AutoDisposeStreamProviderRef<List<StationManifestItem>> {
   /// The parameter `stationId` of this provider.
   String get stationId;
 }
 
 class _StationManifestProviderElement
-    extends AutoDisposeFutureProviderElement<List<StationManifestItem>>
+    extends AutoDisposeStreamProviderElement<List<StationManifestItem>>
     with StationManifestRef {
   _StationManifestProviderElement(super.provider);
 

@@ -8,7 +8,7 @@ import { sendChatMessageV3, markAsReadV3, getRoomMessagesV3 } from '@/app/action
 import { toast } from 'sonner'
 
 /**
- * LIGTAS CHAT-V3 Kinetic Hook
+ * ResQTrack CHAT-V3 Kinetic Hook
  * Full Isolation from V1/V2. Powered by SWR for unblocked navigation.
  */
 export function useChatV3(roomId: string | null) {

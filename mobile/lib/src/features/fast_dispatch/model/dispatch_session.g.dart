@@ -30,6 +30,9 @@ _$DispatchItemImpl _$$DispatchItemImplFromJson(Map<String, dynamic> json) =>
       itemName: json['itemName'] as String,
       imageUrl: json['imageUrl'] as String?,
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      stockAvailable: (json['stockAvailable'] as num?)?.toInt() ?? 0,
+      targetStock: (json['targetStock'] as num?)?.toInt() ?? 0,
+      lowStockThreshold: (json['lowStockThreshold'] as num?)?.toInt() ?? 20,
     );
 
 Map<String, dynamic> _$$DispatchItemImplToJson(_$DispatchItemImpl instance) =>
@@ -38,4 +41,7 @@ Map<String, dynamic> _$$DispatchItemImplToJson(_$DispatchItemImpl instance) =>
       'itemName': instance.itemName,
       'imageUrl': instance.imageUrl,
       'quantity': instance.quantity,
+      'stockAvailable': instance.stockAvailable,
+      'targetStock': instance.targetStock,
+      'lowStockThreshold': instance.lowStockThreshold,
     };

@@ -162,6 +162,66 @@ function renderLogsTable(data: any[]): string {
     </table>`
 }
 
+function renderOverdueTable(data: any[]): string {
+    return `
+    <table>
+        <colgroup>
+            <col style="width: 25%;">
+            <col style="width: 20%;">
+            <col style="width: 15%;">
+            <col style="width: 15%;">
+            <col style="width: 15%;">
+            <col style="width: 10%;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>Item Name</th>
+                <th>Borrower</th>
+                <th>Expected Date</th>
+                <th>Return Date</th>
+                <th style="text-align:center;">Days Overdue</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${data.map((l) => {
+                const expected = new Date(l.expected_return_date)
+                const actual = l.actual_return_date ? new Date(l.actual_return_date) : new Date()
+                const diffTime = actual.getTime() - expected.getTime()
+                const diffDaysRaw = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                const diffDays = diffDaysRaw > 0 ? diffDaysRaw : 0
+                
+                const isStillOut = ['borrowed', 'overdue'].includes(l.status)
+                const isLateReturn = l.status === 'returned' && diffDays > 0
+                
+                let displayStatus = 'OVERDUE'
+                let statusColor = '#dc2626' // Red
+                
+                if (isLateReturn) {
+                    displayStatus = 'LATE RETURN'
+                    statusColor = '#ea580c' // Orange
+                }
+
+                return `<tr>
+                    <td style="font-weight:700;">${e(l.item_name)}</td>
+                    <td>
+                        <div style="font-weight:600;">${e(l.borrower_name)}</div>
+                        <div style="font-size:7pt; color:#64748b;">${e(l.borrower_contact)}</div>
+                    </td>
+                    <td>${formatDate(l.expected_return_date)}</td>
+                    <td style="color:${isStillOut ? '#ef4444' : 'inherit'}; font-weight:${isStillOut ? '700' : '400'}">
+                        ${isStillOut ? 'PENDING' : formatDate(l.actual_return_date)}
+                    </td>
+                    <td style="text-align:center; font-weight:900; color:#dc2626;">${diffDays} DAYS</td>
+                    <td style="text-align:center;">
+                        <span class="badge" style="background-color:${statusColor} !important; color: white !important; width: 85px;">${displayStatus}</span>
+                    </td>
+                </tr>`
+            }).join('')}
+        </tbody>
+    </table>`
+}
+
 function renderSimpleBorrowTable(data: any[]): string {
     return `<table><thead><tr><th>Date</th><th>Borrower</th><th>Item</th><th>Qty</th><th style="text-align:center;">Status</th><th>Signature</th></tr></thead><tbody>
         ${data
@@ -183,7 +243,7 @@ const RENDERERS: Record<ReportType, ReportRenderer> = {
     summary: renderInventoryLikeTable,
     'expiry-alert': renderExpiryAlertTable,
     logs: renderLogsTable,
-    overdue: renderSimpleBorrowTable,
+    overdue: renderOverdueTable,
     'borrower-activity': renderSimpleBorrowTable,
 }
 
@@ -224,7 +284,7 @@ function renderReportShell(args: {
         .footer { margin-top: 40px; text-align: center; font-size: 7pt; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px; font-weight: 700; letter-spacing: 0.5px; }
     </style></head><body>
         <div class="header">
-            <img src="/oro-cervo.png" alt="Logo" />
+            <img src="/resqtrack-logo.jpg" alt="Logo" />
             <div>
                 <div style="font-weight:bold; font-size: 7.5pt; color: #475569;">REPUBLIC OF THE PHILIPPINES</div>
                 <div style="font-size:15pt; font-weight:900; color: #0f172a;">CDRRMO OROQUIETA</div>

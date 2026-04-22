@@ -118,7 +118,7 @@ class AccessDeniedScreen extends ConsumerWidget {
                           ),
                           const Gap(16),
                           Text(
-                            'Your access to the LIGTAS network has been denied or suspended by the network administrator. Your identity has been flagged for review.',
+                            'Your access to the ResQTrack network has been denied or suspended by the network administrator. Your identity has been flagged for review.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 14,

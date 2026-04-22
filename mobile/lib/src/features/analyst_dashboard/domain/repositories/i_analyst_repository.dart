@@ -116,6 +116,9 @@ abstract class IAnalystRepository {
 
   /// 🏥 STATION PROVISIONING: Fetch the manifest and current status of a tactical station
   Future<List<StationManifestItem>> getStationManifest({required String stationId});
+
+  /// 🛰️ SENTINEL PULSE: Real-time stream for tactical station manifest readiness
+  Stream<List<StationManifestItem>> watchStationManifest({required String stationId});
 }
 
 class ForceReturnResult {

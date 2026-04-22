@@ -3,4 +3,5 @@
     <!-- 🛡️ LIGTAS TACTICAL BRAND COLOR: Used by Firebase as default notification accent.
          This tints the notification icon's background circle on Android 5+ (Lollipop+). -->
     <color name="notification_blue">#3B82F6</color>
+	<color name="ic_launcher_background">#ffffff</color>
 </resources>

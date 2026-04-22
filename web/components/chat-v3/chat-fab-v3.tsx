@@ -8,10 +8,10 @@ import { usePendingRequests } from '@/hooks/use-pending-requests'
 import { getOrCreateRoomV3 } from '@/app/actions/chat-v3'
 import { toast } from 'sonner'
 
-export const CHAT_EVENT_V3 = 'ligtas:open_chat_v3'
+export const CHAT_EVENT_V3 = 'resqtrack:open_chat_v3'
 
 /**
- * LIGTAS Platinum Draggable Chat Hub (V3.1 - Stable Anchor)
+ * ResQTrack Platinum Draggable Chat Hub (V3.1 - Stable Anchor)
  * Uses absolute window positioning to prevent layout jumps during drag.
  */
 export function ChatFabV3() {
@@ -101,7 +101,7 @@ export function ChatFabV3() {
                         >
                             <MessengerWindowV3 
                                 roomId={activeRoomId}
-                                title={activeRoom?.name ? `Coordination: ${activeRoom.name}` : 'LIGTAS Operations'}
+                                title={activeRoom?.name ? `Coordination: ${activeRoom.name}` : 'ResQTrack Operations'}
                                 participant={null}
                                 recentRooms={recentRooms}
                                 onSwitchRoom={setActiveRoomId}

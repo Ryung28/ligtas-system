@@ -460,7 +460,7 @@ export async function updateItem(formData: FormData) {
             message: 'Inventory updated' 
         }
     } catch (error: any) {
-        console.error('LIGTAS_UPDATE_CRITICAL:', error)
+        console.error('ResQTrack_UPDATE_CRITICAL:', error)
         return { 
             success: false, 
             message: 'Failed to save changes', 

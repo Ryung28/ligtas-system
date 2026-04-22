@@ -9,7 +9,7 @@ import 'package:mobile/src/features_v2/chat/domain/entities/chat_message.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Extracted from chat_screen.dart. Molecule-level widget.
 // Renders a single chat message bubble with timestamp and read receipt.
-// Shadow: 0.05 opacity per LIGTAS Tactical Premium guidelines.
+// Shadow: 0.05 opacity per ResQTrack Tactical Premium guidelines.
 // =============================================================================
 
 class ChatBubble extends StatelessWidget {

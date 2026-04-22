@@ -38,7 +38,7 @@ class NotificationSyncState {
   }
 }
 
-/// 🚨 LIGTAS ENTERPRISE NOTIFICATION SYSTEM
+/// 🚨 ResQTrack ENTERPRISE NOTIFICATION SYSTEM
 /// Implementation of advanced messaging styles, quick actions, and high-priority coordination channels.
 class UserNotificationService {
   static final UserNotificationService _instance = UserNotificationService._internal();
@@ -128,7 +128,7 @@ class UserNotificationService {
       await androidPlugin?.deleteNotificationChannel(channelId: 'emergency_coordination_v5'); // Clean v5
       await androidPlugin?.deleteNotificationChannel(channelId: 'emergency_coordination_v6'); // Clean v6
       await androidPlugin?.deleteNotificationChannel(channelId: 'emergency_coordination_v6_chat'); // Clean v6 chat
-      await androidPlugin?.deleteNotificationChannel(channelId: 'LIGTAS_CRITICAL_V2'); // Clean v2
+      await androidPlugin?.deleteNotificationChannel(channelId: 'LIGTAS_CRITICAL_V2'); // legacy channel id
       await androidPlugin?.deleteNotificationChannel(channelId: _emergencyChannel.id); // v7 refresh
       
       if (Platform.isAndroid) {
@@ -270,12 +270,22 @@ class UserNotificationService {
       
       debugPrint('[Chat-Push] 🛰️ Initiating Upsert for user ${user.id} ($platform)...');
       
-      // 🛡️ Use the Idempotent RPC to handle conflicts server-side
-      await _supabase.rpc('handle_device_token', params: {
-        'p_user_id': user.id,
-        'p_token': token,
-        'p_platform': platform,
-      }).timeout(const Duration(seconds: 15));
+      // 🛡️ Canonical registry RPC (with fallback for older DB migrations).
+      try {
+        await _supabase.rpc('register_device_token', params: {
+          'p_user_id': user.id,
+          'p_token': token,
+          'p_platform': platform,
+          'p_device_id': null,
+          'p_app_version': null,
+        }).timeout(const Duration(seconds: 15));
+      } catch (_) {
+        await _supabase.rpc('handle_device_token', params: {
+          'p_user_id': user.id,
+          'p_token': token,
+          'p_platform': platform,
+        }).timeout(const Duration(seconds: 15));
+      }
       
       // 🏗️ Commit to local Vault (Isar)
       await isar.writeTxn(() async {
@@ -333,7 +343,7 @@ class UserNotificationService {
     }
 
     // 2. Extract Content
-    final title = notification?.title ?? data['title'] ?? data['sender_name'] ?? 'LIGTAS Alert';
+    final title = notification?.title ?? data['title'] ?? data['sender_name'] ?? 'ResQTrack Alert';
     final body = notification?.body ?? data['body'] ?? data['message'] ?? 'Check your dashboard for updates.';
     
     // 🛡️ DETERMINISTIC ID: Calculate a stable ID based on RoomID

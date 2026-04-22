@@ -1,5 +1,5 @@
 /**
- * 📱 LIGTAS Device Detection Utility
+ * 📱 ResQTrack Device Detection Utility
  * 🛠️ WORKER'S TOOL: User-Agent Interception
  * Used in middleware to determine the operational segment (Desktop vs Mobile PWA)
  */

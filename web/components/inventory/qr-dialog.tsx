@@ -22,7 +22,7 @@ interface QRDialogProps {
 export function QRDialog({ item, trigger }: QRDialogProps) {
     const qrRef = useRef<HTMLDivElement>(null)
 
-    const qrValue = `ligtas://item/${item.id}?name=${encodeURIComponent(item.item_name)}&v=2.0`
+    const qrValue = `resqtrack://item/${item.id}?name=${encodeURIComponent(item.item_name)}&v=2.0`
 
     const handleDownload = () => {
         // Find the canvas element
@@ -68,7 +68,7 @@ export function QRDialog({ item, trigger }: QRDialogProps) {
                 <body>
                     <div class="label">
                         <img src="${imgData}" />
-                        <h1 class="brand">LIGTAS SYSTEM</h1>
+                        <h1 class="brand">ResQTrack</h1>
                         <p><strong>${item.item_name}</strong></p>
                         <p>Category: ${item.category}</p>
                         <p style="font-size: 12px; color: #9ca3af;">Internal ID: ${item.id}</p>
@@ -98,7 +98,7 @@ export function QRDialog({ item, trigger }: QRDialogProps) {
                 <DialogHeader>
                     <DialogTitle>Item QR Code</DialogTitle>
                     <DialogDescription>
-                        Scan this code with the LIGTAS mobile app to automatically borrow or return this item.
+                        Scan this code with the ResQTrack mobile app to automatically borrow or return this item.
                     </DialogDescription>
                 </DialogHeader>
 

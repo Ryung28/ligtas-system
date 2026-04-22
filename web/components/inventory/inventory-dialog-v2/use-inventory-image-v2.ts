@@ -7,7 +7,7 @@ import { optimizeImage } from '@/lib/image-optimizer'
 import { getInventoryImageUrl } from '@/lib/supabase'
 
 /**
- * LIGTAS V2 IMAGE HOOK
+ * ResQTrack V2 IMAGE HOOK
  * Handles asset photography, compression, and Supabase storage.
  * Optimized for "Path-Only" strategy to ensure single source of truth.
  */
@@ -52,7 +52,7 @@ export function useInventoryImageV2(initialValue?: string) {
             
             toast.success('Asset photo encoded and staged')
         } catch (err: any) {
-            console.error('LIGTAS_PHOTO_SYNC_FAILURE:', err)
+            console.error('ResQTrack_PHOTO_SYNC_FAILURE:', err)
             toast.error(`Photo Sync Failed: ${err.message}`)
             setPreviewUrl(getInventoryImageUrl(initialValue) || null)
         } finally {

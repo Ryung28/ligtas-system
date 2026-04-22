@@ -15,7 +15,7 @@ interface DashboardLayoutProps {
 }
 
 /**
- * LIGTAS Dashboard Layout (V3 Platinum Chat Integration)
+ * ResQTrack Dashboard Layout (V3 Platinum Chat Integration)
  */
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
@@ -38,8 +38,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 
                 <CacheWarmer />
 
-                <main className="flex-1 overflow-y-auto custom-scrollbar py-2 px-2.5 sm:py-3 sm:px-4 md:py-4 md:px-5 lg:py-4 lg:px-5 14in:py-4 14in:px-2 xl:py-5 xl:px-6 2xl:py-6 2xl:px-10 3xl:px-12 4xl:px-16 text-slate-900">
-                    <div className="mx-auto w-full max-w-[1000px] 14in:max-w-[1080px] xl:max-w-[1400px] 2xl:max-w-[1600px] 3xl:max-w-[1900px] 4xl:max-w-[2400px]">
+                <main className="flex-1 overflow-y-auto custom-scrollbar text-slate-900 transition-all duration-300" style={{ padding: 'var(--dashboard-padding)' }}>
+                    <div className="mx-auto w-full transition-all duration-300" style={{ maxWidth: 'var(--dashboard-content-max-width)' }}>
                         <Suspense fallback={<DashboardLoading />}>
                             {children}
                         </Suspense>

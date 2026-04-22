@@ -68,7 +68,7 @@ class _CommsCapsuleState extends ConsumerState<CommsCapsule> {
           }
           
           if (context.mounted) {
-            context.push('/chat/$roomId?title=LIGTAS+Support');
+            context.push('/chat/$roomId?title=ResQTrack+Support');
           }
         },
         child: MouseRegion(

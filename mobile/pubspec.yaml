@@ -102,6 +102,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
 
   # Code Generation (Simplified)
   build_runner: ^2.4.12
@@ -126,7 +127,7 @@ flutter:
     - assets/
     - assets/cdrrmo_logo.png
     - assets/sounds/
-    - ../web/public/ligtaslogo.png
+    - assets/Logo.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -153,3 +154,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/Logo.jpg"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/Logo.jpg"

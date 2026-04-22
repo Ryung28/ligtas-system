@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/branding.dart';
 import '../../../../core/design_system/app_theme.dart';
 import '../../../../core/design_system/widgets/atmospheric_background.dart';
 import '../controllers/settings_controller.dart';
@@ -90,8 +91,8 @@ class SettingsScreen extends ConsumerWidget {
                           const Gap(16),
                           Text(
                             settingsState.maybeWhen(
-                              data: (user) => user?.fullName.toUpperCase() ?? 'LIGTAS USER',
-                              orElse: () => 'LIGTAS USER',
+                              data: (user) => user?.fullName.toUpperCase() ?? '${Branding.appName} USER',
+                              orElse: () => '${Branding.appName} USER',
                             ),
                             style: GoogleFonts.lexend(
                               fontSize: 18,
@@ -223,7 +224,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                         const Gap(4),
                         Text(
-                          'LIGTAS System',
+                          '${Branding.appName} System',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,

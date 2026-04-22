@@ -7,7 +7,7 @@ part of 'dispatch_controller.dart';
 // **************************************************************************
 
 String _$fastDispatchControllerHash() =>
-    r'ea1670f121855f6ff03e30b1be2564162af9932e';
+    r'e9f88d5a0e911f5473724935f202f363696c7684';
 
 /// See also [FastDispatchController].
 @ProviderFor(FastDispatchController)

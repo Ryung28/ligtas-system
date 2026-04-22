@@ -3,7 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { SignJWT, importPKCS8 } from "https://deno.land/x/jose@v4.14.4/index.ts";
 
 /**
- * 🛡️ LIGTAS ENTERPRISE DISPATCHER (v3.1 - Role Convergence Fix)
+ * 🛡️ ResQTrack ENTERPRISE DISPATCHER (v3.1 - Role Convergence Fix)
  * 🏗️ Senior Architect Protocols:
  * - Aggressive Simplification: Removed Vault/pg_net complexity.
  * - Anti-Fragility: Uses Supabase Native Webhook engine.
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
 
     // 🛡️ Resolve Sender Name
     const { data: sender } = await supabase.from('user_profiles').select('full_name').eq('id', record.sender_id).single();
-    const senderName = sender?.full_name ?? 'LIGTAS Dispatch';
+    const senderName = sender?.full_name ?? 'ResQTrack Dispatch';
 
     // 🚀 STEP 5: Parallel High-Priority Dispatch
     const staleTokens: string[] = [];

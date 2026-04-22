@@ -22,7 +22,7 @@ const colorMap = {
 }
 
 /**
- * 📱 LIGTAS Mobile Stat Card
+ * 📱 ResQTrack Mobile Stat Card
  * 🏛️ ARCHITECTURE: Compact, high-signal information tile.
  */
 export function StatCard({ label, value, icon: Icon, color, isLoading }: StatCardProps) {

@@ -23,7 +23,7 @@ class PerformanceUtils {
 
       final DisplayMode optimalMode = modes.first;
       
-      debugPrint("🚀 LIGTAS-Performance: Locking Display at ${optimalMode.refreshRate.round()}Hz (${optimalMode.width}x${optimalMode.height})");
+      debugPrint("🚀 ResQTrack-Performance: Locking Display at ${optimalMode.refreshRate.round()}Hz (${optimalMode.width}x${optimalMode.height})");
       
       await FlutterDisplayMode.setPreferredMode(optimalMode);
     } catch (e) {

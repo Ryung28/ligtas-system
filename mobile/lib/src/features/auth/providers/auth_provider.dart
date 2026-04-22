@@ -164,7 +164,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     // Create a mock user for development
     final mockUser = UserModel(
       id: 'dev-user-id',
-      email: 'dev@ligtas.local',
+      email: 'dev@resqtrack.local',
       displayName: 'Development User',
       phoneNumber: null,
       organization: null,

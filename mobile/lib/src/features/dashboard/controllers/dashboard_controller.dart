@@ -19,7 +19,7 @@ class DashboardController {
             final payload = LigtasQrPayload.tryParse(qrCode);
             
             if (payload == null) {
-              _showErrorSnackBar(context, 'Invalid QR Code. Please scan a LIGTAS label.');
+              _showErrorSnackBar(context, 'Invalid QR Code. Please scan a ResQTrack label.');
               return;
             }
 

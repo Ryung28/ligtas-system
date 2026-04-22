@@ -89,6 +89,7 @@ class SupabaseLoanRepository implements ILoanRepository {
         'actual_return_date': DateTime.now().toIso8601String(),
         'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
+        'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', loanId).eq('borrowed_by', userId);
 
       await fetchMyLoans();
@@ -218,6 +219,7 @@ class SupabaseLoanRepository implements ILoanRepository {
         'return_notes': notes,
         'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
+        'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', loanId);
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -240,6 +242,8 @@ class SupabaseLoanRepository implements ILoanRepository {
       finalStatus = LoanStatus.pending;
     } else if (rawStatus == 'staged') {
       finalStatus = LoanStatus.staged;
+    } else if (rawStatus == 'reserved') {
+      finalStatus = LoanStatus.reserved;
     } else {
       finalStatus = LoanStatus.active;
     }
@@ -252,12 +256,17 @@ class SupabaseLoanRepository implements ILoanRepository {
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
     final now = DateTime.now();
 
-    // 🚀 Dynamic Overdue Logic: If it's borrowed OR pending OR staged but the date has passed, it IS overdue in the UI
-    if ((finalStatus == LoanStatus.active || finalStatus == LoanStatus.pending || finalStatus == LoanStatus.staged) && expectedReturnDate.isBefore(now)) {
+    // Only active handovers should age into overdue.
+    if (finalStatus == LoanStatus.active && expectedReturnDate.isBefore(now)) {
       finalStatus = LoanStatus.overdue;
     }
 
-    final dbDaysBorrowed = now.difference(borrowDate).inDays;
+    final dbDaysBorrowed =
+        (finalStatus == LoanStatus.active ||
+                finalStatus == LoanStatus.overdue ||
+                finalStatus == LoanStatus.returned)
+            ? now.difference(borrowDate).inDays
+            : 0;
     final dbDaysOverdue = expectedReturnDate.isBefore(now) ? now.difference(expectedReturnDate).inDays : 0;
 
     final borrowedByUid = (data['borrowed_by'] ?? data['borrower_user_id'] ?? '').toString();

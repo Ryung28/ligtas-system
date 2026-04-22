@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
 // ============================================================================
-// LIGTAS USER MANAGEMENT SERVER ACTIONS
+// ResQTrack USER MANAGEMENT SERVER ACTIONS
 // 🛡️ All personnel mutations flow through here. Zero client-side RPCs.
 // ============================================================================
 

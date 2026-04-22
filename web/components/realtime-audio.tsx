@@ -73,7 +73,7 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
 
     useEffect(() => {
         // Expose unlock function to the global scope for the Permission Wrapper to call
-        (window as any).LIGTAS_UNLOCK_AUDIO = unlockAudio;
+        (window as any).RESQTRACK_UNLOCK_AUDIO = unlockAudio;
 
         const supabase = createBrowserClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,

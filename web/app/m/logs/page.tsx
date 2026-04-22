@@ -5,7 +5,7 @@ import { TimelineSkeleton } from '@/components/mobile/skeletons/timeline-skeleto
 export const dynamic = 'force-dynamic'
 
 /**
- * 📱 LIGTAS Mobile Transaction Logs
+ * 📱 ResQTrack Mobile Transaction Logs
  * 🏛️ ARCHITECTURE: "The Digital Ledger"
  * High-fidelity timeline of all equipment movements in the field.
  * 

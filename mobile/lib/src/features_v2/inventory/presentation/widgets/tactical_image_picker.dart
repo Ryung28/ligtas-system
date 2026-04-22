@@ -13,7 +13,7 @@ class TacticalImagePicker {
   static final ImagePicker _picker = ImagePicker();
 
   /// Prompts the camera, uploads the image, and returns the public URL.
-  /// Converts the raw file into a standardized LIGTAS item identifier.
+  /// Converts the raw file into a standardized ResQTrack item identifier.
   static Future<String?> captureAndUpload(BuildContext context, {required int itemId}) async {
     try {
       HapticFeedback.mediumImpact();

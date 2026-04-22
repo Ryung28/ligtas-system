@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/dispatch_session.dart';
 import '../repository/dispatch_repository.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
@@ -52,11 +51,33 @@ class FastDispatchController extends _$FastDispatchController {
     state = AsyncData(currentState.copyWith(approvedBy: value));
   }
 
-  /// 🛠️ Select equipment for dispatch
-  void selectItem(int id, String name, {String? imageUrl}) {
+  /// 🛠️ Select equipment for dispatch with LIVE stock check
+  Future<void> selectItem(int id, String name, {String? imageUrl}) async {
     final currentState = state.value ?? const DispatchState();
+    final repo = ref.read(dispatchRepositoryProvider);
+    
+    // Fetch live sanity check for stock
+    final details = await repo.getItemDetails(id);
+    
+    final int available = (details?['stock_available'] as num?)?.toInt() ?? 0;
+    final int target = (details?['target_stock'] as num?)?.toInt() ?? 0;
+    final int total = (details?['stock_total'] as num?)?.toInt() ?? 0;
+    final int threshold = (details?['low_stock_threshold'] as num?)?.toInt() ?? 20;
+    final String? liveImage = details?['image_url'] as String?;
+
+    final String base = details?['base_name']?.toString() ?? name;
+    final String? variant = details?['variant_label']?.toString();
+    final String displayName = (variant != null && variant.isNotEmpty) ? '$base ($variant)' : base;
+
     state = AsyncData(currentState.copyWith(
-      selectedItem: DispatchItem(inventoryId: id, itemName: name, imageUrl: imageUrl),
+      selectedItem: DispatchItem(
+        inventoryId: id, 
+        itemName: displayName, 
+        imageUrl: liveImage ?? imageUrl,
+        stockAvailable: available,
+        targetStock: target > 0 ? target : total,
+        lowStockThreshold: threshold,
+      ),
     ));
   }
 
@@ -98,7 +119,7 @@ class FastDispatchController extends _$FastDispatchController {
     state = const AsyncLoading();
     
     try {
-      final repo = DispatchRepository(Supabase.instance.client);
+      final repo = ref.read(dispatchRepositoryProvider);
       final user = ref.read(currentUserProvider);
       final releasedBy = user?.fullName ?? user?.email ?? 'Unknown Manager';
 

@@ -111,8 +111,13 @@ export async function fetchReportDataAction(
         // 📅 CRITICAL: Registry reports (inventory/summary) should ignore temporary date filters
         // but activity reports (logs) require them.
         const isRegistry = ['inventory', 'summary', 'low-stock', 'expiry-alert'].includes(type)
+        const isOverdueReport = type === 'overdue'
         
-        if (!isRegistry) {
+        if (isOverdueReport) {
+            // 🛡️ ELITE OVERDUE LOGIC: Fetch candidates by status, then filter in JS
+            // This avoids column-comparison limitations in PostgREST (actual > expected)
+            query = query.in('status', ['borrowed', 'overdue', 'returned'])
+        } else if (!isRegistry) {
             if (validatedConfig.dateFrom) query = query.gte('created_at', `${validatedConfig.dateFrom}T00:00:00`)
             if (validatedConfig.dateTo) query = query.lte('created_at', `${validatedConfig.dateTo}T23:59:59`)
         }
@@ -123,7 +128,7 @@ export async function fetchReportDataAction(
         if (validatedConfig.borrower && table === 'borrow_logs') {
             query = query.ilike('borrower_name', `%${validatedConfig.borrower}%`)
         }
-        if (validatedConfig.status?.length && table === 'borrow_logs') {
+        if (validatedConfig.status?.length && table === 'borrow_logs' && !isOverdueReport) {
             query = query.in('status', validatedConfig.status)
         }
 
@@ -136,6 +141,28 @@ export async function fetchReportDataAction(
         let { data, error } = await query
         if (error) throw error
 
+        // 🛡️ JS-SIDE OVERDUE FILTERING
+        if (isOverdueReport && data) {
+            const now = new Date()
+            data = data.filter(l => {
+                const isStillOut = ['borrowed', 'overdue'].includes(l.status)
+                const expected = l.expected_return_date ? new Date(l.expected_return_date) : null
+                
+                if (!expected) return false // Cannot be overdue without a target date
+                
+                if (isStillOut) {
+                    return expected < now
+                }
+                
+                if (l.status === 'returned' && l.actual_return_date) {
+                    const actual = new Date(l.actual_return_date)
+                    return actual > expected
+                }
+                
+                return false
+            })
+        }
+
         // 🎯 TACTICAL FILTERING: 'low-stock' only shows items below threshold
         if (type === 'low-stock' && data) {
             const { isLowStock } = await import('@/lib/inventory-utils')
@@ -144,8 +171,13 @@ export async function fetchReportDataAction(
 
         return { success: true, data: data || [] }
     } catch (error: any) {
-        console.error('Failed to fetch report data:', error)
-        return { success: false, error: 'Database retrieval failed' }
+        console.error('CRITICAL: Report data fetch failure:', {
+            type,
+            error: error.message,
+            stack: error.stack,
+            code: error.code // Supabase error code
+        })
+        return { success: false, error: `Report retrieval failed: ${error.message || 'Unknown error'}` }
     }
 }
 

@@ -21,7 +21,7 @@ interface MessengerWindowV3Props {
 }
 
 /**
- * Messenger Window V3 (LIGTAS Platinum Standard)
+ * Messenger Window V3 (ResQTrack Platinum Standard)
  * Decomposed into _components to satisfy the 150-line protocol.
  */
 export function MessengerWindowV3({ roomId, title, participant, recentRooms = [], onSwitchRoom }: MessengerWindowV3Props) {

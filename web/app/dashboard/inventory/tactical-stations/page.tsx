@@ -3,7 +3,7 @@ import { StationsHubClient } from './stations-hub-client'
 import type { Station, InventoryPickerItem } from '@/src/features/tactical-stations/types'
 
 export const metadata = {
-    title: 'Tactical Station Builder | LIGTAS',
+    title: 'Tactical Station Builder | ResQTrack',
     description: 'Physical QR Station Builder & Inventory Mapping',
 }
 
@@ -33,7 +33,7 @@ async function getInventoryItems(): Promise<InventoryPickerItem[]> {
         const supabase = await createSupabaseServer()
         const { data, error } = await supabase
             .from('inventory')
-            .select('id, item_name, category, stock_available, unit, item_type')
+            .select('id, item_name, category, stock_available, stock_total, target_stock, unit, item_type')
             .is('deleted_at', null)
             .order('item_name', { ascending: true })
 
@@ -46,6 +46,7 @@ async function getInventoryItems(): Promise<InventoryPickerItem[]> {
             item_name: row.item_name as string,
             category: (row.category ?? 'GEN') as string,
             stock_available: (row.stock_available ?? 0) as number,
+            stock_total: (row.stock_total ?? 0) as number,
             unit: (row.unit ?? 'pcs') as string,
             item_type: ((row.item_type ?? 'consumable') as 'equipment' | 'consumable'),
         }))

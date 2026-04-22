@@ -7,7 +7,7 @@ import { Home, Package, CheckSquare, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
- * 📱 LIGTAS Mobile Navigation
+ * 📱 ResQTrack Mobile Navigation
  * 🏛️ ARCHITECTURE: Fixed bottom bar for high-reachability touch targets.
  */
 export function MobileNav() {

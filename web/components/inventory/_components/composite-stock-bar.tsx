@@ -36,6 +36,13 @@ export function CompositeStockBar({
     setIsBorrowedPopoverOpen,
     fetchActiveLoans
 }: CompositeStockBarProps) {
+    const isConsumable = (item.item_type || '').toLowerCase() === 'consumable'
+    const activeLabel = isConsumable ? 'DISPENSED' : 'BORROWED'
+    const activeHeader = isConsumable ? 'Dispensed Items' : 'Borrowed Items'
+    const activeEmpty = isConsumable ? 'No dispensed records.' : 'No items borrowed.'
+    const now = new Date()
+    const rollingWeekStart = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
+
     const anchor = (item as any).target_stock || item.stock_total || 1
     
     // 📊 SENIOR MATH: Distinguish between Available-Good and Borrowed-Good
@@ -50,10 +57,55 @@ export function CompositeStockBar({
 
     const hasIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
     const hasPending = pendingCount > 0
-    const hasActiveLoans = borrowedCount > 0 || activeLoans.length > 0
+    const dispensedRows = isConsumable
+        ? activeLoans.filter((loan) => loan.status === 'dispensed')
+        : []
+    const weeklyDispensedRows = isConsumable
+        ? dispensedRows.filter((loan) => new Date(loan.created_at) >= rollingWeekStart)
+        : []
+    const weeklyDispensedQty = weeklyDispensedRows.reduce((sum, row) => sum + (row.quantity || 0), 0)
+    const lifetimeDispensedQty = dispensedRows.reduce((sum, row) => sum + (row.quantity || 0), 0)
+    const lastDispensedAt = dispensedRows.length > 0 ? new Date(dispensedRows[0].created_at) : null
+    const topRecipientThisWeek = (() => {
+        if (!isConsumable || weeklyDispensedRows.length === 0) return null
+        const tally = new Map<string, number>()
+        for (const row of weeklyDispensedRows) {
+            const name = (row.borrower_name || 'Unknown').trim() || 'Unknown'
+            tally.set(name, (tally.get(name) || 0) + (row.quantity || 0))
+        }
+        const ranked = Array.from(tally.entries()).sort((a, b) => b[1] - a[1])
+        if (ranked.length === 0) return null
+        return { name: ranked[0][0], quantity: ranked[0][1] }
+    })()
+    const hasActiveLoans = isConsumable
+        // For consumables, allow the chip to appear before popover data is fetched.
+        // `borrowedCount` reflects outbound quantity from current stock math.
+        ? (borrowedCount > 0 || dispensedRows.length > 0 || isLoadingActiveLoans)
+        : (borrowedCount > 0 || activeLoans.length > 0)
+    const displayRows = isConsumable
+        ? Array.from(
+            weeklyDispensedRows.reduce((acc, row) => {
+                const borrower = (row.borrower_name || 'Unknown').trim() || 'Unknown'
+                const existing = acc.get(borrower)
+                if (existing) {
+                    existing.quantity += row.quantity || 0
+                } else {
+                    acc.set(borrower, {
+                        borrower_name: borrower,
+                        status: 'dispensed',
+                        quantity: row.quantity || 0,
+                        expected_return_date: null,
+                    })
+                }
+                return acc
+            }, new Map<string, { borrower_name: string; status: string; quantity: number; expected_return_date: string | null }>())
+        )
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, 8)
+        : []
     const groupedActiveLoans = activeLoans.reduce((acc, loan) => {
         const borrower = (loan.borrower_name || 'Unknown').trim()
-        const status = (loan.status || 'borrowed').trim().toLowerCase()
+        const status = (loan.status || (isConsumable ? 'dispensed' : 'borrowed')).trim().toLowerCase()
         const key = `${borrower}::${status}`
         const existing = acc.get(key)
 
@@ -73,6 +125,8 @@ export function CompositeStockBar({
         })
         return acc
     }, new Map<string, { borrower_name: string; status: string; quantity: number; expected_return_date: string | null }>())
+
+    const renderedRows = isConsumable ? displayRows : Array.from(groupedActiveLoans.values())
 
     return (
         <div className="flex flex-col gap-2 min-w-[160px]">
@@ -155,18 +209,48 @@ export function CompositeStockBar({
                                 className="inline-flex items-center gap-1 self-start px-2.5 py-1 rounded-md text-[9px] font-black bg-blue-50 border border-blue-100 text-blue-700 hover:bg-blue-100 transition-all shadow-sm group"
                             >
                                 <AlertTriangle className="h-2.5 w-2.5 text-blue-400 group-hover:text-blue-700" />
-                                {borrowedCount || activeLoans.length} BORROWED
+                                {isConsumable ? `THIS WEEK: ${weeklyDispensedQty}` : (borrowedCount || activeLoans.length)} {activeLabel}
                             </button>
                         </PopoverTrigger>
                         <PopoverContent side="bottom" align="start" className="w-72 p-0 rounded-xl overflow-hidden shadow-2xl border-gray-200 z-[110]" onClick={(e) => e.stopPropagation()}>
-                            <div className="p-3 bg-blue-50/50 border-b border-blue-100 text-[11px] font-black text-blue-900 uppercase tracking-tight">Borrowed Items</div>
+                            <div className="p-3 bg-blue-50/50 border-b border-blue-100 text-[11px] font-black text-blue-900 uppercase tracking-tight">{activeHeader}</div>
+                            {isConsumable && (
+                                <div className="px-3 py-2 border-b border-blue-100/70 bg-blue-50/30 space-y-1">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="font-extrabold text-blue-900 uppercase tracking-tight">This Week</span>
+                                        <span className="font-black text-blue-700">{weeklyDispensedQty} units</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="font-extrabold text-slate-700 uppercase tracking-tight">Lifetime Dispensed</span>
+                                        <span className="font-black text-slate-900">{lifetimeDispensedQty} units</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="font-extrabold text-slate-700 uppercase tracking-tight">Last Dispensed</span>
+                                        <span className="font-black text-slate-900">
+                                            {lastDispensedAt
+                                                ? lastDispensedAt.toLocaleDateString('en-US', {
+                                                    month: 'long',
+                                                    day: 'numeric',
+                                                    year: 'numeric',
+                                                })
+                                                : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="font-extrabold text-slate-700 uppercase tracking-tight">Top Recipient (Week)</span>
+                                        <span className="font-black text-slate-900 text-right">
+                                            {topRecipientThisWeek ? `${topRecipientThisWeek.name} (${topRecipientThisWeek.quantity})` : '—'}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                             <div className="max-h-[300px] overflow-y-auto p-1.5 space-y-1">
                                 {isLoadingActiveLoans ? (
                                     <div className="py-6 text-center text-[10px] font-bold text-gray-400">Fetching borrowers...</div>
-                                ) : activeLoans.length === 0 ? (
-                                    <div className="py-6 text-center text-[10px] font-bold text-gray-400">No items borrowed.</div>
+                                ) : renderedRows.length === 0 ? (
+                                    <div className="py-6 text-center text-[10px] font-bold text-gray-400">{activeEmpty}</div>
                                 ) : (
-                                    Array.from(groupedActiveLoans.values()).map((loan) => (
+                                    renderedRows.map((loan) => (
                                         <div key={`${loan.borrower_name}-${loan.status}`} className={cn(
                                             "p-3 rounded-lg border flex flex-col gap-1 transition-colors",
                                             loan.status === 'overdue' ? "bg-rose-50 border-rose-100" : "bg-white border-gray-100"

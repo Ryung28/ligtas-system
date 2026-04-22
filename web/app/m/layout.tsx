@@ -7,18 +7,18 @@ import { InventoryProvider } from '@/providers/inventory-provider'
 import { TransactionDetailSheet } from '@/components/mobile/transactions/transaction-detail-sheet'
 
 export const metadata: Metadata = {
-    title: 'LIGTAS Tactical',
+    title: 'ResQTrack',
     description: 'Unified Logistics & Disaster Response Information System',
     manifest: '/manifest.json',
     appleWebApp: {
         capable: true,
         statusBarStyle: 'default',
-        title: 'LIGTAS',
-        startupImage: '/oro-cervo.png',
+        title: 'ResQTrack',
+        startupImage: '/resqtrack-logo.jpg',
     },
     icons: {
         apple: [
-            { url: '/oro-cervo.png', sizes: '180x180', type: 'image/png' },
+            { url: '/resqtrack-logo.jpg', sizes: '180x180', type: 'image/jpeg' },
         ],
     },
 }
@@ -33,7 +33,7 @@ export const viewport: Viewport = {
 }
 
 /**
- * 📱 LIGTAS Mobile Root Layout
+ * 📱 ResQTrack Mobile Root Layout
  * 🛡️ THE STEEL CAGE: Absolute Viewport Clamping
  * This layout ensures the mobile interface remains locked to the device height
  * and prevents unwanted scrolling behaviors outside the main content area.

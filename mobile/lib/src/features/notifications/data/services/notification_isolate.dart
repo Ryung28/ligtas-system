@@ -4,7 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:ui';
 
 /**
- * 🛰️ LIGTAS NOTIFICATION ISOLATE
+ * 🛰️ ResQTrack NOTIFICATION ISOLATE
  * Strict quarantine for background execution. No UI, no Riverpod, no context.
  */
 @pragma('vm:entry-point')
@@ -16,7 +16,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final data = message.data;
 
   // 2. Data-only payload extraction (Versioned Guard)
-  final title = notification?.title ?? data['title'] ?? data['sender_name'] ?? 'LIGTAS Tactical Update';
+  final title = notification?.title ?? data['title'] ?? data['sender_name'] ?? 'ResQTrack Tactical Update';
   final body = notification?.body ?? data['body'] ?? data['message'] ?? 'New operation logged. Check dashboard.';
 
   final localNotifs = FlutterLocalNotificationsPlugin();

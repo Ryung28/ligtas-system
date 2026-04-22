@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/config/branding.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../../auth/domain/models/user_model.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -46,7 +47,7 @@ class DigitalIdCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Row: LIGTAS Branding and Auth Status
+                  // Header Row: app branding and auth status
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -54,7 +55,7 @@ class DigitalIdCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'LIGTAS',
+                            Branding.appName,
                             style: GoogleFonts.lexend(
                               color: Colors.white,
                               fontSize: 20,
@@ -158,7 +159,7 @@ class DigitalIdCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: QrImageView(
-                          data: user?.id ?? 'ligtas-pending',
+                          data: user?.id ?? 'resqtrack-pending',
                           version: QrVersions.auto,
                           size: 70.0,
                           backgroundColor: Colors.white,

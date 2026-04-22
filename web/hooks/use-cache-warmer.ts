@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { preload } from 'swr'
 
 /**
- * 🛰️ LIGTAS Omni-Ignition Protocol
+ * 🛰️ ResQTrack Omni-Ignition Protocol
  * Prefetches and hydrates ALL core dashboard modules in the background.
  * Ensures the 'Instant-On' experience where data resides in memory before navigation.
  */
@@ -57,7 +57,7 @@ export function useCacheWarmer() {
                     return result.success ? (result.data || []) : []
                 })
 
-                console.log('🚀 [LIGTAS OMNI-IGNITION] All sectors hydrated.')
+                console.log('🚀 [ResQTrack OMNI-IGNITION] All sectors hydrated.')
             } catch (error) {
                 console.warn('⚠️ [OMNI-IGNITION] Background sector failure:', error)
             }

@@ -38,7 +38,7 @@ import {
 } from 'lucide-react'
 
 /**
- * 📱 LIGTAS Mobile Item Details
+ * 📱 ResQTrack Mobile Item Details
  * 🏛️ ARCHITECTURE: "The Asset Intelligence Sheet"
  * Full detailed view of a specific tactical asset for on-site auditing.
  */

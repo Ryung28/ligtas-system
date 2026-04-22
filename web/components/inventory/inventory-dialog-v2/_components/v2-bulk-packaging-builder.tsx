@@ -21,7 +21,7 @@ interface BulkPackagingBuilderProps {
     onAddExtra: () => void
 }
 
-const CONTAINER_TYPES = ['Carton', 'Box', 'Case', 'Bag', 'Pallet', 'Pack']
+const CONTAINER_TYPES = ['Carton', 'Box', 'Case', 'Bag', 'Pallet', 'Pack', 'Custom']
 
 export function V2BulkPackagingBuilder({ 
     packaging, onUpdate, onUpdateBatch, onUpdateLabel, onAddExtra 
@@ -29,18 +29,19 @@ export function V2BulkPackagingBuilder({
     const [isExpanded, setIsExpanded] = useState(true)
     const totalUnitsTotal = packaging.batches.reduce((s, b) => s + b.units, 0)
     
+    const isCustom = !['Carton', 'Box', 'Case', 'Bag', 'Pallet', 'Pack'].includes(packaging.containerType)
+    const displayValue = isCustom ? 'Custom' : packaging.containerType
+    
     if (!packaging.enabled) {
         return (
-            <div className="flex items-center justify-between py-2 px-1 border-t border-slate-100 mt-2">
-                <div className="flex items-center gap-2">
-                    <Box className="h-4 w-4 text-slate-400" />
-                    <Label className="text-[11px] font-black text-slate-400 uppercase tracking-tight">Bulk Mode Disabled</Label>
-                </div>
+            <div className="flex items-center justify-end mb-2">
                 <button 
+                    type="button"
                     onClick={() => onUpdate({ enabled: true })}
-                    className="text-[10px] font-black text-white bg-zinc-900 hover:bg-zinc-800 uppercase tracking-widest px-4 py-2 rounded-xl transition-all shadow-md"
+                    className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 hover:text-blue-600 border border-slate-100 px-3 py-1.5 rounded-full bg-slate-50/50 hover:bg-blue-50 transition-all shadow-sm uppercase tracking-widest"
                 >
-                    Enable Packing Mode
+                    <Package className="h-3 w-3" />
+                    Bulk Options
                 </button>
             </div>
         )
@@ -85,7 +86,7 @@ export function V2BulkPackagingBuilder({
                             <div className="space-y-2">
                                 <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</Label>
                                 <Select 
-                                    value={packaging.containerType} 
+                                    value={displayValue} 
                                     onValueChange={(val) => onUpdate({ containerType: val })}
                                 >
                                     <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50 text-zinc-900 text-[12px] font-black shadow-sm focus:ring-zinc-900/10">
@@ -97,6 +98,16 @@ export function V2BulkPackagingBuilder({
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {isCustom && (
+                                    <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                                        <Input 
+                                            placeholder="Specify Name..."
+                                            value={packaging.containerType === 'Custom' ? '' : packaging.containerType}
+                                            onChange={(e) => onUpdate({ containerType: e.target.value })}
+                                            className="h-8 rounded-lg border-slate-200 text-[11px] font-black bg-white shadow-sm focus-visible:ring-zinc-900/10"
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity</Label>

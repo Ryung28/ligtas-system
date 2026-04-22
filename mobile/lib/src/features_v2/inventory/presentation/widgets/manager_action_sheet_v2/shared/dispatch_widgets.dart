@@ -34,7 +34,11 @@ class ReturnScheduleRow extends ConsumerWidget {
             color: sentinel.containerLow,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Row(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.start,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               Text(
                 'Anytime',
@@ -51,8 +55,7 @@ class ReturnScheduleRow extends ConsumerWidget {
                 style: GoogleFonts.lexend(
                     fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.onyxBlack),
               ),
-              if (s.isDateReturn) ...[
-                const Spacer(),
+              if (s.isDateReturn)
                 GestureDetector(
                   onTap: () async {
                     final d = await showDatePicker(
@@ -79,7 +82,6 @@ class ReturnScheduleRow extends ConsumerWidget {
                     ),
                   ),
                 ),
-              ],
             ],
           ),
         ),

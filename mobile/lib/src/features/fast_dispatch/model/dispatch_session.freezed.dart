@@ -238,6 +238,9 @@ mixin _$DispatchItem {
   String get itemName => throw _privateConstructorUsedError;
   String? get imageUrl => throw _privateConstructorUsedError;
   int get quantity => throw _privateConstructorUsedError;
+  int get stockAvailable => throw _privateConstructorUsedError;
+  int get targetStock => throw _privateConstructorUsedError;
+  int get lowStockThreshold => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -251,7 +254,14 @@ abstract class $DispatchItemCopyWith<$Res> {
           DispatchItem value, $Res Function(DispatchItem) then) =
       _$DispatchItemCopyWithImpl<$Res, DispatchItem>;
   @useResult
-  $Res call({int inventoryId, String itemName, String? imageUrl, int quantity});
+  $Res call(
+      {int inventoryId,
+      String itemName,
+      String? imageUrl,
+      int quantity,
+      int stockAvailable,
+      int targetStock,
+      int lowStockThreshold});
 }
 
 /// @nodoc
@@ -271,6 +281,9 @@ class _$DispatchItemCopyWithImpl<$Res, $Val extends DispatchItem>
     Object? itemName = null,
     Object? imageUrl = freezed,
     Object? quantity = null,
+    Object? stockAvailable = null,
+    Object? targetStock = null,
+    Object? lowStockThreshold = null,
   }) {
     return _then(_value.copyWith(
       inventoryId: null == inventoryId
@@ -289,6 +302,18 @@ class _$DispatchItemCopyWithImpl<$Res, $Val extends DispatchItem>
           ? _value.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
               as int,
+      stockAvailable: null == stockAvailable
+          ? _value.stockAvailable
+          : stockAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetStock: null == targetStock
+          ? _value.targetStock
+          : targetStock // ignore: cast_nullable_to_non_nullable
+              as int,
+      lowStockThreshold: null == lowStockThreshold
+          ? _value.lowStockThreshold
+          : lowStockThreshold // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -301,7 +326,14 @@ abstract class _$$DispatchItemImplCopyWith<$Res>
       __$$DispatchItemImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({int inventoryId, String itemName, String? imageUrl, int quantity});
+  $Res call(
+      {int inventoryId,
+      String itemName,
+      String? imageUrl,
+      int quantity,
+      int stockAvailable,
+      int targetStock,
+      int lowStockThreshold});
 }
 
 /// @nodoc
@@ -319,6 +351,9 @@ class __$$DispatchItemImplCopyWithImpl<$Res>
     Object? itemName = null,
     Object? imageUrl = freezed,
     Object? quantity = null,
+    Object? stockAvailable = null,
+    Object? targetStock = null,
+    Object? lowStockThreshold = null,
   }) {
     return _then(_$DispatchItemImpl(
       inventoryId: null == inventoryId
@@ -337,6 +372,18 @@ class __$$DispatchItemImplCopyWithImpl<$Res>
           ? _value.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
               as int,
+      stockAvailable: null == stockAvailable
+          ? _value.stockAvailable
+          : stockAvailable // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetStock: null == targetStock
+          ? _value.targetStock
+          : targetStock // ignore: cast_nullable_to_non_nullable
+              as int,
+      lowStockThreshold: null == lowStockThreshold
+          ? _value.lowStockThreshold
+          : lowStockThreshold // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -348,7 +395,10 @@ class _$DispatchItemImpl implements _DispatchItem {
       {required this.inventoryId,
       required this.itemName,
       this.imageUrl,
-      this.quantity = 1});
+      this.quantity = 1,
+      this.stockAvailable = 0,
+      this.targetStock = 0,
+      this.lowStockThreshold = 20});
 
   factory _$DispatchItemImpl.fromJson(Map<String, dynamic> json) =>
       _$$DispatchItemImplFromJson(json);
@@ -362,10 +412,19 @@ class _$DispatchItemImpl implements _DispatchItem {
   @override
   @JsonKey()
   final int quantity;
+  @override
+  @JsonKey()
+  final int stockAvailable;
+  @override
+  @JsonKey()
+  final int targetStock;
+  @override
+  @JsonKey()
+  final int lowStockThreshold;
 
   @override
   String toString() {
-    return 'DispatchItem(inventoryId: $inventoryId, itemName: $itemName, imageUrl: $imageUrl, quantity: $quantity)';
+    return 'DispatchItem(inventoryId: $inventoryId, itemName: $itemName, imageUrl: $imageUrl, quantity: $quantity, stockAvailable: $stockAvailable, targetStock: $targetStock, lowStockThreshold: $lowStockThreshold)';
   }
 
   @override
@@ -380,13 +439,19 @@ class _$DispatchItemImpl implements _DispatchItem {
             (identical(other.imageUrl, imageUrl) ||
                 other.imageUrl == imageUrl) &&
             (identical(other.quantity, quantity) ||
-                other.quantity == quantity));
+                other.quantity == quantity) &&
+            (identical(other.stockAvailable, stockAvailable) ||
+                other.stockAvailable == stockAvailable) &&
+            (identical(other.targetStock, targetStock) ||
+                other.targetStock == targetStock) &&
+            (identical(other.lowStockThreshold, lowStockThreshold) ||
+                other.lowStockThreshold == lowStockThreshold));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, inventoryId, itemName, imageUrl, quantity);
+  int get hashCode => Object.hash(runtimeType, inventoryId, itemName, imageUrl,
+      quantity, stockAvailable, targetStock, lowStockThreshold);
 
   @JsonKey(ignore: true)
   @override
@@ -407,7 +472,10 @@ abstract class _DispatchItem implements DispatchItem {
       {required final int inventoryId,
       required final String itemName,
       final String? imageUrl,
-      final int quantity}) = _$DispatchItemImpl;
+      final int quantity,
+      final int stockAvailable,
+      final int targetStock,
+      final int lowStockThreshold}) = _$DispatchItemImpl;
 
   factory _DispatchItem.fromJson(Map<String, dynamic> json) =
       _$DispatchItemImpl.fromJson;
@@ -420,6 +488,12 @@ abstract class _DispatchItem implements DispatchItem {
   String? get imageUrl;
   @override
   int get quantity;
+  @override
+  int get stockAvailable;
+  @override
+  int get targetStock;
+  @override
+  int get lowStockThreshold;
   @override
   @JsonKey(ignore: true)
   _$$DispatchItemImplCopyWith<_$DispatchItemImpl> get copyWith =>

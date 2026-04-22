@@ -19,7 +19,7 @@ export interface ActiveLoan {
     id: number
     borrower_name: string
     quantity: number
-    status: 'borrowed' | 'overdue'
+    status: 'borrowed' | 'overdue' | 'dispensed'
     expected_return_date: string | null
     created_at: string
 }
@@ -58,7 +58,7 @@ export async function getActiveLoansByIds(itemIds: number[]): Promise<{ success:
             .from('borrow_logs')
             .select('id, borrower_name, quantity, status, expected_return_date, created_at')
             .in('inventory_id', itemIds)
-            .in('status', ['borrowed', 'overdue'])
+            .in('status', ['borrowed', 'overdue', 'dispensed'])
             .order('created_at', { ascending: false })
 
         if (error) {

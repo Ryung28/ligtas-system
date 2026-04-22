@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Permissions for LIGTAS mobile app -->
+    <!-- Permissions for ResQTrack mobile app -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -20,9 +20,9 @@
     </queries>
 
     <application
-        android:label="LIGTAS"
+        android:label="ResQTrack"
         android:name="${applicationName}"
-        android:icon="@drawable/cdrrmo_logo"
+        android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"

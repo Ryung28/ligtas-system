@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mobile/src/core/design_system/app_theme.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/widgets/tactical_asset_image.dart';
+import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
 import '../controllers/analyst_dashboard_controller.dart';
 import '../../domain/entities/station_manifest.dart';
-import 'package:mobile/src/features/scanner/models/qr_payload.dart';
-import 'package:mobile/src/features/scanner/widgets/scan_result_sheet.dart';
 import '../../../fast_dispatch/providers/dispatch_controller.dart';
 
 class StationProvisioningScreen extends ConsumerStatefulWidget {
@@ -32,6 +30,24 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
   
   String _searchQuery = '';
   String _activeFilter = 'All';
+  static const List<String> _knownCategories = ['Medical', 'Rescue', 'Tools'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Reuse Hero V2 dock-suppression pattern while this screen is active.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isDockSuppressedProvider.notifier).state = true;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    ref.read(isDockSuppressedProvider.notifier).state = false;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +65,7 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
         ),
         title: Column(
           children: [
-            Text('STATION TRIAGE', 
+            Text('STATION EQUIPMENT', 
               style: GoogleFonts.lexend(color: const Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
             const Gap(2),
             Text(widget.stationName.toUpperCase(), 
@@ -64,6 +80,10 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
       ),
       body: manifestAsync.when(
         data: (items) {
+          final availableFilters = _buildCategoryFilters(items);
+          if (!availableFilters.contains(_activeFilter)) {
+            _activeFilter = 'All';
+          }
           final filteredItems = _applyFilters(items);
           final summary = items.fold<Map<String, int>>(
             {'current': 0, 'target': 0},
@@ -80,7 +100,7 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
           return Column(
             children: [
               _buildCompactStockOverview(summary),
-              _buildFilterChips(),
+              _buildFilterChips(availableFilters),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
@@ -126,7 +146,7 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
     // 🎨 REACTIVE COLORS: Intelligence for the manager
     final Color barColor = progress > 0.8 
         ? const Color(0xFF10B981) // Green
-        : progress > 0.4 
+        : progress > 0.2 
             ? Colors.orangeAccent 
             : Colors.redAccent;
 
@@ -176,8 +196,7 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
     );
   }
 
-  Widget _buildFilterChips() {
-    final filters = ['All', 'Shortage', 'Fulfilled'];
+  Widget _buildFilterChips(List<String> filters) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: SingleChildScrollView(
@@ -196,7 +215,25 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: isSelected ? stitchNavy : stitchBorder),
                 ),
-                child: Text(f, style: GoogleFonts.lexend(color: isSelected ? Colors.white : const Color(0xFF64748B), fontSize: 10, fontWeight: FontWeight.w800)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _iconForCategoryFilter(f),
+                      size: 12,
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    ),
+                    const Gap(6),
+                    Text(
+                      f,
+                      style: GoogleFonts.lexend(
+                        color: isSelected ? Colors.white : const Color(0xFF64748B),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }).toList(),
@@ -206,7 +243,15 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
   }
 
   Widget _buildItemCard(StationManifestItem item) {
-    final isShortage = item.currentStock < item.quantityRequired;
+    final healthRatio = item.quantityRequired > 0 ? (item.currentStock / item.quantityRequired) : 0.0;
+    
+    // 🎨 TACTICAL TRIAGE COLORS: 
+    // Green > 80% (Safe)
+    // Orange 20-80% (Moderate/Warning)
+    // Red < 20% (Critical)
+    final Color healthColor = healthRatio < 0.2 
+        ? Colors.redAccent 
+        : (healthRatio < 0.8 ? Colors.orangeAccent : const Color(0xFF10B981));
     
     return InkWell(
       onTap: () {
@@ -232,7 +277,16 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-              child: Icon(Icons.inventory_2_rounded, color: isShortage ? Colors.orange : stitchNavy, size: 18),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: TacticalAssetImage(
+                  path: item.imageUrl,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
             const Gap(12),
             Expanded(
@@ -242,8 +296,27 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
                   Text(item.itemName.toUpperCase(), 
                     style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: stitchNavy),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text('${item.currentStock} / ${item.quantityRequired} UNITS', 
-                    style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w700, color: isShortage ? Colors.redAccent : const Color(0xFF10B981))),
+                  const Gap(2),
+                  Row(
+                    children: [
+                      Icon(
+                        _iconForCategory(item.itemCategory),
+                        size: 12,
+                        color: const Color(0xFF64748B),
+                      ),
+                      const Gap(4),
+                      Text(
+                        _normalizeCategory(item.itemCategory),
+                        style: GoogleFonts.lexend(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text('${item.currentStock} AVAILABLE / ${item.quantityRequired} TOTAL', 
+                    style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w700, color: healthColor)),
                 ],
               ),
             ),
@@ -256,29 +329,57 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
 
   List<StationManifestItem> _applyFilters(List<StationManifestItem> items) {
     var filtered = items.where((item) => item.itemName.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-    if (_activeFilter == 'Shortage') {
-      filtered = filtered.where((item) => item.currentStock < item.quantityRequired).toList();
-    } else if (_activeFilter == 'Fulfilled') {
-      filtered = filtered.where((item) => item.currentStock >= item.quantityRequired).toList();
+    if (_activeFilter != 'All') {
+      filtered = filtered
+          .where((item) => _normalizeCategory(item.itemCategory) == _activeFilter)
+          .toList();
     }
     return filtered;
   }
 
-  void _openProvisioningSheet(StationManifestItem item) {
-    final payload = LigtasQrPayload.equipment(
-      protocol: 'ligtas', version: '2.0', action: 'view',
-      itemId: item.inventoryId, itemName: item.itemName,
-    );
-    showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ScanResultSheet(payload: payload),
-    ).then((updated) {
-      if (updated == true) {
-        ref.invalidate(stationManifestProvider(stationId: widget.stationId));
-        ref.read(analystDashboardControllerProvider.notifier).refreshMetrics();
-      }
-    });
+  List<String> _buildCategoryFilters(List<StationManifestItem> items) {
+    final present = items
+        .map((item) => _normalizeCategory(item.itemCategory))
+        .where((category) => _knownCategories.contains(category))
+        .toSet()
+        .toList()
+      ..sort((a, b) => _knownCategories.indexOf(a).compareTo(_knownCategories.indexOf(b)));
+    return ['All', ...present];
+  }
+
+  String _normalizeCategory(String? rawCategory) {
+    final c = (rawCategory ?? '').toLowerCase();
+    if (c.contains('med')) return 'Medical';
+    if (c.contains('rescue')) return 'Rescue';
+    if (c.contains('tool') || c.contains('utility')) return 'Tools';
+    return 'Tools';
+  }
+
+  IconData _iconForCategory(String? rawCategory) {
+    switch (_normalizeCategory(rawCategory)) {
+      case 'Medical':
+        return Icons.medical_services_rounded;
+      case 'Rescue':
+        return Icons.shield_rounded;
+      case 'Tools':
+        return Icons.handyman_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
+  IconData _iconForCategoryFilter(String filter) {
+    switch (filter) {
+      case 'All':
+        return Icons.grid_view_rounded;
+      case 'Medical':
+        return Icons.medical_services_rounded;
+      case 'Rescue':
+        return Icons.shield_rounded;
+      case 'Tools':
+        return Icons.handyman_rounded;
+      default:
+        return Icons.category_rounded;
+    }
   }
 }

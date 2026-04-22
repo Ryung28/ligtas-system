@@ -10,8 +10,9 @@ import type { ActionResult, Station, StationManifestItem } from '../types'
 const createStationSchema = z.object({
     location_name: z.string().min(1, 'Physical location is required'),
     station_name: z.string().min(1, 'Station name is required').max(100),
-    station_code: z.string().optional(), // Now optional as we auto-gen
+    station_code: z.string().optional(),
     description: z.string().max(200).optional().nullable(),
+    item_ids: z.array(z.number().int().positive()).optional(),
 })
 
 const updateStationNameSchema = z.object({
@@ -39,8 +40,12 @@ export async function getStationManifest(
                 inventory (
                     id,
                     item_name,
+                    base_name,
+                    variant_label,
                     category,
                     stock_available,
+                    stock_total,
+                    target_stock,
                     unit,
                     item_type
                 )
@@ -58,16 +63,24 @@ export async function getStationManifest(
                 const inv = row.inventory as {
                     id: number
                     item_name: string
+                    base_name: string | null
+                    variant_label: string | null
                     category: string
                     stock_available: number
+                    stock_total: number
+                    target_stock: number
                     unit: string
                     item_type: string
                 }
                 return {
                     item_id: row.item_id,
                     item_name: inv.item_name,
+                    base_name: inv.base_name,
+                    variant_label: inv.variant_label,
                     category: inv.category ?? 'GEN',
                     stock_available: inv.stock_available,
+                    stock_total: inv.stock_total,
+                    target_stock: inv.target_stock,
                     unit: inv.unit ?? 'pcs',
                     item_type: (inv.item_type ?? 'consumable') as 'equipment' | 'consumable',
                 }
@@ -93,11 +106,14 @@ export async function createStation(
             return { data: null, error: parsed.error.errors[0].message }
         }
 
+        const { data: { user } } = await supabase.auth.getUser()
+
         // 🎲 AUTO-GENERATE STATION CODE
         const generatedCode = parsed.data.station_code || 
             `STN-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
 
-        const { data, error } = await supabase
+        // Step 1: Create the station
+        const { data: station, error: stationError } = await supabase
             .from('storage_locations')
             .insert({
                 location_name: parsed.data.location_name,
@@ -108,19 +124,38 @@ export async function createStation(
             .select('id, location_name, station_name, station_code, description, created_at')
             .single()
 
-        if (error) {
-            console.error('[createStation]', error)
-            if (error.code === '23505') {
+        if (stationError) {
+            console.error('[createStation]', stationError)
+            if (stationError.code === '23505') {
                 return { data: null, error: 'A station with that code already exists.' }
             }
-            return { data: null, error: 'Failed to create station.' }
+            return { data: null, error: `Station creation failed: ${stationError.message}` }
+        }
+
+        // Step 2: Atomic manifest sync if items provided
+        if (parsed.data.item_ids && parsed.data.item_ids.length > 0) {
+            const rows = parsed.data.item_ids.map(item_id => ({
+                station_id: station.id,
+                item_id,
+                added_by: user?.id ?? null,
+            }))
+
+            const { error: manifestError } = await supabase
+                .from('station_manifest')
+                .insert(rows)
+
+            if (manifestError) {
+                console.error('[createStation:manifest]', manifestError)
+                // We keep the station but notify that manifest failed
+                return { data: station as Station, error: 'Station created but manifest failed to sync.' }
+            }
         }
 
         revalidatePath('/dashboard/inventory/tactical-stations')
-        return { data: data as Station, error: null }
+        return { data: station as Station, error: null }
     } catch (err) {
         console.error('[createStation] unexpected', err)
-        return { data: null, error: 'An unexpected error occurred.' }
+        return { data: null, error: 'An unexpected error occurred during creation.' }
     }
 }
 

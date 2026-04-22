@@ -392,7 +392,7 @@ typedef InventoryImageMapRef = AutoDisposeProviderRef<Map<int, String>>;
 String _$inventoryCategoriesHash() =>
     r'db9e15704889ae6232a635079bf1b73360c2cd38';
 
-/// Centralized categories for the LIGTAS inventory
+/// Centralized categories for the ResQTrack inventory
 ///
 /// Copied from [inventoryCategories].
 @ProviderFor(inventoryCategories)

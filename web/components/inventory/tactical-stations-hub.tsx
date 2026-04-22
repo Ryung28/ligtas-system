@@ -12,8 +12,12 @@ import {
     Search,
     ShieldAlert,
     Info,
-    FileText
+    FileText,
+    Cross,
+    Wrench,
+    Shield
 } from 'lucide-react'
+import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -96,6 +100,15 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
         }
     }, [filteredStations, selectedStationId])
 
+    const getCategoryIcon = (category: string) => {
+        const cat = (category || '').toLowerCase()
+        if (cat.includes('medical')) return Cross
+        if (cat.includes('tool')) return Wrench
+        if (cat.includes('res')) return Shield
+        if (cat.includes('ppe')) return Shield
+        return Box
+    }
+
     const activeStation = stations.find(s => s.id === selectedStationId)
 
     return (
@@ -107,7 +120,7 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
                         <Input 
                             placeholder="Find station..." 
-                            className="pl-8 h-8 bg-slate-50/50 border-none text-[10px] font-bold uppercase tracking-wider focus-visible:ring-0"
+                            className="pl-8 h-9 14in:h-10 bg-slate-50/50 border-none text-[11px] 14in:text-xs font-bold uppercase tracking-wider focus-visible:ring-0"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -125,15 +138,12 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
                                     : "bg-white border-transparent hover:bg-white hover:border-slate-200 text-slate-600"
                             )}
                         >
-                            <div className={cn(
-                                "h-1.5 w-1.5 rounded-full shrink-0",
-                                station.lowStockCount > 0 ? "bg-orange-400 animate-pulse" : (selectedStationId === station.id ? "bg-white" : "bg-emerald-500")
-                            )} />
+                                <div className="h-1.5 w-1.5 rounded-full shrink-0 bg-transparent" />
                             <div className="min-w-0 flex-1">
-                                <p className={cn("text-[11px] font-heading font-black uppercase italic truncate tracking-tight leading-none", selectedStationId === station.id ? "text-white" : "text-slate-900")}>
+                                <p className={cn("text-xs 14in:text-sm font-heading font-black uppercase italic truncate tracking-tight leading-none", selectedStationId === station.id ? "text-white" : "text-slate-900")}>
                                     {station.name}
                                 </p>
-                                <p className={cn("text-[8px] font-mono font-black uppercase tracking-widest mt-1", selectedStationId === station.id ? "text-blue-200" : "text-slate-400")}>
+                                <p className={cn("text-[10px] 14in:text-xs font-mono font-black uppercase tracking-widest mt-1.5", selectedStationId === station.id ? "text-blue-200" : "text-slate-400")}>
                                     {station.items.length} ITM • {station.id.slice(0, 8)}
                                 </p>
                             </div>
@@ -150,31 +160,18 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
                         {/* Header Actions */}
                         <div className="p-4 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
                             <div>
-                                <div className="flex items-center gap-2 mb-0.5">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
-                                    <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">System Connected</span>
-                                </div>
-                                <h1 className="text-xl font-heading font-[950] tracking-tighter text-slate-900 uppercase italic leading-none">
+                                <h1 className="text-xl 14in:text-2xl 3xl:text-3xl font-heading font-[950] tracking-tighter text-slate-900 uppercase italic leading-none">
                                     {activeStation.name}
                                 </h1>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button 
-                                    variant="outline" 
                                     size="sm" 
                                     onClick={() => window.print()}
-                                    className="h-10 rounded-xl px-5 border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-white hover:border-blue-400"
+                                    className="h-11 rounded-xl px-8 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs 14in:text-sm uppercase tracking-[0.15em] gap-3 shadow-xl shadow-blue-200"
                                 >
-                                    <Printer className="h-4 w-4 mr-2" />
-                                    Print Sticker
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    onClick={() => window.print()}
-                                    className="h-10 rounded-xl px-6 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest gap-2 shadow-lg shadow-blue-200"
-                                >
-                                    <FileText className="h-4 w-4" />
-                                    Print List
+                                    <Printer className="h-4.5 w-4.5" />
+                                    Print Station Label
                                 </Button>
                             </div>
                         </div>
@@ -192,15 +189,15 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
                                     Print ID Label
                                 </Button>
                                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl flex flex-col items-center">
-                                    <Badge className="bg-slate-900 text-white text-[8px] mb-4 px-3">DOOR LABEL</Badge>
+                                    <Badge className="bg-slate-900 text-white text-[10px] 14in:text-xs mb-4 px-3">DOOR LABEL</Badge>
                                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
                                         <QRCodeSVG 
                                             value={JSON.stringify({ sid: activeStation.id, loc: activeStation.name })}
-                                            size={140}
+                                            size={160}
                                             level="M"
                                         />
                                     </div>
-                                    <p className="mt-4 text-[9px] font-mono font-black text-slate-400 uppercase tracking-[0.2em]">
+                                    <p className="mt-4 text-[10px] 14in:text-xs font-mono font-black text-slate-400 uppercase tracking-[0.2em]">
                                         ID: {activeStation.id}
                                     </p>
                                 </div>
@@ -208,8 +205,8 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
                                 <div className="bg-slate-900 p-6 rounded-2xl text-white border border-slate-800 shadow-xl overflow-hidden relative">
                                     <div className="absolute right-0 top-0 h-full w-24 bg-blue-600/10 skew-x-[30deg] translate-x-12" />
                                     <ShieldAlert className="h-6 w-6 text-blue-500 mb-3" />
-                                    <p className="text-[11px] font-black uppercase tracking-widest mb-2">How it works</p>
-                                    <p className="text-slate-400 text-[10px] leading-relaxed font-medium">
+                                    <p className="text-xs 14in:text-sm font-black uppercase tracking-widest mb-2">How it works</p>
+                                    <p className="text-slate-400 text-[11px] 14in:text-xs leading-relaxed font-medium">
                                         Scanning this sticker instantly shows live stock updates on mobile. It allows responders to find critical items without opening every drawer.
                                     </p>
                                 </div>
@@ -217,38 +214,49 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
 
                             {/* Right: Full Item Table */}
                             <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden flex flex-col">
-                                <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                        {stations.length} Stations Deployed
-                                    </span>
-                                    <Badge variant={activeStation.lowStockCount > 0 ? "destructive" : "secondary"} className="h-5 text-[9px] font-black uppercase tracking-widest">
-                                        {activeStation.lowStockCount > 0 ? `${activeStation.lowStockCount} LOW STOCK` : 'ALL NORMAL'}
-                                    </Badge>
-                                </div>
                                 <div className="p-0 overflow-auto flex-1">
                                     <table className="w-full text-left">
                                         <thead className="sticky top-0 bg-white border-b border-slate-50 z-10">
                                             <tr>
-                                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Qty</th>
-                                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                                                <th className="px-6 py-4 text-[11px] 14in:text-xs font-black text-slate-400 uppercase tracking-widest">Item Name</th>
+                                                <th className="px-6 py-4 text-[11px] 14in:text-xs font-black text-slate-400 uppercase tracking-widest text-right">Qty</th>
+                                                <th className="px-6 py-4 text-[11px] 14in:text-xs font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
                                             {activeStation.items.map((item, idx) => (
                                                 <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-slate-100 rounded-lg text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                                                <Box className="h-3.5 w-3.5" />
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex items-center gap-3.5">
+                                                            <TacticalAssetImage 
+                                                                url={item.image_url} 
+                                                                alt={item.item_name}
+                                                                size="sm"
+                                                                className="rounded-lg shadow-sm border border-slate-100"
+                                                            />
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="text-sm 14in:text-base font-bold text-slate-700 capitalize leading-tight">{item.item_name}</span>
+                                                                <div className="flex items-center gap-1.5 mt-1">
+                                                                    {(() => {
+                                                                        const CategoryIcon = getCategoryIcon(item.category)
+                                                                        return <CategoryIcon className="h-3 w-3 text-slate-300" />
+                                                                    })()}
+                                                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{item.category || 'Uncategorized'}</span>
+                                                                </div>
                                                             </div>
-                                                            <span className="text-sm font-bold text-slate-700 capitalize">{item.item_name}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <span className="text-sm font-black text-slate-900 tabular-nums">
-                                                            {item.stock_available}
-                                                        </span>
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-sm 14in:text-base font-black text-slate-900 tabular-nums leading-none">
+                                                                {item.stock_available}
+                                                                <span className="text-slate-400 font-medium mx-1">/</span>
+                                                                {item.target_stock > 0 ? item.target_stock : item.stock_total || 0}
+                                                            </span>
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">
+                                                                STOCK LEVEL
+                                                            </span>
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end">
@@ -315,7 +323,7 @@ export function TacticalStationsHub({ items }: TacticalStationsHubProps) {
                             {activeStation.id}
                         </p>
                         <p className="text-xl font-heading font-bold text-slate-400 uppercase tracking-widest mt-2">
-                            LIGTAS TACTICAL STATION • QR REGISTRY
+                            ResQTrack TACTICAL STATION • QR REGISTRY
                         </p>
                     </div>
                 </div>

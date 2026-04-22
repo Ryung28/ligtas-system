@@ -5,7 +5,7 @@ import { DashboardSkeleton } from '@/components/mobile/skeletons/dashboard-skele
 export const dynamic = 'force-dynamic'
 
 /**
- * 📱 LIGTAS Mobile Dashboard
+ * 📱 ResQTrack Mobile Dashboard
  * 🏛️ ARCHITECTURE: "The Command Hub"
  * 
  * NOTE: This is a Server Component shell to satisfy Next.js 15 Suspense

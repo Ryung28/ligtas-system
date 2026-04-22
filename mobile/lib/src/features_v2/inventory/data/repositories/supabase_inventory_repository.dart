@@ -22,17 +22,15 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   Future<List<InventoryItem>> fetchAll({String? warehouseId}) async {
     try {
       // 🛡️ STEEL CAGE: Querying the active_inventory view for mapped data
-      var query = _client
-          .from('active_inventory')
-          .select('*');
-      
-      // If warehouseId is provided, we still query the catalog but might filter 
+      var query = _client.from('active_inventory').select('*');
+
+      // If warehouseId is provided, we still query the catalog but might filter
       // or handle it differently. For now, let's keep global city-wide view.
-      
+
       final response = await query.order('item_name', ascending: true);
-      
+
       final List<dynamic> data = response;
-      
+
       final items = await compute(_parseAndMapItems, data);
 
       // Parallel Sync
@@ -53,14 +51,17 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   Stream<InventoryItem?> watchItem(int id) => _local.watchItem(id);
 
   @override
-  Future<InventoryItem?> findByQrCode(String code, {String? warehouseId}) async {
+  Future<InventoryItem?> findByQrCode(
+    String code, {
+    String? warehouseId,
+  }) async {
     try {
       // 🛡️ STEEL CAGE: QR scanning still points to specific location rows
       var query = _client
           .from('active_inventory')
           .select('*')
           .eq('qr_code', code);
-      
+
       final response = await query.maybeSingle();
 
       if (response != null) {
@@ -93,11 +94,12 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   @override
   Future<InventoryItem?> fetchById(int id) async {
     try {
-      final response = await _client
-          .from('active_inventory')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
+      final response =
+          await _client
+              .from('active_inventory')
+              .select('*')
+              .eq('id', id)
+              .maybeSingle();
 
       if (response != null) {
         final model = InventoryModel.fromJson(response);
@@ -115,38 +117,40 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   @override
   Future<void> archiveItem(String id) async {
     try {
-      debugPrint('[LIGTAS-Security] 🛡️ Hard-Deleting Item: $id');
-      
+      debugPrint('[ResQTrack-Security] 🛡️ Hard-Deleting Item: $id');
+
       // 1. Check for active borrows
       final activeBorrows = await _client
           .from('borrow_logs')
           .select('id')
           .eq('inventory_id', id)
           .eq('status', 'borrowed');
-          
+
       if ((activeBorrows as List).isNotEmpty) {
-        throw Exception('⚠️ STRATEGIC BLOCK: Cannot archive resource. Resolve active borrows (Mark as Returned or Lost) first.');
+        throw Exception(
+          '⚠️ STRATEGIC BLOCK: Cannot archive resource. Resolve active borrows (Mark as Returned or Lost) first.',
+        );
       }
-      
+
       // 2. Hard Delete
-      await _client
-          .from('inventory')
-          .delete()
-          .eq('id', id);
+      await _client.from('inventory').delete().eq('id', id);
 
       // 3. Local update
       final items = await _local.watchItems().first;
       final updatedItems = items.where((i) => i.id.toString() != id).toList();
       _local.saveAll(updatedItems);
-      
     } catch (e) {
-      debugPrint('[LIGTAS-Security] 🛑 Archive failed: $e');
+      debugPrint('[ResQTrack-Security] 🛑 Archive failed: $e');
       rethrow;
     }
   }
 
   @override
-  Future<List<InventoryItem>> fetchLocalPaged({required int offset, required int limit, String? category}) async {
+  Future<List<InventoryItem>> fetchLocalPaged({
+    required int offset,
+    required int limit,
+    String? category,
+  }) async {
     return _local.fetchPagedItems(offset, limit, category: category);
   }
 
@@ -169,7 +173,10 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       category: model.category,
       totalStock: model.quantity,
       availableStock: model.available,
-      location: model.location.isNotEmpty ? model.location : (model.primaryLocation ?? ''),
+      location:
+          model.location.isNotEmpty
+              ? model.location
+              : (model.primaryLocation ?? ''),
       qrCode: model.qrCode,
       status: model.status,
       code: model.code,
@@ -187,10 +194,11 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       // Multi-location fields
       aggregateTotal: model.aggregateTotal,
       aggregateAvailable: model.aggregateAvailable,
-      variants: model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
+      variants:
+          model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
     );
   }
-  
+
   @override
   Future<void> adjustStock({
     required int itemId,
@@ -203,16 +211,19 @@ class SupabaseInventoryRepository implements IInventoryRepository {
     String? warehouseId,
   }) async {
     try {
-      await _client.rpc('adjust_inventory_item', params: {
-        'p_item_id': itemId,
-        'p_old_quantity': oldQuantity.toInt(),
-        'p_new_quantity': newQuantity.toInt(),
-        'p_action_type': actionType,
-        'p_forensic_note': reason,
-        'p_item_name': 'Manual Adjustment',
-        'p_recipient_name': recipientName,
-        'p_recipient_office': recipientOffice,
-      });
+      await _client.rpc(
+        'adjust_inventory_item',
+        params: {
+          'p_item_id': itemId,
+          'p_old_quantity': oldQuantity.toInt(),
+          'p_new_quantity': newQuantity.toInt(),
+          'p_action_type': actionType,
+          'p_forensic_note': reason,
+          'p_item_name': 'Manual Adjustment',
+          'p_recipient_name': recipientName,
+          'p_recipient_office': recipientOffice,
+        },
+      );
 
       // Refresh local cache
       await fetchAll(warehouseId: warehouseId);
@@ -224,13 +235,14 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   @override
   Future<InventoryAdminFields> fetchAdminFields(int itemId) async {
     try {
-      final response = await _client
-          .from('inventory')
-          .select(
-            'id, qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, stock_available, storage_location, location_registry_id, target_stock',
-          )
-          .eq('id', itemId)
-          .maybeSingle();
+      final response =
+          await _client
+              .from('inventory')
+              .select(
+                'id, qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, stock_available, storage_location, location_registry_id, target_stock',
+              )
+              .eq('id', itemId)
+              .maybeSingle();
 
       if (response == null) {
         throw Exception('Inventory item not found for admin edit (id=$itemId)');
@@ -247,7 +259,9 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       final storageLocation = (response['storage_location'] ?? '') as String;
       final locationRegistryIdRaw = response['location_registry_id'];
       final locationRegistryId =
-          locationRegistryIdRaw == null ? null : (locationRegistryIdRaw as num).toInt();
+          locationRegistryIdRaw == null
+              ? null
+              : (locationRegistryIdRaw as num).toInt();
 
       return InventoryAdminFields(
         qtyGood: qtyGood.toInt(),
@@ -294,19 +308,22 @@ class SupabaseInventoryRepository implements IInventoryRepository {
 
       // Keep parity with web: base status is always "Good"; bucket distribution
       // is represented via qty_* columns.
-      await _client.from('inventory').update({
-        'qty_good': qtyGood,
-        'qty_damaged': qtyDamaged,
-        'qty_maintenance': qtyMaintenance,
-        'qty_lost': qtyLost,
-        'stock_total': stockTotal,
-        'stock_available': qtyGood,
-        'status': 'Good',
-        'storage_location': storageLocation,
-        'location_registry_id': locationRegistryId,
-        // If the DB has an audit/forensic column you can wire it here.
-        // For now, we keep the note for future extension.
-      }).eq('id', itemId);
+      await _client
+          .from('inventory')
+          .update({
+            'qty_good': qtyGood,
+            'qty_damaged': qtyDamaged,
+            'qty_maintenance': qtyMaintenance,
+            'qty_lost': qtyLost,
+            'stock_total': stockTotal,
+            'stock_available': qtyGood,
+            'status': 'Good',
+            'storage_location': storageLocation,
+            'location_registry_id': locationRegistryId,
+            // If the DB has an audit/forensic column you can wire it here.
+            // For now, we keep the note for future extension.
+          })
+          .eq('id', itemId);
 
       // Refresh local cache
       await fetchAll();
@@ -332,19 +349,22 @@ class SupabaseInventoryRepository implements IInventoryRepository {
     try {
       final user = _client.auth.currentUser;
       final isScheduled = pickupScheduledAt != null;
-      
+
       // 1. Check stock availability
-      final itemData = await _client
-          .from('inventory')
-          .select('item_name, stock_available, stock_total, item_type')
-          .eq('id', itemId)
-          .single();
-      
+      final itemData =
+          await _client
+              .from('inventory')
+              .select('item_name, stock_available, stock_total, item_type')
+              .eq('id', itemId)
+              .single();
+
       final currentAvailable = (itemData['stock_available'] ?? 0) as int;
       final isConsumable = (itemData['item_type'] == 'consumable');
 
       if (currentAvailable < quantity) {
-        throw Exception('Insufficient stock. Only $currentAvailable available.');
+        throw Exception(
+          'Insufficient stock. Only $currentAvailable available.',
+        );
       }
 
       final now = DateTime.now().toUtc().toIso8601String();
@@ -367,11 +387,19 @@ class SupabaseInventoryRepository implements IInventoryRepository {
         'released_by_user_id': user?.id,
         'borrowed_by': user?.id,
         'transaction_type': isConsumable ? 'dispense' : 'borrow',
-        'status': isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
-        'borrow_date': isScheduled ? null : now,
+        'status':
+            isConsumable
+                ? 'dispensed'
+                : (isScheduled ? 'reserved' : 'borrowed'),
+        // Keep borrow_date non-null to satisfy DB constraints for reserved rows.
+        'borrow_date':
+            isScheduled
+                ? pickupScheduledAt.toUtc().toIso8601String()
+                : now,
         'pickup_scheduled_at': pickupScheduledAt?.toUtc().toIso8601String(),
         'actual_return_date': isConsumable ? now : null,
-        'expected_return_date': isConsumable ? null : expectedReturnDate?.toUtc().toIso8601String(),
+        'expected_return_date':
+            isConsumable ? null : expectedReturnDate?.toUtc().toIso8601String(),
         'warehouse_id': warehouseId,
         'created_at': now,
         'platform_origin': 'Mobile',
@@ -399,37 +427,43 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       final user = _client.auth.currentUser;
 
       // 1. Fetch Log
-      final log = await _client
-          .from('borrow_logs')
-          .select('inventory_id, quantity, status')
-          .eq('id', int.parse(loanId))
-          .single();
+      final log =
+          await _client
+              .from('borrow_logs')
+              .select('inventory_id, quantity, status')
+              .eq('id', int.parse(loanId))
+              .single();
 
       if (log['status'] == 'returned') return;
 
       // 2. Update Log
-      await _client.from('borrow_logs').update({
-        'status': 'returned',
-        'actual_return_date': DateTime.now().toUtc().toIso8601String(),
-        'received_by_name': receivedByName,
-        'received_by_user_id': user?.id,
-        'return_condition': condition.toLowerCase(),
-        'return_notes': notes,
-      }).eq('id', int.parse(loanId));
+      await _client
+          .from('borrow_logs')
+          .update({
+            'status': 'returned',
+            'actual_return_date': DateTime.now().toUtc().toIso8601String(),
+            'received_by_name': receivedByName,
+            'received_by_user_id': user?.id,
+            'return_condition': condition.toLowerCase(),
+            'return_notes': notes,
+          })
+          .eq('id', int.parse(loanId));
 
       // 3. Update Inventory (Increment)
-      final itemData = await _client
-          .from('inventory')
-          .select('stock_available')
-          .eq('id', log['inventory_id'])
-          .single();
-      
+      final itemData =
+          await _client
+              .from('inventory')
+              .select('stock_available')
+              .eq('id', log['inventory_id'])
+              .single();
+
       final currentStock = (itemData['stock_available'] ?? 0) as int;
       final quantityToReturn = (log['quantity'] ?? 0) as int;
 
-      await _client.from('inventory').update({
-        'stock_available': currentStock + quantityToReturn,
-      }).eq('id', log['inventory_id']);
+      await _client
+          .from('inventory')
+          .update({'stock_available': currentStock + quantityToReturn})
+          .eq('id', log['inventory_id']);
 
       // 4. Local Refresh
       await fetchAll(warehouseId: warehouseId);
@@ -442,16 +476,17 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   @override
   Future<LoanItem?> getActiveLoan(int itemId, String borrowerName) async {
     try {
-      final response = await _client
-          .from('borrow_logs')
-          .select('*')
-          .eq('inventory_id', itemId)
-          .ilike('borrower_name', borrowerName.trim())
-          .eq('status', 'borrowed')
-          .maybeSingle();
+      final response =
+          await _client
+              .from('borrow_logs')
+              .select('*')
+              .eq('inventory_id', itemId)
+              .ilike('borrower_name', borrowerName.trim())
+              .eq('status', 'borrowed')
+              .maybeSingle();
 
       if (response == null) return null;
-      
+
       return _mapLogToLoanItem(response);
     } catch (e) {
       debugPrint('Active Loan Search Error: $e');
@@ -460,9 +495,15 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   }
 
   LoanItem _mapLogToLoanItem(Map<String, dynamic> data) {
-    String? borrowDateStr = data['borrow_date'] as String? ?? data['created_at'] as String?;
-    DateTime borrowDate = borrowDateStr != null ? DateTime.parse(borrowDateStr).toLocal() : DateTime.now();
-    final expectedDateStr = data['expected_return_date'] as String? ?? DateTime.now().add(const Duration(days: 7)).toIso8601String();
+    String? borrowDateStr =
+        data['borrow_date'] as String? ?? data['created_at'] as String?;
+    DateTime borrowDate =
+        borrowDateStr != null
+            ? DateTime.parse(borrowDateStr).toLocal()
+            : DateTime.now();
+    final expectedDateStr =
+        data['expected_return_date'] as String? ??
+        DateTime.now().add(const Duration(days: 7)).toIso8601String();
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
 
     return LoanItem(
@@ -481,6 +522,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       borrowedBy: (data['borrowed_by'] ?? '').toString(),
     );
   }
+
   @override
   Future<void> updateItemMetadata({
     required int itemId,
@@ -497,18 +539,22 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   }) async {
     try {
       // 🔒 IDENTITY LOCK: Update base metadata
-      await _client.from('inventory').update({
-        'item_name': name,
-        'category': category,
-        if (brand != null) 'brand': brand,
-        if (equipmentType != null) 'equipment_type': equipmentType,
-        if (serialNumber != null) 'serial_number': serialNumber,
-        if (modelNumber != null) 'model_number': modelNumber,
-        if (expiryDate != null) 'expiry_date': expiryDate,
-        if (targetStock != null) 'target_stock': targetStock,
-        if (lowStockThreshold != null) 'low_stock_threshold': lowStockThreshold,
-        if (imageUrl != null) 'image_url': imageUrl,
-      }).eq('id', itemId);
+      await _client
+          .from('inventory')
+          .update({
+            'item_name': name,
+            'category': category,
+            if (brand != null) 'brand': brand,
+            if (equipmentType != null) 'equipment_type': equipmentType,
+            if (serialNumber != null) 'serial_number': serialNumber,
+            if (modelNumber != null) 'model_number': modelNumber,
+            if (expiryDate != null) 'expiry_date': expiryDate,
+            if (targetStock != null) 'target_stock': targetStock,
+            if (lowStockThreshold != null)
+              'low_stock_threshold': lowStockThreshold,
+            if (imageUrl != null) 'image_url': imageUrl,
+          })
+          .eq('id', itemId);
 
       // Refresh local cache
       await fetchAll();
@@ -521,19 +567,23 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   Future<void> releaseReservedItem(int logId) async {
     try {
       final user = _client.auth.currentUser;
-      final userName = user?.userMetadata?['full_name'] ?? user?.email ?? 'Authorized Staff';
+      final userName =
+          user?.userMetadata?['full_name'] ?? user?.email ?? 'Authorized Staff';
       final now = DateTime.now().toUtc().toIso8601String();
-      
-      await _client.from('borrow_logs').update({
-        'status': 'borrowed',
-        'borrow_date': now,
-        'released_by_user_id': user?.id,
-        'released_by_name': userName,
-        'platform_origin': 'Mobile',
-        'last_updated_origin': 'Mobile',
-      }).eq('id', logId);
 
-      // Refresh local cache 
+      await _client
+          .from('borrow_logs')
+          .update({
+            'status': 'borrowed',
+            'borrow_date': now,
+            'released_by_user_id': user?.id,
+            'released_by_name': userName,
+            'platform_origin': 'Mobile',
+            'last_updated_origin': 'Mobile',
+          })
+          .eq('id', logId);
+
+      // Refresh local cache
       // (Optionally sync transactions if we have a separate transaction repo. Parity forces full fetch.)
       await fetchAll();
     } catch (e) {
@@ -548,12 +598,12 @@ List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
     final json = raw as Map<String, dynamic>;
     final model = InventoryModel.fromJson(json);
 
-    final qtyGood        = model.qtyGood;
-    final qtyDamaged     = model.qtyDamaged;
+    final qtyGood = model.qtyGood;
+    final qtyDamaged = model.qtyDamaged;
     final qtyMaintenance = model.qtyMaintenance;
-    final qtyLost        = model.qtyLost;
-    final expiryRaw      = json['expiry_date'] as String?;
-    final expiryDate     = expiryRaw != null ? DateTime.tryParse(expiryRaw) : null;
+    final qtyLost = model.qtyLost;
+    final expiryRaw = json['expiry_date'] as String?;
+    final expiryDate = expiryRaw != null ? DateTime.tryParse(expiryRaw) : null;
     final expiryAlertDays = (json['expiry_alert_days'] as num?)?.toInt() ?? 15;
 
     return InventoryItem(
@@ -563,7 +613,10 @@ List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
       category: model.category,
       totalStock: model.quantity,
       availableStock: model.available,
-      location: model.location.isNotEmpty ? model.location : (model.primaryLocation ?? ''),
+      location:
+          model.location.isNotEmpty
+              ? model.location
+              : (model.primaryLocation ?? ''),
       qrCode: model.qrCode,
       status: model.status,
       code: model.code,
@@ -580,12 +633,12 @@ List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
       qtyDamaged: qtyDamaged,
       qtyMaintenance: qtyMaintenance,
       qtyLost: qtyLost,
-      
+
       // Multi-location fields
       aggregateTotal: model.aggregateTotal,
       aggregateAvailable: model.aggregateAvailable,
-      variants: model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
+      variants:
+          model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
     );
   }).toList();
 }
-

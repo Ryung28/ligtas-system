@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 
 /**
- * 🛰️ LIGTAS ADAPTIVE ROUTING SENTRY
+ * 🛰️ ResQTrack ADAPTIVE ROUTING SENTRY
  * Handles genuine viewport resizes only.
  * FIXED: No longer triggers router.replace on every navigation click.
  */

@@ -17,7 +17,7 @@ interface InventoryContextType {
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
 
 /**
- * 📦 LIGTAS GLOBAL INVENTORY PROVIDER
+ * 📦 ResQTrack GLOBAL INVENTORY PROVIDER
  * 🛡️ SUPER SENIOR PROTOCOL: Background Lifecycle Management
  * This provider establishes the Realtime connection ONCE for the entire session.
  * It prevents the "Connect/Disconnect" lag when navigating between pages.

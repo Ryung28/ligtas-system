@@ -69,11 +69,11 @@ export function aggregateInventory(items: InventoryItem[]): AggregatedInventoryI
  * Effective low-stock threshold in units.
  */
 export function getEffectiveLowStockThreshold(item: Partial<InventoryItem>): number | null {
-    const target = Number(item.target_stock ?? 0)
-    const percent = Number(item.low_stock_threshold ?? 0)
+    const anchor = Number((item.target_stock ?? 0) > 0 ? item.target_stock : (item.stock_total ?? 0))
+    const percent = Number(item.low_stock_threshold ?? 20)
 
-    if (target <= 0 || percent <= 0) return null
-    return Math.ceil((target * percent) / 100)
+    if (anchor <= 0) return null
+    return Math.ceil((anchor * percent) / 100)
 }
 
 /**

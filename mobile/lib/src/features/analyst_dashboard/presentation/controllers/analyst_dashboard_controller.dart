@@ -290,8 +290,8 @@ class AnalystDashboardException implements Exception {
 }
 
 @riverpod
-Future<List<StationManifestItem>> stationManifest(StationManifestRef ref, {required String stationId}) {
+Stream<List<StationManifestItem>> stationManifest(StationManifestRef ref, {required String stationId}) {
   final repository = ref.watch(analystRepositoryProvider);
-  return repository.getStationManifest(stationId: stationId);
+  return repository.watchStationManifest(stationId: stationId);
 }
 

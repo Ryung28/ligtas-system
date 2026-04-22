@@ -6,7 +6,7 @@ import '../../fast_dispatch/providers/dispatch_controller.dart';
 import '../models/qr_payload.dart';
 import '../widgets/scan_result_sheet.dart';
 
-/// 🛡️ LIGTAS TACTICAL SWITCHBOARD
+/// 🛡️ ResQTrack TACTICAL SWITCHBOARD
 /// Centralized intent dispatcher for all QR scan events.
 class LigtasScannerSwitchboard {
   LigtasScannerSwitchboard._();

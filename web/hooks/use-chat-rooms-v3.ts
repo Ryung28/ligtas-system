@@ -27,7 +27,7 @@ export interface ChatRoomV3 {
 const CHAT_ROOMS_KEY = 'chat_rooms_v3'
 
 /**
- * LIGTAS Platinum Inbox Hook (V3)
+ * ResQTrack Platinum Inbox Hook (V3)
  * Powered by SWR for instant navigation and background revalidation.
  */
 export function useChatRoomsV3() {

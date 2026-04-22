@@ -19,13 +19,18 @@ export function StationsHubClient({ stations, inventoryItems }: StationsHubClien
     const [activeStationId, setActiveStationId] = useState<number | null>(
         stations[0]?.id ?? null
     )
+    const [isCreating, setIsCreating] = useState(false)
+    const [blueprintItems, setBlueprintItems] = useState<number[]>([])
 
     // Called by StationRegistry when a station is selected OR created
     function handleSelectStation(station: Station) {
-        if (isDirty) {
-            const confirmed = window.confirm('You have unsaved changes to the current manifest. Discard them?')
+        if (isDirty || (isCreating && blueprintItems.length > 0)) {
+            const confirmed = window.confirm('You have unsaved changes. Discard them?')
             if (!confirmed) return
         }
+
+        setIsCreating(false)
+        setBlueprintItems([])
 
         if (!stationList.find(s => s.id === station.id)) {
             setStationList(prev => [station, ...prev])
@@ -69,18 +74,30 @@ export function StationsHubClient({ stations, inventoryItems }: StationsHubClien
                 <aside className="w-[220px] bg-slate-50 border-r border-slate-200 flex flex-col shrink-0">
                     <StationRegistry
                         stations={stationList}
-                        activeStationId={activeStationId}
+                        activeStationId={isCreating ? null : activeStationId}
                         onSelect={handleSelectStation}
+                        isCreating={isCreating}
+                        onToggleCreate={() => {
+                            if (isDirty) {
+                                if (!window.confirm('Discard unsaved manifest changes?')) return
+                            }
+                            setIsCreating(!isCreating)
+                            if (!isCreating) setActiveStationId(null)
+                        }}
+                        blueprintItems={blueprintItems}
                     />
                 </aside>
 
                 {/* CENTER + RIGHT: WORKBENCH */}
                 <main className="flex-1 flex overflow-hidden">
                     <ManifestWorkbench
-                        key={activeStationId ?? 'none'}
+                        key={isCreating ? 'blueprint' : activeStationId ?? 'none'}
                         stations={stationList}
                         inventoryItems={inventoryItems}
-                        activeStationId={activeStationId}
+                        activeStationId={isCreating ? null : activeStationId}
+                        isBlueprint={isCreating}
+                        blueprintItems={isCreating ? blueprintItems : []}
+                        onBlueprintChange={setBlueprintItems}
                         onStationChange={setActiveStationId}
                         onDirtyChange={setIsDirty}
                     />

@@ -229,7 +229,7 @@ Map<int, String> inventoryImageMap(InventoryImageMapRef ref) {
   return {for (var item in inventory) item.id: item.imageUrl ?? ''};
 }
 
-/// Centralized categories for the LIGTAS inventory
+/// Centralized categories for the ResQTrack inventory
 @riverpod
 List<String> inventoryCategories(InventoryCategoriesRef ref) {
   return [

@@ -13,7 +13,7 @@ class ManagerDashboardController extends _$ManagerDashboardController {
   Future<ManagerDashboardState> build() async {
     final repository = ref.watch(managerRepositoryProvider);
     
-    // Parallel fetch for speed & performance (The LIGTAS Standard)
+    // Parallel fetch for speed & performance (The ResQTrack Standard)
     final results = await Future.wait([
       repository.getMetrics(),
       repository.getAnomalies(limit: 200),

@@ -6,6 +6,9 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../domain/entities/resource_anomaly.dart';
 import '../../../../core/design_system/app_theme.dart';
 
+/// Strip height in [ResourceAnomaliesSection] horizontal list — keep in sync with list `SizedBox`.
+const double kAnomalyStripCardHeight = 142;
+
 /// Tactical Anomaly Card: Updated for Serviceability Awareness
 /// 🛡️ ISOLATED KINETICS: Stateful implementation to survive parent rebuilds
 class AnomalyCard extends StatefulWidget {
@@ -118,7 +121,7 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
         onTap: widget.onTap,
         child: Container(
           width: 320,
-          height: 112,
+          height: kAnomalyStripCardHeight,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
@@ -134,9 +137,10 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       width: 44, height: 44,
@@ -156,6 +160,8 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                               fontSize: 16, fontWeight: FontWeight.w800,
                               color: navyBlue, letterSpacing: -0.4,
                             ),
+                            maxLines: isSystemicFailure ? 1 : 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             '${anomaly.serviceStatus.toUpperCase()} · ${_alertRelativeTime(anomaly.detectedAt)}',
@@ -185,38 +191,47 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
                       _buildPulseBadge(categoryColor),
                   ],
                 ),
-                Column(
-                  children: [
-                    if (!isSystemicFailure) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: percentage / 100, minHeight: 6,
-                          backgroundColor: const Color(0xFFF1F3F6),
-                          valueColor: AlwaysStoppedAnimation<Color>(severityColor),
-                        ),
-                      ),
-                      const Gap(8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Expanded(
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildStockDisplay(
-                            anomaly.currentStock, 
-                            denominator,
-                            isMaxView: hasMaxStock,
-                          ),
-                          Text(anomaly.shelfActionLabel.toUpperCase(),
-                            style: GoogleFonts.lexend(
-                              fontSize: 10, fontWeight: FontWeight.w800,
-                              color: navyBlue, letterSpacing: 0.5,
+                          if (!isSystemicFailure) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: percentage / 100, minHeight: 6,
+                                backgroundColor: const Color(0xFFF1F3F6),
+                                valueColor: AlwaysStoppedAnimation<Color>(severityColor),
+                              ),
                             ),
-                          ),
+                            const Gap(8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildStockDisplay(
+                                  anomaly.currentStock,
+                                  denominator,
+                                  isMaxView: hasMaxStock,
+                                ),
+                                Text(anomaly.shelfActionLabel.toUpperCase(),
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 10, fontWeight: FontWeight.w800,
+                                    color: navyBlue, letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            _buildOperationalWarning(anomaly.reason, categoryColor),
+                          ],
                         ],
                       ),
-                    ] else ...[
-                      _buildOperationalWarning(anomaly.reason, categoryColor),
-                    ],
-                  ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -244,30 +259,44 @@ class _AnomalyCardState extends State<AnomalyCard> with SingleTickerProviderStat
   Widget _buildOperationalWarning(String reason, Color color) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.1)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.report_problem_rounded, color: color, size: 14),
-          const Gap(8),
-          Expanded(
-            child: Text(
-              reason.toUpperCase(),
-              style: GoogleFonts.lexend(
-                fontSize: 9, fontWeight: FontWeight.w700,
-                color: AppTheme.neutralGray800, letterSpacing: 0.2,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(Icons.report_problem_rounded, color: color, size: 14),
           ),
           const Gap(8),
-          Text(widget.anomaly.shelfActionLabel,
-            style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reason.toUpperCase(),
+                  style: GoogleFonts.lexend(
+                    fontSize: 9, fontWeight: FontWeight.w700,
+                    color: AppTheme.neutralGray800, letterSpacing: 0.2,
+                  ),
+                  softWrap: true,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Gap(4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    widget.anomaly.shelfActionLabel,
+                    style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

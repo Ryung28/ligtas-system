@@ -46,10 +46,8 @@ class _ScannerViewState extends ConsumerState<ScannerView> {
   @override
   void dispose() {
     controller.dispose();
-    // 🛡️ RESTORATION: Ensure dock is released regardless of disposal path
-    Future.microtask(() {
-      ref.read(isDockSuppressedProvider.notifier).state = false;
-    });
+    // 🛡️ RESTORATION: Release dock suppression synchronously before teardown.
+    ref.read(isDockSuppressedProvider.notifier).state = false;
     super.dispose();
   }
 

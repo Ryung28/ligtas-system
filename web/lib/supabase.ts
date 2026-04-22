@@ -34,6 +34,7 @@ export interface InventoryItem {
     category: string
     description?: string
     stock_total: number
+    item_type?: 'equipment' | 'consumable'
     stock_available: number
     stock_borrowed?: number
     stock_pending?: number

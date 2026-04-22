@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mobile</string>
+	<string>ResQTrack</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,14 +46,14 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>LIGTAS requires camera access to scan equipment QR codes and capture field documentation during missions.</string>
+	<string>ResQTrack requires camera access to scan equipment QR codes and capture field documentation during missions.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>LIGTAS requires access to your photo library to allow uploading mission reports and profile identification.</string>
+	<string>ResQTrack requires access to your photo library to allow uploading mission reports and profile identification.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>LIGTAS tracks your location to provide real-time coordination and safety monitoring for active field responders.</string>
+	<string>ResQTrack tracks your location to provide real-time coordination and safety monitoring for active field responders.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>LIGTAS requires background location tracking to maintain a safety lifeline for responders during critical disaster missions.</string>
+	<string>ResQTrack requires background location tracking to maintain a safety lifeline for responders during critical disaster missions.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>LIGTAS requires microphone access for hands-free voice commands and emergency communication triggers.</string>
+	<string>ResQTrack requires microphone access for hands-free voice commands and emergency communication triggers.</string>
 </dict>
 </plist>

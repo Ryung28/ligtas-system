@@ -19,7 +19,7 @@ interface ChatHeaderV3Props {
 
 export function ChatHeaderV3({ title, participant, presence, roomId }: ChatHeaderV3Props) {
     const handleDelete = async () => {
-        if (!window.confirm('Erase conversation from LIGTAS logs?')) return
+        if (!window.confirm('Erase conversation from ResQTrack logs?')) return
         const result = await deleteRoomV3(roomId)
         if (result.success) {
             toast.success('Record purged')

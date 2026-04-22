@@ -1,7 +1,7 @@
 import '../config/env.dart';
 
 /// 🏗️ STORAGE UTILS (Senior Architect Choice)
-/// Centralized logic for asset resolution across the entire Mobile LIGTAS ecosystem.
+/// Centralized logic for asset resolution across the entire Mobile ResQTrack ecosystem.
 class StorageUtils {
   /// Resolves a raw image URL or path into a fully-qualified Public CDN URL.
   /// 

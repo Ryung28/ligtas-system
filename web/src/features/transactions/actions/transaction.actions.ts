@@ -74,6 +74,8 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
         const variantId = validatedData.inventory_variant_id;
 
         // Step 1.5: SATELLITE STOCK CHECK (Single Item Path)
+        // IMPORTANT: Do not mutate stock here. DB trigger owns stock decrement
+        // on successful borrow_logs insert, keeping operation atomic.
         if (variantId) {
             const { data: variantItem, error: variantError } = await supabase
                 .from('inventory')
@@ -88,51 +90,36 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
             if (variantItem.stock_available < validatedData.quantity) {
                 return { success: false, error: `${inventoryItem.item_name} at ${variantItem.storage_location}: Only ${variantItem.stock_available} units available` }
             }
-
-            // Sync stock from variant row
-            await supabase
-                .from('inventory')
-                .update({ stock_available: variantItem.stock_available - validatedData.quantity })
-                .eq('id', variantId)
-        } else {
-            // Subtract from primary row (Note: Stock triggers might handle this, but we explicitly sync for parity)
-            await supabase
-                .from('inventory')
-                .update({ stock_available: inventoryItem.stock_available - validatedData.quantity })
-                .eq('id', validatedData.item_id)
         }
 
-        // Step 2: Insert borrow log
+        // Step 2: Atomic stock+log transaction via RPC
         const now = new Date().toISOString();
-        const { data: logData, error: logError } = await supabase
-            .from('borrow_logs')
-            .insert([
-                {
-                    inventory_id: validatedData.item_id,
-                    inventory_variant_id: variantId || null,
-                    item_name: inventoryItem.item_name,
-                    quantity: validatedData.quantity,
-                    borrower_name: validatedData.borrower_name,
-                    borrower_contact: validatedData.contact_number,
-                    borrower_organization: validatedData.office_department || 'N/A',
-                    purpose: validatedData.purpose,
-                    approved_by_name: validatedData.approved_by || null,
-                    released_by_name: validatedData.released_by || null,
-                    released_by_user_id: user?.id || null,
-                    transaction_type: isConsumable ? 'dispense' : 'borrow',
-                    status: isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
-                    borrow_date: isScheduled ? null : now,
-                    pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
-                    actual_return_date: isConsumable ? now : null, 
-                    expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
-                    platform_origin: 'Web',
-                    created_origin: 'Web',
-                    last_updated_origin: 'Web',
-                    source_batch: validatedData.source_batch || null,
-                    created_at: now,
-                },
-            ])
-            .select()
+        const { data: txData, error: logError } = await supabase.rpc('dispatch_borrow_atomic', {
+            p_inventory_id: validatedData.item_id,
+            p_inventory_variant_id: variantId || null,
+            p_item_name: inventoryItem.item_name,
+            p_quantity: validatedData.quantity,
+            p_borrower_name: validatedData.borrower_name,
+            p_borrower_contact: validatedData.contact_number,
+            p_borrower_organization: validatedData.office_department || 'N/A',
+            p_purpose: validatedData.purpose || '',
+            p_approved_by_name: validatedData.approved_by || null,
+            p_released_by_name: validatedData.released_by || null,
+            p_released_by_user_id: user?.id || null,
+            p_transaction_type: isConsumable ? 'dispense' : 'borrow',
+            p_status: isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
+            p_borrow_date: isScheduled
+                ? (validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : now)
+                : now,
+            p_pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
+            p_actual_return_date: isConsumable ? now : null,
+            p_expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
+            p_platform_origin: 'Web',
+            p_created_origin: 'Web',
+            p_last_updated_origin: 'Web',
+            p_source_batch: validatedData.source_batch || null,
+            p_now: now,
+        })
 
         if (logError) {
             console.error('Borrow log error:', logError)
@@ -146,6 +133,17 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
                 success: false,
                 error: `Failed to create borrow record: ${logError.message}`,
             }
+        }
+
+        const createdLogId = Number((txData as any)?.borrow_log_id || 0)
+        let logData: any[] = []
+        if (createdLogId > 0) {
+            const { data: insertedLog } = await supabase
+                .from('borrow_logs')
+                .select('*')
+                .eq('id', createdLogId)
+                .limit(1)
+            logData = (insertedLog as any[]) || []
         }
 
         // AGGREGATE GRANULAR BATCH DEDUCTION (If applicable)
@@ -260,6 +258,8 @@ export async function batchBorrowItems(data: {
             }
 
             // SATELLITE STOCK CHECK: If borrowing from a specific location (Variant)
+            // IMPORTANT: Do not mutate stock here. DB trigger owns stock decrement
+            // on successful borrow_logs insert, keeping operation atomic.
             if (item.inventory_variant_id) {
                 const { data: variantItem, error: variantError } = await supabase
                     .from('inventory')
@@ -276,53 +276,51 @@ export async function batchBorrowItems(data: {
                     errors.push(`${inventoryItem.item_name} (at ${variantItem.storage_location}): Only ${variantItem.stock_available} units available`)
                     continue
                 }
-
-                // Execute Subtraction from Variant row in the main inventory table
-                await supabase
-                    .from('inventory')
-                    .update({ stock_available: variantItem.stock_available - item.quantity })
-                    .eq('id', item.inventory_variant_id)
             } else {
-                // Fallback: Check and subtract from main inventory table (Primary Location)
+                // Fallback: Check only against main inventory table (Primary Location)
                 if (inventoryItem.stock_available < item.quantity) {
                     errors.push(`${inventoryItem.item_name}: Only ${inventoryItem.stock_available} units available`)
                     continue
                 }
-                
-                // Note: Main inventory subtraction usually handled by trigger, 
-                // but we explicitly subtract here if no variant is used to ensure parity.
-                await supabase
-                    .from('inventory')
-                    .update({ stock_available: inventoryItem.stock_available - item.quantity })
-                    .eq('id', item.item_id)
             }
 
             const isConsumable = item.item_type === 'consumable'
 
-            borrowLogs.push({
-                inventory_id: item.item_id,
-                inventory_variant_id: item.inventory_variant_id || null,
-                item_name: inventoryItem.item_name,
-                quantity: item.quantity,
-                borrower_name: validatedData.borrower_name,
-                borrower_contact: validatedData.contact_number,
-                borrower_organization: validatedData.office_department || 'N/A',
-                purpose: validatedData.purpose || '',
-                approved_by_name: validatedData.approved_by || null,
-                released_by_name: validatedData.released_by || null,
-                released_by_user_id: user?.id || null,
-                transaction_type: isConsumable ? 'dispense' : 'borrow',
-                status: isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
-                borrow_date: isScheduled ? null : now,
-                pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
-                actual_return_date: isConsumable ? now : null,
-                expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
-                platform_origin: 'Web',
-                created_origin: 'Web',
-                last_updated_origin: 'Web',
-                source_batch: item.source_batch || null,
-                created_at: now,
+            const { data: txRow, error: txErr } = await supabase.rpc('dispatch_borrow_atomic', {
+                p_inventory_id: item.item_id,
+                p_inventory_variant_id: item.inventory_variant_id || null,
+                p_item_name: inventoryItem.item_name,
+                p_quantity: item.quantity,
+                p_borrower_name: validatedData.borrower_name,
+                p_borrower_contact: validatedData.contact_number,
+                p_borrower_organization: validatedData.office_department || 'N/A',
+                p_purpose: validatedData.purpose || '',
+                p_approved_by_name: validatedData.approved_by || null,
+                p_released_by_name: validatedData.released_by || null,
+                p_released_by_user_id: user?.id || null,
+                p_transaction_type: isConsumable ? 'dispense' : 'borrow',
+                p_status: isConsumable ? 'dispensed' : (isScheduled ? 'reserved' : 'borrowed'),
+                p_borrow_date: isScheduled
+                    ? (validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : now)
+                    : now,
+                p_pickup_scheduled_at: validatedData.pickup_scheduled_at ? new Date(validatedData.pickup_scheduled_at).toISOString() : null,
+                p_actual_return_date: isConsumable ? now : null,
+                p_expected_return_date: isConsumable ? null : (validatedData.expected_return_date ? new Date(validatedData.expected_return_date).toISOString() : null),
+                p_platform_origin: 'Web',
+                p_created_origin: 'Web',
+                p_last_updated_origin: 'Web',
+                p_source_batch: item.source_batch || null,
+                p_now: now,
             })
+            if (txErr) {
+                if (txErr.message?.includes('check_stock_positive')) {
+                    errors.push(`${inventoryItem.item_name}: insufficient stock`)
+                } else {
+                    errors.push(`${inventoryItem.item_name}: ${txErr.message}`)
+                }
+                continue
+            }
+            borrowLogs.push(txRow)
 
             // AGGREGATE GRANULAR BATCH DEDUCTION (Internal Batch Selection)
             if (item.source_batch) {
@@ -361,31 +359,10 @@ export async function batchBorrowItems(data: {
             }
         }
 
-        if (errors.length > 0) {
-            return {
-                success: false,
-                error: errors.join('; '),
-            }
-        }
-
         if (borrowLogs.length === 0) {
             return {
                 success: false,
-                error: 'No valid items to borrow',
-            }
-        }
-
-        // Insert all borrow logs
-        const { data: logData, error: logError } = await supabase
-            .from('borrow_logs')
-            .insert(borrowLogs)
-            .select()
-
-        if (logError) {
-            console.error('Batch borrow error:', logError)
-            return {
-                success: false,
-                error: `Failed to create borrow records: ${logError.message}`,
+                error: errors.length > 0 ? errors.join('; ') : 'No valid items to borrow',
             }
         }
 
@@ -393,9 +370,17 @@ export async function batchBorrowItems(data: {
         revalidatePath('/dashboard/inventory')
         revalidatePath('/dashboard')
 
+        if (errors.length > 0) {
+            return {
+                success: true,
+                data: borrowLogs,
+                message: `Borrowed ${borrowLogs.length} item(s). Some items failed: ${errors.join('; ')}`,
+            }
+        }
+
         return {
             success: true,
-            data: logData,
+            data: borrowLogs,
             message: `Successfully borrowed ${borrowLogs.length} item(s)`,
         }
     } catch (error) {
@@ -428,6 +413,7 @@ export async function returnItem(
 ) {
     try {
         const supabase = await createSupabaseServer()
+        const now = new Date().toISOString()
         // 1. Fetch Log and current user
         const { data: log, error: logError } = await supabase
             .from('borrow_logs')
@@ -446,7 +432,7 @@ export async function returnItem(
             .from('borrow_logs')
             .update({
                 status: 'returned',
-                actual_return_date: new Date().toISOString(),
+                actual_return_date: now,
                 received_by_name: auditData?.receivedByName || null,
                 returned_by_name: auditData?.returnedByName || null,
                 received_by_user_id: user?.id || null,
@@ -454,16 +440,19 @@ export async function returnItem(
                 return_notes: auditData?.returnNotes || null,
                 platform_origin: 'Web',
                 last_updated_origin: 'Web',
+                updated_at: now,
             })
             .eq('id', logId)
 
         if (updateError) throw updateError
 
         // 3. Update Inventory (Increment Stock)
+        // Variant-aware: restore to the exact row that was deducted on borrow.
+        const targetInventoryId = log.inventory_variant_id ?? log.inventory_id
         const { data: item, error: itemError } = await supabase
             .from('inventory')
             .select('stock_available')
-            .eq('id', log.inventory_id)
+            .eq('id', targetInventoryId)
             .single()
 
         if (item) {
@@ -472,7 +461,7 @@ export async function returnItem(
                 .update({
                     stock_available: item.stock_available + log.quantity,
                 })
-                .eq('id', log.inventory_id)
+                .eq('id', targetInventoryId)
         }
 
         revalidatePath('/dashboard/logs')
@@ -546,16 +535,19 @@ export async function revertReturnItem(logId: number) {
                 return_notes: null,
                 platform_origin: 'Web',
                 last_updated_origin: 'Web',
+                updated_at: new Date().toISOString(),
             })
             .eq('id', logId)
 
         if (updateError) throw updateError
 
         // Step B: Pull stock back out of Inventory
+        // Variant-aware: revert from the exact row that was restored on return.
+        const targetInventoryId = log.inventory_variant_id ?? log.inventory_id
         const { data: item, error: itemError } = await supabase
             .from('inventory')
             .select('stock_available')
-            .eq('id', log.inventory_id)
+            .eq('id', targetInventoryId)
             .single()
 
         if (item) {
@@ -563,7 +555,7 @@ export async function revertReturnItem(logId: number) {
             await supabase
                 .from('inventory')
                 .update({ stock_available: newStock })
-                .eq('id', log.inventory_id)
+                .eq('id', targetInventoryId)
         }
 
         revalidatePath('/dashboard/logs')

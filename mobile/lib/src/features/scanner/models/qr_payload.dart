@@ -33,11 +33,15 @@ class LigtasQrPayload with _$LigtasQrPayload {
 
   static LigtasQrPayload? tryParse(String rawData) {
     final sanitized = rawData.trim();
-    
-    // 🏛️ PRODUCTION-GRADE: URI RESOLVER (ligtas://)
-    if (sanitized.startsWith('ligtas://')) {
+
+    // Normalize legacy ligtas:// links; new QR codes use resqtrack://
+    final uriSource =
+        sanitized.startsWith('ligtas://') ? sanitized.replaceFirst('ligtas://', 'resqtrack://') : sanitized;
+
+    // 🏛️ PRODUCTION-GRADE: URI RESOLVER (resqtrack://, legacy ligtas:// still accepted above)
+    if (uriSource.startsWith('resqtrack://')) {
       try {
-        final uri = Uri.parse(sanitized);
+        final uri = Uri.parse(uriSource);
         final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
         
         // 1. Station Hub Resolver (s/)
@@ -51,7 +55,7 @@ class LigtasQrPayload with _$LigtasQrPayload {
         // 2. Equipment Asset Resolver (i/)
         if (uri.host == 'item' || uri.host == 'i') {
           return LigtasQrPayload.equipment(
-            protocol: 'ligtas',
+            protocol: 'resqtrack',
             version: uri.queryParameters['v'] ?? '2.0',
             action: uri.queryParameters['a'] ?? 'view',
             itemId: int.tryParse(id) ?? 0,
@@ -85,7 +89,7 @@ class LigtasQrPayload with _$LigtasQrPayload {
           );
         }
 
-        if (data['protocol'] == 'ligtas') {
+        if (data['protocol'] == 'resqtrack' || data['protocol'] == 'ligtas') {
           final processedData = Map<String, dynamic>.from(data);
           processedData['itemId'] = int.tryParse(data['itemId']?.toString() ?? '') ?? 0;
           processedData['itemName'] = (data['itemName'] ?? 'Unknown Item').toString();
@@ -105,7 +109,7 @@ class LigtasQrPayload with _$LigtasQrPayload {
         final itemId = int.tryParse(firstPart);
         if (itemId != null && itemId > 0) {
           return LigtasQrPayload.equipment(
-            protocol: 'ligtas',
+            protocol: 'resqtrack',
             version: '2.0',
             action: 'view',
             itemId: itemId,

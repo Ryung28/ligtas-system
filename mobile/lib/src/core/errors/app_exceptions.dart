@@ -56,7 +56,7 @@ class ExceptionHandler {
 
     if (exception is sb.AuthException) {
       final msg = exception.message.toLowerCase();
-      if (msg.contains('user already registered')) return 'REGISTRATION CONFLICT: This email is already bound to a LIGTAS profile.';
+      if (msg.contains('user already registered')) return 'REGISTRATION CONFLICT: This email is already bound to a ResQTrack profile.';
       if (msg.contains('invalid login credentials')) return 'CREDENTIAL MISMATCH: Access denied to the internal network.';
       if (msg.contains('email not confirmed')) return 'PENDING AUTHORIZATION: Please verify your secure link.';
       if (msg.contains('weak password')) return 'SECURITY ALERT: Password strength does not meet Command standards.';

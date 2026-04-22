@@ -14,7 +14,7 @@ interface ConsumableFieldsProps {
 }
 
 /**
- * LIGTAS V2 CONSUMABLE SECTION
+ * ResQTrack V2 CONSUMABLE SECTION
  * Specialized tracking for non-equipment assets (Medical, Food, etc.)
  */
 export function V2ConsumableFields({

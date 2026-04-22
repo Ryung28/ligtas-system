@@ -18,7 +18,7 @@ interface MobileHeaderProps {
 }
 
 /**
- * 📱 LIGTAS Mobile Header
+ * 📱 ResQTrack Mobile Header
  * Sticky top bar: back nav / brand · title · refresh · more-menu.
  * The "More" button opens MoreSheet (secondary nav + identity + logout).
  */
@@ -67,7 +67,7 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100 shadow-sm">
                                 <Image
-                                    src="/oro-cervo.png"
+                                    src="/resqtrack-logo.jpg"
                                     alt=""
                                     width={32}
                                     height={32}
@@ -76,7 +76,7 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
                                 />
                             </div>
                             <h1 className="font-syne font-black italic uppercase tracking-tight text-lg text-gray-900">
-                                LIGTAS
+                                ResQTrack
                             </h1>
                         </div>
                     ) : null}

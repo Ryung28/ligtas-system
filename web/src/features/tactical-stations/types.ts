@@ -12,8 +12,12 @@ export type Station = {
 export type StationManifestItem = {
     item_id: number
     item_name: string
+    base_name: string | null
+    variant_label: string | null
     category: string
     stock_available: number
+    stock_total: number
+    target_stock: number
     unit: string
     item_type: 'equipment' | 'consumable'
 }
@@ -21,8 +25,12 @@ export type StationManifestItem = {
 export type InventoryPickerItem = {
     id: number
     item_name: string
+    base_name: string | null
+    variant_label: string | null
     category: string
     stock_available: number
+    stock_total: number
+    target_stock: number
     unit: string
     item_type: 'equipment' | 'consumable'
 }

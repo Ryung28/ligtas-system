@@ -5,12 +5,12 @@ import { ReportsSkeleton } from './reports-skeleton'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-    title: 'Reports - LIGTAS',
+    title: 'Reports - ResQTrack',
     description: 'System-wide analytics and data exports',
 }
 
 /**
- * 📊 LIGTAS Mobile Reports
+ * 📊 ResQTrack Mobile Reports
  * 🏛️ ARCHITECTURE: "The Analyst Entry"
  * 
  * NOTE: This is a Server Component shell to satisfy Next.js 15 Suspense

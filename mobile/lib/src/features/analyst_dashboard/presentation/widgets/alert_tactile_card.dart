@@ -10,6 +10,8 @@ import '../../domain/entities/resource_anomaly.dart';
 import 'alert_metric_pill.dart';
 
 const double kAlertCardHeight = 118;
+/// Full-queue list (`LogisticalQueueScreen`): compact row — dashboard strip uses [AnomalyCard] instead.
+const double kAlertQueueListCardHeight = kAlertCardHeight;
 
 class AlertTactileCard extends StatelessWidget {
   final ResourceAnomaly anomaly;
@@ -30,7 +32,9 @@ class AlertTactileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCritical = anomaly.severity == AnomalySeverity.critical;
-    final isOut = anomaly.category == AnomalyCategory.depletion && anomaly.currentStock == 0;
+    final isOut =
+        anomaly.category == AnomalyCategory.depletion &&
+        anomaly.currentStock == 0;
 
     String statusLabel = 'STABLE';
     Color statusColor = AppTheme.emeraldGreen;
@@ -49,7 +53,7 @@ class AlertTactileCard extends StatelessWidget {
     Color categoryBgColor;
     Color categoryTextColor;
     switch (anomaly.categoryTheme) {
-      case AnomalyCategoryTheme.amber: 
+      case AnomalyCategoryTheme.amber:
         categoryBgColor = AppTheme.warningOrange.withOpacity(0.08);
         categoryTextColor = AppTheme.warningOrange;
         break;
@@ -72,10 +76,11 @@ class AlertTactileCard extends StatelessWidget {
     final isInventory = anomaly.category == AnomalyCategory.depletion;
     final thumb = 88.0;
 
+    // Fixed compact height for scroll list; content is top-aligned (no spaceBetween gap).
     final card = Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: SizedBox(
-        height: kAlertCardHeight,
+        height: kAlertQueueListCardHeight,
         child: Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -92,36 +97,37 @@ class AlertTactileCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: sentinel.tactile.card,
               ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: thumb,
-                    height: double.infinity,
-                    child: TacticalAssetImage(
-                      path: anomaly.imageUrl,
-                      assetId: anomaly.inventoryId,
+              child: ClipRect(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
                       width: thumb,
-                      height: kAlertCardHeight,
-                      size: thumb,
-                      borderRadius: 0,
-                      fit: BoxFit.cover,
+                      child: TacticalAssetImage(
+                        path: anomaly.imageUrl,
+                        assetId: anomaly.inventoryId,
+                        width: thumb,
+                        height: kAlertQueueListCardHeight,
+                        size: thumb,
+                        borderRadius: 0,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: categoryBgColor,
                                       borderRadius: BorderRadius.circular(6),
@@ -154,88 +160,127 @@ class AlertTactileCard extends StatelessWidget {
                                 ],
                               ),
                               const Gap(4),
-                              Text(
-                                anomaly.itemName,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: navyBlue,
-                                  height: 1.1,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const Gap(4),
-                              Text(
-                                isInventory ? statusLabel : anomaly.reason,
-                                style: GoogleFonts.lexend(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: isInventory ? statusColor : AppTheme.neutralGray600,
-                                  letterSpacing: 0.2,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                          if (isInventory)
-                            Row(
-                              children: [
-                                AlertMetricPill(
-                                  label: 'ON HAND',
-                                  value: '${anomaly.currentStock}',
-                                  sentinel: sentinel,
-                                ),
-                                const Gap(10),
-                                AlertMetricPill(
-                                  label: 'TARGET',
-                                  value: '${anomaly.thresholdStock}',
-                                  sentinel: sentinel,
-                                ),
-                                const Spacer(),
-                                Icon(Icons.chevron_right_rounded,
-                                    size: 18,
-                                    color: sentinel.onSurfaceVariant.withOpacity(0.2)),
-                              ],
-                            )
-                          else
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: categoryBgColor.withOpacity(0.5),
-                                    borderRadius: BorderRadius.circular(8),
+                              if (isInventory) ...[
+                                Text(
+                                  anomaly.itemName,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: navyBlue,
+                                    height: 1.1,
                                   ),
-                                  child: Text(
-                                    anomaly.shelfActionLabel.toUpperCase(),
-                                    style: GoogleFonts.lexend(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      color: navyBlue,
-                                      letterSpacing: 0.5,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Gap(4),
+                                Text(
+                                  statusLabel,
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                    letterSpacing: 0.2,
+                                  ),
+                                  maxLines: 2,
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Gap(6),
+                                Row(
+                                  children: [
+                                    AlertMetricPill(
+                                      label: 'CURRENT STOCK',
+                                      value: '${anomaly.currentStock}',
+                                      sentinel: sentinel,
                                     ),
+                                    const Gap(10),
+                                    AlertMetricPill(
+                                      label: 'FIXED STOCK',
+                                      value: '${anomaly.thresholdStock}',
+                                      sentinel: sentinel,
+                                    ),
+                                    const Spacer(),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 18,
+                                      color: sentinel.onSurfaceVariant.withOpacity(
+                                        0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                Text(
+                                  anomaly.itemName,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: navyBlue,
+                                    height: 1.1,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Gap(3),
+                                Expanded(
+                                  child: Text(
+                                    anomaly.reason,
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.neutralGray600,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    maxLines: 2,
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                Icon(Icons.chevron_right_rounded,
-                                    size: 18,
-                                    color: sentinel.onSurfaceVariant.withOpacity(0.2)),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: categoryBgColor.withOpacity(0.5),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'VIEW DETAILS',
+                                        style: GoogleFonts.lexend(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: navyBlue,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const Gap(8),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 18,
+                                      color: sentinel.onSurfaceVariant.withOpacity(
+                                        0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
-
 
     return RepaintBoundary(
       child: card

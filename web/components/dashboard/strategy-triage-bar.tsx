@@ -16,7 +16,7 @@ const supabase = createBrowserClient(
 )
 
 /**
- * 🛡️ COMPACT TRIAGE STRIP (LIGTAS Platinum v4.1)
+ * 🛡️ COMPACT TRIAGE STRIP (ResQTrack Platinum v4.1)
  * High-density, simple-language component for inventory strategy.
  * Focuses on speed and visual verification without over-engineering.
  */

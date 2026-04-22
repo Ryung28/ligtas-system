@@ -5,6 +5,7 @@ import '../models/profile_state.dart';
 import '../data/profile_repository.dart';
 import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
+import '../../../core/config/branding.dart';
 import '../../../core/errors/app_exceptions.dart';
 
 
@@ -99,9 +100,9 @@ class ProfileController extends StateNotifier<ProfileState> {
         backgroundColor: Colors.white.withOpacity(0.9),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Are you sure you want to sign out of LIGTAS?',
-          style: TextStyle(color: Colors.black87),
+        content: Text(
+          'Are you sure you want to sign out of ${Branding.appName}?',
+          style: const TextStyle(color: Colors.black87),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [

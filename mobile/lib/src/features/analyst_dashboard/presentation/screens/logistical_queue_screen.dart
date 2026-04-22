@@ -12,7 +12,7 @@ import '../widgets/alert_queue_empty_state.dart';
 import '../widgets/alert_tactile_card.dart';
 import '../../../../features/dashboard/widgets/dashboard_background.dart';
 
-/// 📡 LIGTAS ALERTS TERMINAL
+/// 📡 ResQTrack ALERTS TERMINAL
 class LogisticalQueueScreen extends ConsumerStatefulWidget {
   final String? initialAlertId;
   final String? triageAlertId;

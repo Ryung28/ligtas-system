@@ -5,7 +5,7 @@ import { GridSkeleton } from '@/components/mobile/skeletons/grid-skeleton'
 export const dynamic = 'force-dynamic'
 
 /**
- * 📱 LIGTAS Mobile Inventory Page
+ * 📱 ResQTrack Mobile Inventory Page
  * 🏛️ ARCHITECTURE: "The Suspenseful Orchestrator"
  * 
  * NOTE: This is a Server Component shell to satisfy Next.js 15 Suspense

@@ -1,5 +1,5 @@
 /**
- * 🎨 LIGTAS Mobile Design Tokens
+ * 🎨 ResQTrack Mobile Design Tokens
  *
  * Single source of truth for the `/m` PWA surface. Consume these class-strings
  * from components instead of hand-rolling `bg-red-600` / `rounded-2xl` etc.

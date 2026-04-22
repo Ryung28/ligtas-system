@@ -10,6 +10,7 @@ import '../../scanner/widgets/scanner_view.dart';
 import '../../scanner/models/qr_payload.dart';
 import '../../scanner/services/scanner_switchboard.dart';
 import '../../scanner/widgets/scan_result_sheet.dart';
+import '../../../core/config/branding.dart';
 import '../../../core/design_system/app_theme.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,7 +117,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     if (payload == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid QR Code. Please scan a LIGTAS label.'),
+          content: Text('Invalid QR Code. Please scan a ${Branding.appName} label.'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -223,7 +224,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         final now = DateTime.now();
         if (_lastBackPressed == null || now.difference(_lastBackPressed!) > _exitConfirmationDuration) {
           _lastBackPressed = now;
-          AppToast.showInfo(context, 'Press back again to exit LIGTAS');
+          AppToast.showInfo(context, 'Press back again to exit ${Branding.appName}');
         } else {
           try {
             await _taskChannel.invokeMethod('minimize');

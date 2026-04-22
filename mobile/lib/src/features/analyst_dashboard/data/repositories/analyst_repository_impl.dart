@@ -324,6 +324,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         'return_notes': returnNotes,
         'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', borrowId);
 
       // 3. Increment inventory stock
@@ -656,7 +657,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', inventoryId);
 
-      debugPrint('⚙️ LIGTAS-RESTOCK: Asset $inventoryId Injected. Good: +$addedGood, Damaged: +$addedDamaged');
+      debugPrint('⚙️ ResQTrack-RESTOCK: Asset $inventoryId Injected. Good: +$addedGood, Damaged: +$addedDamaged');
     } catch (e) {
       throw Exception('Restock Command Failed: $e');
     }
@@ -675,7 +676,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', inventoryId);
       
-      debugPrint('⚙️ LIGTAS-STRATEGY: Asset $inventoryId defined as $strategyLabel.');
+      debugPrint('⚙️ ResQTrack-STRATEGY: Asset $inventoryId defined as $strategyLabel.');
     } catch (e) {
       throw Exception('Failed to update item strategy: $e');
     }
@@ -717,7 +718,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', inventoryId);
 
-      debugPrint('⚙️ LIGTAS-TRIAGE: Asset $inventoryId rebalanced.');
+      debugPrint('⚙️ ResQTrack-TRIAGE: Asset $inventoryId rebalanced.');
     } catch (e) {
       throw Exception('Health Triage Failed: $e');
     }
@@ -804,6 +805,12 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       _ => 'Logistical event recorded.',
     };
 
+    final String? eventTimestampRaw = status == 'returned'
+        ? (item['actual_return_date'] as String? ??
+            item['updated_at'] as String? ??
+            item['created_at'] as String?)
+        : (item['updated_at'] as String? ?? item['created_at'] as String?);
+
     return ActivityEvent(
       id: item['id'].toString(),
       type: eventType,
@@ -812,7 +819,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       referenceId: (item['inventory_id'] ?? item['id']).toString(),
       assetId: item['inventory_id'] != null ? (item['inventory_id'] as num).toInt() : null,
       status: eventStatus,
-      timestamp: DateTime.parse(item['updated_at'] as String? ?? DateTime.now().toIso8601String()),
+      timestamp: DateTime.parse(eventTimestampRaw ?? DateTime.now().toIso8601String()),
       priority: status == 'pending' || status == 'overdue' ? 'CRITICAL' : 'ROUTINE',
       quantityDelta: delta,
       locationSource: _borrowSiteLocation(item),
@@ -843,7 +850,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       telemetry: {
         'lat': -5.9,
         'lng': -58.4,
-        'device': 'LIGTAS-04-PAD',
+        'device': 'ResQTrack-04-PAD',
       },
     );
   }
@@ -927,7 +934,10 @@ class AnalystRepositoryImpl implements IAnalystRepository {
               category,
               image_url,
               stock_available,
-              target_stock
+              stock_total,
+              target_stock,
+              base_name,
+              variant_label
             ),
             station:station_id!inner(
               id,
@@ -945,14 +955,22 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       
       return data.map((item) {
         final inv = item['inventory'] as Map<String, dynamic>? ?? {};
-        final target = (inv['target_stock'] as num?)?.toInt() ?? 1; // 🛡️ Logical fallback to 1 if unset
+        final rawTarget = (inv['target_stock'] as num?)?.toInt() ?? 0;
+        final total = (inv['stock_total'] as num?)?.toInt() ?? 0;
+        // 🛡️ SENIOR FALLBACK: Use target_stock if configured, otherwise use physical total. Never 0.
+        final target = rawTarget > 0 ? rawTarget : (total > 0 ? total : 1);
+        
+        final String base = inv['base_name']?.toString() ?? inv['item_name']?.toString() ?? 'Unknown Item';
+        final String? variant = inv['variant_label']?.toString();
+        // 🏛️ DYNAMIC NAMING: Join base + variant for the mobile list view if variant exists
+        final displayName = (variant != null && variant.isNotEmpty) ? '$base ($variant)' : base;
         
         return StationManifestItem(
           id: '${item['station_id']}_${item['item_id']}',
           stationId: item['station_id'].toString(),
           inventoryId: item['item_id'] as int,
           quantityRequired: target,
-          itemName: inv['item_name']?.toString() ?? 'Unknown Item',
+          itemName: displayName,
           itemCategory: inv['category']?.toString(),
           imageUrl: _resolveRawPath(inv['image_url']?.toString()),
           currentStock: (inv['stock_available'] as num?)?.toInt() ?? 0,
@@ -961,6 +979,21 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     } catch (e) {
       debugPrint('🛡️ [Analyst-Repo] Manifest fetch failed: $e');
       return [];
+    }
+  }
+  
+  @override
+  Stream<List<StationManifestItem>> watchStationManifest({required String stationId}) async* {
+    // 1. Initial snapshot
+    yield await getStationManifest(stationId: stationId);
+
+    // 2. Listen for logistical movements that affect manifest readiness
+    // We listen to borrow_logs (movement) and inventory (stock levels)
+    final logStream = _supabase.from('borrow_logs').stream(primaryKey: ['id']).map((_) => true);
+    final invStream = _supabase.from('inventory').stream(primaryKey: ['id']).map((_) => true);
+
+    await for (final _ in StreamGroup.merge([logStream, invStream])) {
+      yield await getStationManifest(stationId: stationId);
     }
   }
 }

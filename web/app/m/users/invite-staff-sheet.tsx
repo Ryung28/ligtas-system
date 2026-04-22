@@ -120,7 +120,7 @@ export function InviteStaffSheet({ open, onOpenChange, onInvite }: InviteStaffSh
                                 setEmail(e.target.value)
                                 if (error) setError(undefined)
                             }}
-                            placeholder="name@ligtas.gov.ph"
+                            placeholder="name@cdrrmo.gov.ph"
                             className="pl-10"
                             invalid={!!error}
                         />

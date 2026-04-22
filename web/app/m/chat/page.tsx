@@ -9,7 +9,7 @@ const MobileChatClient = nextDynamic(() => import('./chat-client'), {
 export const dynamic = 'force-dynamic'
 
 /**
- * 📱 LIGTAS Mobile Chat
+ * 📱 ResQTrack Mobile Chat
  * 🏛️ ARCHITECTURE: "The Comm-Link"
  * 
  * NOTE: This is a Server Component shell to satisfy Next.js 15 Suspense

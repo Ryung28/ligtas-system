@@ -23,7 +23,7 @@ export function NotificationHeader({ unreadCount, isRefreshing, onRefresh, onMar
             {Icons.logo}
           </div>
           <div>
-            <p className="text-[10px] font-semibold tracking-wider text-gray-400 uppercase leading-none">LIGTAS System</p>
+            <p className="text-[10px] font-semibold tracking-wider text-gray-400 uppercase leading-none">ResQTrack</p>
             <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Notifications</h1>
           </div>
         </div>

@@ -24,7 +24,7 @@ extension SupabaseClientExtension on SupabaseClient {
         }
 
         if (!realtime.isConnected) {
-          throw TimeoutException('LIGTAS_SOCKET_OFFLINE: Coordination server unreachable.');
+          throw TimeoutException('ResQTrack_SOCKET_OFFLINE: Coordination server unreachable.');
         }
       }
       debugPrint('[Supabase-Health] 💚 Socket Link: STABLE');

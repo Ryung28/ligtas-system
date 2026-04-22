@@ -12,7 +12,7 @@ interface MetadataFieldsProps {
 }
 
 /**
- * LIGTAS V2 METADATA SECTION
+ * ResQTrack V2 METADATA SECTION
  * Tracks hard identity markers: Serials and Model Tags.
  */
 export function V2MetadataFields({

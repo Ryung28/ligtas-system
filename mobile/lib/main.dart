@@ -21,7 +21,7 @@ void main() async {
   await _waitForNetwork();
 
   // 🔍 STEP 2: Confirm sanitized environment target at runtime
-  debugPrint('[LIGTAS-Boot] 🌐 API Target: ${Environment.supabaseUrl}');
+  debugPrint('[ResQTrack-Boot] 🌐 API Target: ${Environment.supabaseUrl}');
 
   // 🛡️ STEP 3: Initialize Supabase with a timeout safety net
   await SupabaseService.initialize();
@@ -30,7 +30,7 @@ void main() async {
   try {
     await Firebase.initializeApp();
     await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
-    debugPrint('[LIGTAS-Boot] ✅ Analytics Handshake Complete.');
+    debugPrint('[ResQTrack-Boot] ✅ Analytics Handshake Complete.');
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     // Async: non-blocking notification service setup
     UserNotificationService().initialize();
@@ -48,7 +48,7 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: LigtasApp(),
+      child: ResQTrackApp(),
     ),
   );
 }
@@ -76,4 +76,4 @@ Future<void> _waitForNetwork({int maxRetries = 5}) async {
   debugPrint('[Boot-Guard] 🔴 Network unreachable after $maxRetries attempts. Proceeding offline.');
 }
 
-
+

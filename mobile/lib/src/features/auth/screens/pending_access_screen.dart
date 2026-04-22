@@ -112,7 +112,7 @@ class PendingAccessScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'Your account is awaiting approval by the LIGTAS administrator.',
+                  'Your account is awaiting approval by the ResQTrack administrator.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
@@ -203,7 +203,7 @@ class PendingAccessScreen extends ConsumerWidget {
 
               // Support text
               Text(
-                'Need help? Contact your LIGTAS administrator',
+                'Need help? Contact your ResQTrack administrator',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11,

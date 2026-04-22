@@ -43,16 +43,16 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-    title: "LIGTAS CDRRMO - Inventory Management System",
+    title: "ResQTrack - Inventory Management System",
     description: "City Disaster Risk Reduction & Management Office Inventory System",
     icons: {
-        icon: "/oro-cervo.png",
+        icon: "/resqtrack-logo.jpg",
     },
     manifest: "/manifest.json",
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",
-        title: "LIGTAS",
+        title: "ResQTrack",
     },
 };
 
@@ -71,10 +71,10 @@ export default function RootLayout({
     return (
         <html lang="en" className={`${inter.variable} ${outfit.variable} ${interTight.variable} ${jetbrainsMono.variable} ${syne.variable} ${dmSans.variable}`}>
             <head>
-                <link rel="apple-touch-icon" href="/oro-cervo.png" />
+                <link rel="apple-touch-icon" href="/resqtrack-logo.jpg" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-                <meta name="apple-mobile-web-app-title" content="LIGTAS" />
+                <meta name="apple-mobile-web-app-title" content="ResQTrack" />
             </head>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
                 <AuthProvider>

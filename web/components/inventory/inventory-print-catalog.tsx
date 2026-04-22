@@ -28,7 +28,7 @@ export function InventoryPrintCatalog({ items }: InventoryPrintCatalogProps) {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>LIGTAS Technical Catalog</title>
+                    <title>ResQTrack Technical Catalog</title>
                     <style>
                         @media print {
                             @page { size: A4 landscape; margin: 10mm; }
@@ -244,7 +244,7 @@ export function InventoryPrintCatalog({ items }: InventoryPrintCatalogProps) {
             {/* Hidden content used for print capture */}
             <div ref={printRef} style={{ display: 'none' }}>
                 <div className="catalog-header">
-                    <div className="branding-tag">LIGTAS RESOURCE MANAGEMENT</div>
+                    <div className="branding-tag">ResQTrack RESOURCE MANAGEMENT</div>
                     <div className="catalog-title">Horizontal Catalog Grid</div>
                     <div className="catalog-meta">
                         OFFICIAL EQUIPMENT MANIFEST • ${new Date().toLocaleDateString('en-US', {
@@ -263,7 +263,7 @@ export function InventoryPrintCatalog({ items }: InventoryPrintCatalogProps) {
                                     <div className="qr-frame">
                                         <QRCodeSVG
                                             value={JSON.stringify({
-                                                protocol: 'ligtas',
+                                                protocol: 'resqtrack',
                                                 version: '1.0',
                                                 action: 'view',
                                                 itemId: item.id,

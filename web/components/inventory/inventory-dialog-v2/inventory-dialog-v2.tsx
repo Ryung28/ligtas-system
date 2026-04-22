@@ -37,9 +37,8 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
     }, [categories, state.categoryId])
 
     const isBulkCategory = useMemo(() => {
-        const name = selectedCategoryName.toLowerCase().trim()
-        return name === 'medical' || name === 'goods'
-    }, [selectedCategoryName])
+        return state.itemType === 'consumable'
+    }, [state.itemType])
 
     /** Goods are consumables — show brand + expiry even when item type is Equipment */
     const showGoodsExpiryFields =
@@ -235,6 +234,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                                 addExtraBatch={state.addExtraBatch}
                                 showPackaging={isBulkCategory}
                                 categoryName={selectedCategoryName}
+                                itemType={state.itemType}
                             />
                         </div>
 

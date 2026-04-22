@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import { TableCell, TableRow } from '@/components/ui/table'
@@ -111,7 +111,7 @@ export function ExpandableInventoryRow({
         }
     }
 
-    const fetchActiveLoans = async () => {
+    const fetchActiveLoans = useCallback(async () => {
         const allIds = item.variants?.flatMap(v => v.ids) || [item.id]
         if (allIds.length > 0 && activeLoans.length === 0) {
             setIsLoadingActiveLoans(true)
@@ -122,12 +122,16 @@ export function ExpandableInventoryRow({
                 setIsLoadingActiveLoans(false)
             }
         }
-    }
+    }, [item.variants, item.id, activeLoans.length])
 
     const stockStatus = getStockDisplay(item)
     const isProblematic = stockStatus.label === 'OUT OF STOCK' || stockStatus.label === 'LOW STOCK'
     const expiry = getExpiryInfo((item as any).expiry_date, (item as any).expiry_alert_days)
-    const isGoodsCategory = item.category?.toLowerCase().trim() === 'goods'
+    const isBulkCategory = item.item_type === 'consumable'
+    const packaging = (item as any).packaging_json
+    const showBulkDisplay = isBulkCategory && packaging?.enabled && packaging?.batches?.length > 0
+    const containerCount = packaging?.batches?.length || 0
+
     const expiryDateText = (item as any).expiry_date
         ? new Date((item as any).expiry_date).toLocaleDateString('en-PH', {
             year: 'numeric',
@@ -135,6 +139,14 @@ export function ExpandableInventoryRow({
             day: '2-digit',
         })
         : 'Not set'
+
+    // Prefetch dispensed/loan rows for consumables so badge details are ready
+    // before the user opens the popover.
+    useEffect(() => {
+        if (isBulkCategory && activeLoans.length === 0) {
+            fetchActiveLoans()
+        }
+    }, [isBulkCategory, activeLoans.length, fetchActiveLoans])
 
     return (
         <>
@@ -202,7 +214,7 @@ export function ExpandableInventoryRow({
                 <TableCell className="px-3 py-5">
                     <div className="flex flex-col">
                         <span className="text-[13px] font-bold text-gray-800 leading-none">
-                            {isGoodsCategory ? expiryDateText : '—'}
+                            {isBulkCategory ? expiryDateText : ''}
                         </span>
                     </div>
                 </TableCell>
@@ -237,7 +249,13 @@ export function ExpandableInventoryRow({
                                      className="shrink-0"
                                  />
                                  <span className="text-[18px] font-black text-gray-950 tabular-nums tracking-tighter">
-                                     {displayAvailable}
+                                     {showBulkDisplay ? (
+                                         <span className="flex items-baseline gap-1">
+                                             <span className="text-blue-600">{containerCount}</span>
+                                             <span className="text-[14px] text-gray-400 font-bold">/</span>
+                                             <span>{displayAvailable}</span>
+                                         </span>
+                                     ) : displayAvailable}
                                  </span>
                               </div>
                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.1em]">
@@ -292,11 +310,17 @@ export function ExpandableInventoryRow({
                                     <div className="flex items-end justify-between">
                                         <div className="flex flex-col">
                                             <span className="text-[24px] font-black text-gray-950 tabular-nums tracking-tighter leading-none">
-                                                {primaryVariant?.stock_available ?? 0}
+                                                {showBulkDisplay ? (
+                                                    <span className="flex items-baseline gap-1">
+                                                        <span className="text-blue-600 font-black">{containerCount}</span>
+                                                        <span className="text-[16px] text-gray-400 font-bold">/</span>
+                                                        <span>{primaryVariant?.stock_available ?? 0}</span>
+                                                    </span>
+                                                ) : (primaryVariant?.stock_available ?? 0)}
                                             </span>
                                             <div className="flex items-center gap-1.5 mt-2">
                                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    IN STOCK / {primaryVariant?.stock_total ?? 0} TOTAL
+                                                    {showBulkDisplay ? `${packaging.containerType || 'UNIT'}S` : 'IN STOCK'} / {primaryVariant?.stock_total ?? 0} TOTAL
                                                 </span>
                                             </div>
                                             <SiteHealthFootnote variant={primaryVariant} />
@@ -321,11 +345,17 @@ export function ExpandableInventoryRow({
                                         <div className="flex items-end justify-between">
                                             <div className="flex flex-col">
                                                 <span className="text-[24px] font-black text-gray-950 tabular-nums tracking-tighter leading-none">
-                                                    {v.stock_available}
+                                                    {showBulkDisplay ? (
+                                                        <span className="flex items-baseline gap-1">
+                                                            <span className="text-blue-600 font-black">{containerCount}</span>
+                                                            <span className="text-[16px] text-gray-400 font-bold">/</span>
+                                                            <span>{v.stock_available}</span>
+                                                        </span>
+                                                    ) : v.stock_available}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 mt-2">
                                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        IN STOCK / {v.stock_total ?? 0} TOTAL
+                                                        {showBulkDisplay ? `${packaging.containerType || 'UNIT'}S` : 'IN STOCK'} / {v.stock_total ?? 0} TOTAL
                                                     </span>
                                                 </div>
                                                 <SiteHealthFootnote variant={v} />

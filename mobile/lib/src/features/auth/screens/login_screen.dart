@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/config/branding.dart';
 import '../../../core/design_system/app_spacing.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../../../core/design_system/widgets/tactical_notice.dart';
@@ -135,7 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: CircleAvatar(
                         radius: 40,
                         backgroundColor: Colors.white,
-                        child: Image.asset('assets/cdrrmo_logo.png', height: 60),
+                        child: Image.asset(Branding.logoAssetPath, height: 60),
                       ),
                     ),
                   ),
@@ -147,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Column(
                   children: [
                     Text(
-                      'LIGTAS',
+                      Branding.appName,
                       style: GoogleFonts.lexend(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,

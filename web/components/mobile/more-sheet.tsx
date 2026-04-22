@@ -79,7 +79,7 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 /**
- * 🧭 LIGTAS Mobile "More" Sheet
+ * 🧭 ResQTrack Mobile "More" Sheet
  * Secondary navigation drawer — houses routes that don't fit in the 4-slot
  * bottom nav. Role-gated. Replaces the old popover menu in MobileHeader.
  */

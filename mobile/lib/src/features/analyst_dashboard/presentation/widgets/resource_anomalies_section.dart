@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import '../../domain/entities/resource_anomaly.dart';
-import 'anomaly_card.dart';
+import 'anomaly_card.dart' show AnomalyCard, kAnomalyStripCardHeight;
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/design_system/app_theme.dart';
 
@@ -77,7 +77,7 @@ class ResourceAnomaliesSection extends StatelessWidget {
           _buildEmptyState()
         else
           SizedBox(
-            height: 128,
+            height: kAnomalyStripCardHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,

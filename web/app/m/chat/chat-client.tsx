@@ -88,7 +88,7 @@ export default function MobileChatClient() {
                             {activeParticipant?.full_name || 'Operations'}
                         </h3>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            {activeParticipant?.role || 'LIGTAS STAFF'}
+                            {activeParticipant?.role || 'ResQTrack STAFF'}
                         </p>
                     </div>
                 </div>

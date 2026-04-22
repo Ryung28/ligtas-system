@@ -111,7 +111,7 @@ export function InventoryItemDialog({
                     onSubmit={handleSubmit}
                     className="flex flex-col h-full max-h-[92vh] overflow-hidden"
                 >
-                    {/* 🏗️ LIGTAS PRIME HEADER: Clean, High-Contrast, Professional */}
+                    {/* 🏗️ ResQTrack PRIME HEADER: Clean, High-Contrast, Professional */}
                     <div className="px-6 py-6 bg-white border-b border-slate-50 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-5">
                             {/* Iconic Highlight (Matching Reference) */}

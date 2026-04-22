@@ -84,7 +84,7 @@ export default function LoginPage() {
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-white/20 backdrop-blur-[8px] rounded-full border border-white/30 shadow-2xl z-0" />
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] h-[360px] bg-gradient-to-br from-white/40 to-transparent backdrop-blur-[12px] rounded-full border border-white/40 z-0" />
 
-                        {/* ── LIGTAS Definition: Inner Circular Text Seal ── */}
+                        {/* ── ResQTrack Definition: Inner Circular Text Seal ── */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[330px] h-[330px] pointer-events-none select-none z-0 opacity-90">
                             <svg viewBox="0 0 400 400" className="w-full h-full animate-[spin_60s_linear_infinite] will-change-transform" style={{ backfaceVisibility: 'hidden' }}>
                                 <defs>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                                 <text className="font-black uppercase tracking-[0.16em] text-[16px]" fill="url(#sealGradient)">
                                     {/* Senior Dev: 'spacing' only stretches gaps, preserving font shape. 1115 is calibrated for seamless loop. */}
                                     <textPath xlinkHref="#innerCircle" textLength="1115" lengthAdjust="spacing">
-                                        ( LIGTAS ) • Local • Inventory • & Gear • Tracking • for Administrative • Services •
+                                        ( ResQTrack ) • Local • Inventory • & Gear • Tracking • for Administrative • Services •
                                     </textPath>
                                 </text>
                             </svg>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                                 <Image
                                     ref={onImageRef}
                                     src="/img.webp"
-                                    alt="LIGTAS Inventory System"
+                                    alt="ResQTrack Inventory System"
                                     fill
                                     className={`relative z-10 object-contain drop-shadow-[0_45px_45px_rgba(0,0,0,0.18)] transition-all duration-1000 ease-out bg-transparent ${imageLoaded ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
                                     priority
@@ -191,7 +191,7 @@ export default function LoginPage() {
 
                     <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 3xl:gap-10">
                         <AuthHeader
-                            title="LIGTAS Login"
+                            title="ResQTrack Login"
                             description="Inventory & Equipment Management"
                         />
 
@@ -303,7 +303,7 @@ export default function LoginPage() {
                             </div>
 
                             <p className="text-[11px] text-slate-300 font-medium text-center max-w-[240px] leading-relaxed">
-                                Having trouble logging in?<br />Contact IT Support at <span className="text-slate-400">admin@ligtas-cdrrmo.ph</span>
+                                Having trouble logging in?<br />Contact IT Support at <span className="text-slate-400">admin@cdrrmo.ph</span>
                             </p>
                         </div>
                     </div>
@@ -321,7 +321,7 @@ export default function LoginPage() {
                     className="flex items-center gap-3 py-2.5 px-6 rounded-full bg-slate-900 lg:bg-white/10 border border-white/20 hover:bg-slate-800 lg:hover:bg-white/20 transition-all text-white lg:text-slate-900 backdrop-blur-xl shadow-2xl group/mobile scale-90 lg:scale-100"
                 >
                     <Smartphone className="w-5 h-5 group-hover/mobile:scale-110 transition-transform text-blue-400 lg:text-slate-800" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.15em]">LIGTAS App</span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em]">ResQTrack App</span>
                     <div className={`w-2 h-2 rounded-full transition-transform duration-300 ${showMobileApp ? 'bg-white lg:bg-slate-900 rotate-180' : 'bg-slate-500'}`} />
                 </button>
 
@@ -364,7 +364,7 @@ export default function LoginPage() {
                                             <div className="flex flex-col">
                                                 <h4 className="text-[14px] font-black text-slate-950 uppercase tracking-widest flex items-center gap-2 font-sans">
                                                     <QrCode className="w-3.5 h-3.5 text-slate-600 hidden lg:block" />
-                                                    LIGTAS Mobile
+                                                    ResQTrack Mobile
                                                 </h4>
                                                 <span className="text-[10px] font-bold text-slate-700/60 uppercase tracking-widest mt-0.5">Official Admin App</span>
                                             </div>

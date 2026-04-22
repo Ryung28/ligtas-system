@@ -16,7 +16,7 @@ bool managerActionCanSubmit(ManagerActionCanSubmitRef ref, InventoryItem item) {
   switch (s.mode) {
     case ManagerMode.restock:
       final total = s.qtyGood + s.qtyDamaged + s.qtyMaintenance + s.qtyLost;
-      return s.note.trim().isNotEmpty && total >= 1;
+      return total >= 1;
 
     case ManagerMode.edit:
       final hasLocation =

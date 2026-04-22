@@ -5,7 +5,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 
 // ============================================================================
-// LIGTAS NOTIFICATION SERVER ACTIONS
+// ResQTrack NOTIFICATION SERVER ACTIONS
 // 🛡️ All mutations flow through here. NEVER call RPCs directly from client
 //    components. Uses Zod for type-safe input validation.
 // ============================================================================

@@ -1,6 +1,6 @@
 {
-  "name": "LIGTAS Tactical Command",
-  "short_name": "LIGTAS",
+  "name": "ResQTrack",
+  "short_name": "ResQTrack",
   "description": "Unified Logistics & Disaster Response Information System",
   "start_url": "/m",
   "display": "standalone",
@@ -9,15 +9,15 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/oro-cervo.png",
+      "src": "/resqtrack-logo.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/oro-cervo.png",
+      "src": "/resqtrack-logo.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "maskable"
     }
   ],

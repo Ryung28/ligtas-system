@@ -9,7 +9,7 @@ import { TimelineSkeleton } from '@/components/mobile/skeletons/timeline-skeleto
 import { MobileHeader } from '@/components/mobile/mobile-header'
 
 /**
- * 📱 LIGTAS Mobile Transaction Logs Client
+ * 📱 ResQTrack Mobile Transaction Logs Client
  * This component is separate to satisfy Next.js 15 Suspense requirements.
  */
 export function LogsClient() {

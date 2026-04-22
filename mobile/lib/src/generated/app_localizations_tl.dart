@@ -9,7 +9,7 @@ class AppLocalizationsTl extends AppLocalizations {
   AppLocalizationsTl([String locale = 'tl']) : super(locale);
 
   @override
-  String get appTitle => 'LIGTAS COMMAND';
+  String get appTitle => 'ResQTrack';
 
   @override
   String get loginGateway => 'GATEWAY NG PAGPAPAHINTULOT';

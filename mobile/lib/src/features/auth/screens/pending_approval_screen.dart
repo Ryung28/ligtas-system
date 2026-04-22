@@ -119,7 +119,7 @@ class PendingApprovalScreen extends ConsumerWidget {
                           ),
                           const Gap(16),
                           Text(
-                            'Your credentials have been logged. Access to the LIGTAS network is restricted until an Administrator approves your deployment.',
+                            'Your credentials have been logged. Access to the ResQTrack network is restricted until an Administrator approves your deployment.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 14,

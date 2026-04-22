@@ -47,7 +47,7 @@ export async function getChatRoomsV3() {
             unread_count: row.chat_unread_count || 0
         }))
 
-        // ── LIGTAS Deduplication Shield (Server-Side) ──
+        // ── ResQTrack Deduplication Shield (Server-Side) ──
         const uniqueMap = new Map<string, any>()
         rawRooms.forEach((room: any) => {
             const userId = room.borrower_user_id

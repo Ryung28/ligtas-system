@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 
 class DateFormatter {
-  /// Implements the 'Contextual Chronology' pattern for LIGTAS.
+  /// Implements the 'Contextual Chronology' pattern for ResQTrack.
   /// 
   /// Today: 5:30 PM
   /// Yesterday: Yesterday

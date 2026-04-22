@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
+import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
 import 'package:mobile/src/features_v2/inventory/domain/entities/inventory_item.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/providers/manager_action_sheet_v2/manager_action_controller.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/providers/manager_action_sheet_v2/manager_action_mode.dart';
@@ -59,18 +60,12 @@ class SubmitSection extends ConsumerWidget {
                       ref.read(managerActionControllerProvider(item).notifier);
                   final success = await ctrl.submit();
                   if (success && context.mounted) {
+                    final rootContext =
+                        Navigator.of(context, rootNavigator: true).context;
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(children: [
-                          const Icon(Icons.check_circle_rounded,
-                              color: Colors.white, size: 20),
-                          const Gap(12),
-                          const Text('Inventory Registry Updated'),
-                        ]),
-                        backgroundColor: Colors.green.shade600,
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppToast.showSuccess(
+                      rootContext,
+                      'Inventory Registry Updated',
                     );
                   }
                 }

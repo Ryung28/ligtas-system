@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
 /**
- * LIGTAS Chat-V3 Notification Listener
+ * ResQTrack Chat-V3 Notification Listener
  * Headless architecture for global sound/toast alerts.
  */
 export function ChatNotificationListenerV3() {
@@ -40,7 +40,7 @@ export function ChatNotificationListenerV3() {
                     } catch (err) {}
                 }
 
-                // Entity Hydration (LIGTAS Identity Resolver)
+                // Entity Hydration (ResQTrack Identity Resolver)
                 let senderName = 'A Mobile User'
                 try {
                     const { data: profile } = await supabase

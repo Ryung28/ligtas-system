@@ -37,7 +37,7 @@ export function Header() {
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-64">
                     <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-                    <SheetDescription className="sr-only">Access different sections of the LIGTAS dashboard.</SheetDescription>
+                    <SheetDescription className="sr-only">Access different sections of the ResQTrack dashboard.</SheetDescription>
                     <Sidebar onNavigate={() => setOpen(false)} />
                 </SheetContent>
             </Sheet>
@@ -48,7 +48,7 @@ export function Header() {
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                         <span className="text-white font-semibold text-sm">L</span>
                     </div>
-                    <span className="font-semibold text-gray-900">LIGTAS</span>
+                    <span className="font-semibold text-gray-900">ResQTrack</span>
                 </div>
             </div>
 

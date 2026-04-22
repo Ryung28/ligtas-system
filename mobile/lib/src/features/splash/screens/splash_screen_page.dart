@@ -90,11 +90,11 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(100),
                           child: Image.asset(
-                            'assets/cdrrmo_logo.png',
+                            Branding.logoAssetPath,
                             width: 90,
                             height: 100,
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => 
+                            errorBuilder: (context, error, stackTrace) =>
                               const Icon(Icons.shield_rounded, size: 50, color: AppTheme.primaryBlue),
                           ),
                         ),
@@ -108,16 +108,18 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
                 // ── Layer 3: Staggered Letter Emergence ──
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: Branding.appName.split('').map((char) {
+                  children: Branding.appName.split('').asMap().entries.map((e) {
+                    final i = e.key;
+                    final char = e.value;
                     return Text(
-                      char.toUpperCase(),
+                      char,
                       style: GoogleFonts.lexend(
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
                         color: sentinel.navy,
                         letterSpacing: 6.0,
                       ),
-                    ).animate().fadeIn(delay: Duration(milliseconds: 400 + (Branding.appName.indexOf(char) * 100)))
+                    ).animate().fadeIn(delay: Duration(milliseconds: 400 + (i * 100)))
                                .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic);
                   }).toList(),
                 ),
@@ -163,7 +165,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'CDRRMO LIGTAS COORDINATION',
+                    '${Branding.appName} · FIELD COORDINATION',
                     style: GoogleFonts.lexend(
                       fontSize: 7,
                       fontWeight: FontWeight.w500,

@@ -131,7 +131,7 @@ class _ForceReturnDialogState extends ConsumerState<ForceReturnDialog> {
                         children: [
                           Icon(Icons.verified_user_rounded, size: 18, color: charcoal.withOpacity(0.4)),
                           const Gap(14),
-                          Expanded(child: Text('LIGTAS-Audit: Timestamps and personnel ID will be recorded upon recovery.', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: charcoal.withOpacity(0.5), height: 1.4))),
+                          Expanded(child: Text('ResQTrack-Audit: Timestamps and personnel ID will be recorded upon recovery.', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: charcoal.withOpacity(0.5), height: 1.4))),
                         ],
                       ),
                     ),

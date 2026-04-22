@@ -19,7 +19,7 @@ String? _borrowSiteForLog(Map<String, dynamic> json) {
 }
 
 /// Concrete Implementation: Supabase Manager Repository Silo
-/// Strictly follows LIGTAS V4 Protocol for Data-UI Separation
+/// Strictly follows ResQTrack V4 Protocol for Data-UI Separation
 class ManagerRepositoryImpl implements IManagerRepository {
   final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -46,7 +46,7 @@ class ManagerRepositoryImpl implements IManagerRepository {
         overdueTrendPercent: 0.0,
       );
     } catch (e) {
-      throw Exception('LIGTAS-MANAGER: Failed to aggregate metrics: $e');
+      throw Exception('ResQTrack-MANAGER: Failed to aggregate metrics: $e');
     }
   }
 
@@ -99,7 +99,7 @@ class ManagerRepositoryImpl implements IManagerRepository {
 
       return anomalies;
     } catch (e) {
-      debugPrint('LIGTAS-MANAGER: Anomaly triage failed: $e');
+      debugPrint('ResQTrack-MANAGER: Anomaly triage failed: $e');
       return [];
     }
   }

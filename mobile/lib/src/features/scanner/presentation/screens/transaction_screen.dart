@@ -5,7 +5,7 @@ import 'package:mobile/src/features/scanner/models/qr_payload.dart';
 import 'package:mobile/src/features/scanner/services/scanner_switchboard.dart';
 import 'package:mobile/src/features/scanner/widgets/scan_result_sheet.dart';
 
-/// 🛡️ LIGTAS Transaction Screen
+/// 🛡️ ResQTrack Transaction Screen
 /// Decoupled from app.dart to enforce Feature-First Siloing.
 /// Handles QR code payload parsing and presents the confirmation sheet.
 class TransactionScreen extends ConsumerStatefulWidget {
@@ -35,7 +35,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
     final LigtasQrPayload? payload = LigtasQrPayload.tryParse(qrCode);
 
     if (payload == null) {
-      _showError('Invalid QR Code. Please scan a LIGTAS label.');
+      _showError('Invalid QR Code. Please scan a ResQTrack label.');
       return;
     }
 

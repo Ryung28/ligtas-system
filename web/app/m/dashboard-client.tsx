@@ -21,7 +21,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { DashboardSkeleton } from '@/components/mobile/skeletons/dashboard-skeleton'
 
 /**
- * 📱 LIGTAS Mobile Dashboard Client
+ * 📱 ResQTrack Mobile Dashboard Client
  */
 export function DashboardClient() {
     const { stats, isLoading: statsLoading, refresh: refreshStats } = useDashboardStats()
@@ -40,7 +40,7 @@ export function DashboardClient() {
     return (
         <div className="space-y-6 px-4 pt-4">
             <MobileHeader 
-                title="LIGTAS" 
+                title="ResQTrack" 
                 onRefresh={handleRefresh} 
                 isLoading={statsLoading || logsLoading} 
             />

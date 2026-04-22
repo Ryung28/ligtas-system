@@ -21,7 +21,7 @@ extension ManagerModeX on ManagerMode {
   Color get activeColor {
     switch (this) {
       case ManagerMode.restock:
-        return AppTheme.emeraldGreen;
+        return AppTheme.onyxBlack;
       case ManagerMode.handover:
         return AppTheme.onyxBlack;
       case ManagerMode.reserve:
@@ -60,7 +60,7 @@ extension ManagerModeX on ManagerMode {
   String get noteHint {
     switch (this) {
       case ManagerMode.restock:
-        return 'Reason for restocking (required)';
+        return 'Reason for restocking (optional)';
       case ManagerMode.edit:
         return 'Audit reason for equipment changes (required)';
       case ManagerMode.handover:

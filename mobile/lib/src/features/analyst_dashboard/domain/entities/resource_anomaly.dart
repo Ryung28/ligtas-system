@@ -150,7 +150,7 @@ class ResourceAnomaly {
         qtyLost: (metadata['qty_lost'] as num?)?.toInt() ?? 0,
       );
     } catch (e) {
-      debugPrint('🚨 LIGTAS-CORE: Faulty anomaly deserialization: $e');
+      debugPrint('🚨 ResQTrack-CORE: Faulty anomaly deserialization: $e');
       rethrow;
     }
   }

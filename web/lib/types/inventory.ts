@@ -1,5 +1,5 @@
 
-export type TransactionStatus = 'all' | 'borrowed' | 'returned' | 'pending' | 'overdue' | 'lost' | 'damaged' | 'maintenance' | 'reserved' | 'staged' | 'denied';
+export type TransactionStatus = 'all' | 'borrowed' | 'returned' | 'pending' | 'overdue' | 'lost' | 'damaged' | 'maintenance' | 'reserved' | 'staged' | 'denied' | 'dispensed';
 
 export interface BorrowLog {
     id: number;

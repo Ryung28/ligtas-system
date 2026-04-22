@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 
 /**
- * LIGTAS V2 STATE HOOK (ULTIMATE PARITY)
+ * ResQTrack V2 STATE HOOK (ULTIMATE PARITY)
  * Handles Identity, Variant, Health, Consumable Metadata, and Logistics.
  */
 export function useInventoryStateV2(initialItem?: any) {

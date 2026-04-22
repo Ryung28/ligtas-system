@@ -4,6 +4,7 @@ import 'package:gap/gap.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/branding.dart';
 import '../../../core/design_system/app_spacing.dart';
 import '../../../core/design_system/animation_constants.dart';
 import '../models/intro_card_data.dart';
@@ -27,9 +28,9 @@ class _ModernIntroCardsState extends State<ModernIntroCards>
   final Map<int, AnimationController> _iconControllers = {};
   bool _isExiting = false;
 
-  final List<IntroCardData> _cards = [
+  late final List<IntroCardData> _cards = [
     IntroCardData(
-      title: 'Welcome to LIGTAS',
+      title: 'Welcome to ${Branding.appName}',
       description:
           'Your loan and inventory management companion. Track loans, manage inventory, and scan QR codes for quick transactions.',
       icon: Icons.shield_rounded,

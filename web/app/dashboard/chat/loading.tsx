@@ -29,7 +29,7 @@ export default function ChatLoading() {
                     </div>
 
                     <h2 className="text-xl font-semibold text-slate-200 mb-1 uppercase tracking-tight italic font-black">
-                        LIGTAS Chat
+                        ResQTrack Chat
                     </h2>
                     <div className="h-3 w-48 bg-slate-100 rounded-full mx-auto" />
                 </div>

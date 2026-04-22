@@ -62,7 +62,7 @@ export default function AdminMessengerPage() {
                     <MessengerWindowV3
                         key={roomId}
                         roomId={roomId}
-                        title={activeParticipant?.full_name || 'LIGTAS Operations'}
+                        title={activeParticipant?.full_name || 'ResQTrack Operations'}
                         participant={activeParticipant}
                     />
                 ) : (
@@ -70,7 +70,7 @@ export default function AdminMessengerPage() {
                         <div className="h-16 w-16 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center text-slate-300 mb-6">
                             <MessageSquare className="h-8 w-8 stroke-[1.5px]" />
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-900 mb-1">LIGTAS Chat (V3)</h2>
+                        <h2 className="text-xl font-semibold text-slate-900 mb-1">ResQTrack Chat (V3)</h2>
                         <p className="text-sm text-slate-400 font-medium">Select a conversation to start messaging</p>
                     </div>
                 )}

@@ -12,7 +12,7 @@ interface LogCardProps {
 }
 
 /**
- * 📱 LIGTAS Mobile Session Ledger Card
+ * 📱 ResQTrack Mobile Session Ledger Card
  * 🏛️ ARCHITECTURE: "The Transaction Triage Card"
  * Full parity with web borrowing sessions, including images and deep audit dates.
  */

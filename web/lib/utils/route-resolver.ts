@@ -1,7 +1,7 @@
 /**
  * 🛡️ SYSTEM ROUTE RESOLVER (SSOT)
  * 
- * Centralized engine for resolving deep-link URLs across the entire LIGTAS ecosystem.
+ * Centralized engine for resolving deep-link URLs across the entire ResQTrack ecosystem.
  * Handles polymorphic inputs from Notifications, System Intel, and Audit Logs.
  */
 

@@ -71,7 +71,7 @@ export function generateReportHTML(type: ReportType, data: any[], config: Report
 
     </style></head><body>
         <div class="official-header">
-            <img src="/oro-cervo.png" alt="Seal" />
+            <img src="/resqtrack-logo.jpg" alt="Seal" />
             <div style="font-size:calc(${s.base} - 2px); font-weight:600; color:#475569; text-transform:uppercase;">Republic of the Philippines</div>
             <div class="city-text">Oroquieta City</div>
             <div class="office-text">City Disaster Risk Reduction & Management Office</div>

@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/widgets/tactical_asset_image.dart';
+import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
 import '../../providers/dispatch_controller.dart';
 import '../../model/dispatch_session.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -25,9 +28,23 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
   final TextEditingController _contactController = TextEditingController();
   final TextEditingController _authController = TextEditingController();
   bool _didHydrateFromState = false;
+  bool _didAutoFillOnOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Reuse Hero V2 dock-suppression pattern while this screen is active.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(isDockSuppressedProvider.notifier).state = true;
+        _ensureDefaultAutoFill();
+      }
+    });
+  }
 
   @override
   void dispose() {
+    ref.read(isDockSuppressedProvider.notifier).state = false;
     _nameController.dispose();
     _officeController.dispose();
     _contactController.dispose();
@@ -85,6 +102,19 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
     }
   }
 
+  void _ensureDefaultAutoFill() {
+    if (_didAutoFillOnOpen) return;
+    final dispatch = ref.read(fastDispatchControllerProvider).value;
+    final hasExistingBorrower = dispatch?.borrower != null &&
+        dispatch!.borrower!.name.trim().isNotEmpty;
+    if (hasExistingBorrower) {
+      _didAutoFillOnOpen = true;
+      return;
+    }
+    _borrowForSelf();
+    _didAutoFillOnOpen = true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(fastDispatchControllerProvider);
@@ -93,13 +123,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
     // 🕊️ SUCCESS LISTENER: Return to HQ on completion
     ref.listen(fastDispatchControllerProvider, (previous, next) {
       if (previous?.isLoading == true && next.hasValue && next.value?.selectedItem == null && next.value?.error == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('VOUCHER ISSUED SUCCESSFULLY', style: GoogleFonts.lexend(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.white)),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.showSuccess(context, 'Voucher issued successfully');
         context.pop();
       }
     });
@@ -115,7 +139,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('VOUCHER DISPATCH', 
+        title: Text('BORROW EQUIPMENT',
           style: GoogleFonts.lexend(color: stitchNavy, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
         leading: IconButton(
@@ -137,6 +161,8 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
                   children: [
                     const Gap(12),
                     _buildHeroSection(item),
+                    const Gap(12),
+                    _buildStockHealthBar(item),
                     const Gap(20),
                     _buildQuantitySelector(item),
                     const Gap(32),
@@ -179,20 +205,84 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: stitchBorder),
           ),
-          child: item.imageUrl != null 
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.network(item.imageUrl!, fit: BoxFit.contain),
-              )
-            : Icon(Icons.inventory_2_outlined, size: 80, color: stitchNavy.withOpacity(0.1)),
+          child: item.imageUrl != null && item.imageUrl!.trim().isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: TacticalAssetImage(
+                    path: item.imageUrl,
+                    width: double.infinity,
+                    height: double.infinity,
+                    borderRadius: 0,
+                    fit: BoxFit.contain,
+                  ),
+                )
+              : Icon(Icons.inventory_2_outlined, size: 80, color: stitchNavy.withOpacity(0.1)),
         ).animate().scale(duration: 400.ms),
         const Gap(16),
         Text(item.itemName.toUpperCase(), 
           textAlign: TextAlign.center,
           style: GoogleFonts.lexend(fontSize: 22, fontWeight: FontWeight.w900, color: stitchNavy, letterSpacing: -0.5)),
-        Text('SERIAL: LGT-${item.inventoryId.toString().padLeft(4, '0')}', 
-          style: GoogleFonts.jetBrainsMono(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8))),
       ],
+    );
+  }
+
+  Widget _buildStockHealthBar(DispatchItem item) {
+    const double barHeight = 8;
+    final double pct = (item.stockAvailable / (item.targetStock > 0 ? item.targetStock : 1)).clamp(0, 1);
+    
+    final bool isLow = (item.stockAvailable / (item.targetStock > 0 ? item.targetStock : 1)) <= (item.lowStockThreshold / 100);
+    final Color barColor = isLow ? Colors.red.shade500 : Colors.green.shade500;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLow ? Colors.red.withOpacity(0.02) : stitchSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isLow ? Colors.red.withOpacity(0.1) : stitchBorder),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('STOCK HEALTH', style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w900, color: const Color(0xFF64748B), letterSpacing: 1)),
+              Text('${item.stockAvailable} / ${item.targetStock}', 
+                  style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w900, color: isLow ? Colors.red.shade700 : stitchNavy)),
+            ],
+          ),
+          const Gap(8),
+          Stack(
+            children: [
+              Container(
+                height: barHeight,
+                width: double.infinity,
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(100)),
+              ),
+              FractionallySizedBox(
+                widthFactor: pct,
+                child: Container(
+                  height: barHeight,
+                  decoration: BoxDecoration(
+                    color: barColor, 
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: barColor.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 1))],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (isLow) ...[
+            const Gap(8),
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 10, color: Colors.red.shade700),
+                const Gap(4),
+                Text('CRITICAL: Stock is nearing depletion', style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.red.shade700)),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -223,7 +313,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
             children: [
               const Icon(Icons.person_pin_rounded, color: Colors.white, size: 12),
               const Gap(6),
-              Text('IDENTIFY AS SELF',
+              Text('AUTO FILL',
                   style: GoogleFonts.lexend(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
             ],
           ),
@@ -405,7 +495,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
       ),
       child: Column(
         children: [
-          Text('AUTHORIZED BY', style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF64748B))),
+          Text('APPROVED BY', style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF64748B))),
           const Gap(8),
           TextField(
             controller: _authController,
@@ -413,7 +503,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
             onChanged: (v) => ref.read(fastDispatchControllerProvider.notifier).updateApprovedBy(v),
             style: GoogleFonts.lexend(fontSize: 20, fontWeight: FontWeight.w900, color: stitchNavy),
             decoration: InputDecoration(
-              hintText: 'COMMANDER NAME',
+              hintText: 'APPROVER NAME',
               hintStyle: GoogleFonts.lexend(color: const Color(0xFFCBD5E1), fontSize: 18, fontWeight: FontWeight.w800),
               border: InputBorder.none,
             ),
@@ -472,7 +562,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
         ),
         child: state.isSubmitting 
           ? const CircularProgressIndicator(color: Colors.white)
-          : Text('CONFIRM & ISSUE VOUCHER', 
+          : Text('CONFIRM BORROW', 
               style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
       ),
     ).animate().slideY(begin: 0.2, duration: 400.ms);

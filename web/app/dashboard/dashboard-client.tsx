@@ -40,7 +40,7 @@ export default function DashboardClient() {
                     <Package className="h-8 w-8 text-blue-600" />
                 </div>
                 <div className="max-w-md space-y-2">
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">LIGTAS Command</h1>
+                    <h1 className="text-3xl font-black tracking-tight text-slate-900 font-heading uppercase italic">ResQTrack Command</h1>
                     <p className="text-slate-500">Registry initialized. Awaiting equipment data ingestion.</p>
                 </div>
                 <Button asChild size="lg" className="h-12 px-6 rounded-xl gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg font-medium uppercase tracking-wide text-[10px]">

@@ -37,6 +37,9 @@ class DispatchItem with _$DispatchItem {
     required String itemName,
     String? imageUrl,
     @Default(1) int quantity,
+    @Default(0) int stockAvailable,
+    @Default(0) int targetStock,
+    @Default(20) int lowStockThreshold,
   }) = _DispatchItem;
 
   factory DispatchItem.fromJson(Map<String, dynamic> json) => _$DispatchItemFromJson(json);

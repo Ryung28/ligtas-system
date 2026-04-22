@@ -22,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { isLowStock } from '@/src/features/inventory/utils'
 import type { Station, InventoryPickerItem } from '@/src/features/tactical-stations/types'
 import {
     getStationManifest,
@@ -38,11 +39,23 @@ interface ManifestWorkbenchProps {
     activeStationId: number | null
     onStationChange: (id: number) => void
     onDirtyChange: (isDirty: boolean) => void
+    isBlueprint?: boolean
+    blueprintItems?: number[]
+    onBlueprintChange?: (items: number[]) => void
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function ManifestWorkbench({ stations, inventoryItems, activeStationId, onStationChange, onDirtyChange }: ManifestWorkbenchProps) {
+export function ManifestWorkbench({ 
+    stations, 
+    inventoryItems, 
+    activeStationId, 
+    onStationChange, 
+    onDirtyChange,
+    isBlueprint = false,
+    blueprintItems = [],
+    onBlueprintChange
+}: ManifestWorkbenchProps) {
     const [manifestItemIds, setManifestItemIds] = useState<number[]>([])
     const [originalItemIds, setOriginalItemIds] = useState<number[]>([]) // track baseline
     const [searchQuery, setSearchQuery] = useState('')
@@ -93,6 +106,14 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
 
     // ── Toggle item in/out of manifest ────────────────────────────────────────
     function toggleItem(itemId: number) {
+        if (isBlueprint && onBlueprintChange) {
+            const next = blueprintItems.includes(itemId)
+                ? blueprintItems.filter(id => id !== itemId)
+                : [...blueprintItems, itemId]
+            onBlueprintChange(next)
+            return
+        }
+
         setManifestItemIds(prev =>
             prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
         )
@@ -195,12 +216,12 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
         return map
     }, [inventoryItems])
 
-    const mappedItems = useMemo(() => 
-        manifestItemIds
+    const mappedItems = useMemo(() => {
+        const ids = isBlueprint ? blueprintItems : manifestItemIds
+        return ids
             .map(id => inventoryMap.get(id))
-            .filter(Boolean) as InventoryPickerItem[],
-        [manifestItemIds, inventoryMap]
-    )
+            .filter(Boolean) as InventoryPickerItem[]
+    }, [isBlueprint, blueprintItems, manifestItemIds, inventoryMap])
 
     return (
         <div className="flex-1 flex overflow-hidden">
@@ -212,7 +233,16 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
                         <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center shrink-0">
                             <QrCode className="h-4 w-4 text-blue-400" />
                         </div>
-                        {activeStation ? (
+                        {isBlueprint ? (
+                            <div className="flex-1">
+                                <h2 className="text-[13px] font-[900] text-blue-600 uppercase italic tracking-tight leading-none">
+                                    NEW STATION BLUEPRINT
+                                </h2>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] leading-none mt-1">
+                                    STAGING {mappedItems.length} ITEMS FOR DEPLOYMENT
+                                </p>
+                            </div>
+                        ) : activeStation ? (
                             <div className="flex-1">
                                 <input
                                     type="text"
@@ -239,26 +269,28 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
                             <p className="text-[12px] text-slate-400 font-medium">Select a station to edit →</p>
                         )}
                     </div>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={!activeStation}
-                            className="h-8 text-slate-400 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest gap-1.5"
-                        >
-                            <Printer className="h-3.5 w-3.5" />
-                            PRINT
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={!activeStation || isPending}
-                            onClick={handleDelete}
-                            className="h-8 text-slate-300 hover:text-red-500 px-2"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
+                    {!isBlueprint && (
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={!activeStation}
+                                className="h-8 text-slate-400 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest gap-1.5"
+                            >
+                                <Printer className="h-3.5 w-3.5" />
+                                PRINT
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={!activeStation || isPending}
+                                onClick={handleDelete}
+                                className="h-8 text-slate-300 hover:text-red-500 px-2"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Manifest section label */}
@@ -292,12 +324,31 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
                                     className="h-10 flex items-center px-4 hover:bg-slate-50 transition-all group"
                                 >
                                     <Package className="h-3.5 w-3.5 text-blue-500 mr-3 shrink-0" />
-                                    <span className="flex-1 text-[12px] font-bold text-slate-700 truncate">
-                                        {item.item_name}
-                                    </span>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase w-14 text-right shrink-0">
-                                        {item.category}
-                                    </span>
+                                    <div className="flex-1 flex flex-col min-w-0 pr-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[12px] font-black text-slate-900 truncate">
+                                                {item.base_name || item.item_name}
+                                            </span>
+                                            {item.variant_label && (
+                                                <Badge variant="outline" className="h-4 px-1.5 text-[8px] font-black bg-slate-50 text-slate-400 border-slate-200">
+                                                    {item.variant_label}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 tabular-nums">
+                                        <span className={cn(
+                                            "text-[10px] font-black px-1.5 py-0.5 rounded",
+                                            isLowStock(item) ? "bg-rose-50 text-rose-600" : "text-slate-900"
+                                        )}>
+                                            {item.stock_available}
+                                            <span className="text-slate-300 font-medium mx-0.5">/</span>
+                                            {item.target_stock > 0 ? item.target_stock : item.stock_total}
+                                        </span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase w-14 text-right shrink-0">
+                                            {item.category}
+                                        </span>
+                                    </div>
                                     <button
                                         onClick={() => toggleItem(item.id)}
                                         className="ml-3 p-1 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
@@ -367,11 +418,23 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
                                         }
                                     </div>
                                     <div className="flex-1 text-left min-w-0 pr-3">
-                                        <p className={cn('text-[12px] font-bold truncate leading-none', isMapped ? 'text-white' : 'text-slate-800')}>
-                                            {item.item_name}
-                                        </p>
-                                        <p className={cn('text-[9px] font-black uppercase tracking-widest mt-1', isMapped ? 'text-blue-200' : 'text-slate-400')}>
-                                            {item.category} • {item.stock_available} {item.unit}
+                                        <div className="flex items-center gap-2">
+                                            <p className={cn('text-[12px] font-black truncate leading-none', isMapped ? 'text-white' : 'text-slate-900')}>
+                                                {item.base_name || item.item_name}
+                                            </p>
+                                            {item.variant_label && (
+                                                <span className={cn(
+                                                    "text-[8px] font-black px-1 rounded-sm uppercase tracking-tighter",
+                                                    isMapped ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"
+                                                )}>
+                                                    {item.variant_label}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className={cn('text-[9px] font-black uppercase tracking-widest mt-1.5', isMapped ? 'text-blue-200' : 'text-slate-400')}>
+                                            {item.category} • <span className={isLowStock(item) && !isMapped ? "text-rose-500 underline decoration-rose-500/30 underline-offset-2" : ""}>
+                                                {item.stock_available}/{item.target_stock > 0 ? item.target_stock : item.stock_total}
+                                            </span> {item.unit}
                                         </p>
                                     </div>
                                     {isMapped && (
@@ -386,7 +449,7 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
                 </ScrollArea>
 
                 <div className="p-4 border-t border-slate-200 bg-white space-y-3 shrink-0">
-                    {activeStation && (
+                    {!isBlueprint && activeStation && (
                         <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 h-[100px]">
                             <div className="bg-white p-1 rounded-lg border border-slate-200 shadow-sm shrink-0 h-full aspect-square flex items-center justify-center">
                                 <QRCodeSVG
@@ -420,22 +483,31 @@ export function ManifestWorkbench({ stations, inventoryItems, activeStationId, o
                             </div>
                         </div>
                     )}
-                    <Button
-                        onClick={handleCommit}
-                        disabled={!activeStation || isPending || !isDirty}
-                        className={cn(
-                            "w-full h-10 font-black text-[11px] uppercase tracking-widest rounded-xl gap-2 transition-all",
-                            isDirty 
-                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" 
-                                : "bg-slate-900 hover:bg-black text-white"
-                        )}
-                    >
-                        {isPending
-                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                            : isDirty ? <Save className="h-4 w-4 animate-bounce" /> : <Save className="h-4 w-4" />
-                        }
-                        {isPending ? 'Saving...' : isDirty ? 'Save Supply List' : 'Supply List Saved'}
-                    </Button>
+
+                    {isBlueprint ? (
+                         <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                            <p className="text-[10px] font-bold text-blue-600 uppercase leading-normal tracking-wide">
+                                💡 Setup items first, then click "Confirm Blueprint" in the Registry sidebar to deploy.
+                            </p>
+                         </div>
+                    ) : (
+                        <Button
+                            onClick={handleCommit}
+                            disabled={!activeStation || isPending || !isDirty}
+                            className={cn(
+                                "w-full h-10 font-black text-[11px] uppercase tracking-widest rounded-xl gap-2 transition-all",
+                                isDirty 
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" 
+                                    : "bg-slate-900 hover:bg-black text-white"
+                            )}
+                        >
+                            {isPending
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : isDirty ? <Save className="h-4 w-4 animate-bounce" /> : <Save className="h-4 w-4" />
+                            }
+                            {isPending ? 'Saving...' : isDirty ? 'Save Supply List' : 'Supply List Saved'}
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>

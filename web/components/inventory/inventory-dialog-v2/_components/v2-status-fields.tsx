@@ -33,10 +33,11 @@ interface StatusFieldsProps {
     addExtraBatch?: () => void
     showPackaging?: boolean
     categoryName?: string
+    itemType?: string
 }
 
 /**
- * LIGTAS V2 STATUS SECTION (VERIFIED PARITY)
+ * ResQTrack V2 STATUS SECTION (VERIFIED PARITY)
  * Handles all 4 health buckets plus planning strategy.
  */
 export function V2StatusFields({
@@ -50,31 +51,24 @@ export function V2StatusFields({
     policyErrors,
     packaging, updatePackaging, updateBatch, updateBatchLabel, addExtraBatch,
     showPackaging = true,
-    categoryName = ''
+    categoryName = '',
+    itemType = 'equipment'
 }: StatusFieldsProps) {
     
     const targetNum = Number(targetStock) || 0
     const thresholdNum = Number(lowStockThreshold) || 0
     const calculatedLimit = Math.ceil(targetNum * (thresholdNum / 100))
 
-    const name = categoryName.toLowerCase().trim()
-    const isGoodsOrMedical = name === 'medical' || name === 'goods'
+    const isConsumable = itemType === 'consumable'
 
-    // Smart Label Mapping
-    const labels = isGoodsOrMedical 
-        ? {
-            good: 'Safe / Fresh',
-            damaged: 'Dented / Compromised',
-            lost: 'Spoiled / Rotten',
-            header: 'Consumable Health'
-          }
-        : {
-            good: 'Good / Ready',
-            damaged: 'Damaged',
-            maintenance: 'Maintenance',
-            lost: 'Lost',
-            header: 'Equipment Status'
-          };
+    // Keep health buckets operationally consistent across all item types.
+    const labels = {
+        good: 'Good / Ready',
+        damaged: 'Damaged',
+        maintenance: 'Needs Maintenance',
+        lost: 'Lost',
+        header: 'Stock Health',
+    };
 
     return (
         <div className="bg-slate-50/50 rounded-3xl p-4 border border-slate-100 space-y-4">
@@ -126,26 +120,21 @@ export function V2StatusFields({
                     />
                 </div>
 
-                {!isGoodsOrMedical && (
-                    <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">{labels.maintenance}</Label>
-                        <Input 
-                            type="number" value={qtyMaintenance} onChange={(e) => setQtyMaintenance(e.target.value)}
-                            className="h-9 rounded-lg border-none font-black text-amber-500 text-lg bg-amber-50/10 px-2 focus-visible:ring-0" 
-                        />
-                    </div>
-                )}
+                <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
+                    <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">{labels.maintenance}</Label>
+                    <Input 
+                        type="number" value={qtyMaintenance} onChange={(e) => setQtyMaintenance(e.target.value)}
+                        className="h-9 rounded-lg border-none font-black text-amber-500 text-lg bg-amber-50/10 px-2 focus-visible:ring-0" 
+                    />
+                </div>
 
-                <div className={cn(
-                    "bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm",
-                    isGoodsOrMedical && "col-span-2"
-                )}>
+                <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
                     <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">{labels.lost}</Label>
                     <Input 
                         type="number" value={qtyLost} onChange={(e) => setQtyLost(e.target.value)}
                         className={cn(
                             "h-9 rounded-lg border-none font-black text-lg px-2 focus-visible:ring-0",
-                            isGoodsOrMedical ? "text-rose-600 bg-rose-50/10" : "text-slate-500 bg-slate-50/10"
+                            "text-slate-500 bg-slate-50/10"
                         )}
                     />
                 </div>

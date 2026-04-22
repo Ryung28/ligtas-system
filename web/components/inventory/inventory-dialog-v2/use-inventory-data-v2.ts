@@ -6,7 +6,7 @@ import { getCategories } from '@/src/features/catalog'
 import { getStorageLocations } from '@/app/actions/storage-locations'
 
 /**
- * LIGTAS V2 DATA HOOK
+ * ResQTrack V2 DATA HOOK
  * Handles all database-fetching logic for the inventory form.
  * Decoupled from UI and State to prevent re-fetch loops.
  */
@@ -50,7 +50,7 @@ export function useInventoryDataV2(isOpen: boolean) {
                 
                 setParents(parentData || [])
             } catch (error) {
-                console.error('LIGTAS_V2_DATA_ERROR:', error)
+                console.error('ResQTrack_V2_DATA_ERROR:', error)
             } finally {
                 setIsLoading(false)
             }

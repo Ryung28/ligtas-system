@@ -42,14 +42,14 @@ import 'package:mobile/src/features/analyst_dashboard/presentation/screens/logis
 import 'package:mobile/src/features/fast_dispatch/presentation/screens/fast_dispatch_screen.dart';
 // AnalystHistoryScreen liquidated as per Anti-Monolith Protocol. Hub is now ActivityLedgerScreen for audits.
 
-class LigtasApp extends ConsumerStatefulWidget {
-  const LigtasApp({super.key});
+class ResQTrackApp extends ConsumerStatefulWidget {
+  const ResQTrackApp({super.key});
 
   @override
-  ConsumerState<LigtasApp> createState() => _LigtasAppState();
+  ConsumerState<ResQTrackApp> createState() => _ResQTrackAppState();
 }
 
-class _LigtasAppState extends ConsumerState<LigtasApp> with WidgetsBindingObserver {
+class _ResQTrackAppState extends ConsumerState<ResQTrackApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -91,7 +91,7 @@ class _LigtasAppState extends ConsumerState<LigtasApp> with WidgetsBindingObserv
         intensity: 0.8,
       ),
       child: MaterialApp.router(
-        title: 'LIGTAS Mobile',
+        title: 'ResQTrack',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
         routerConfig: router,

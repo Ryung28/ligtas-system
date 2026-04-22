@@ -25,7 +25,7 @@ export interface AvailableItem {
 
 /**
  * useAvailableCatalog
- * A domain-specific hook for the LIGTAS inventory dispatch engine.
+ * A domain-specific hook for the ResQTrack inventory dispatch engine.
  * 
  * The Manager's Strategy: "Logistical Buffering"
  * Loads the entire available catalog once and provides high-speed local filtering.

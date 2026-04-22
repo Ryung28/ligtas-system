@@ -12,7 +12,7 @@ import '../models/chat_isar_model.dart';
 /// we render a graceful 'Duty Officer' placeholder instead of crashing.
 const Map<String, dynamic> _kDutyOfficerFallback = {
   'id': 'system',
-  'full_name': 'LIGTAS Duty Officer',
+  'full_name': 'ResQTrack Duty Officer',
   'role': 'admin',
 };
 
@@ -354,7 +354,7 @@ class ChatRepository with SupabasePresenceMixin implements IChatRepository {
   /// 🎯 CONSOLIDATED IDENTITY SNAPSHOT
   /// A single Supabase call replaces the old getPartnerId + getPartnerName chain.
   /// Returns a Map with: {'id', 'full_name', 'role'}
-  /// 🛡️ Tactical Fallback: Returns LIGTAS Duty Officer on SocketException.
+  /// 🛡️ Tactical Fallback: Returns ResQTrack Duty Officer on SocketException.
   @override
   Future<Map<String, dynamic>> getPartnerSnapshot(String roomId) async {
     final String? currentUserId = _client.auth.currentUser?.id;
@@ -383,7 +383,7 @@ class ChatRepository with SupabasePresenceMixin implements IChatRepository {
         final profile = room['user_profiles'] as Map<String, dynamic>?;
         return {
           'id': room['borrower_user_id'],
-          'full_name': profile?['full_name'] ?? 'LIGTAS Duty Officer',
+          'full_name': profile?['full_name'] ?? 'ResQTrack Duty Officer',
           'role': profile?['role'] ?? 'user',
         };
       } else {
@@ -401,7 +401,7 @@ class ChatRepository with SupabasePresenceMixin implements IChatRepository {
         final profile = lastMsg['user_profiles'] as Map<String, dynamic>?;
         return {
           'id': lastMsg['sender_id'],
-          'full_name': profile?['full_name'] ?? 'LIGTAS Duty Officer',
+          'full_name': profile?['full_name'] ?? 'ResQTrack Duty Officer',
           'role': profile?['role'] ?? 'admin',
         };
       }

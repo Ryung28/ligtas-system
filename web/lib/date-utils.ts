@@ -1,7 +1,7 @@
 import { isToday, isYesterday, isWithinInterval, subDays, startOfDay } from 'date-fns'
 
 /**
- * Implements the 'Contextual Chronology' pattern for LIGTAS Chat.
+ * Implements the 'Contextual Chronology' pattern for ResQTrack Chat.
  * Switches format based on how old the timestamp is.
  * 
  * @param dateStr - ISO string, Date object, or null/undefined
