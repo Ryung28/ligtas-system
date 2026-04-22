@@ -48,6 +48,14 @@
 *.exe
 *.dll
 
+# ─── WEB BRAND ASSETS (must be deployable) ───
+!web/public/resqtrack-logo.jpg
+!web/public/favicon.ico
+!web/public/favicon.png
+!web/public/apple-touch-icon.png
+!web/public/icons/
+!web/public/icons/**
+
 # ─── TEMP/BACKUP ───
 tmp/
 temp/

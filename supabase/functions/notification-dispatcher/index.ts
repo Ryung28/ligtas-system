@@ -106,139 +106,151 @@ function classifySendResult(fcmResponse: Json): "success" | "retryable_failure" 
 }
 
 Deno.serve(async () => {
-  const serviceAccountJson = Deno.env.get("SERVICE_ACCOUNT_JSON");
-  if (!serviceAccountJson) {
-    return new Response(JSON.stringify({ error: "SERVICE_ACCOUNT_JSON missing" }), { status: 500 });
-  }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const { accessToken, projectId } = await getAccessToken(serviceAccountJson);
-
-  const events = await fetchPendingEvents(supabase);
-  const summary: Json[] = [];
-
-  for (const event of events) {
-    const targets = await resolveTargets(supabase, event.audience);
-
-    if (targets.length === 0) {
-      await supabase
-        .from("notification_events")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
-        .eq("id", event.id);
-      summary.push({ eventId: event.id, status: "failed", reason: "no-targets" });
-      continue;
+  try {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
     }
 
-    const title = String(event.payload["title"] ?? "ResQTrack Alert");
-    const body = String(event.payload["body"] ?? "Check your dashboard for updates.");
-    const path = String(event.payload["path"] ?? "/dashboard");
-    const androidChannelId = String(event.payload["channel_id"] ?? "emergency_coordination_v7");
-    const sound = String(event.payload["sound"] ?? "critical_alarm");
+    const serviceAccountJson = Deno.env.get("SERVICE_ACCOUNT_JSON");
+    if (!serviceAccountJson) {
+      return new Response(JSON.stringify({ error: "SERVICE_ACCOUNT_JSON missing" }), { status: 500 });
+    }
 
-    let successCount = 0;
-    let retryableCount = 0;
-    const staleTokenIds: string[] = [];
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { accessToken, projectId } = await getAccessToken(serviceAccountJson);
 
-    for (const token of targets) {
-      const start = Date.now();
-      const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          message: {
-            token: token.fcm_token,
-            data: {
-              title,
-              body,
-              path,
-              eventType: event.event_type,
-            },
-            android: {
-              priority: "high",
-              notification: {
-                channel_id: androidChannelId,
-                sound,
+    const events = await fetchPendingEvents(supabase);
+    const summary: Json[] = [];
+
+    for (const event of events) {
+      const targets = await resolveTargets(supabase, event.audience);
+
+      if (targets.length === 0) {
+        await supabase
+          .from("notification_events")
+          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .eq("id", event.id);
+        summary.push({ eventId: event.id, status: "failed", reason: "no-targets" });
+        continue;
+      }
+
+      const title = String(event.payload["title"] ?? "ResQTrack Alert");
+      const body = String(event.payload["body"] ?? "Check your dashboard for updates.");
+      const path = String(event.payload["path"] ?? "/dashboard");
+      const androidChannelId = String(event.payload["channel_id"] ?? "emergency_coordination_v7");
+      const sound = String(event.payload["sound"] ?? "critical_alarm");
+
+      let successCount = 0;
+      let retryableCount = 0;
+      const staleTokenIds: string[] = [];
+
+      for (const token of targets) {
+        const start = Date.now();
+        const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            message: {
+              token: token.fcm_token,
+              data: {
+                title,
+                body,
+                path,
+                eventType: event.event_type,
               },
-            },
-            apns: {
-              payload: {
-                aps: {
-                  alert: { title, body },
-                  sound: `${sound}.mp3`,
-                  "content-available": 1,
+              android: {
+                priority: "high",
+                notification: {
+                  channel_id: androidChannelId,
+                  sound,
+                },
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    alert: { title, body },
+                    sound: `${sound}.mp3`,
+                    "content-available": 1,
+                  },
                 },
               },
             },
-          },
-        }),
-      });
+          }),
+        });
 
-      const payload = (await response.json()) as Json;
-      const result = response.ok ? "success" : classifySendResult(payload);
-      const errorStatus = (payload?.error as Json | undefined)?.status as string | undefined;
-      const errorMessage = (payload?.error as Json | undefined)?.message as string | undefined;
-      const providerMessageId = response.ok ? String(payload["name"] ?? "") : null;
+        const payload = (await response.json()) as Json;
+        const result = response.ok ? "success" : classifySendResult(payload);
+        const errorStatus = (payload?.error as Json | undefined)?.status as string | undefined;
+        const errorMessage = (payload?.error as Json | undefined)?.message as string | undefined;
+        const providerMessageId = response.ok ? String(payload["name"] ?? "") : null;
 
-      if (result === "success") successCount++;
-      if (result === "retryable_failure") retryableCount++;
-      if (result === "permanent_failure" && errorStatus && PERMANENT_STATUSES.has(errorStatus)) {
-        staleTokenIds.push(token.id);
+        if (result === "success") successCount++;
+        if (result === "retryable_failure") retryableCount++;
+        if (result === "permanent_failure" && errorStatus && PERMANENT_STATUSES.has(errorStatus)) {
+          staleTokenIds.push(token.id);
+        }
+
+        await supabase.from("notification_deliveries").insert({
+          event_id: event.id,
+          user_id: token.user_id,
+          token_id: token.id,
+          provider: "fcm",
+          provider_message_id: providerMessageId,
+          attempt_no: event.attempt_count + 1,
+          result,
+          error_code: errorStatus,
+          error_message: errorMessage,
+          latency_ms: Date.now() - start,
+        });
       }
 
-      await supabase.from("notification_deliveries").insert({
-        event_id: event.id,
-        user_id: token.user_id,
-        token_id: token.id,
-        provider: "fcm",
-        provider_message_id: providerMessageId,
-        attempt_no: event.attempt_count + 1,
-        result,
-        error_code: errorStatus,
-        error_message: errorMessage,
-        latency_ms: Date.now() - start,
-      });
+      if (staleTokenIds.length > 0) {
+        await supabase
+          .from("user_fcm_tokens")
+          .update({
+            invalidated_at: new Date().toISOString(),
+            invalid_reason: "provider_permanent_failure",
+          })
+          .in("id", staleTokenIds);
+      }
+
+      if (retryableCount > 0) {
+        const nextAttempt = new Date(Date.now() + computeBackoffSeconds(event.attempt_count) * 1000).toISOString();
+        await supabase
+          .from("notification_events")
+          .update({
+            status: successCount > 0 ? "partial" : "pending",
+            attempt_count: event.attempt_count + 1,
+            next_attempt_at: nextAttempt,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", event.id);
+        summary.push({ eventId: event.id, status: successCount > 0 ? "partial" : "pending", successCount, retryableCount });
+      } else {
+        await supabase
+          .from("notification_events")
+          .update({
+            status: successCount > 0 ? "sent" : "failed",
+            attempt_count: event.attempt_count + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", event.id);
+        summary.push({ eventId: event.id, status: successCount > 0 ? "sent" : "failed", successCount });
+      }
     }
 
-    if (staleTokenIds.length > 0) {
-      await supabase
-        .from("user_fcm_tokens")
-        .update({
-          invalidated_at: new Date().toISOString(),
-          invalid_reason: "provider_permanent_failure",
-        })
-        .in("id", staleTokenIds);
-    }
-
-    if (retryableCount > 0) {
-      const nextAttempt = new Date(Date.now() + computeBackoffSeconds(event.attempt_count) * 1000).toISOString();
-      await supabase
-        .from("notification_events")
-        .update({
-          status: successCount > 0 ? "partial" : "pending",
-          attempt_count: event.attempt_count + 1,
-          next_attempt_at: nextAttempt,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", event.id);
-      summary.push({ eventId: event.id, status: successCount > 0 ? "partial" : "pending", successCount, retryableCount });
-    } else {
-      await supabase
-        .from("notification_events")
-        .update({
-          status: successCount > 0 ? "sent" : "failed",
-          attempt_count: event.attempt_count + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", event.id);
-      summary.push({ eventId: event.id, status: successCount > 0 ? "sent" : "failed", successCount });
-    }
+    return new Response(JSON.stringify({ processed: events.length, summary }), {
+      headers: { "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: "dispatcher_failed", detail: message }), {
+      headers: { "Content-Type": "application/json" },
+      status: 500,
+    });
   }
-
-  return new Response(JSON.stringify({ processed: events.length, summary }), {
-    headers: { "Content-Type": "application/json" },
-    status: 200,
-  });
 });
