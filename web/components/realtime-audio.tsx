@@ -96,9 +96,26 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
                 event: 'INSERT',
                 schema: 'public',
                 table: 'system_notifications'
-            }, (payload) => {
+            }, async (payload) => {
                 const type = payload.new.type as string;
+                const targetUserId = payload.new.user_id as string | null;
+                const metadata = (payload.new.metadata ?? {}) as Record<string, unknown>;
                 console.log(`[Audio-Dispatcher] Intel Packet Received: ${type}`);
+
+                const { data: { user } } = await supabase.auth.getUser();
+                const currentUserId = user?.id ?? null;
+                if (!currentUserId) return;
+
+                // Targeted notifications should only ring for the intended recipient.
+                if (targetUserId && targetUserId !== currentUserId) return;
+
+                // Chat sound should only ring for incoming mobile->admin messages.
+                if (type === 'chat_message') {
+                    const senderId = typeof metadata.sender_id === 'string' ? metadata.sender_id : null;
+                    if (!targetUserId || targetUserId !== currentUserId || senderId === currentUserId) return;
+                    playNotification();
+                    return;
+                }
 
                 // 🏗️ TACTICAL MAPPING: Determine urgency based on notification type
                 const criticalTypes = ['borrow_request', 'stock_out', 'security_trigger', 'user_pending'];

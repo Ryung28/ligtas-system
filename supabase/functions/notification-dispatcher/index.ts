@@ -19,6 +19,8 @@ const PERMANENT_STATUSES = new Set([
   "UNREGISTERED",
   "INVALID_ARGUMENT",
   "MISMATCH_SENDER_ID",
+  // FCM can return NOT_FOUND for stale/non-existent token entities.
+  "NOT_FOUND",
 ]);
 
 interface NotificationEventRow {
@@ -33,6 +35,14 @@ interface TokenRow {
   id: string;
   user_id: string;
   fcm_token: string;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function normalizeAndroidPriority(value: string): "HIGH" | "NORMAL" {
+  return value.toLowerCase() === "high" ? "HIGH" : "NORMAL";
 }
 
 function computeBackoffSeconds(attemptCount: number): number {
@@ -85,12 +95,13 @@ async function resolveTargets(
   audience: Json,
 ): Promise<TokenRow[]> {
   const explicitUserIds = (audience["user_ids"] as string[] | undefined) ?? [];
-  if (explicitUserIds.length === 0) return [];
+  const validUserIds = explicitUserIds.filter((id) => typeof id === "string" && isUuid(id));
+  if (validUserIds.length === 0) return [];
 
   const { data, error } = await supabase
     .from("user_fcm_tokens")
     .select("id,user_id,fcm_token")
-    .in("user_id", explicitUserIds)
+    .in("user_id", validUserIds)
     .is("invalidated_at", null);
 
   if (error) throw error;
@@ -139,6 +150,9 @@ Deno.serve(async () => {
       const path = String(event.payload["path"] ?? "/dashboard");
       const androidChannelId = String(event.payload["channel_id"] ?? "emergency_coordination_v7");
       const sound = String(event.payload["sound"] ?? "critical_alarm");
+      const priority = normalizeAndroidPriority(String(event.payload["priority"] ?? "high"));
+      const ttlSeconds = Number(event.payload["ttl_seconds"] ?? 300);
+      const collapseId = String(event.payload["collapse_id"] ?? `${event.event_type}:${event.id}`);
 
       let successCount = 0;
       let retryableCount = 0;
@@ -162,13 +176,21 @@ Deno.serve(async () => {
                 eventType: event.event_type,
               },
               android: {
-                priority: "high",
+                priority,
+                ttl: `${Math.max(30, ttlSeconds)}s`,
+                collapse_key: collapseId,
                 notification: {
                   channel_id: androidChannelId,
                   sound,
+                  tag: collapseId,
                 },
               },
               apns: {
+                headers: {
+                  "apns-collapse-id": collapseId,
+                  "apns-priority": priority === "HIGH" ? "10" : "5",
+                  "apns-expiration": `${Math.floor(Date.now() / 1000) + Math.max(30, ttlSeconds)}`,
+                },
                 payload: {
                   aps: {
                     alert: { title, body },

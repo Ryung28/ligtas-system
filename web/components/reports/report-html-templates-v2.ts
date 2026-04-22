@@ -127,21 +127,22 @@ function renderLogsTable(data: any[]): string {
     return `
     <table>
         <colgroup>
-            <col style="width: 10%;">
-            <col style="width: 10%;">
-            <col style="width: 12%;">
-            <col style="width: 5%;">
-            <col style="width: 9%;">
-            <col style="width: 9%;">
-            <col style="width: 10%;">
-            <col style="width: 10%;">
-            <col style="width: 10%;">
             <col style="width: 8%;">
-            <col style="width: 7%;">
+            <col style="width: 9%;">
+            <col style="width: 10%;">
+            <col style="width: 3%;">
+            <col style="width: 8%;">
+            <col style="width: 8%;">
+            <col style="width: 8%;">
+            <col style="width: 8%;">
+            <col style="width: 8%;">
+            <col style="width: 9%;">
+            <col style="width: 8%;">
+            <col style="width: 13%;">
         </colgroup>
         <thead>
             <tr>
-                <th>DATE/TIME</th><th>BORROWER</th><th>ITEM</th><th style="text-align:center;">QTY</th><th>AUTH</th><th>ISSUED</th><th>RETURN</th><th>RETURNER</th><th>RECEIVER</th><th style="text-align:center;">STATUS</th><th>AUDIT</th>
+                <th>DATE/TIME</th><th>BORROWER</th><th>ITEM</th><th style="text-align:center;">QTY</th><th>AUTH</th><th>ISSUED</th><th>TAKEN BY</th><th>RETURN</th><th>RETURNER</th><th>STAFF RCVR</th><th style="text-align:center;">STATUS</th><th>AUDIT</th>
             </tr>
         </thead>
         <tbody>
@@ -150,9 +151,14 @@ function renderLogsTable(data: any[]): string {
                 <td style="font-weight:700;">${e(l.borrower_name)}</td>
                 <td>${e(l.item_name)}</td>
                 <td style="font-weight:800; text-align:center;">${l.quantity ?? '—'}</td>
-                <td>${e(l.approved_by_name)}</td>
-                <td>${e(l.released_by_name)}</td>
-                <td style="font-size: 7.5pt;">${formatDateTime(l.actual_return_date)}</td>
+                <td>${e(l.approved_by_name || l.released_by_name || l.handed_by)}</td>
+                <td>${e(l.handed_by || l.released_by_name)}</td>
+                <td style="font-weight:600; color:#1e293b;">${e(l.physically_received_by || l.borrower_name)}</td>
+                <td style="font-size: 7.5pt; color: ${!l.actual_return_date ? '#64748b' : 'inherit'}">
+                    ${l.actual_return_date 
+                        ? formatDateTime(l.actual_return_date) 
+                        : (l.expected_return_date ? `DUE: ${formatDate(l.expected_return_date)}` : '—')}
+                </td>
                 <td>${e(l.returned_by_name)}</td>
                 <td>${e(l.received_by_name)}</td>
                 <td style="text-align:center;">${statusBadge(l.status)}</td>
@@ -210,7 +216,7 @@ function renderOverdueTable(data: any[]): string {
                     </td>
                     <td>${formatDate(l.expected_return_date)}</td>
                     <td style="color:${isStillOut ? '#ef4444' : 'inherit'}; font-weight:${isStillOut ? '700' : '400'}">
-                        ${isStillOut ? 'PENDING' : formatDate(l.actual_return_date)}
+                        ${isStillOut ? `DUE: ${formatDate(l.expected_return_date)}` : formatDate(l.actual_return_date)}
                     </td>
                     <td style="text-align:center; font-weight:900; color:#dc2626;">${diffDays} DAYS</td>
                     <td style="text-align:center;">

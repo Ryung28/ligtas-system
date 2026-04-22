@@ -24,7 +24,8 @@ import {
     Calendar,
     MapPin,
     Monitor,
-    Smartphone
+    Smartphone,
+    UserCircle2
 } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,6 +34,7 @@ import { BorrowLog, BorrowSession, TransactionStatus } from '@/lib/types/invento
 import { InitialsAvatar } from './log-avatar'
 import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { ReturnCommandSheet } from '@/src/features/transactions/v2/return-command-sheet'
+import { HandoffCommandSheet } from '@/src/features/transactions/v2/handoff-command-sheet'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { bulkReturnItems, revertReturnItem, releaseReservedItem } from '@/src/features/transactions'
@@ -579,43 +581,50 @@ function LogSessionRow({
                                         <div className="w-full md:w-[250px] space-y-4 shrink-0">
                                             <div className="space-y-3">
                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Personnel Details</p>
-                                                <div className="bg-white rounded-[26px] border border-slate-100 p-5 shadow-sm border-b-2 border-b-slate-100/30">
-                                                    <div className="flex items-center gap-4 mb-6">
-                                                        <InitialsAvatar name={session.borrower_name} size={11} />
-                                                        <div>
-                                                            <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-none mb-1">{session.borrower_name}</h3>
-                                                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">{session.borrower_organization || 'External'}</p>
+                                                <div className="bg-white rounded-[22px] 14in:rounded-[26px] border border-slate-100 p-4 14in:p-5 shadow-sm border-b-2 border-b-slate-100/30">
+                                                    <div className="flex items-center gap-3 14in:gap-4 mb-4 14in:mb-6">
+                                                        <InitialsAvatar name={session.borrower_name} size={9} className="14in:h-11 14in:w-11" />
+                                                        <div className="min-w-0">
+                                                            <h3 className="text-md 14in:text-lg font-bold text-gray-900 tracking-tight leading-none mb-1 truncate">{session.borrower_name}</h3>
+                                                            <p className="text-[10px] 14in:text-[11px] font-bold text-gray-400 uppercase tracking-tight truncate">{session.borrower_organization || 'External'}</p>
                                                         </div>
                                                     </div>
 
-                                                    <div className="space-y-4">
-                                                        <div className="flex items-center gap-3 text-slate-600">
-                                                            <div className="h-7 w-7 rounded-lg bg-slate-50 flex items-center justify-center">
-                                                                <Phone className="w-3.5 h-3.5 text-slate-300" />
+                                                    <div className="grid grid-cols-1 14in:grid-cols-2 gap-3 14in:gap-4">
+                                                        <div className="flex items-center gap-2.5 text-slate-600">
+                                                            <div className="h-6 w-6 14in:h-7 14in:w-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                                                                <Phone className="w-3 14in:w-3.5 h-3 14in:h-3.5 text-slate-300" />
                                                             </div>
-                                                            <span className="text-[12px] font-bold tracking-tight">{session.borrower_contact || 'No Contact'}</span>
+                                                            <span className="text-[11px] 14in:text-[12px] font-bold tracking-tight truncate">{session.borrower_contact || 'No Contact'}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-3 text-slate-600">
-                                                            <div className="h-7 w-7 rounded-lg bg-slate-50 flex items-center justify-center">
-                                                                <Building className="w-3.5 h-3.5 text-slate-300" />
+                                                        <div className="flex items-center gap-2.5 text-slate-600">
+                                                            <div className="h-6 w-6 14in:h-7 14in:w-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                                                                <Building className="w-3 14in:w-3.5 h-3 14in:h-3.5 text-slate-300" />
                                                             </div>
-                                                            <span className="text-[12px] font-bold tracking-tight line-clamp-1">{session.borrower_organization || 'Department'}</span>
+                                                            <span className="text-[11px] 14in:text-[12px] font-bold tracking-tight truncate">{session.borrower_organization || 'Department'}</span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="mt-8 pt-6 border-t border-slate-50 space-y-5">
-                                                        <div className="space-y-1.5 opacity-90">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Authorized By</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <ShieldCheck className="w-3 h-3 text-blue-500" />
-                                                                <span className="text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.approved_by_name?.split(' ')[0] || 'System'}</span>
+                                                    <div className="mt-6 14in:mt-8 pt-4 14in:pt-6 border-t border-slate-50 grid grid-cols-2 gap-y-4 14in:gap-y-5">
+                                                        <div className="space-y-1 opacity-90">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">Authorized</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <ShieldCheck className="w-2.5 h-2.5 text-blue-500" />
+                                                                <span className="text-[10px] 14in:text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.approved_by_name || 'System'}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="space-y-1.5 opacity-90">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Issued By</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                                                <span className="text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.released_by_name?.split(' ')[0] || 'Staff'}</span>
+                                                        <div className="space-y-1 opacity-90">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">Issued By</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                                                                <span className="text-[10px] 14in:text-[11px] font-bold text-slate-900 uppercase tracking-tight">{session.handed_by || session.released_by_name || 'Staff'}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1 opacity-90 col-span-2">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">Physically Received</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <UserCircle2 className="w-2.5 h-2.5 text-amber-500" />
+                                                                <span className="text-[10px] 14in:text-[11in] font-bold text-slate-900 uppercase tracking-tight">{session.physically_received_by || session.borrower_name}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -703,7 +712,7 @@ function LogSessionRow({
                                                         {/* Status + Actions */}
                                                         <div className="flex items-center gap-4 pr-1">
                                                             {getStatusBadge(item.status)}
-                                                            {item.status !== 'returned' && item.status !== 'pending' && item.status !== 'dispensed' && (
+                                                            {item.status !== 'returned' && item.status !== 'pending' && item.status !== 'dispensed' && item.status !== 'staged' && item.status !== 'reserved' && (
                                                                 <ReturnCommandSheet
                                                                     logId={item.id}
                                                                     itemName={item.item_name}
@@ -716,6 +725,24 @@ function LogSessionRow({
                                                                         Return Item
                                                                     </Button>
                                                                 </ReturnCommandSheet>
+                                                            )}
+                                                            {(item.status === 'staged' || item.status === 'reserved') && (
+                                                                <HandoffCommandSheet
+                                                                    logId={item.id}
+                                                                    itemName={item.item_name}
+                                                                    borrowerName={item.borrower_name || session.borrower_name}
+                                                                    quantity={item.quantity}
+                                                                    inventoryId={item.inventory_id}
+                                                                >
+                                                                    <Button 
+                                                                        variant="outline" 
+                                                                        size="sm" 
+                                                                        className="h-8.5 px-5 rounded-xl border-slate-200 text-amber-600 font-bold text-[10px] gap-2 hover:bg-white hover:border-amber-200 shadow-sm transition-all active:scale-95"
+                                                                    >
+                                                                        <Package className="w-3 h-3" />
+                                                                        Release Item
+                                                                    </Button>
+                                                                </HandoffCommandSheet>
                                                             )}
                                                         </div>
                                                     </div>

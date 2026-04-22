@@ -53,8 +53,7 @@ export function ApprovalsClient({ initialRequests }: ApprovalsClientProps) {
     })
 
     const futureReservations = requests.filter(r => {
-        if (r.status === 'reserved') return true
-        if (!r.pickup_scheduled_at) return false
+        if (!r.pickup_scheduled_at) return r.status === 'reserved'
         return new Date(r.pickup_scheduled_at) > todayEnd
     })
 

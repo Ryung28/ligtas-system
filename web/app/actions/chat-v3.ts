@@ -47,12 +47,21 @@ export async function getChatRoomsV3() {
             unread_count: row.chat_unread_count || 0
         }))
 
+        const roomScore = (room: any): number => {
+            const lastMessageTime = room.lastMessage?.created_at
+                ? new Date(room.lastMessage.created_at).getTime()
+                : 0
+            const borrowPriority = room.borrow_request_id ? 1 : 0
+            // Keep the most recent conversational context first.
+            return (lastMessageTime * 10) + borrowPriority
+        }
+
         // ── ResQTrack Deduplication Shield (Server-Side) ──
         const uniqueMap = new Map<string, any>()
         rawRooms.forEach((room: any) => {
             const userId = room.borrower_user_id
             const existing = uniqueMap.get(userId)
-            if (!existing || room.lastMessage || room.borrow_request_id) {
+            if (!existing || roomScore(room) > roomScore(existing)) {
                 uniqueMap.set(userId, room)
             }
         })
@@ -77,11 +86,22 @@ export async function sendChatMessageV3(roomId: string, content: string) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
+        const { data: room, error: roomError } = await supabase
+            .from('chat_rooms')
+            .select('borrower_user_id')
+            .eq('id', validated.roomId)
+            .single()
+
+        if (roomError) throw roomError
+
+        const receiverId = room?.borrower_user_id === user.id ? null : room?.borrower_user_id
+
         const { data, error } = await supabase
             .from('chat_messages')
             .insert({
                 room_id: validated.roomId,
                 sender_id: user.id,
+                receiver_id: receiverId,
                 content: validated.content,
                 status: 'sent'
             })

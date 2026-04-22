@@ -573,11 +573,11 @@ export async function revertReturnItem(logId: number) {
     }
 }
 
-export async function releaseReservedItem(logId: number) {
+export async function releaseReservedItem(logId: number, auditOptions?: { handedBy?: string, physicallyReceivedBy?: string }) {
     try {
         const supabase = await createSupabaseServer()
         const { data: { user } } = await supabase.auth.getUser()
-        const userName = user?.user_metadata?.full_name || user?.email || 'Authorized Staff'
+        const authorizerName = user?.user_metadata?.full_name || user?.email || 'Authorized Staff'
         
         const now = new Date().toISOString()
         
@@ -587,7 +587,9 @@ export async function releaseReservedItem(logId: number) {
                 status: 'borrowed',
                 borrow_date: now,
                 released_by_user_id: user?.id || null,
-                released_by_name: userName,
+                released_by_name: authorizerName, // Authorizing system user
+                handed_by: auditOptions?.handedBy || authorizerName, // Phsyical staff at the desk
+                physically_received_by: auditOptions?.physicallyReceivedBy || null, // Phsyical person receiving
                 platform_origin: 'Web',
                 last_updated_origin: 'Web',
                 updated_at: now

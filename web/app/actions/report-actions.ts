@@ -94,9 +94,13 @@ export async function fetchReportDataAction(
             : 'inventory'
 
         // Rule: Never select *
-        const columns = table === 'inventory' 
-            ? 'id,item_name,category,stock_available,stock_total,status,storage_location,serial_number,brand,expiry_date,expiry_alert_days,low_stock_threshold,target_stock,restock_alert_enabled,deleted_at'
-            : 'id,borrower_name,borrower_organization,borrower_contact,item_name,quantity,status,borrow_date,expected_return_date,actual_return_date,return_notes,return_condition,approved_by_name,released_by_name,received_by_name,returned_by_name,created_at'
+        const columns = type === 'inventory' || type === 'low-stock' || type === 'summary'
+            ? 'id,item_name,category,brand,model,stock_available,target_stock,low_stock_threshold,restock_alert_enabled,storage_location,status'
+            : type === 'expiry-alert'
+            ? 'id,item_name,category,brand,stock_available,expiry_date'
+            : type === 'overdue' 
+            ? 'id,borrower_name,borrower_contact,item_name,expected_return_date,actual_return_date,status'
+            : 'id,borrower_name,borrower_organization,borrower_contact,item_name,quantity,status,borrow_date,expected_return_date,actual_return_date,return_notes,return_condition,approved_by_name,released_by_name,handed_by,physically_received_by,received_by_name,returned_by_name,created_at'
 
         let query = supabase.from(table).select(columns)
 

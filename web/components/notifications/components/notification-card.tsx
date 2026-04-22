@@ -91,22 +91,33 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
         </div>
       </div>
 
-      <div className="space-y-1.5 pl-1">
+      <div className="space-y-1 pl-1">
         <div className="flex items-center gap-3">
-          <div className="shrink-0 opacity-20"><Activity className="w-4.5 h-4.5 text-slate-900" /></div>
+          <div className="shrink-0 opacity-20"><Activity className="w-4 h-4 text-slate-900" /></div>
           <h4 className={cn(
-            "text-[13px] font-black tracking-tight uppercase leading-none truncate",
+            "text-[12px] font-black tracking-tight uppercase leading-tight truncate",
             !notif.isRead ? "text-slate-900" : "text-slate-500"
           )}>
             {notif.title}
           </h4>
         </div>
-        <div className="flex items-center gap-3">
+        
+        {/* 📢 DYNAMIC MESSAGE INJECTION */}
+        {notif.message && (
+          <p className={cn(
+            "text-[10px] font-medium leading-tight pl-7",
+            !notif.isRead ? "text-slate-500" : "text-slate-400"
+          )}>
+            {notif.message}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 pt-0.5">
            <div className="shrink-0 opacity-20">
-            {notif.type.includes('user') ? <User className="w-4.5 h-4.5 text-slate-900" /> : <ChevronRight className="w-4.5 h-4.5 text-slate-900" />}
+            {notif.type.includes('user') ? <User className="w-4 h-4 text-slate-900" /> : <ChevronRight className="w-4 h-4 text-slate-900" />}
            </div>
            <p className={cn(
-            "text-[11px] font-bold leading-tight truncate",
+            "text-[10px] font-bold leading-none truncate",
             !notif.isRead ? "text-slate-600" : "text-slate-400"
            )}>
              {meta.borrower_name || notif.title}
@@ -133,7 +144,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
                     {meta.id.toString().slice(-6)}
                 </div>
             )}
-            {notif.type === 'item_returned' && (
+            {['item_returned', 'borrow_request', 'borrow_approved'].includes(notif.type) && (
                 quantity && quantity > 0 ? (
                   <div className={cn(
                     "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em]",

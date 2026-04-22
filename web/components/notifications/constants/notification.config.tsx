@@ -102,7 +102,7 @@ export const TYPE_CONFIG: Record<string, TypeConfig> = {
   },
   borrow_request: {
     icon: Icons.box,
-    label: "Logistics",
+    label: "Pre-Borrow",
     accent: "#6366f1",
     bg: "rgba(241, 245, 249, 0.8)",
     border: "rgba(148, 163, 184, 0.1)",
