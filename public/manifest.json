@@ -1,0 +1,29 @@
+{
+  "name": "ResQTrack",
+  "short_name": "ResQTrack",
+  "description": "Unified Logistics & Disaster Response Information System",
+  "start_url": "/m",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#b91c1c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/resqtrack-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/resqtrack-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["government", "productivity", "business"],
+  "dir": "ltr",
+  "lang": "en-US",
+  "prefer_related_applications": false,
+  "screenshots": []
+}

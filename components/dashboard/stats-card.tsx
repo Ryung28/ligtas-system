@@ -1,0 +1,40 @@
+'use client'
+
+import { Card, CardContent } from '@/components/ui/card'
+import { LucideIcon } from 'lucide-react'
+
+interface StatsCardProps {
+    title: string
+    value: string | number
+    icon: LucideIcon
+    color: 'blue' | 'indigo' | 'purple' | 'emerald' | 'amber' | 'rose'
+    description: string
+}
+
+export function StatsCard({ title, value, icon: Icon, color, description }: StatsCardProps) {
+    const colorVariants = {
+        blue: { bg: 'bg-blue-50', icon: 'text-blue-600', shadow: 'shadow-blue-100' },
+        indigo: { bg: 'bg-indigo-50', icon: 'text-indigo-600', shadow: 'shadow-indigo-100' },
+        purple: { bg: 'bg-purple-50', icon: 'text-purple-600', shadow: 'shadow-purple-100' },
+        emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-600', shadow: 'shadow-emerald-100' },
+        amber: { bg: 'bg-amber-50', icon: 'text-amber-600', shadow: 'shadow-amber-100' },
+        rose: { bg: 'bg-rose-50', icon: 'text-rose-600', shadow: 'shadow-rose-100' },
+    }
+
+    const theme = colorVariants[color] || colorVariants.blue
+
+    return (
+        <Card className="bg-white border-none shadow-lg shadow-slate-200/30 rounded-2xl hover:shadow-xl hover:translate-y-[-2px] transition-all duration-300 overflow-hidden group">
+            <CardContent className="p-5 flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${theme.bg} ${theme.shadow} border border-white shrink-0 group-hover:scale-110 transition-transform`}>
+                    <Icon className={`h-5 w-5 ${theme.icon}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1.5 truncate leading-none">{title}</h4>
+                    <h3 className="text-2xl 14in:text-3xl font-heading font-bold tracking-tight text-slate-900 leading-none group-hover:scale-105 transition-transform origin-left">{value}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tight truncate leading-none">{description}</p>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
