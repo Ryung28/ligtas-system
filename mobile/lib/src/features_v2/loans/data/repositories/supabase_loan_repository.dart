@@ -12,22 +12,30 @@ class SupabaseLoanRepository implements ILoanRepository {
   SupabaseLoanRepository(this._client, this._local);
 
   @override
-  Future<List<LoanItem>> fetchMyLoans() async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return [];
+  Future<List<LoanItem>> fetchMyLoans({String? userId}) async {
+    final resolvedUserId = userId ?? _client.auth.currentUser?.id;
+    if (resolvedUserId == null) return [];
+
+    // 🛡️ DOUBLE-GUARD: Extract secondary identifiers for legacy syncs (Email matching)
+    final user = _client.auth.currentUser;
+    final userEmail = user?.email;
 
     try {
+      // Build Hardened Filter: UUID (Primary) + Email (Legacy/Manual)
+      String filter = 'borrowed_by.eq.$resolvedUserId,borrower_user_id.eq.$resolvedUserId';
+      if (userEmail != null) filter += ',borrower_email.eq.$userEmail';
+
       final response = await _client
           .from('borrow_logs')
           .select('*, inventory:inventory_id(image_url)')
-          .eq('borrowed_by', userId) // Strict Tenant Isolation
+          .or(filter) // 🚀 Unified Identity Gate
           .order('borrow_date', ascending: false);
       
       final List<dynamic> data = response;
       final loans = data.map((json) => _mapJsonToEntity(json)).toList();
 
       // Parallel Sync
-      _local.saveLoans(loans);
+      await _local.saveLoans(loans);
 
       return loans;
     } catch (e) {
@@ -36,13 +44,13 @@ class SupabaseLoanRepository implements ILoanRepository {
     }
   }
 
-  Stream<List<LoanItem>> watchLoans({bool isManager = false}) {
+  Stream<List<LoanItem>> watchLoans({bool isManager = false, String? userId}) {
     if (isManager) {
       return _local.watchAllLoans();
     }
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return const Stream.empty();
-    return _local.watchLoans(userId);
+    final resolvedUserId = userId ?? _client.auth.currentUser?.id;
+    if (resolvedUserId == null) return const Stream.empty();
+    return _local.watchLoans(resolvedUserId);
   }
 
   @override
@@ -71,7 +79,7 @@ class SupabaseLoanRepository implements ILoanRepository {
       }).select('*, inventory:inventory_id(image_url)').single();
 
       final newLoan = _mapJsonToEntity(response);
-      _local.saveLoans([newLoan]);
+      await _local.saveLoans([newLoan]);
       return newLoan;
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -87,12 +95,11 @@ class SupabaseLoanRepository implements ILoanRepository {
       await _client.from('borrow_logs').update({
         'status': 'returned',
         'actual_return_date': DateTime.now().toIso8601String(),
-        'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', loanId).eq('borrowed_by', userId);
 
-      await fetchMyLoans();
+      await fetchMyLoans(userId: userId);
     } on Exception catch (e) {
       throw ExceptionHandler.fromException(e);
     }
@@ -108,7 +115,7 @@ class SupabaseLoanRepository implements ILoanRepository {
         'status': 'cancelled',
       }).eq('id', loanId).eq('borrowed_by', userId);
 
-      await fetchMyLoans();
+      await fetchMyLoans(userId: userId);
     } on Exception catch (e) {
       throw ExceptionHandler.fromException(e);
     }
@@ -125,7 +132,7 @@ class SupabaseLoanRepository implements ILoanRepository {
 
       if (response != null) {
         final loan = _mapJsonToEntity(response);
-        _local.saveLoans([loan]);
+        await _local.saveLoans([loan]);
         return loan;
       }
       return null;
@@ -136,13 +143,13 @@ class SupabaseLoanRepository implements ILoanRepository {
   }
 
   @override
-  Stream<void> watchRemote({String? warehouseId}) {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return const Stream.empty();
+  Stream<void> watchRemote({String? warehouseId, String? userId}) {
+    final resolvedUserId = userId ?? _client.auth.currentUser?.id;
+    if (resolvedUserId == null) return const Stream.empty();
 
     final query = (warehouseId != null && warehouseId != 'ALL')
         ? _client.from('borrow_logs').stream(primaryKey: ['id']).eq('warehouse_id', warehouseId)
-        : _client.from('borrow_logs').stream(primaryKey: ['id']).eq('borrowed_by', userId);
+        : _client.from('borrow_logs').stream(primaryKey: ['id']).eq('borrowed_by', resolvedUserId);
 
     return query.asyncMap((data) async {
       final loans = data.map((json) => _mapJsonToEntity(json)).toList();
@@ -165,7 +172,7 @@ class SupabaseLoanRepository implements ILoanRepository {
       
       final List<dynamic> data = response;
       final loans = data.map((json) => _mapJsonToEntity(json)).toList();
-      _local.saveLoans(loans);
+      await _local.saveLoans(loans);
       return loans;
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -179,7 +186,6 @@ class SupabaseLoanRepository implements ILoanRepository {
         'status': 'approved',
         'approved_by': managerName,
         'approved_at': DateTime.now().toIso8601String(),
-        'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
@@ -190,12 +196,24 @@ class SupabaseLoanRepository implements ILoanRepository {
   @override
   Future<void> confirmHandoff(String loanId, String staffName) async {
     try {
+      // 1. Check item type
+      final logData = await _client
+          .from('borrow_logs')
+          .select('inventory_id, inventory!inner(item_type)')
+          .eq('id', loanId)
+          .maybeSingle();
+
+      bool isConsumable = false;
+      if (logData != null && logData['inventory'] != null) {
+        final itemType = logData['inventory']['item_type'];
+        isConsumable = itemType == 'consumable';
+      }
+
       await _client.from('borrow_logs').update({
-        'status': 'borrowed',
+        'status': isConsumable ? 'dispensed' : 'borrowed',
         'handed_by': staffName,
         'handed_at': DateTime.now().toIso8601String(),
         'borrow_date': DateTime.now().toIso8601String(),
-        'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
@@ -217,7 +235,6 @@ class SupabaseLoanRepository implements ILoanRepository {
         'received_by_user_id': _client.auth.currentUser?.id,
         'return_condition': condition,
         'return_notes': notes,
-        'platform_origin': 'Mobile',
         'last_updated_origin': 'Mobile',
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', loanId);
@@ -267,7 +284,9 @@ class SupabaseLoanRepository implements ILoanRepository {
                 finalStatus == LoanStatus.returned)
             ? now.difference(borrowDate).inDays
             : 0;
-    final dbDaysOverdue = expectedReturnDate.isBefore(now) ? now.difference(expectedReturnDate).inDays : 0;
+    final dbDaysOverdue = (finalStatus != LoanStatus.returned && expectedReturnDate.isBefore(now)) 
+        ? now.difference(expectedReturnDate).inDays 
+        : 0;
 
     final borrowedByUid = (data['borrowed_by'] ?? data['borrower_user_id'] ?? '').toString();
 

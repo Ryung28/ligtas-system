@@ -46,6 +46,14 @@ class LoanLocalDataSource {
     });
   }
 
+  /// 🛡️ SECURITY: Full wipe of local loan cache.
+  /// Used during logout or account switch to prevent data leakage.
+  Future<void> clearAll() async {
+    await _isar.writeTxn(() async {
+      await _isar.loanCollections.clear();
+    });
+  }
+
   LoanItem _mapCollectionToEntity(LoanCollection col) {
     return LoanItem(
       id: col.originalId,

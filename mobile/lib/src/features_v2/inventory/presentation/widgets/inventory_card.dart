@@ -4,20 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
-import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../providers/mission_cart_provider.dart';
 import 'manager_action_sheet_v2/manager_action_sheet_v2.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'tactical_asset_image.dart';
+import '../providers/manager_batch/manager_batch_provider.dart';
 
 class InventoryCard extends ConsumerWidget {
   final InventoryItem item;
   final int index; 
   final VoidCallback? onBorrow;
   final VoidCallback? onImageTap;
+  final VoidCallback? onManagerTap;
   final bool isManager;
+  final bool managerSelectionMode;
+  final bool managerSelected;
 
   const InventoryCard({
     super.key,
@@ -25,7 +27,10 @@ class InventoryCard extends ConsumerWidget {
     required this.index,
     this.onBorrow,
     this.onImageTap,
+    this.onManagerTap,
     this.isManager = false,
+    this.managerSelectionMode = false,
+    this.managerSelected = false,
   });
 
   @override
@@ -46,7 +51,9 @@ class InventoryCard extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        if (isManager) {
+        if (isManager && onManagerTap != null) {
+          onManagerTap!.call();
+        } else if (isManager) {
           HapticFeedback.heavyImpact();
           showModalBottomSheet(
             context: context,
@@ -182,7 +189,7 @@ class InventoryCard extends ConsumerWidget {
                                             item.category.toUpperCase(),
                                             style: theme.textTheme.labelSmall?.copyWith(
                                               color: const Color(0xFF1E293B),
-                                              letterSpacing: 1.2,
+                                              letterSpacing: 0.2, // 🛡️ FIX: No more stretching
                                               fontSize: 7.5,
                                               fontWeight: FontWeight.w900,
                                             ),
@@ -247,46 +254,74 @@ class InventoryCard extends ConsumerWidget {
                             final cart = ref.watch(missionCartNotifierProvider);
                             final isInCart = cart.containsKey(item.id.toString());
                             final currentQty = cart[item.id.toString()]?.quantity ?? 0;
+                            
+                            final managerBatch = ref.watch(managerBatchControllerProvider);
+                            final managerQty = managerBatch.lines[item.id]?.quantity ?? 0;
+                            final managerSelected = managerQty > 0;
+                            
                             final isReserved = item.status.toLowerCase() == 'reserved' || item.status.toLowerCase() == 'staged';
+                            final managerBatchColor = managerSelected ? const Color(0xFF0F172A) : sentinel.containerLow;
                             
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               width: double.infinity,
-                              height: 32, // Tightened to save 2px
+                              height: 32,
                               decoration: BoxDecoration(
                                 color: isManager 
-                                    ? sentinel.containerLow 
+                                    ? (managerSelectionMode ? managerBatchColor : sentinel.containerLow)
                                     : (isInCart ? sentinel.primary : (item.availableStock <= 0 || isReserved ? sentinel.containerLow : sentinel.navy)),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
-                                child: isInCart && !isManager 
+                                child: (isManager && managerSelectionMode && managerSelected)
                                   ? Row(
-                                      key: const ValueKey('counter_state'),
+                                      key: const ValueKey('manager_counter'),
                                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
                                         _TacticalIconButton(
                                           icon: Icons.remove_circle_outline_rounded,
                                           onPressed: () {
                                             HapticFeedback.lightImpact();
-                                            ref.read(missionCartNotifierProvider.notifier).decrementItem(item);
+                                            ref.read(managerBatchControllerProvider.notifier).decrement(item);
                                           },
                                         ),
-                                        Text(
-                                          '$currentQty',
-                                          style: GoogleFonts.lexend(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            color: Colors.white,
+                                        GestureDetector(
+                                          onTap: () async {
+                                            HapticFeedback.mediumImpact();
+                                            final result = await showDialog<int>(
+                                              context: context,
+                                              builder: (context) => _BulkQuantityModal(
+                                                item: item,
+                                                initialValue: managerQty,
+                                              ),
+                                            );
+                                            if (result != null) {
+                                              ref.read(managerBatchControllerProvider.notifier).updateQuantity(item, result);
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '$managerQty',
+                                              style: GoogleFonts.lexend(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                         _TacticalIconButton(
                                           icon: Icons.add_circle_rounded,
                                           onPressed: () {
-                                            if (currentQty < item.availableStock) {
+                                            if (managerQty < item.availableStock) {
                                               HapticFeedback.mediumImpact();
-                                              ref.read(missionCartNotifierProvider.notifier).addItem(item);
+                                              ref.read(managerBatchControllerProvider.notifier).increment(item);
                                             } else {
                                               HapticFeedback.vibrate();
                                             }
@@ -294,38 +329,83 @@ class InventoryCard extends ConsumerWidget {
                                         ),
                                       ],
                                     )
-                                  : Row(
-                                      key: const ValueKey('initial_state'),
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          isManager ? Icons.tune_rounded : (isReserved ? Icons.event_available_rounded : Icons.send_rounded),
-                                          color: isManager ? sentinel.navy : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
-                                          size: 14,
-                                        ),
-                                        const Gap(6),
-                                        Flexible(
-                                          child: Text(
-                                            isManager 
-                                                ? 'MANAGE' 
-                                                : (isReserved 
-                                                    ? 'RESERVED' 
-                                                    : (item.availableStock <= 0 
-                                                        ? 'OUT OF STOCK' 
-                                                        : 'BORROW')),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis, 
-                                            style: GoogleFonts.lexend(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w900,
-                                              color: isManager ? sentinel.navy : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
-                                              letterSpacing: 1.0,
+                                  : (isInCart && !isManager 
+                                      ? Row(
+                                          key: const ValueKey('counter_state'),
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            _TacticalIconButton(
+                                              icon: Icons.remove_circle_outline_rounded,
+                                              onPressed: () {
+                                                HapticFeedback.lightImpact();
+                                                ref.read(missionCartNotifierProvider.notifier).decrementItem(item);
+                                              },
                                             ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                            Text(
+                                              '$currentQty',
+                                              style: GoogleFonts.lexend(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            _TacticalIconButton(
+                                              icon: Icons.add_circle_rounded,
+                                              onPressed: () {
+                                                if (currentQty < item.availableStock) {
+                                                  HapticFeedback.mediumImpact();
+                                                  ref.read(missionCartNotifierProvider.notifier).addItem(item);
+                                                } else {
+                                                  HapticFeedback.vibrate();
+                                                }
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          key: const ValueKey('initial_state'),
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              isManager
+                                                  ? (managerSelectionMode
+                                                      ? (managerSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded)
+                                                      : Icons.tune_rounded)
+                                                  : (isReserved ? Icons.event_available_rounded : Icons.send_rounded),
+                                              color: isManager
+                                                  ? (managerSelectionMode
+                                                      ? (managerSelected ? Colors.white : sentinel.navy)
+                                                      : sentinel.navy)
+                                                  : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
+                                              size: 14,
+                                            ),
+                                            const Gap(6),
+                                            Flexible(
+                                              child: Text(
+                                                isManager 
+                                                    ? (managerSelectionMode
+                                                        ? (managerSelected ? 'SELECTED' : 'SELECT')
+                                                        : 'MANAGE') 
+                                                    : (isReserved 
+                                                        ? 'RESERVED' 
+                                                        : (item.availableStock <= 0 
+                                                            ? 'OUT OF STOCK' 
+                                                            : 'BORROW')),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis, 
+                                                style: GoogleFonts.lexend(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: isManager
+                                                      ? (managerSelectionMode && managerSelected ? Colors.white : sentinel.navy)
+                                                      : (item.availableStock <= 0 || isReserved ? sentinel.onSurfaceVariant.withOpacity(0.3) : Colors.white),
+                                                  letterSpacing: 1.0,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        )),
                               ),
                             );
                           },
@@ -511,6 +591,140 @@ class _TacticalIconButton extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
+
+class _BulkQuantityModal extends StatefulWidget {
+  final InventoryItem item;
+  final int initialValue;
+
+  const _BulkQuantityModal({required this.item, required this.initialValue});
+
+  @override
+  State<_BulkQuantityModal> createState() => _BulkQuantityModalState();
+}
+
+class _BulkQuantityModalState extends State<_BulkQuantityModal> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue.toString());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+    
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.14),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            )
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Bulk quantity',
+              style: GoogleFonts.lexend(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: sentinel.navy,
+              ),
+            ),
+            const Gap(6),
+            Text(
+              widget.item.name,
+              style: GoogleFonts.lexend(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+            const Gap(18),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: sentinel.navy.withOpacity(0.1)),
+              ),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.lexend(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: sentinel.navy,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                ),
+                onSubmitted: (val) {
+                   final num = int.tryParse(val) ?? 0;
+                   Navigator.pop(context, num);
+                },
+              ),
+            ),
+            const Gap(10),
+            Text(
+              'Limit: ${widget.item.availableStock}',
+              style: GoogleFonts.lexend(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+            const Gap(18),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  final num = int.tryParse(_controller.text) ?? 0;
+                  Navigator.pop(context, num);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Apply',
+                  style: GoogleFonts.lexend(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

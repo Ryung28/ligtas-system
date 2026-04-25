@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/env.dart';
 
 /// 🏗️ STORAGE UTILS (Senior Architect Choice)
@@ -25,5 +27,21 @@ class StorageUtils {
     
     // 🛡️ CANONICAL HYDRATION: Construct Public URL for item-images bucket
     return '${Environment.supabaseUrl}/storage/v1/object/public/${Environment.itemImagesBucket}/$pathOrUrl';
+  }
+
+  /// 🛡️ THE ARCHITECT'S UPLOAD: Uploads raw bytes to the item-images bucket.
+  /// Returns the relative path of the uploaded file.
+  static Future<String> uploadImage(
+    SupabaseClient supabaseClient,
+    String fileName,
+    Uint8List bytes,
+  ) async {
+    final path = 'items/$fileName';
+    await supabaseClient.storage.from(Environment.itemImagesBucket).uploadBinary(
+      path,
+      bytes,
+      fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+    );
+    return path;
   }
 }

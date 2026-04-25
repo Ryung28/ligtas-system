@@ -2,11 +2,11 @@ import '../entities/inventory_item.dart';
 import '../entities/inventory_admin_fields.dart';
 import '../../../loans/domain/entities/loan_item.dart';
 
-/// The contract for moving inventory data. 
+/// The contract for moving inventory data.
 /// Senior Dev Principle: Interface-driven design.
 abstract class IInventoryRepository {
   /// Fetch all active inventory items
-  Future<List<InventoryItem>> fetchAll({String? warehouseId});
+  Future<List<InventoryItem>> fetchAll({String? warehouseId, DateTime? updatedAfter});
 
   /// Search for an item by QR code
   Future<InventoryItem?> findByQrCode(String code, {String? warehouseId});
@@ -18,7 +18,11 @@ abstract class IInventoryRepository {
   Stream<void> watchRemote({String? warehouseId});
 
   /// 🛡️ THE GOLD STANDARD: Fetch a subset of inventory from local disk (Isar)
-  Future<List<InventoryItem>> fetchLocalPaged({required int offset, required int limit, String? category});
+  Future<List<InventoryItem>> fetchLocalPaged({
+    required int offset,
+    required int limit,
+    String? category,
+  });
 
   /// 🛡️ METRICS: Get total count of items in local DB
   Future<int> countLocal();
@@ -109,4 +113,18 @@ abstract class IInventoryRepository {
 
   /// 🔄 HANDOVER: Convert a 'reserved' log into an active 'borrowed' status
   Future<void> releaseReservedItem(int logId);
+
+  /// ➕ CREATE: Register a new inventory item (manager command hub parity with web)
+  Future<void> createItem({
+    required String name,
+    required String category,
+    required int initialStock,
+    String? storageLocation,
+    String? unit,
+    String? serialNumber,
+    String? modelNumber,
+    int? targetStock,
+    int? lowStockThreshold,
+    String? imageUrl,
+  });
 }

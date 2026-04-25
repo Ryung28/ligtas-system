@@ -84,7 +84,7 @@ class ProfileScreen extends ConsumerWidget {
                       ProfileActionTile(
                         icon: Icons.person_outline_rounded,
                         title: 'Personal Details',
-                        subtitle: 'Name, email, and operative profile',
+                        subtitle: 'Name, email, and profile page',
                         onTap: () => controller.navigateTo(context, 'personal-info'),
                         iconColor: sentinel.navy,
                       ),

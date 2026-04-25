@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/config/branding.dart';
 import '../../../../core/design_system/app_theme.dart';
-import '../../../../core/design_system/widgets/atmospheric_background.dart';
 import '../controllers/settings_controller.dart';
 import '../widgets/settings_tile.dart';
-import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../profile/controllers/profile_controller.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -155,7 +152,9 @@ class SettingsScreen extends ConsumerWidget {
                   SettingsTile(
                     icon: Icons.notifications_none_rounded,
                     title: 'Notifications',
-                    subtitle: 'Get alerts about items and updates',
+                    subtitle: profileState.pushNotificationsEnabled
+                        ? 'Push alerts active on this device'
+                        : 'Alerts muted on this device',
                     trailing: Switch.adaptive(
                       value: profileState.pushNotificationsEnabled,
                       activeColor: sentinel.navy,
@@ -163,9 +162,7 @@ class SettingsScreen extends ConsumerWidget {
                         ref.read(profileControllerProvider.notifier).togglePushNotifications(val);
                       },
                     ),
-                    onTap: () {
-                      ref.read(profileControllerProvider.notifier).togglePushNotifications(!profileState.pushNotificationsEnabled);
-                    },
+                    onTap: () {},
                   ),
                   SettingsTile(
                     icon: Icons.help_outline_rounded,

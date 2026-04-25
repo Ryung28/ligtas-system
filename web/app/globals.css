@@ -70,6 +70,19 @@
     scroll-behavior: smooth;
   }
 
+  /* 📱 PWA MOBILE READABILITY BOOST */
+  @media (max-width: 768px) {
+    html {
+      font-size: 106.25%; /* 17px base for premium mobile readability */
+    }
+
+    :root {
+      --dashboard-padding: 1.25rem;
+      --card-radius: 14px;
+      --section-gap: 1.75rem;
+    }
+  }
+
   /* 💻 14-16 INCH LAPTOP OPTIMIZATION (1366px - 1700px) */
   @media (min-width: 1366px) and (max-width: 1700px) {
     :root {

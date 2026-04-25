@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/design_system/app_theme.dart';
 import '../../../../features_v2/inventory/presentation/widgets/tactical_asset_image.dart';
@@ -74,7 +75,8 @@ class AlertTactileCard extends StatelessWidget {
     const navyBlue = Color(0xFF001A33);
 
     final isInventory = anomaly.category == AnomalyCategory.depletion;
-    final thumb = 88.0;
+    final isOverdue = anomaly.category == AnomalyCategory.overdue;
+    final thumb = 104.0;
 
     // Fixed compact height for scroll list; content is top-aligned (no spaceBetween gap).
     final card = Padding(
@@ -143,24 +145,77 @@ class AlertTactileCard extends StatelessWidget {
                                     ),
                                   ),
                                   Container(
-                                    width: 8,
-                                    height: 8,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: statusColor,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: statusColor.withOpacity(0.4),
-                                          blurRadius: 4,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
+                                      color: statusColor.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      statusLabel,
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w800,
+                                        color: statusColor,
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               const Gap(4),
-                              if (isInventory) ...[
+                              if (isOverdue) ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        anomaly.itemName,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          color: navyBlue,
+                                          height: 1.1,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const Gap(6),
+                                Text(
+                                  'Borrower: ${_safeBorrowerName(anomaly)}',
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.neutralGray700,
+                                    letterSpacing: 0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Gap(8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _overdueTimingLine(anomaly),
+                                        style: GoogleFonts.lexend(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.neutralGray800,
+                                          letterSpacing: 0.2,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ] else if (isInventory) ...[
                                 Text(
                                   anomaly.itemName,
                                   style: GoogleFonts.plusJakartaSans(
@@ -173,18 +228,6 @@ class AlertTactileCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const Gap(4),
-                                Text(
-                                  statusLabel,
-                                  style: GoogleFonts.lexend(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: statusColor,
-                                    letterSpacing: 0.2,
-                                  ),
-                                  maxLines: 2,
-                                  softWrap: true,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
                                 const Gap(6),
                                 Row(
                                   children: [
@@ -200,13 +243,6 @@ class AlertTactileCard extends StatelessWidget {
                                       sentinel: sentinel,
                                     ),
                                     const Spacer(),
-                                    Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 18,
-                                      color: sentinel.onSurfaceVariant.withOpacity(
-                                        0.2,
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ] else ...[
@@ -258,14 +294,6 @@ class AlertTactileCard extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    const Gap(8),
-                                    Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 18,
-                                      color: sentinel.onSurfaceVariant.withOpacity(
-                                        0.2,
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ],
@@ -291,5 +319,22 @@ class AlertTactileCard extends StatelessWidget {
           )
           .slideY(begin: 0.08, end: 0, duration: entryComplete ? 0.ms : 400.ms),
     );
+  }
+
+  String _safeBorrowerName(ResourceAnomaly anomaly) {
+    final name = anomaly.borrowerName?.trim();
+    if (name == null || name.isEmpty) return 'Unknown borrower';
+    return name;
+  }
+
+  String _overdueTimingLine(ResourceAnomaly anomaly) {
+    final due = anomaly.dueDate;
+    if (due == null) return 'Return date unavailable';
+    final now = DateTime.now();
+    final daysLate = now.difference(due).inDays;
+    if (daysLate > 0) {
+      return 'Overdue by ${daysLate == 1 ? '1 day' : '$daysLate days'}';
+    }
+    return 'Return due ${DateFormat('MMM d, yyyy').format(due)}';
   }
 }

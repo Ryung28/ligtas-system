@@ -58,7 +58,6 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
       backgroundColor: sentinel.surface,
       body: Stack(
         children: [
-          const DashboardBackground(),
           SafeArea(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -295,6 +294,7 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                 final loan = items[index];
                 final isReturnable = loan.status == LoanStatus.active || loan.status == LoanStatus.overdue;
                 final isCancellable = loan.status == LoanStatus.pending;
+                final sentinel = Theme.of(context).sentinel;
 
                 Widget card = LoanCardGlass(
                   loan: loan,
@@ -313,7 +313,10 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                     : null,
                 );
 
-                return Padding(padding: const EdgeInsets.only(bottom: 12), child: card);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: card,
+                );
               },
               childCount: items.length,
             ),

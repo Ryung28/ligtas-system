@@ -8,7 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/errors/app_exceptions.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
-import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../auth/domain/models/user_model.dart';
 
 class SecurityScreen extends ConsumerStatefulWidget {
@@ -105,6 +104,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   Widget build(BuildContext context) {
     final sentinel = Theme.of(context).extension<LigtasColors>()!;
     final user = ref.watch(currentUserProvider);
+    final isGoogleManaged = _isGoogleManagedAccount(user);
 
     return Scaffold(
       backgroundColor: sentinel.containerLowest,
@@ -122,17 +122,34 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               const Gap(32),
 
               // 🔑 PASSWORD MANAGEMENT
-              _buildPasswordSection(sentinel, user).animate().fadeIn(delay: 150.ms),
-              
-              const Gap(32),
-
-              // 🚨 DANGER ZONE
-              _buildDangerZone(sentinel).animate().fadeIn(delay: 250.ms),
+              _buildPasswordSection(sentinel, user, isGoogleManaged).animate().fadeIn(delay: 150.ms),
             ],
           ),
         ),
       ),
     );
+  }
+
+  bool _isGoogleManagedAccount(UserModel? user) {
+    if (!(user?.canChangePassword ?? true)) return true;
+
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser == null) return false;
+
+    final providers = <String>{};
+    final providersList = authUser.appMetadata['providers'] as List<dynamic>?;
+    if (providersList != null) {
+      providers.addAll(providersList.map((e) => e.toString().toLowerCase()));
+    }
+    final provider = authUser.appMetadata['provider'];
+    if (provider != null) {
+      providers.add(provider.toString().toLowerCase());
+    }
+    for (final identity in (authUser.identities ?? [])) {
+      providers.add(identity.provider.toLowerCase());
+    }
+
+    return providers.contains('google') && !providers.contains('email');
   }
 
   PreferredSizeWidget _buildAppBar(LigtasColors sentinel) {
@@ -157,7 +174,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   }
 
   Widget _buildSecurityStatusCard(LigtasColors sentinel, UserModel? user) {
-    final isSocial = !(user?.canChangePassword ?? true);
+    final isSocial = _isGoogleManagedAccount(user);
     
     return Container(
       padding: const EdgeInsets.all(24),
@@ -213,8 +230,58 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     );
   }
 
-  Widget _buildPasswordSection(LigtasColors sentinel, UserModel? user) {
-    if (!(user?.canChangePassword ?? true)) return const SizedBox.shrink();
+  Widget _buildPasswordSection(LigtasColors sentinel, UserModel? user, bool isGoogleManaged) {
+    if (isGoogleManaged) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ACCOUNT CREDENTIALS',
+            style: GoogleFonts.lexend(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+              color: sentinel.navy.withOpacity(0.4),
+            ),
+          ),
+          const Gap(12),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: sentinel.navy.withOpacity(0.06)),
+              boxShadow: sentinel.tactile.card,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: sentinel.navy.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.info_outline_rounded, color: sentinel.navy, size: 20),
+                ),
+                const Gap(12),
+                Expanded(
+                  child: Text(
+                    'Password is managed by your Google account. To change it, update your password in Google Account settings.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.45,
+                      color: sentinel.navy.withOpacity(0.72),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,120 +478,6 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     );
   }
 
-  Widget _buildDangerZone(LigtasColors sentinel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'DANGER ZONE',
-          style: GoogleFonts.lexend(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.5,
-            color: AppTheme.errorRed.withOpacity(0.6),
-          ),
-        ),
-        const Gap(12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.errorRed.withOpacity(0.05)),
-            boxShadow: sentinel.tactile.card,
-          ),
-          child: _buildSimpleTile(
-            sentinel: sentinel,
-            icon: Icons.logout_rounded,
-            iconColor: AppTheme.errorRed,
-            title: 'Sign Out',
-            subtitle: 'Sign out and clear local cached data',
-            onTap: () => _showSignOutDialog(sentinel),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSimpleTile({
-    required LigtasColors sentinel,
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const Gap(16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.lexend(fontSize: 15, fontWeight: FontWeight.w600, color: sentinel.navy),
-                  ),
-                  const Gap(4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: sentinel.navy.withOpacity(0.4), fontWeight: FontWeight.w400),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: sentinel.navy.withOpacity(0.2)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSignOutDialog(LigtasColors sentinel) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text('Sign Out?', style: GoogleFonts.lexend(fontWeight: FontWeight.w700, fontSize: 18)),
-        content: Text(
-          'Are you sure you want to sign out? This will clear your local inventory cache.',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w400, fontSize: 14, color: sentinel.navy.withOpacity(0.6)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.lexend(fontWeight: FontWeight.w600, color: sentinel.navy.withOpacity(0.4))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(authControllerProvider.notifier).logout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.errorRed,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text('Sign Out', style: GoogleFonts.lexend(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 

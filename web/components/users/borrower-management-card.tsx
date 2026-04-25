@@ -21,6 +21,8 @@ import { CheckCircle, XCircle, Clock, Mail, Calendar, Smartphone, Users, Trash2,
 import { UserProfile } from '@/hooks/use-user-management'
 import { formatDistanceToNow } from 'date-fns'
 import { Input } from '@/components/ui/input'
+import { EditUserDialog } from './edit-user-dialog'
+import { Building2 } from 'lucide-react'
 
 interface BorrowerManagementCardProps {
     pendingBorrowers: UserProfile[]
@@ -29,6 +31,7 @@ interface BorrowerManagementCardProps {
     onApprove: (userId: string) => Promise<boolean>
     onReject: (userId: string) => Promise<boolean>
     onRemove: (userId: string) => Promise<boolean>
+    onUpdateProfile: (userId: string, data: any) => Promise<boolean>
 }
 
 export function BorrowerManagementCard({
@@ -37,7 +40,8 @@ export function BorrowerManagementCard({
     isLoading,
     onApprove,
     onReject,
-    onRemove
+    onRemove,
+    onUpdateProfile
 }: BorrowerManagementCardProps) {
     const [searchQuery, setSearchQuery] = useState('')
 
@@ -230,42 +234,52 @@ export function BorrowerManagementCard({
                                                         <div className="font-semibold text-sm text-gray-900 truncate">
                                                             {borrower.full_name || borrower.email.split('@')[0]}
                                                         </div>
-                                                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 h-4 border border-emerald-100/50">
-                                                            {borrower.role === 'responder' ? 'Responder' : 'Active'}
+                                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-[9px] px-1.5 h-4 border border-blue-100/50">
+                                                            Mobile User
                                                         </Badge>
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                                                         <Mail className="h-3 w-3" />
-                                                        {borrower.email}
+                                                        <span className="truncate">{borrower.email}</span>
+                                                        {borrower.department && (
+                                                            <>
+                                                                <span className="text-gray-300">•</span>
+                                                                <Building2 className="h-3 w-3" />
+                                                                <span className="truncate">{borrower.department}</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Suspend Access</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Are you sure you want to suspend access for <strong>{borrower.email}</strong>?
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => onRemove(borrower.id)} className="bg-red-600 hover:bg-red-700">
-                                                                Suspend Access
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                                                <div className="flex items-center gap-1">
+                                                    <EditUserDialog user={borrower} onUpdate={onUpdateProfile} />
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Suspend Access</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure you want to suspend access for <strong>{borrower.email}</strong>?
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => onRemove(borrower.id)} className="bg-red-600 hover:bg-red-700">
+                                                                    Suspend Access
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </div>
                                             </div>
                                         </div>
                                     )
                                 })}
-                            </div>
-                        )}
+                        </div>
+                    )}
                     </TabsContent>
                 </CardContent>
             </Tabs>

@@ -57,8 +57,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 {/* Logo */}
                 <div className="relative h-14 w-14 flex-shrink-0 rounded-full bg-white p-0.5 border border-slate-100 shadow-sm">
                     <Image
-                        src="/resqtrack-logo.jpg"
-                        alt="CDRRMO Logo"
+                        src="/oro-cervo.png"
+                        alt="City of Oroquieta Fire and Rescue"
                         fill
                         className="object-contain p-0.5"
                         priority

@@ -212,6 +212,7 @@ Color _getSoftStatusColor(EventType type) {
     case EventType.securityTrigger: return const Color(0xFFEF4444);
     case EventType.requisitionRejected: return const Color(0xFF64748B);
     case EventType.systemSync: return const Color(0xFF94A3B8);
+    case EventType.reserved: return const Color(0xFFF59E0B);
     case EventType.maintenance: return const Color(0xFFF59E0B);
     case EventType.requisitionDenied: return const Color(0xFFEF4444);
     case EventType.mixed: return const Color(0xFF64748B);
@@ -253,6 +254,7 @@ Color _getStatusColor(EventType type) {
     case EventType.securityTrigger: return const Color(0xFFEF4444);
     case EventType.requisitionRejected: return const Color(0xFF64748B);
     case EventType.systemSync: return const Color(0xFF94A3B8);
+    case EventType.reserved: return const Color(0xFFF59E0B);
     case EventType.maintenance: return const Color(0xFFF59E0B);
     case EventType.requisitionDenied: return const Color(0xFFEF4444);
     case EventType.mixed: return const Color(0xFF64748B);
@@ -265,6 +267,7 @@ IconData _getIcon(EventType type) {
     case EventType.assetIn: return Icons.login_rounded;
     case EventType.requisitionApproved: return Icons.fact_check_rounded;
     case EventType.systemSync: return Icons.cloud_done_rounded;
+    case EventType.reserved: return Icons.event_available_rounded;
     case EventType.securityTrigger: return Icons.security_rounded;
     case EventType.requisitionRejected: return Icons.rule_rounded;
     case EventType.maintenance: return Icons.handyman_rounded;
@@ -279,6 +282,7 @@ String _getStatusText(EventType type) {
     case EventType.assetIn: return 'RETURNED';
     case EventType.requisitionApproved: return 'VERIFIED';
     case EventType.systemSync: return 'SYNCED';
+    case EventType.reserved: return 'RESERVED';
     case EventType.securityTrigger: return 'SECURITY TRIGGER';
     case EventType.requisitionRejected: return 'REJECTED';
     case EventType.maintenance: return 'MAINTENANCE';
@@ -440,7 +444,7 @@ class CommandDetailSheet extends ConsumerWidget {
           ),
         DetailRowData(
           icon: Icons.timer_rounded,
-          label: 'EVENT TIMESTAMP',
+          label: 'TIME OCCURRED',
           value: DateFormat('MMMM dd, yyyy, hh:mm a').format(event.timestamp),
           zone: 'Transaction Details',
           isHalfWidth: false, // Make it full width since it's long now
@@ -456,7 +460,7 @@ class CommandDetailSheet extends ConsumerWidget {
         if (isVerified)
           DetailRowData(
             icon: Icons.verified_user_rounded,
-            label: 'AUDIT SIGN-OFF',
+            label: 'VERIFIED AT',
             value: DateFormat('MMMM dd, yyyy, hh:mm a').format(event.verifiedAt!),
             zone: 'Transaction Details',
           ),

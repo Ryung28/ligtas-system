@@ -3,13 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:gap/gap.dart';
 import '../../domain/entities/loan_item.dart';
-import '../../../../core/design_system/app_theme.dart';
 import '../../../../core/design_system/widgets/tactical_image_viewer.dart';
-import '../../../../core/design_system/widgets/tactical_forensic_card.dart';
+import '../../../../core/utils/storage_utils.dart';
 
-/// 🛡️ LOAN CARD: MISSION LOADOUT MANIFEST (V4)
-/// A high-density forensic row representing an active equipment assignment.
-/// Refactored to use the unified TacticalForensicCard component.
+/// My Items card tuned to match the provided UI reference.
 class LoanCardGlass extends StatelessWidget {
   final LoanItem loan;
   final VoidCallback onTap;
@@ -24,153 +21,195 @@ class LoanCardGlass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🎨 ACCENT LOGIC: Mapping status to tactical colors
-    Color accentColor = AppTheme.primaryBlue;
-    String statusLabel = 'ACTIVE';
-    String timeLabel = 'ISSUED';
+    final statusMeta = _statusMeta(loan.status);
+    final issuedTime = _formatTimeLabel(loan.borrowDate);
+    final resolvedImageUrl = StorageUtils.resolveAssetUrl(loan.imageUrl);
 
-    if (loan.status == LoanStatus.returned) {
-      accentColor = AppTheme.emeraldGreen;
-      statusLabel = 'RETURNED';
-      timeLabel = 'RETURNED';
-    } else if (loan.status == LoanStatus.pending) {
-      accentColor = AppTheme.warningOrange;
-      statusLabel = 'PENDING';
-      timeLabel = 'REQUESTED';
-    } else if (loan.status == LoanStatus.overdue) {
-      accentColor = AppTheme.errorRed;
-      statusLabel = 'OVERDUE';
-      timeLabel = 'ISSUED';
-    } else if (loan.status == LoanStatus.cancelled) {
-      accentColor = AppTheme.neutralGray500;
-      statusLabel = 'CANCELLED';
-      timeLabel = 'LOGGED';
-    }
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(26),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF001A33).withOpacity(0.06),
+                offset: const Offset(0, 4),
+                blurRadius: 16,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              _buildImageBlock(context, resolvedImageUrl),
+              const Gap(12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            loan.itemName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.lexend(
+                              fontSize: 17,
+                              height: 1.25,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF09243E),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                        const Gap(8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusMeta.color,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            statusMeta.label,
+                            style: GoogleFonts.lexend(
+                              fontSize: 8.5,
+                              letterSpacing: 1.0,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Gap(12),
+                    // ── Subtle Divider ──
+                    Container(
+                      height: 1,
+                      width: double.infinity,
+                      color: const Color(0xFFF1F4F8),
+                    ),
+                    const Gap(10),
+                    Row(
+                      children: [
+                        const Icon(Icons.inventory_2_outlined, size: 16, color: Color(0xFFA6AFBB)),
+                        const Gap(6),
+                        Text(
+                          '${loan.quantityBorrowed} Units',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF4C5F74),
+                          ),
+                        ),
+                        const Gap(16),
+                        const Icon(Icons.access_time_rounded, size: 15, color: Color(0xFFA6AFBB)),
+                        const Gap(6),
+                        Expanded(
+                          child: Text(
+                            issuedTime,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF6A7D92),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    return TacticalForensicCard(
-      id: loan.id,
-      title: loan.itemName,
-      referenceId: loan.id,
-      statusLabel: statusLabel,
-      accentColor: accentColor,
-      imageUrl: loan.imageUrl,
-      timestampLabel: timeLabel,
-      timestampValue: _calculateDeploymentText(loan.borrowDate),
-      secondaryLabel: 'QUANTITY',
-      secondaryValue: '${loan.quantityBorrowed} UNITS',
-      onTap: onTap,
-      onThumbnailTap: loan.imageUrl != null && loan.imageUrl!.isNotEmpty
+  Widget _buildImageBlock(BuildContext context, String resolvedImageUrl) {
+    final hasImage = resolvedImageUrl.isNotEmpty;
+    final heroTag = 'loan_icon_${loan.id}';
+
+    return GestureDetector(
+      onTap: hasImage
           ? () => TacticalImageViewer.show(
                 context,
-                url: loan.imageUrl!,
+                url: resolvedImageUrl,
                 title: loan.itemName,
-                heroTag: 'loan_icon_${loan.id}',
+                heroTag: heroTag,
               )
           : null,
-      onActionTap: onReturn != null && (loan.status == LoanStatus.active || loan.status == LoanStatus.overdue)
-          ? onReturn
-          : null,
-      actionLabel: 'RETURN',
-      heroTagPrefix: 'inv',
-      decisionHub: _buildDecisionHub(context),
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F9FA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFF1F4F8), width: 1.2),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(9),
+          child: hasImage
+              ? Hero(
+                  tag: heroTag,
+                  child: Image.network(
+                    resolvedImageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _fallbackImage(),
+                  ),
+                )
+              : _fallbackImage(),
+        ),
+      ),
     );
   }
 
-  Widget _buildDecisionHub(BuildContext context) {
-    final bool isPending = loan.status == LoanStatus.pending;
-    final bool isRejected = loan.status == LoanStatus.cancelled;
-    final bool isStaged = loan.status == LoanStatus.staged;
-    final bool isApprovedReady = isStaged || (loan.status == LoanStatus.active && loan.handedBy == null);
+  Widget _fallbackImage() {
+    return Container(
+      color: const Color(0xFFF0F3F7),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.inventory_2_rounded,
+        size: 34,
+        color: Color(0xFFB3BECB),
+      ),
+    );
+  }
 
-    // 🛡️ RECLAIM SPACE: Pending status is now handled by the top-right tag
-    if (isPending || (!isRejected && !isApprovedReady)) return const SizedBox.shrink();
-
-    Color stripColor = AppTheme.warningOrange;
-    String label = 'ACTION REQUIRED';
-    String subtext = '';
-    IconData icon = Icons.timer_outlined;
-
-    if (isRejected) {
-      stripColor = AppTheme.errorRed;
-      label = 'NOT APPROVED';
-      subtext = 'Item unavailable at this time';
-      icon = Icons.info_outline_rounded;
-    } else if (isApprovedReady) {
-      stripColor = AppTheme.emeraldGreen;
-      label = 'READY FOR PICKUP';
-      subtext = loan.pickupScheduledAt != null 
-          ? 'SCHEDULED: ${DateFormat('MMM dd, hh:mm a').format(loan.pickupScheduledAt!)}'
-          : 'You can now claim this equipment';
-      icon = Icons.check_circle_outline_rounded;
+  ({String label, Color color}) _statusMeta(LoanStatus status) {
+    switch (status) {
+      case LoanStatus.pending:
+        return (label: 'PENDING', color: const Color(0xFF8A6514));
+      case LoanStatus.overdue:
+        return (label: 'OVERDUE', color: const Color(0xFFB42318));
+      case LoanStatus.returned:
+        return (label: 'RETURNED', color: const Color(0xFF067647));
+      case LoanStatus.cancelled:
+        return (label: 'CANCELLED', color: const Color(0xFF667085));
+      case LoanStatus.staged:
+        return (label: 'STAGED', color: const Color(0xFF155EEF));
+      case LoanStatus.active:
+      default:
+        return (label: 'BORROWED', color: const Color(0xFF0B213E));
     }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: stripColor.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: stripColor.withOpacity(0.1)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: stripColor),
-          const Gap(10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.lexend(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: stripColor,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  subtext,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: stripColor.withOpacity(0.8),
-                    letterSpacing: 0.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isPending)
-            _buildPulseIndicator(stripColor),
-        ],
-      ),
-    );
   }
 
-  Widget _buildPulseIndicator(Color color) {
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.4),
-            blurRadius: 4,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-    );
-  }
+  String _formatTimeLabel(DateTime dateTime) {
+    final now = DateTime.now();
+    final onlyDateNow = DateTime(now.year, now.month, now.day);
+    final onlyDateInput = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final time = DateFormat('hh:mm a').format(dateTime);
 
-  String _calculateDeploymentText(DateTime borrowDate) {
-    final diff = DateTime.now().difference(borrowDate);
-    if (diff.inDays > 0) return '${diff.inDays}d ago';
-    if (diff.inHours > 0) return '${diff.inHours}h ago';
-    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
-    return 'Just now';
+    if (onlyDateInput == onlyDateNow) return '$time Today';
+    if (onlyDateInput == onlyDateNow.subtract(const Duration(days: 1))) return '$time Yesterday';
+    return '$time ${DateFormat('MMM dd').format(dateTime)}';
   }
 }

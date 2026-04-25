@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from './sidebar'
 import { NotificationBellV2 } from './notification-bell-v2'
-import { SmartScanner } from './smart-scanner'
+import { ScannerDialog } from '@/src/features/scanner/components/scanner-dialog'
 import { useState, useEffect } from 'react'
 import { useUser } from '@/providers/auth-provider'
 
@@ -54,7 +54,7 @@ export function Header() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
-                <SmartScanner />
+                <ScannerDialog />
                 <NotificationBellV2 />
             </div>
         </header>

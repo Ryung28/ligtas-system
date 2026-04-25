@@ -87,9 +87,10 @@ class IsarService {
     });
   }
 
-  static Stream<List<LoanModel>> watchLoans() {
+  static Stream<List<LoanModel>> watchLoans(String userId) {
     return _isar.collection<LoanCollection>()
-        .where()
+        .filter()
+        .borrowedByEqualTo(userId)
         .watch(fireImmediately: true)
         .map((list) => list.map((e) => e.toModel()).toList());
   }

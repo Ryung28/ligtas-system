@@ -7,19 +7,18 @@ import { InventoryProvider } from '@/providers/inventory-provider'
 import { TransactionDetailSheet } from '@/components/mobile/transactions/transaction-detail-sheet'
 
 export const metadata: Metadata = {
-    title: 'ResQTrack',
+    title: 'CDRRMO Oroquieta · ResQTrack',
     description: 'Unified Logistics & Disaster Response Information System',
     manifest: '/manifest.json',
     appleWebApp: {
         capable: true,
         statusBarStyle: 'default',
-        title: 'ResQTrack',
-        startupImage: '/resqtrack-logo.jpg',
+        title: 'CDRRMO · ResQTrack',
+        startupImage: '/oro-cervo.png',
     },
     icons: {
-        apple: [
-            { url: '/resqtrack-logo.jpg', sizes: '180x180', type: 'image/jpeg' },
-        ],
+        icon: [{ url: '/oro-cervo.png', type: 'image/png', sizes: '512x512' }],
+        apple: [{ url: '/oro-cervo.png', sizes: '180x180', type: 'image/png' }],
     },
 }
 
@@ -48,8 +47,8 @@ export default function MobileLayout({
             <div className="fixed inset-0 flex flex-col bg-white overflow-hidden select-none transform-gpu mobile-cage">
                 <AdaptiveRoutingSentry />
                 {/* Main Interactive Field: The "Steel Cage" scrollable area */}
-                <main className="flex-1 overflow-y-auto mb-[calc(64px+env(safe-area-inset-bottom))] p-4 bg-gray-50/50 animate-in fade-in duration-300 ease-out custom-scrollbar">
-                    <div className="max-w-screen-md mx-auto min-h-full">
+                <main className="flex-1 overflow-y-auto mb-[calc(64px+env(safe-area-inset-bottom))] bg-gray-50/50 animate-in fade-in duration-300 ease-out custom-scrollbar">
+                    <div className="min-h-full">
                         {children}
                     </div>
                 </main>

@@ -9,6 +9,7 @@ import 'package:gap/gap.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../providers/dashboard_provider.dart';
 import '../../loans/providers/loan_providers.dart';
+import 'package:mobile/src/features_v2/loans/presentation/providers/loan_provider.dart';
 
 import '../widgets/dashboard_background.dart';
 import '../widgets/dashboard_header.dart';
@@ -18,12 +19,9 @@ import '../controllers/dashboard_controller.dart';
 
 import '../widgets/mission_control_widgets.dart';
 import '../widgets/recent_activity_section.dart';
-import '../../loans/repositories/loan_repository.dart';
-import '../../../core/di/app_providers.dart';
 import '../../../core/design_system/widgets/app_toast.dart';
 import '../../../core/design_system/widgets/ligtas_error_state.dart';
 import '../../notifications/widgets/sync_error_banner.dart';
-import 'package:mobile/src/features/presence/presentation/providers/presence_provider.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -58,7 +56,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if ((user?.organization?.trim().isEmpty ?? true)) 'office',
     ];
     final userName = ref.watch(dashboardUserNameProvider);
-    final statsAsync = ref.watch(dashboardStatsProvider);
     final controller = ref.watch(dashboardControllerProvider);
     final loansAsync = ref.watch(sortedDashboardActivityProvider);
     
@@ -80,7 +77,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onRefresh: () async {
                 HapticFeedback.mediumImpact();
                 ref.invalidate(dashboardStatsProvider);
+                ref.invalidate(freshDashboardLoansProvider);
                 ref.invalidate(myBorrowedItemsProvider);
+                ref.invalidate(myLoansNotifierProvider);
                 
                 if (mounted) {
                   AppToast.showSuccess(context, 'Dashboard synced with server');

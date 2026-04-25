@@ -86,6 +86,7 @@ class RequestFormStep extends ConsumerWidget {
                         TactileQuantityStepper(
                           value: cartItem.quantity,
                           label: cartItem.item.unit,
+                          max: cartItem.item.displayStock,
                           onChanged: (val) {
                             notifier.updateItemQuantity(itemId, val);
                           },

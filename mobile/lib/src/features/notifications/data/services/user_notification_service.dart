@@ -11,6 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile/src/core/navigation/navigator_key.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum SyncStatus { success, failing, retrying }
 
@@ -62,6 +63,8 @@ class UserNotificationService {
 
   // 🛡️ LIFECYCLE GUARD: Prevents the listener from being garbage collected
   AppLifecycleListener? _lifecycleListener;
+  static const String _pushNotificationsKey = 'push_notifications_enabled';
+  bool _pushNotificationsEnabled = true;
 
 
   // ============================================================
@@ -86,6 +89,7 @@ class UserNotificationService {
 
   Future<void> initialize() async {
     debugPrint('📡 [ENTERPRISE-DISPATCHER]: Booting Tactical Notification Pipeline...');
+    _pushNotificationsEnabled = await _readPushNotificationsEnabled();
 
     // 🛡️ PERMISSION ESCALATION: Explicitly request for Android 13+
     NotificationSettings permSettings = await _fcm.requestPermission(
@@ -161,12 +165,16 @@ class UserNotificationService {
       _realtimeSubscription = _supabase
           .from('system_notifications')
           .stream(primaryKey: ['id'])
-          .eq('user_id', _supabase.auth.currentUser?.id ?? '')
           .order('created_at', ascending: false)
           .limit(1)
           .listen((data) {
+        if (!_pushNotificationsEnabled) return;
         if (data.isEmpty) return;
         final latest = data.first;
+        final currentUserId = _supabase.auth.currentUser?.id;
+        final targetUserId = latest['user_id']?.toString();
+        if (currentUserId == null) return;
+        if (targetUserId != null && targetUserId != currentUserId) return;
         final createdAt = DateTime.parse(latest['created_at']);
         
         // 🛡️ FRESHNESS GUARD: Only play for events that happened in the last 10 seconds
@@ -227,6 +235,11 @@ class UserNotificationService {
   Future<void> handleAuthStateChange(String? userId) async {
     if (userId != null) {
       debugPrint('[Notification-Facade] Auth change detected for $userId. Initiating sync...');
+      _pushNotificationsEnabled = await _readPushNotificationsEnabled();
+      if (!_pushNotificationsEnabled) {
+        debugPrint('[Notification-Facade] Push disabled by user. Skipping token sync.');
+        return;
+      }
       await _refreshAndSaveToken();
     } else {
       debugPrint('[Notification-Facade] User logged out. Clearing sync status.');
@@ -235,6 +248,7 @@ class UserNotificationService {
   }
 
   Future<void> _refreshAndSaveToken() async {
+    if (!_pushNotificationsEnabled) return;
     syncStatus.value = syncStatus.value.copyWith(isRetrying: true);
     try {
       String? token = await _fcm.getToken();
@@ -247,6 +261,7 @@ class UserNotificationService {
   }
 
   Future<void> _saveToken(String token) async {
+    if (!_pushNotificationsEnabled) return;
     final user = _supabase.auth.currentUser;
     if (user == null) {
       debugPrint('[Chat-Push] 🛡️ ABORTed: No valid session for registration.');
@@ -317,6 +332,7 @@ class UserNotificationService {
   }
 
   void _showRichNotification(RemoteMessage message, {bool isForeground = true}) {
+    if (!_pushNotificationsEnabled) return;
     debugPrint('[FCM-Pulse] 📦 UI Banner Dispatch | Channel: $kEmergencyChannelId | Payload: ${message.data}');
     debugPrint('📡 FCM: Processing message payload (Foreground: $isForeground)...');
     
@@ -358,6 +374,27 @@ class UserNotificationService {
     );
 
     _display(notificationId, title, body, style, path);
+  }
+
+  Future<bool> _readPushNotificationsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_pushNotificationsKey) ?? true;
+  }
+
+  Future<void> setPushNotificationsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_pushNotificationsKey, enabled);
+    _pushNotificationsEnabled = enabled;
+
+    if (!enabled) {
+      // Best-effort local suppression immediately.
+      await _localNotifications.cancelAll();
+      syncStatus.value = const NotificationSyncState(isSynced: true, isRetrying: false);
+      return;
+    }
+
+    // Re-enable token sync immediately when user turns notifications back on.
+    await _refreshAndSaveToken();
   }
 
   void _display(int id, String title, String? body, StyleInformation style, String payload) {

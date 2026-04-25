@@ -2,7 +2,7 @@ import '../entities/loan_item.dart';
 
 abstract class ILoanRepository {
   /// Fetch all loans for the current user
-  Future<List<LoanItem>> fetchMyLoans();
+  Future<List<LoanItem>> fetchMyLoans({String? userId});
 
   /// Create a new loan request
   Future<LoanItem> createLoan(LoanItem request);
@@ -35,5 +35,5 @@ abstract class ILoanRepository {
   Future<LoanItem?> fetchById(String loanId);
 
   /// Watch for remote changes from Supabase Realtime
-  Stream<void> watchRemote({String? warehouseId});
+  Stream<void> watchRemote({String? warehouseId, String? userId});
 }

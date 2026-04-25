@@ -12,6 +12,13 @@ interface NotificationFiltersProps {
 }
 
 export function NotificationFilters({ activeFilter, setActiveFilter, filters }: NotificationFiltersProps) {
+  const filterLabelMap: Record<Category, string> = {
+    ALL: 'All',
+    LOGS: 'Transactions',
+    AUTH: 'Accounts',
+    ALERTS: 'Alerts',
+  }
+
   return (
     <div className="px-5 pb-4">
       <div className="flex p-1 rounded-full bg-slate-100/60 backdrop-blur-md shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] border border-white/20">
@@ -30,7 +37,7 @@ export function NotificationFilters({ activeFilter, setActiveFilter, filters }: 
             {f === "LOGS" && <Box className="w-3.5 h-3.5" strokeWidth={2.5} />}
             {f === "AUTH" && <User className="w-3.5 h-3.5" strokeWidth={2.5} />}
             {f === "ALERTS" && <BellRing className="w-3.5 h-3.5" strokeWidth={2.5} />}
-            <span>{f.charAt(0).toUpperCase() + f.slice(1).toLowerCase()}</span>
+            <span>{filterLabelMap[f]}</span>
           </button>
         ))}
       </div>

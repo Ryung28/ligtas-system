@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile/src/core/extensions/supabase_client_extension.dart';
@@ -21,36 +20,33 @@ Stream<int> unreadNotificationCount(UnreadNotificationCountRef ref) async* {
     return;
   }
 
-  int retryCount = 0;
-  const maxRetries = 3;
+  int lastKnownCount = 0;
 
-  while (retryCount < maxRetries) {
+  Future<int> fetchUnreadCount() async {
+    final result = await repository.getInbox(limit: 200);
+    if (!result.success) {
+      throw Exception(result.message);
+    }
+    return result.data.where((notification) => !notification.isRead).length;
+  }
+
+  try {
+    await supabase.checkConnection();
+    lastKnownCount = await fetchUnreadCount();
+    yield lastKnownCount;
+  } catch (e) {
+    debugPrint('[Notification-Count] Initial fetch failed: $e');
+    yield lastKnownCount;
+  }
+
+  await for (final _ in Stream.periodic(const Duration(seconds: 15))) {
     try {
-      // 🛡️ Health Check
       await supabase.checkConnection();
-
-      // Count unread using the same role-aware inbox pipeline as web/mobile feed.
-      Future<int> fetchUnreadCount() async {
-        final result = await repository.getInbox(limit: 200);
-        if (!result.success) {
-          throw Exception(result.message);
-        }
-        return result.data.where((notification) => !notification.isRead).length;
-      }
-
-      yield await fetchUnreadCount();
-      yield* Stream.periodic(const Duration(seconds: 15))
-          .asyncMap((_) => fetchUnreadCount())
-          .handleError((error) {
-        debugPrint('[Notification-Count] Stream Error: $error');
-        throw error;
-      });
-      
-      break;
+      lastKnownCount = await fetchUnreadCount();
+      yield lastKnownCount;
     } catch (e) {
-      retryCount++;
-      debugPrint('[Notification-Count] Reconnecting socket (Attempt $retryCount/$maxRetries)...');
-      await Future.delayed(Duration(seconds: retryCount * 2));
+      debugPrint('[Notification-Count] Poll failed, keeping last value: $e');
+      yield lastKnownCount;
     }
   }
 }

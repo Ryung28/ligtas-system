@@ -1,6 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:mobile/src/core/networking/supabase_client.dart';
 import 'package:mobile/src/core/errors/app_exceptions.dart';
 import 'package:mobile/src/features/auth/domain/models/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -21,10 +20,25 @@ class AuthRepository {
   AuthRepository(this._supabase);
 
   Session? get currentSession => _supabase.auth.currentSession;
+
+  List<String> _resolveAuthProviders(User authUser) {
+    final fromAppMetadata = (authUser.appMetadata['providers'] as List<dynamic>?)
+            ?.map((e) => e.toString().toLowerCase())
+            .toList() ??
+        <String>[];
+    if (fromAppMetadata.isNotEmpty) return fromAppMetadata;
+
+    final fromIdentities = (authUser.identities ?? [])
+        .map((i) => i.provider.toLowerCase())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    return fromIdentities;
+  }
   
   Future<UserModel?> getCurrentUser() async {
     final authUser = _supabase.auth.currentUser;
     if (authUser == null) return null;
+    final providers = _resolveAuthProviders(authUser);
     
     final profileData = await _supabase
         .from('user_profiles')
@@ -40,9 +54,10 @@ class AuthRepository {
         phoneNumber: authUser.userMetadata?['phone_number'] as String?,
         organization: authUser.userMetadata?['organization'] as String?,
         role: 'loading',
+        providers: providers,
       );
     }
-    return UserModel.fromSupabase(profileData);
+    return UserModel.fromSupabase(profileData, providers);
   }
 
   // 🛡️ THE SMOKING GUN RECOVERY: Respects rememberMe to prevent sticky accounts

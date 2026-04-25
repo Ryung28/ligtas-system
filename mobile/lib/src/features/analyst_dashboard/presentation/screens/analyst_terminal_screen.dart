@@ -270,11 +270,11 @@ class _AlertTuningSheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ALERT SENSITIVITY', style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.neutralGray400, letterSpacing: 2.0)),
+          Text('STOCK WARNING LEVEL', style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.neutralGray400, letterSpacing: 2.0)),
           const Gap(8),
-          Text('Triage Threshold', style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.neutralGray900)),
+          Text('Alert Settings', style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.neutralGray900)),
           const Gap(12),
-          Text('Define when an asset is flagged as "Low Stock". Current threshold is set to $sensitivity units.', 
+          Text('Set when you want to be notified about low stock. Current level is set to $sensitivity units.', 
                style: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppTheme.neutralGray600, height: 1.5)),
           const Gap(32),
           
@@ -307,7 +307,7 @@ class _AlertTuningSheet extends ConsumerWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: Text('APPLY SENSITIVITY', style: GoogleFonts.lexend(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white)),
+              child: Text('SAVE SETTINGS', style: GoogleFonts.lexend(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white)),
             ),
           ),
         ],

@@ -22,8 +22,8 @@ class SyncErrorBanner extends ConsumerWidget {
     final color = status.isRetrying ? AppTheme.primaryBlue : Colors.redAccent;
     final icon = status.isRetrying ? Icons.sync_rounded : Icons.warning_amber_rounded;
     final message = status.isRetrying 
-      ? "REGISTERING TACTICAL COMMS..." 
-      : (status.errorMessage ?? "DEVICE REGISTRATION FAILED");
+      ? "Registering notifications..." 
+      : (status.errorMessage ?? "Notification setup failed");
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -60,7 +60,7 @@ class SyncErrorBanner extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  message.toUpperCase(),
+                  message,
                   style: TextStyle(
                     color: color,
                     fontSize: 10,
@@ -70,7 +70,7 @@ class SyncErrorBanner extends ConsumerWidget {
                 ),
                 if (!status.isRetrying)
                   const Text(
-                    "You may miss critical emergency alerts.",
+                    "You may miss important alerts until this is fixed.",
                     style: TextStyle(
                       color: Colors.black54,
                       fontSize: 11,

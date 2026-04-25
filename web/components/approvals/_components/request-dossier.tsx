@@ -15,22 +15,25 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { BorrowLog } from '@/lib/types/inventory'
 import { getInventoryImageUrl } from '@/lib/supabase'
-import { approveRequest, rejectRequest, completeHandoff } from '@/src/features/approvals'
+import { rejectRequest, ApprovalCommandSheet } from '@/src/features/approvals'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
 
 interface RequestDossierProps {
     request: BorrowLog
     staffName: string
+    userRole: string | null
     isReservationView: boolean
     onActionComplete: () => void
 }
 
 
-export function RequestDossier({ request, staffName, isReservationView, onActionComplete }: RequestDossierProps) {
+export function RequestDossier({ request, staffName, userRole, isReservationView, onActionComplete }: RequestDossierProps) {
     const [processingId, setProcessingId] = useState<number | null>(null)
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
     const isProcessing = processingId === request.id
+
+    const isAdmin = userRole?.toLowerCase() === 'admin'
 
     const status = request.status
     const isStaged = status === 'staged'
@@ -49,39 +52,7 @@ export function RequestDossier({ request, staffName, isReservationView, onAction
     const lifecycleApproved = isStaged || isReserved
     const lifecycleDone = false // not yet handed off
 
-    const handleApprove = async () => {
-        if (!staffName) { toast.error('Unable to identify your staff account'); return }
-        setProcessingId(request.id)
-        try {
-            // Immediate tab: instant dispatch. Reserved tab: just stage it.
-            const result = await approveRequest(request.id, staffName, !isReservationView)
-            if (result.success) {
-                toast.success(result.message)
-                onActionComplete()
-            } else {
-                toast.error(result.error || 'Failed to process request')
-            }
-        } finally {
-            setProcessingId(null)
-        }
-    }
-
-    const handleHandoff = async () => {
-        if (!staffName) { toast.error('Unable to identify your staff account'); return }
-        setProcessingId(request.id)
-        try {
-            const result = await completeHandoff(request.id, staffName)
-            if (result.success) {
-                toast.success(result.message)
-                onActionComplete()
-            } else {
-                toast.error(result.error || 'Failed to complete handoff')
-            }
-        } finally {
-            setProcessingId(null)
-        }
-    }
-
+    // Primary Action Handlers
     const handleReject = async () => {
         setProcessingId(request.id)
         try {
@@ -96,21 +67,6 @@ export function RequestDossier({ request, staffName, isReservationView, onAction
             setProcessingId(null)
         }
     }
-
-    // Primary CTA label
-    const primaryLabel = isStaged
-        ? 'Confirm Handoff'
-        : isReservationView
-        ? 'Mark as Ready'
-        : 'Approve Request'
-
-    const primaryIcon = isStaged
-        ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-        : isReservationView
-        ? <Calendar className="h-3.5 w-3.5 mr-1.5" />
-        : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-
-    const primaryAction = isStaged ? handleHandoff : handleApprove
 
     return (
         <div className="flex flex-col h-full">
@@ -234,34 +190,38 @@ export function RequestDossier({ request, staffName, isReservationView, onAction
 
             {/* ── Action Cluster (sticky bottom) ── */}
             <div className="border-t border-slate-100 p-3 bg-white/80 backdrop-blur-sm">
-                <div className="flex gap-2">
-                    <Button
-                        variant="ghost"
-                        disabled={isProcessing}
-                        onClick={handleReject}
-                        className="flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
-                    >
-                        <X className="h-3 w-3 mr-1.5" />
-                        Reject
-                    </Button>
-                    <Button
-                        disabled={isProcessing}
-                        onClick={primaryAction}
-                        className={`flex-[2.5] h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-white shadow-md transition-all active:scale-95 ${
-                            isStaged
-                                ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
-                                : isReservationView
-                                ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
-                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
-                        }`}
-                    >
-                        {isProcessing ? (
-                            <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Processing...</>
-                        ) : (
-                            <>{primaryIcon}{primaryLabel}</>
-                        )}
-                    </Button>
-                </div>
+                {!isAdmin ? (
+                    <div className="flex items-center justify-center p-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <Shield className="h-3 w-3 text-slate-400 mr-2" />
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                            Only Administrators can authorize dispatches
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex gap-2">
+                        <Button
+                            variant="ghost"
+                            disabled={isProcessing}
+                            onClick={handleReject}
+                            className="flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                        >
+                            <X className="h-3 w-3 mr-1.5" />
+                            Reject
+                        </Button>
+                        <ApprovalCommandSheet
+                            request={request}
+                            isReservationView={isReservationView}
+                            onActionSuccess={onActionComplete}
+                            triggerClassName={`flex-[2.5] h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-white shadow-md transition-all active:scale-95 border-none ${
+                                isStaged
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                                    : isReservationView
+                                    ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
+                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                            }`}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* ── Image Preview Dialog ── */}

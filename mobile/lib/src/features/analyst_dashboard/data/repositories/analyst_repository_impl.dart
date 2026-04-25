@@ -242,10 +242,26 @@ class AnalystRepositoryImpl implements IAnalystRepository {
             borrowerEmail: meta['borrower_email']?.toString(),
             borrowerOrg: meta['borrower_organization']?.toString(),
             borrowedQty: (meta['quantity'] as num?)?.toInt() ?? 0,
-            dueDate: meta['due_date'] != null ? DateTime.tryParse(meta['due_date'].toString()) : null,
-            borrowedAt: meta['borrowed_at'] != null ? DateTime.tryParse(meta['borrowed_at'].toString()) : null,
+            dueDate: DateTime.tryParse(
+              (meta['due_date'] ??
+                      meta['expected_return_date'] ??
+                      meta['return_date'] ??
+                      item['expected_return_date'] ??
+                      item['due_date'])
+                  ?.toString() ??
+                  '',
+            ),
+            borrowedAt: DateTime.tryParse(
+              (meta['borrowed_at'] ??
+                      meta['borrow_date'] ??
+                      meta['handed_at'] ??
+                      item['borrowed_at'] ??
+                      item['borrow_date'])
+                  ?.toString() ??
+                  '',
+            ),
             approvedByName: meta['approved_by_name']?.toString(),
-            releasedByName: meta['released_by_name']?.toString(),
+            releasedByName: (meta['released_by_name'] ?? meta['handed_by'])?.toString(),
             platformOrigin: meta['platform_origin']?.toString(),
             qtyGood: (liveData?['qty_good'] ?? meta['qty_good'] as num?)?.toInt() ?? 0,
             qtyDamaged: (liveData?['qty_damaged'] ?? meta['qty_damaged'] as num?)?.toInt() ?? 0,

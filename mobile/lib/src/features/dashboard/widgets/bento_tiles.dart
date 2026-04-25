@@ -126,7 +126,6 @@ class _BentoStatTileState extends ConsumerState<BentoStatTile> {
 
   @override
   Widget build(BuildContext context) {
-    final sentinel = Theme.of(context).sentinel;
     final hasEntered = ref.watch(dashboardEntryProvider);
     final tacticalRadius = const BorderRadius.only(
       topLeft: Radius.circular(32),
@@ -183,10 +182,10 @@ class _BentoStatTileState extends ConsumerState<BentoStatTile> {
                     ),
 
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                      padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           // Top: Icon + Badge (Responsive)
                           Row(
@@ -229,16 +228,18 @@ class _BentoStatTileState extends ConsumerState<BentoStatTile> {
                             ],
                           ),
                           
-                          const Gap(8),
+                          const Gap(6),
                           
                           // Bottom: Label
                           Text(
                             widget.label.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.lexend(
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF43474D), // stitchOnSurfaceVariant
-                              letterSpacing: 1.0,
+                              letterSpacing: 0.6,
                             ),
                           ),
                         ],

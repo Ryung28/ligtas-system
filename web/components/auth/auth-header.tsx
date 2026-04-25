@@ -13,8 +13,8 @@ export function AuthHeader({ title, description }: AuthHeaderProps) {
             {/* Logo — visible on mobile, hidden on desktop (shown on left panel) */}
             <div className="relative h-16 w-16 mb-4 lg:hidden shadow-lg rounded-full overflow-hidden border-2 border-white bg-white">
                 <Image
-                    src="/resqtrack-logo.jpg"
-                    alt="CDRRMO Logo"
+                    src="/oro-cervo.png"
+                    alt="City of Oroquieta Fire and Rescue"
                     fill
                     className="object-contain p-1"
                     priority
@@ -26,8 +26,8 @@ export function AuthHeader({ title, description }: AuthHeaderProps) {
                 <div className="w-24 h-24 relative group">
                     <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-700" />
                     <Image
-                        src="/resqtrack-logo.jpg"
-                        alt="CDRRMO Official Logo"
+                        src="/oro-cervo.png"
+                        alt="City of Oroquieta Fire and Rescue"
                         fill
                         className="object-contain relative z-10 drop-shadow-2xl transition-transform duration-500 hover:scale-105"
                         priority

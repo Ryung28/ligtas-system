@@ -37,13 +37,17 @@ class DashboardStats {
 
 /// Provides borrower dashboard stats from real data - TRANSFORMED TO STREAM for REALTIME
 final dashboardStatsProvider = StreamProvider<DashboardStats>((ref) {
-  final loansAsync = ref.watch(myBorrowedItemsProvider);
+  final loansAsync = ref.watch(freshDashboardLoansProvider);
 
   return loansAsync.when(
     data: (loans) {
       final total = loans.length;
       final active = loans.where((l) => l.status == LoanStatus.active).length;
-      final overdue = loans.where((l) => l.status == LoanStatus.overdue || l.daysOverdue > 0).length;
+      // Overdue should only represent currently unreturned/active borrows.
+      final overdue = loans.where((l) =>
+        l.status == LoanStatus.overdue ||
+        (l.status == LoanStatus.active && l.daysOverdue > 0)
+      ).length;
       final returned = loans.where((l) => l.status == LoanStatus.returned).length;
 
       return Stream.value(DashboardStats(
@@ -210,8 +214,7 @@ final groupedLoanHistoryProvider = Provider<Map<String, List<LoanModel>>>((ref) 
 /// 🛡️ THE STRATEGY: Move sorting out of UI build methods to achieve 120Hz consistency.
 /// Perform heavy transformation in background microtask within providers.
 final sortedDashboardActivityProvider = Provider<List<LoanModel>>((ref) {
-  // 🚀 CONVERGENCE: Watch the same Isar stream used by the 'My Items' screen
-  final loansAsync = ref.watch(myBorrowedItemsProvider);
+  final loansAsync = ref.watch(freshDashboardLoansProvider);
   
   return loansAsync.when(
     data: (loans) {
@@ -227,7 +230,7 @@ final sortedDashboardActivityProvider = Provider<List<LoanModel>>((ref) {
 /// 🛡️ THE STRATEGY: Pre-segment operation logs into Pending and Active pools.
 /// This eliminates the calculation burden during scroll-rebuilds.
 final operationLogSegmentsProvider = Provider<Map<String, dynamic>>((ref) {
-  final loansAsync = ref.watch(myBorrowedItemsProvider);
+  final loansAsync = ref.watch(freshDashboardLoansProvider);
   
   return loansAsync.when(
     data: (loans) {
@@ -254,6 +257,10 @@ final operationLogSegmentsProvider = Provider<Map<String, dynamic>>((ref) {
 
 /// Senior Dev: Use FutureProvider for fresh dashboard data (Force fresh fetch from remote)
 final freshDashboardLoansProvider = FutureProvider<List<LoanModel>>((ref) async {
+  // 🛡️ SECURITY: Watch user identity to force re-fetch on account switch
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+  
   final repository = ref.read(loanRepositoryProvider);
   return repository.getMyBorrowedItems();
 });

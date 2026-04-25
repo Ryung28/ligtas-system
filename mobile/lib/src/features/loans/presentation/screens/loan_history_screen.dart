@@ -290,20 +290,19 @@ class _LedgerRow extends ConsumerWidget {
   const _LedgerRow({required this.item});
 
   String _getStatusText(LoanStatus status, int overdueDays) {
-    if (overdueDays > 0) return 'OVERDUE';
+    if (status == LoanStatus.returned) return 'COMPLETED';
+    if (overdueDays > 0 || status == LoanStatus.overdue) return 'OVERDUE';
     switch (status) {
       case LoanStatus.active: return 'ACTIVE';
-      case LoanStatus.returned: return 'COMPLETED';
       case LoanStatus.pending: return 'PENDING';
-      case LoanStatus.overdue: return 'OVERDUE';
       case LoanStatus.staged: return 'STAGED';
       default: return 'ACTIVE';
     }
   }
 
   Color _getStatusColor(LoanStatus status, int overdueDays, LigtasColors sentinel) {
-    if (overdueDays > 0) return const Color(0xFFEF4444); // Red-500
     if (status == LoanStatus.returned) return const Color(0xFF10B981); // Emerald-500
+    if (overdueDays > 0 || status == LoanStatus.overdue) return const Color(0xFFEF4444); // Red-500
     return sentinel.navy;
   }
 

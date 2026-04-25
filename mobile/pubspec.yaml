@@ -94,6 +94,7 @@ dependencies:
   flutter_inset_shadow: ^2.0.3
   flutter_neumorphic_plus: ^3.5.0
   image_picker: ^1.2.1
+  flutter_image_compress: ^2.4.0
 
 dependency_overrides:
   sqflite_android: 2.4.1

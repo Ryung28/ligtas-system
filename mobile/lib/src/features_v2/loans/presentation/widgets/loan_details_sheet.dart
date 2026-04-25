@@ -75,6 +75,7 @@ class LoanDetailsSheet extends ConsumerWidget {
         ),
       ],
       actionHub: _buildActionHub(context, ref, isPending, isApproved, loan.status == LoanStatus.staged),
+      heroHeight: 190,
     );
   }
 

@@ -1,11 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
-import { ChevronLeft, RefreshCw, Menu } from 'lucide-react'
+import { ChevronLeft, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { MoreSheet } from '@/components/mobile/more-sheet'
 import { mFocus } from '@/lib/mobile/tokens'
 import { NotificationBell } from './notifications/notification-bell'
 
@@ -19,13 +18,11 @@ interface MobileHeaderProps {
 
 /**
  * 📱 ResQTrack Mobile Header
- * Sticky top bar: back nav / brand · title · refresh · more-menu.
- * The "More" button opens MoreSheet (secondary nav + identity + logout).
+ * Sticky top bar: back nav / brand · title · refresh · notification bell.
  */
 export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: MobileHeaderProps) {
     const router = useRouter()
     const pathname = usePathname()
-    const [moreOpen, setMoreOpen] = useState(false)
 
     const showBack = pathname !== '/m'
 
@@ -34,7 +31,7 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
             <header
                 className={cn(
                     'sticky top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-gray-100',
-                    'flex items-center px-4 z-50 -mx-4 -mt-4 mb-4 shadow-sm/50',
+                    'flex items-center px-4 z-50 mb-4 shadow-sm/50',
                 )}
             >
                 <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -67,11 +64,11 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100 shadow-sm">
                                 <Image
-                                    src="/resqtrack-logo.jpg"
+                                    src="/oro-cervo.png"
                                     alt=""
                                     width={32}
                                     height={32}
-                                    className="object-cover"
+                                    className="object-contain bg-white"
                                     aria-hidden
                                 />
                             </div>
@@ -100,27 +97,8 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
 
                     <NotificationBell />
 
-                    <button
-                        onClick={() => setMoreOpen(true)}
-                        className={cn(
-                            'p-2 text-gray-500 hover:text-gray-900 motion-safe:transition-colors motion-safe:active:scale-95 relative',
-                            'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full',
-                            mFocus,
-                        )}
-                        aria-label="Open menu"
-                        aria-haspopup="dialog"
-                        aria-expanded={moreOpen}
-                    >
-                        {/* 🧭 NAVIGATION NUDGE: Only pulses on the main dashboard to signal hidden features */}
-                        {pathname === '/m' && (
-                            <span className="absolute inset-2 rounded-full border-2 border-red-500/20 animate-ping opacity-75" />
-                        )}
-                        <Menu className="w-6 h-6" />
-                    </button>
                 </div>
             </header>
-
-            <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
         </>
     )
 }

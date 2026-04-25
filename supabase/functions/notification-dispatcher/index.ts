@@ -7,7 +7,8 @@ type Json = Record<string, unknown>;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const MAX_EVENTS_PER_RUN = 25;
+const MAX_EVENTS_PER_RUN = 100;
+const DRAIN_BUDGET_MS = 8000;
 const RETRYABLE_STATUSES = new Set([
   "INTERNAL",
   "UNAVAILABLE",
@@ -90,6 +91,25 @@ async function fetchPendingEvents(supabase: ReturnType<typeof createClient>): Pr
   return (data ?? []) as NotificationEventRow[];
 }
 
+async function tryClaimEvent(
+  supabase: ReturnType<typeof createClient>,
+  eventId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("notification_events")
+    .update({
+      status: "processing",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", eventId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data?.id);
+}
+
 async function resolveTargets(
   supabase: ReturnType<typeof createClient>,
   audience: Json,
@@ -130,10 +150,19 @@ Deno.serve(async () => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { accessToken, projectId } = await getAccessToken(serviceAccountJson);
 
-    const events = await fetchPendingEvents(supabase);
     const summary: Json[] = [];
+    let processed = 0;
+    const startedAt = Date.now();
 
-    for (const event of events) {
+    while (Date.now() - startedAt < DRAIN_BUDGET_MS) {
+      const events = await fetchPendingEvents(supabase);
+      if (events.length === 0) break;
+
+      for (const event of events) {
+      if (Date.now() - startedAt >= DRAIN_BUDGET_MS) break;
+      const claimed = await tryClaimEvent(supabase, event.id);
+      if (!claimed) continue;
+      processed++;
       const targets = await resolveTargets(supabase, event.audience);
 
       if (targets.length === 0) {
@@ -263,8 +292,9 @@ Deno.serve(async () => {
         summary.push({ eventId: event.id, status: successCount > 0 ? "sent" : "failed", successCount });
       }
     }
+    }
 
-    return new Response(JSON.stringify({ processed: events.length, summary }), {
+    return new Response(JSON.stringify({ processed, summary }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
     });

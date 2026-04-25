@@ -101,7 +101,7 @@ class SystemTelemetryGrid extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Text(
-            'MISSION INTELLIGENCE',
+            'YOUR BORROW SUMMARY',
             style: GoogleFonts.lexend(
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -122,28 +122,28 @@ class SystemTelemetryGrid extends ConsumerWidget {
             : [
                 BentoStatTile(
                   icon: Icons.inventory_2_rounded,
-                  label: 'TOTAL BORROWS',
+                  label: 'TOTAL REQUESTS',
                   value: '${stats?.totalBorrows ?? 0}',
                   color: const Color(0xFF001A33), // stitchNavy
                   animationDelay: hasEntered ? 0 : 300,
                 ),
                 BentoStatTile(
                   icon: Icons.history_rounded,
-                  label: 'OVERDUE',
+                  label: 'NEEDS RETURN',
                   value: '${stats?.overdueLoans ?? 0}',
                   color: const Color(0xFFBA1A1A), // stitchError
                   animationDelay: hasEntered ? 0 : 400,
                 ),
                 BentoStatTile(
                   icon: Icons.sync_alt_rounded,
-                  label: 'ACTIVE',
+                  label: 'BORROWING NOW',
                   value: '${stats?.activeLoans ?? 0}',
                   color: const Color(0xFF43474D), // stitchOnSurfaceVariant
                   animationDelay: hasEntered ? 0 : 500,
                 ),
                 BentoStatTile(
                   icon: Icons.check_circle_rounded,
-                  label: 'RETURNED',
+                  label: 'ALREADY RETURNED',
                   value: '${stats?.returnedItems ?? 0}',
                   color: const Color(0xFF575F6B), // secondary
                   animationDelay: hasEntered ? 0 : 600,

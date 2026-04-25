@@ -1,26 +1,41 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/di/app_providers.dart';
 import '../../auth/domain/models/user_model.dart';
 
 class ProfileRepository {
   final SupabaseClient _client;
+  static const String _pushNotificationsKey = 'push_notifications_enabled';
+  static const String _biometricKey = 'biometric_enabled';
+  static const String _darkModeKey = 'dark_mode';
 
   ProfileRepository(this._client);
 
   Future<Map<String, dynamic>> fetchSettings() async {
-    // In a real app, settings might be in a 'user_settings' table
-    // For now, we'll keep the mock logic for settings or use metadata
+    final prefs = await SharedPreferences.getInstance();
     return {
-      'push_notifications': true,
-      'biometric_enabled': false,
-      'dark_mode': false,
+      'push_notifications': prefs.getBool(_pushNotificationsKey) ?? true,
+      'biometric_enabled': prefs.getBool(_biometricKey) ?? false,
+      'dark_mode': prefs.getBool(_darkModeKey) ?? false,
     };
   }
 
   Future<void> updateSetting(String key, bool value) async {
-    // This could also update Supabase if needed
-    await Future.delayed(const Duration(milliseconds: 300));
+    final prefs = await SharedPreferences.getInstance();
+    switch (key) {
+      case 'push_notifications':
+        await prefs.setBool(_pushNotificationsKey, value);
+        break;
+      case 'biometric_enabled':
+        await prefs.setBool(_biometricKey, value);
+        break;
+      case 'dark_mode':
+        await prefs.setBool(_darkModeKey, value);
+        break;
+      default:
+        break;
+    }
   }
 
   Future<void> updateProfile(UserModel user) async {

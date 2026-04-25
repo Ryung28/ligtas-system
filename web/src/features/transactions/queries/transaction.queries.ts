@@ -22,6 +22,7 @@ export interface ActiveLoan {
     status: 'borrowed' | 'overdue' | 'dispensed'
     expected_return_date: string | null
     created_at: string
+    purpose?: string | null
 }
 
 export async function getPendingRequestsByItemId(itemId: number): Promise<{ success: boolean; data?: PendingRequest[]; error?: string }> {
@@ -56,7 +57,7 @@ export async function getActiveLoansByIds(itemIds: number[]): Promise<{ success:
         
         const { data, error } = await supabase
             .from('borrow_logs')
-            .select('id, borrower_name, quantity, status, expected_return_date, created_at')
+            .select('id, borrower_name, quantity, status, expected_return_date, created_at, purpose')
             .in('inventory_id', itemIds)
             .in('status', ['borrowed', 'overdue', 'dispensed'])
             .order('created_at', { ascending: false })

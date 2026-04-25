@@ -86,7 +86,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
                 "shrink-0 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] bg-white border border-slate-200 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm",
                 !notif.isRead ? "text-slate-900" : "text-slate-400"
             )}>
-                OPEN
+                VIEW
             </div>
         </div>
       </div>
@@ -133,7 +133,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
                 if (!itemName) return null;
                 return (
                     <div className="inline-flex items-center gap-2 font-black uppercase text-[10px] tracking-tight">
-                        <span className="opacity-20 text-[8px] text-slate-500">UNIT:</span>
+                        <span className="opacity-20 text-[8px] text-slate-500">ITEM:</span>
                         <span className={cn("truncate max-w-[200px]", !notif.isRead ? "text-slate-800" : "text-slate-400")}>{itemName}</span>
                     </div>
                 );
@@ -158,7 +158,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
                     "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em]",
                     !notif.isRead ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-400"
                   )}>
-                    <span>Qty unavailable</span>
+                    <span>Quantity unavailable</span>
                   </div>
                 )
             )}

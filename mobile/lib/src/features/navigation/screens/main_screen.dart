@@ -9,7 +9,6 @@ import '../../../core/design_system/widgets/app_toast.dart';
 import '../../scanner/widgets/scanner_view.dart';
 import '../../scanner/models/qr_payload.dart';
 import '../../scanner/services/scanner_switchboard.dart';
-import '../../scanner/widgets/scan_result_sheet.dart';
 import '../../../core/config/branding.dart';
 import '../../../core/design_system/app_theme.dart';
 
@@ -52,6 +51,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   bool _isDockVisible = true;
   Timer? _hideTimer;
   StreamSubscription? _notifSubscription;
+  ProviderSubscription<bool>? _dockSuppressionSub;
   DateTime? _lastBackPressed;
   static const _exitConfirmationDuration = Duration(seconds: 2);
   
@@ -59,6 +59,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   void initState() {
     super.initState();
     _startHideTimer();
+    _dockSuppressionSub = ref.listenManual<bool>(
+      isDockSuppressedProvider,
+      (previous, next) {
+        // Always wake dock when suppression is released.
+        if (next == false) {
+          _handleActivity(force: true);
+        }
+      },
+    );
     
     // 📡 Navigation Bridge: Listen for tactical notification deep-links
     _notifSubscription = UserNotificationService.navigationStream.listen((path) {
@@ -73,6 +82,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   void dispose() {
     _hideTimer?.cancel();
     _notifSubscription?.cancel();
+    _dockSuppressionSub?.close();
     super.dispose();
   }
 
@@ -148,14 +158,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final isDockSuppressed = ref.watch(isDockSuppressedProvider);
     final isKeyboardVisible = viewInsets.bottom > 0;
     
-    // 🛰️ Dock Awareness: Proactively wake the dock when suppression ends or keyboard hides
-    ref.listen(isDockSuppressedProvider, (previous, next) {
-      if (previous == true && next == false) {
-        // FORCE the dock to wake up immediately when suppression ends
-        _handleActivity(force: true);
-      }
-    });
-
     final showDock = _isDockVisible && !isKeyboardVisible && !isDockSuppressed;
     final isCommsDrawerOpen = ref.watch(commsDrawerStateProvider);
 

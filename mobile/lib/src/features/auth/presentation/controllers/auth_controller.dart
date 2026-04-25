@@ -5,6 +5,9 @@ import 'package:mobile/src/features/auth/domain/models/auth_state.dart';
 import 'package:mobile/src/features/auth/data/repositories/auth_repository.dart';
 import 'package:mobile/src/core/errors/app_exceptions.dart';
 import 'package:mobile/src/core/local_storage/isar_service.dart';
+import 'package:mobile/src/features_v2/loans/presentation/providers/loan_provider.dart';
+import 'package:mobile/src/features/loans/providers/loan_providers.dart';
+import 'package:mobile/src/features/dashboard/providers/dashboard_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +26,16 @@ class AuthController extends _$AuthController {
   StreamSubscription? _sub;
   static const String _rememberMeKey = 'is_remembered';
 
+  void _invalidateUserScopedProvidersDeferred() {
+    Future.microtask(() {
+      ref.invalidate(myLoansNotifierProvider);
+      ref.invalidate(myBorrowedItemsProvider);
+      ref.invalidate(dashboardStatsProvider);
+      ref.invalidate(sortedDashboardActivityProvider);
+      ref.invalidate(freshDashboardLoansProvider);
+    });
+  }
+
   @override
   FutureOr<AuthState> build() async {
     // 🛡️ TACTICAL LISTEN: Bind Supabase Auth Events to Riverpod State
@@ -35,12 +48,18 @@ class AuthController extends _$AuthController {
       debugPrint('📡 Auth Lifecycle: [${event.name}] Session is ${session != null ? "ACTIVE" : "NONE"}');
 
       if (session != null) {
+        // 🛡️ SECURITY: Wipe local cache on session change to prevent data ghosting
+        await IsarService.clearAll();
         await refreshProfile();
       } else {
         if (state.isLoading) return;
         final keepError =
             state.valueOrNull?.maybeMap(error: (_) => true, orElse: () => false) ?? false;
         if (keepError) return;
+        
+        // 🛡️ SECURITY: Wipe local cache on logout
+        await IsarService.clearAll();
+        
         if (state.hasValue && state.value is! Initial) {
           state = AsyncValue.data(AuthState.initial());
         }
@@ -85,6 +104,8 @@ class AuthController extends _$AuthController {
       }
 
       state = AsyncValue.data(AuthState.authenticated(user));
+      // Defer invalidation to avoid dependency cycles while auth state is resolving.
+      _invalidateUserScopedProvidersDeferred();
     } catch (e) {
       debugPrint('[AuthController] Profile Triage Failure: $e');
       state = AsyncValue.data(AuthState.error(e.toString()));
@@ -165,6 +186,7 @@ class AuthController extends _$AuthController {
       
       // 🚀 State Cleansing
       ref.invalidate(authRepositoryProvider);
+      _invalidateUserScopedProvidersDeferred();
       await IsarService.clearAll();
       
       state = AsyncValue.data(AuthState.initial());

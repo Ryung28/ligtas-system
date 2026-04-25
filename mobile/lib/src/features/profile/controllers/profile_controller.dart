@@ -5,6 +5,7 @@ import '../models/profile_state.dart';
 import '../data/profile_repository.dart';
 import 'package:mobile/src/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:mobile/src/features/notifications/data/services/user_notification_service.dart';
 import '../../../core/config/branding.dart';
 import '../../../core/errors/app_exceptions.dart';
 
@@ -81,6 +82,7 @@ class ProfileController extends StateNotifier<ProfileState> {
   Future<void> togglePushNotifications(bool value) async {
     state = state.copyWith(pushNotificationsEnabled: value);
     await _repository.updateSetting('push_notifications', value);
+    await UserNotificationService().setPushNotificationsEnabled(value);
   }
 
   Future<void> toggleBiometric(bool value) async {
@@ -144,6 +146,9 @@ class ProfileController extends StateNotifier<ProfileState> {
 
 
 final profileControllerProvider = StateNotifierProvider<ProfileController, ProfileState>((ref) {
+  // 🛡️ SECURITY: Watch user identity to force controller reset on account switch
+  ref.watch(currentUserProvider);
+  
   final repo = ref.watch(profileRepositoryProvider);
   return ProfileController(repo, ref);
 });

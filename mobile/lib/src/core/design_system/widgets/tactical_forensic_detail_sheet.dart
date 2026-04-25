@@ -30,6 +30,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
   
   final Widget? actionHub;
   final String? heroTagPrefix;
+  final double heroHeight;
 
   const TacticalForensicDetailSheet({
     super.key,
@@ -50,6 +51,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
     this.categoryLabel,
     this.actionHub,
     this.heroTagPrefix,
+    this.heroHeight = 240,
   });
 
   /// 🛡️ PROTECTED INVOCATION: Orchestrates dock suppression and modal lifecycle.
@@ -73,6 +75,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
     String? categoryLabel,
     Widget? actionHub,
     String? heroTagPrefix,
+    double heroHeight = 240,
   }) async {
     // 1. Suppress global navigation dock
     ref.read(isDockSuppressedProvider.notifier).state = true;
@@ -100,6 +103,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
         categoryLabel: categoryLabel,
         actionHub: actionHub,
         heroTagPrefix: heroTagPrefix,
+        heroHeight: heroHeight,
       ),
     );
 
@@ -111,6 +115,9 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    // 🛡️ DENSITY SCALING: Safely scales down on small devices.
+    final double dynamicHeroHeight = (screenHeight * 0.20).clamp(140.0, heroHeight);
     final heroTag = heroTagPrefix != null ? '$heroTagPrefix-img-$id' : 'img-$id';
 
     // 🛡️ REFINEMENT LOGIC: Group details into logical Bento Zones
@@ -119,6 +126,35 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
       zones.putIfAbsent(d.zone, () => []).add(d);
     }
 
+    final bodyCards = <Widget>[
+      // IDENTITY HEADER
+      Text(
+        title,
+        style: GoogleFonts.lexend(
+          fontSize: 24, // 🛡️ DENSITY: Slightly smaller title
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF001A33),
+          letterSpacing: -0.8,
+          height: 1.1,
+        ),
+      ),
+      const Gap(12), // 🛡️ COMPACT: Snaps the action hub closer to the identity header
+
+      // 🏗️ BENTO GRID GENERATOR
+      ...zones.entries.map((entry) => _buildBentoCard(context, entry.key, entry.value)),
+
+      // PURPOSE BLOCK (If exists)
+      if (purpose != null) _buildBentoCard(context, 'Objective', [
+        DetailRowData(icon: Icons.notes_rounded, label: 'REASON', value: purpose!),
+      ]),
+
+      // FORENSIC EVIDENCE (If exists)
+      if (forensicEvidence != null) _buildForensicEvidenceCard(),
+
+      // ANALYST NOTES
+      if (analystNotes != null) _buildNotesCard(),
+    ];
+
     return Container(
       clipBehavior: Clip.antiAlias, // 🛡️ SENIOR FIX: Perfect rounded corner rendering
       decoration: const BoxDecoration(
@@ -126,7 +162,8 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        shrinkWrap: true, // 🛡️ SENIOR FIX: Allows sheet to only take up needed space
+        physics: const ClampingScrollPhysics(),
         slivers: [
           // ── 1. STABLE HERO HEADER ──
           // Reverted to SliverToBoxAdapter for perfect Hero animation integrity
@@ -141,7 +178,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
                       assetId: assetId,
                       path: imagePath ?? imageUrl,
                       width: double.infinity,
-                      height: 240, // 🛡️ STABLE LANDMARK: Reliable, consistent height
+                      height: dynamicHeroHeight,
                       borderRadius: 0,
                       fit: BoxFit.cover,
                       fallbackIcon: statusIcon,
@@ -202,44 +239,18 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // IDENTITY HEADER
-                Text(
-                  title,
-                  style: GoogleFonts.lexend(
-                    fontSize: 24, // 🛡️ DENSITY: Slightly smaller title
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF001A33),
-                    letterSpacing: -0.8,
-                    height: 1.1,
-                  ),
-                ),
-                const Gap(12), // 🛡️ COMPACT: Snaps the action hub closer to the identity header
-
-                // 🏗️ BENTO GRID GENERATOR
-                ...zones.entries.map((entry) => _buildBentoCard(context, entry.key, entry.value)),
-
-                // PURPOSE BLOCK (If exists)
-                if (purpose != null) _buildBentoCard(context, 'Objective', [
-                   DetailRowData(icon: Icons.notes_rounded, label: 'SERVICE PURPOSE', value: purpose!),
-                ]),
-
-                // FORENSIC EVIDENCE (If exists)
-                if (forensicEvidence != null) _buildForensicEvidenceCard(),
-
-                // ANALYST NOTES
-                if (analystNotes != null) _buildNotesCard(),
-
-                // ── 🛡️ ACTION HUB (Fused into Scroll Layer) ──
+                ...bodyCards,
+                
+                // ── ACTION HUB (Unified Flow) ──
                 if (actionHub != null) ...[
-                  const Gap(16),
+                  const Gap(24),
                   actionHub!,
                 ],
 
-                const Gap(8),
+                const Gap(32), // 🛡️ DENSITY: Safe bottom breathing room
               ]),
             ),
           ),
-
         ],
       ),
     );
@@ -315,7 +326,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
               const Icon(Icons.emergency_recording_rounded, size: 18, color: Color(0xFF001A33)),
               const Gap(10),
               Text(
-                'FORENSIC EVIDENCE',
+                'ATTACHED PHOTOS',
                 style: GoogleFonts.lexend(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -389,7 +400,7 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'ANALYST FIELD LOG',
+            'LOG NOTES',
             style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF64748B), letterSpacing: 0.5),
           ),
           const Gap(8),

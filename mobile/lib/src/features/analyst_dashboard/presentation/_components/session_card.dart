@@ -55,6 +55,7 @@ class _SessionCardState extends ConsumerState<SessionCard> {
       case EventType.requisitionApproved:
         return const Color(0xFF059669);
       case EventType.maintenance:
+      case EventType.reserved:
         return const Color(0xFFF59E0B);
       case EventType.requisitionDenied:
       case EventType.requisitionRejected:

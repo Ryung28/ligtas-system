@@ -43,16 +43,18 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-    title: "ResQTrack - Inventory Management System",
-    description: "City Disaster Risk Reduction & Management Office Inventory System",
+    title: "CDRRMO Oroquieta · ResQTrack",
+    description: "City Disaster Risk Reduction & Management Office inventory and logistics system",
     icons: {
-        icon: "/resqtrack-logo.jpg",
+        icon: [{ url: "/oro-cervo.png", type: "image/png", sizes: "512x512" }],
+        shortcut: "/oro-cervo.png",
+        apple: "/oro-cervo.png",
     },
     manifest: "/manifest.json",
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",
-        title: "ResQTrack",
+        title: "CDRRMO · ResQTrack",
     },
 };
 
@@ -71,10 +73,10 @@ export default function RootLayout({
     return (
         <html lang="en" className={`${inter.variable} ${outfit.variable} ${interTight.variable} ${jetbrainsMono.variable} ${syne.variable} ${dmSans.variable}`}>
             <head>
-                <link rel="apple-touch-icon" href="/resqtrack-logo.jpg" />
+                <link rel="apple-touch-icon" href="/oro-cervo.png" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-                <meta name="apple-mobile-web-app-title" content="ResQTrack" />
+                <meta name="apple-mobile-web-app-title" content="CDRRMO · ResQTrack" />
             </head>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
                 <AuthProvider>

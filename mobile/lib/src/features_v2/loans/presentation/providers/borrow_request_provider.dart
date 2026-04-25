@@ -33,9 +33,15 @@ class BorrowRequestNotifier extends _$BorrowRequestNotifier {
   void updateReturnDate(DateTime val) => state = state.copyWith(expectedReturnDate: val);
   
   void updateItemQuantity(String itemId, int quantity) {
-    final newItems = state.cartItems.map((c) => 
-      c.item.id.toString() == itemId ? c.copyWith(quantity: quantity) : c
-    ).toList();
+    final newItems = state.cartItems.map((c) {
+      if (c.item.id.toString() == itemId) {
+        // 🛡️ STOCK GUARD: Clamp quantity to available stock
+        final maxStock = c.item.displayStock;
+        final clampedQty = quantity.clamp(1, maxStock);
+        return c.copyWith(quantity: clampedQty);
+      }
+      return c;
+    }).toList();
     state = state.copyWith(cartItems: newItems);
   }
 

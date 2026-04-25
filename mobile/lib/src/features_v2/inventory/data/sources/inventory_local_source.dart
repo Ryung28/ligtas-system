@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import '../../../../core/local_storage/isar_service.dart';
 import '../../../../features/inventory/models/inventory_model.dart'; // Reuse for Collection Schema
@@ -35,9 +36,18 @@ class InventoryLocalDataSource {
     if (raw == null || raw.isEmpty) return [];
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
-          .map((e) => inventoryVariantFromJsonMap(Map<String, dynamic>.from(e as Map)))
-          .toList();
+      final out = <InventoryVariant>[];
+      for (final e in decoded) {
+        if (e is! Map) continue;
+        try {
+          out.add(
+            inventoryVariantFromJsonMap(Map<String, dynamic>.from(e)),
+          );
+        } catch (_) {
+          // One bad variant must not drop the whole parent row / stream.
+        }
+      }
+      return out;
     } catch (_) {
       return [];
     }
@@ -49,7 +59,12 @@ class InventoryLocalDataSource {
         .where()
         .sortByOriginalId() // Keep reliable order
         .watch(fireImmediately: true)
-        .map((list) => list.map((e) => _mapCollectionToEntity(e)).toList());
+        .map(
+          (list) => list
+              .map(_tryMapCollectionToEntity)
+              .whereType<InventoryItem>()
+              .toList(),
+        );
   }
 
   /// 📡 ATOMIC OBSERVATION: Watch a single row for instant UI reactivity
@@ -60,7 +75,10 @@ class InventoryLocalDataSource {
         .filter()
         .originalIdEqualTo(originalId)
         .watch(fireImmediately: true)
-        .map((list) => list.isNotEmpty ? _mapCollectionToEntity(list.first) : null);
+        .map((list) {
+          if (list.isEmpty) return null;
+          return _tryMapCollectionToEntity(list.first);
+        });
   }
 
   /// 🛡️ METRICS: Direct Isar count
@@ -91,7 +109,7 @@ class InventoryLocalDataSource {
           .findAll();
     }
     
-    return list.map((e) => _mapCollectionToEntity(e)).toList();
+    return list.map(_tryMapCollectionToEntity).whereType<InventoryItem>().toList();
   }
 
   /// 🛡️ SEARCH BYPASS: Direct disk-level search
@@ -120,7 +138,7 @@ class InventoryLocalDataSource {
           .categoryContains(query, caseSensitive: false)
           .findAll();
     }
-    return list.map((e) => _mapCollectionToEntity(e)).toList();
+    return list.map(_tryMapCollectionToEntity).whereType<InventoryItem>().toList();
   }
 
   /// Bulk save items from Supabase to Isar
@@ -147,7 +165,21 @@ class InventoryLocalDataSource {
         .qrCodeEqualTo(qrCode)
         .findFirst();
     
-    return collection != null ? _mapCollectionToEntity(collection) : null;
+    return collection != null ? _tryMapCollectionToEntity(collection) : null;
+  }
+
+  /// Never throws: one corrupt Isar row must not kill [watchItems] / StreamProvider.
+  InventoryItem? _tryMapCollectionToEntity(InventoryCollection col) {
+    try {
+      return _mapCollectionToEntity(col);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'InventoryLocalDataSource: skipped corrupt row originalId=${col.originalId}: $e',
+        );
+      }
+      return null;
+    }
   }
 
   /// Inner Mapper: Entity <-> Isar Collection

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/networking/supabase_client.dart';
 import '../../../core/errors/app_exceptions.dart';
 import '../domain/models/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -20,11 +19,26 @@ class AuthRepository {
 
   // Get current user session
   Session? get currentSession => _supabase.auth.currentSession;
+
+  List<String> _resolveAuthProviders(User authUser) {
+    final fromAppMetadata = (authUser.appMetadata['providers'] as List<dynamic>?)
+            ?.map((e) => e.toString().toLowerCase())
+            .toList() ??
+        <String>[];
+    if (fromAppMetadata.isNotEmpty) return fromAppMetadata;
+
+    final fromIdentities = (authUser.identities ?? [])
+        .map((i) => i.provider.toLowerCase())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    return fromIdentities;
+  }
   
   // Get current user data mapped to UserModel
   Future<UserModel?> getCurrentUser() async {
     final authUser = _supabase.auth.currentUser;
     if (authUser == null) return null;
+    final providers = _resolveAuthProviders(authUser);
     
     // Fetch profile data from user_profiles
     final profileData = await _supabase
@@ -41,10 +55,11 @@ class AuthRepository {
         displayName: authUser.userMetadata?['full_name'] as String? ?? authUser.userMetadata?['name'] as String?,
         phoneNumber: authUser.userMetadata?['phone_number'] as String?,
         organization: authUser.userMetadata?['organization'] as String?,
+        providers: providers,
       );
     }
 
-    return UserModel.fromSupabase(profileData);
+    return UserModel.fromSupabase(profileData, providers);
   }
 
   // 🛡️ THE SMOKING GUN RECOVERY: Added return type to detect cancellation

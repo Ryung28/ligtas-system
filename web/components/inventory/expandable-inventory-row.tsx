@@ -96,6 +96,9 @@ export function ExpandableInventoryRow({
     // Since InventoryTable now pre-calculates the sum for the group, we display it directly.
     const displayTotal = item.stock_total
     const displayAvailable = item.stock_available
+    const planStock = Number(item.target_stock ?? 0)
+    const planDelta = planStock > 0 ? (displayTotal - planStock) : 0
+    const planDeltaLabel = planDelta > 0 ? `+${planDelta}` : `${planDelta}`
     const totalSiteCount = allSites.length
     const pendingCount = (item as any).stock_pending || 0
 
@@ -261,6 +264,11 @@ export function ExpandableInventoryRow({
                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.1em]">
                                  IN STOCK / {displayTotal} TOTAL
                               </span>
+                              {planStock > 0 && (
+                                  <span className="text-[9px] font-extrabold text-gray-500 tracking-tight">
+                                      Plan {planStock}{planDelta !== 0 ? ` (${planDeltaLabel})` : ''}
+                                  </span>
+                              )}
                          </div>
                     </div>
                 </TableCell>

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +9,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../../../core/design_system/app_theme.dart';
 import '../../data/models/notification_model.dart';
 import '../providers/notification_provider.dart';
+import '../utils/notification_route_resolver.dart';
 
 /// 📡 TACTICAL NOTIFICATION CARD (V4 - CENTRAL INTELLIGENCE FEED)
 /// Clean timeline-based design with priority pills and explicit actions.
@@ -128,7 +128,7 @@ class TacticalNotificationCard extends ConsumerWidget {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                     child: InkWell(
-                      onTap: isRead ? null : () => _handleTriage(context, ref),
+                      onTap: () => _handleTriage(context, ref),
                       onLongPress: () => _showDeleteDialog(context, ref),
                       borderRadius: BorderRadius.circular(16),
                       child: Padding(
@@ -202,7 +202,7 @@ class TacticalNotificationCard extends ConsumerWidget {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                   ),
                                   child: Text(
-                                    'DISMISS ALERT',
+                                    'VIEW DETAILS',
                                     style: GoogleFonts.lexend(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -288,57 +288,20 @@ class TacticalNotificationCard extends ConsumerWidget {
     );
   }
 
-
-  Widget _buildActionButton({
-    required String label,
-    required VoidCallback onPressed,
-    required bool isPrimary,
-    required Color color,
-    IconData? icon,
-    bool isFullWidth = false,
-  }) {
-    return SizedBox(
-      height: 44,
-      width: isFullWidth ? double.infinity : null,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? const Color(0xFFE0F2FE) : Colors.transparent,
-          foregroundColor: color,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          side: isPrimary ? null : BorderSide(color: Colors.grey.withOpacity(0.1)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding: EdgeInsets.zero,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 14),
-              const Gap(6),
-            ],
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  void _handleTriage(BuildContext context, WidgetRef ref) {
+  Future<void> _handleTriage(BuildContext context, WidgetRef ref) async {
     HapticFeedback.mediumImpact();
-    // 🛡️ TACTICAL ISOLATION: Remove navigation, only handle resolution
     if (!notification.isRead) {
-      ref.read(markNotificationAsReadProvider(notification.id).future);
+      try {
+        await ref.read(markNotificationAsReadProvider(notification.id).future);
+      } catch (_) {
+        // Keep navigation available even if read receipt fails.
+      }
       ref.invalidate(systemNotificationsProvider);
+      ref.invalidate(unreadNotificationCountProvider);
     }
+
+    if (!context.mounted) return;
+    context.push(NotificationRouteResolver.resolve(notification));
   }
 
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {
@@ -348,18 +311,26 @@ class TacticalNotificationCard extends ConsumerWidget {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text('ERASE INTEL?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900)),
-        content: Text('This permanentlty removes the alert from the intelligence feed.', style: GoogleFonts.inter(fontSize: 14)),
+        title: Text('Delete notification?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900)),
+        content: Text('This permanently removes this notification.', style: GoogleFonts.inter(fontSize: 14)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('CANCEL', style: GoogleFonts.lexend(fontWeight: FontWeight.w700, color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ref.read(deleteNotificationProvider(notification.id).future);
-              ref.invalidate(systemNotificationsProvider);
+              try {
+                await ref.read(deleteNotificationProvider(notification.id).future);
+                ref.invalidate(systemNotificationsProvider);
+                ref.invalidate(unreadNotificationCountProvider);
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to delete notification: $error')),
+                );
+              }
             },
             child: Text('DELETE', style: GoogleFonts.lexend(fontWeight: FontWeight.w800, color: AppTheme.errorRed)),
           ),

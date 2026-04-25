@@ -139,10 +139,26 @@ class ResourceAnomaly {
         borrowerEmail: metadata['borrower_email']?.toString(),
         borrowerOrg: metadata['borrower_organization']?.toString(),
         borrowedQty: (metadata['quantity'] as num?)?.toInt() ?? 0,
-        dueDate: metadata['due_date'] != null ? DateTime.tryParse(metadata['due_date'].toString()) : null,
-        borrowedAt: metadata['borrowed_at'] != null ? DateTime.tryParse(metadata['borrowed_at'].toString()) : null,
+        dueDate: DateTime.tryParse(
+          (metadata['due_date'] ??
+                  metadata['expected_return_date'] ??
+                  metadata['return_date'] ??
+                  json['expected_return_date'] ??
+                  json['due_date'])
+              ?.toString() ??
+              '',
+        ),
+        borrowedAt: DateTime.tryParse(
+          (metadata['borrowed_at'] ??
+                  metadata['borrow_date'] ??
+                  metadata['handed_at'] ??
+                  json['borrowed_at'] ??
+                  json['borrow_date'])
+              ?.toString() ??
+              '',
+        ),
         approvedByName: metadata['approved_by_name']?.toString(),
-        releasedByName: metadata['released_by_name']?.toString(),
+        releasedByName: (metadata['released_by_name'] ?? metadata['handed_by'])?.toString(),
         platformOrigin: metadata['platform_origin']?.toString(),
         qtyGood: (metadata['qty_good'] as num?)?.toInt() ?? 0,
         qtyDamaged: (metadata['qty_damaged'] as num?)?.toInt() ?? 0,

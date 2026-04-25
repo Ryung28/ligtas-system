@@ -163,7 +163,7 @@ class ActivityEventTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    event.status.name.toUpperCase(),
+                    event.status == EventStatus.synced ? 'RECEIVED' : event.status.name.toUpperCase(),
                     style: GoogleFonts.lexend(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,

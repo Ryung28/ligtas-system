@@ -284,7 +284,7 @@ export async function batchBorrowItems(data: {
                 }
             }
 
-            const isConsumable = item.item_type === 'consumable'
+            const isConsumable = inventoryItem.item_type === 'consumable'
 
             const { data: txRow, error: txErr } = await supabase.rpc('dispatch_borrow_atomic', {
                 p_inventory_id: item.item_id,
@@ -438,7 +438,6 @@ export async function returnItem(
                 received_by_user_id: user?.id || null,
                 return_condition: auditData?.returnCondition || 'good',
                 return_notes: auditData?.returnNotes || null,
-                platform_origin: 'Web',
                 last_updated_origin: 'Web',
                 updated_at: now,
             })
@@ -533,7 +532,6 @@ export async function revertReturnItem(logId: number) {
                 received_by_user_id: null,
                 return_condition: null,
                 return_notes: null,
-                platform_origin: 'Web',
                 last_updated_origin: 'Web',
                 updated_at: new Date().toISOString(),
             })
@@ -590,7 +588,6 @@ export async function releaseReservedItem(logId: number, auditOptions?: { handed
                 released_by_name: authorizerName, // Authorizing system user
                 handed_by: auditOptions?.handedBy || authorizerName, // Phsyical staff at the desk
                 physically_received_by: auditOptions?.physicallyReceivedBy || null, // Phsyical person receiving
-                platform_origin: 'Web',
                 last_updated_origin: 'Web',
                 updated_at: now
             })

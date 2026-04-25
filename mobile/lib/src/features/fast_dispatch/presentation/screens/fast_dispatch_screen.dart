@@ -10,6 +10,8 @@ import 'package:mobile/src/features/navigation/providers/navigation_provider.dar
 import '../../providers/dispatch_controller.dart';
 import '../../model/dispatch_session.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../borrowing/providers/personnel_search_controller.dart';
+import '../../../borrowing/repositories/personnel_repository.dart';
 
 class FastDispatchScreen extends ConsumerStatefulWidget {
   const FastDispatchScreen({super.key});
@@ -387,11 +389,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
   Widget _buildBorrowerForm(DispatchState dispatch) {
     return Column(
       children: [
-        _buildVoucherField(
-          'BORROWER NAME',
-          _nameController,
-          onChanged: (value) => ref.read(fastDispatchControllerProvider.notifier).updateBorrowerDraft(name: value),
-        ),
+        _buildPersonnelSearchField(dispatch),
         const Gap(16),
         _buildVoucherField(
           'UNIT / OFFICE',
@@ -480,6 +478,53 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: stitchBorder, width: 2)),
             focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: stitchNavy, width: 2)),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPersonnelSearchField(DispatchState dispatch) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('BORROWER NAME', style: GoogleFonts.lexend(fontSize: 8, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8))),
+        const Gap(4),
+        SearchAnchor(
+          builder: (context, controller) {
+            return TextField(
+              controller: _nameController,
+              onChanged: (value) {
+                ref.read(fastDispatchControllerProvider.notifier).updateBorrowerDraft(name: value);
+                controller.text = value; 
+                if (!controller.isOpen) controller.openView();
+              },
+              style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: stitchNavy),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: stitchBorder, width: 2)),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: stitchNavy, width: 2)),
+              ),
+            );
+          },
+          suggestionsBuilder: (context, controller) {
+            final results = ref.watch(personnelSearchControllerProvider(controller.text));
+            if (results.isEmpty) return [const ListTile(title: Text('No records found'))];
+            
+            return results.map((p) => ListTile(
+              leading: const Icon(Icons.person_outline_rounded, size: 20),
+              title: Text(p.name, style: GoogleFonts.lexend(fontWeight: FontWeight.w700, fontSize: 14)),
+              subtitle: Text('${p.office} • ${p.contact}', style: GoogleFonts.plusJakartaSans(fontSize: 12)),
+              onTap: () {
+                _nameController.text = p.name;
+                _officeController.text = p.office ?? '';
+                _contactController.text = p.contact;
+                ref.read(fastDispatchControllerProvider.notifier).setBorrower(p);
+                controller.closeView(p.name);
+                FocusScope.of(context).unfocus();
+              },
+            )).toList();
+          },
         ),
       ],
     );

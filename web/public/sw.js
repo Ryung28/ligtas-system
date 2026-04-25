@@ -1,13 +1,14 @@
 // ResQTrack PWA Service Worker
 // Network-first strategy for auth-gated routes, cache-first for static assets
 
-const CACHE_NAME = 'resqtrack-tactical-v4';
+const CACHE_NAME = 'resqtrack-tactical-v6';
 const OFFLINE_URL = '/offline.html';
 
 // Only cache truly static assets — NOT auth-gated routes
 const PRECACHE_ASSETS = [
   '/offline.html',
   '/resqtrack-logo.jpg',
+  '/oro-cervo.png',
   '/favicon.ico'
 ];
 

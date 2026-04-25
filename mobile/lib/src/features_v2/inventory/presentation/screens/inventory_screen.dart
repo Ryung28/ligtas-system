@@ -6,23 +6,21 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
-import 'package:mobile/src/core/design_system/app_spacing.dart';
 import 'package:mobile/src/features/dashboard/widgets/dashboard_background.dart';
 import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
-import 'package:mobile/src/core/design_system/widgets/ligtas_error_state.dart';
 import 'package:mobile/src/core/design_system/widgets/shimmer_skeleton.dart';
-import 'package:mobile/src/core/di/app_providers.dart';
-import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
+import 'package:mobile/src/core/errors/app_exceptions.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/mission_cart_provider.dart';
+import '../providers/manager_batch/manager_batch_provider.dart';
 import '../widgets/inventory_card.dart';
-import '../widgets/glass_search_bar.dart';
-import '../widgets/glass_filter_chip.dart';
 import '../widgets/manager_action_sheet_v2/manager_action_sheet_v2.dart';
+import '../widgets/manager_batch/manager_batch_action_bar.dart';
+import '../widgets/manager_batch/manager_batch_review_sheet.dart';
+import '../widgets/command_hub/manager_command_hub_fab.dart';
 import 'package:mobile/src/core/design_system/widgets/tactical_image_viewer.dart';
 import '../../domain/entities/inventory_item.dart';
 
@@ -98,18 +96,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
 
   @override
   Widget build(BuildContext context) {
-    final inventoryItemsAsync = ref.watch(inventoryNotifierProvider);
     final filteredItems = ref.watch(filteredInventoryProvider);
     
     // 🛡️ SENIOR TRIAGE OBSERVER: Wait for real data to arrive and auto-open triage sheet
     ref.listen(inventoryNotifierProvider, (previous, next) {
       next.whenData((items) => _triggerAtomicTriage(items));
     });
-    
+
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(inventorySearchQueryProvider);
     final user = ref.watch(currentUserProvider);
     final isManager = user?.canEdit ?? false;
+    final managerBatch = ref.watch(managerBatchControllerProvider);
+    final managerBatchCtrl = ref.read(managerBatchControllerProvider.notifier);
     final sentinel = Theme.of(context).sentinel;
 
     return Scaffold(
@@ -214,7 +213,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
                       ),
                     ),
                   ),
-
                   // 🛡️ REPLICA RESOLVER: Reactive Equipment Hub
                   filteredItems.when(
                     data: (items) {
@@ -246,6 +244,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
                                         // 🛡️ SILENT LOCKOUT: Vibration is enough to signify reserved/out-of-stock
                                       }
                                     },
+                                    onManagerTap: isManager
+                                        ? () {
+                                            if (managerBatch.isActive) {
+                                              HapticFeedback.selectionClick();
+                                              managerBatchCtrl.toggleItem(item);
+                                              return;
+                                            }
+                                            HapticFeedback.heavyImpact();
+                                            showModalBottomSheet(
+                                              context: context,
+                                              useRootNavigator: true,
+                                              isScrollControlled: true,
+                                              backgroundColor: Colors.transparent,
+                                              builder: (context) => ManagerActionSheetV2(item: item),
+                                            );
+                                          }
+                                        : null,
                                     onImageTap: () {
                                       if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
                                         TacticalImageViewer.show(
@@ -256,6 +271,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
                                         );
                                       }
                                     },
+                                    managerSelectionMode: isManager && managerBatch.isActive,
+                                    managerSelected: managerBatch.lines.containsKey(item.id),
                                   ),
                                 );
                               },
@@ -293,13 +310,40 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
                       child: _buildWarehouseErrorState(context, err),
                     ),
                   ),
+                  const SliverGap(160), // 🛡️ CLEARANCE: Prevent content overlap with tactical dock
                 ],
               ),
             ),
           ),
           if (!isManager) _buildFloatingMissionDock(context, ref, sentinel),
+          if (isManager && !managerBatch.isActive)
+            ManagerCommandHubFab(controller: managerBatchCtrl),
+          if (isManager && managerBatch.isActive)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 84,
+              child: ManagerBatchActionBar(
+                isReserveMode: managerBatch.isReserveMode,
+                selectedItems: managerBatch.selectedItems,
+                totalQuantity: managerBatch.totalQuantity,
+                onClear: managerBatchCtrl.clearItems,
+                onExit: managerBatchCtrl.stop,
+                onReview: () => _showManagerBatchReviewSheet(context),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  void _showManagerBatchReviewSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (_) => const ManagerBatchReviewSheet(),
     );
   }
 
@@ -307,92 +351,100 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
     final cart = ref.watch(missionCartNotifierProvider);
     final cartNotifier = ref.read(missionCartNotifierProvider.notifier);
     final totalItems = cartNotifier.totalItems;
+    final media = MediaQuery.of(context);
+    final bottomSafe = media.padding.bottom;
+    // Keep the CTA safely above the floating bottom dock and device insets.
+    final baseBottomOffset = (bottomSafe > 0 ? bottomSafe : 8.0) + 84.0;
 
     return AnimatedPositioned(
-      duration: 350.ms,
+      duration: 320.ms,
       curve: Curves.easeOutCubic,
-      bottom: cart.isNotEmpty ? 110 : -130, // 🛡️ COMPONENT STACKING: Floats above 64px Nav Dock
+      bottom: cart.isNotEmpty ? baseBottomOffset : -96,
       right: 20,
-      left: 20, // 🛡️ FULL WIDTH PILL FOR BETTER REACH
       child: GestureDetector(
         onTap: () {
           HapticFeedback.heavyImpact();
           _showCartBottomSheet(context, ref, sentinel);
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: sentinel.navy.withOpacity(0.95), // 🛡️ OBSIDIAN BASE
-            borderRadius: BorderRadius.circular(50), // 🛡️ PILL SHAPE
-            boxShadow: [
-              sentinel.tactile.raised[0],
-              BoxShadow(
-                color: sentinel.primary.withOpacity(0.3), // 🛡️ MISSION GLOW
-                blurRadius: 15,
-                spreadRadius: 2,
-              ),
-            ],
-            border: Border.all(color: sentinel.primary.withOpacity(0.4), width: 1.5),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 🔋 STATUS SIGNAL
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (totalItems > 1) ...[
               Container(
-                width: 8, height: 8,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: sentinel.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: sentinel.primary, blurRadius: 4),
-                  ],
+                  color: const Color(0xFF1F2937), // charcoal for better contrast on white cards
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white.withOpacity(0.45), width: 1),
+                  boxShadow: sentinel.tactile.raised,
                 ),
-              ).animate(onPlay: (c) => c.repeat(reverse: true))
-               .shimmer(color: sentinel.primary.withOpacity(0.4), duration: 2.seconds),
-              
-              const Gap(12),
-              
-              Flexible( // 🛡️ FLEXIBLE CONTAINER: Prevents horizontal overflow on narrow devices
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${totalItems.toString().padLeft(2, '0')} ITEMS READY', 
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lexend(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
+                child: Text(
+                  '$totalItems ready',
+                  style: GoogleFonts.lexend(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              const Gap(10),
+            ],
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: sentinel.navy.withOpacity(0.98),
+                    border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.2),
+                    boxShadow: [
+                      sentinel.tactile.raised[0],
+                      BoxShadow(
+                        color: sentinel.primary.withOpacity(0.20),
+                        blurRadius: 16,
+                        spreadRadius: 1,
                       ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 26),
+                  ),
+                ),
+                Positioned(
+                  top: -4,
+                  right: -2,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: Colors.white, width: 1.5),
                     ),
-                    Text(
-                      'REVIEW & CHECKOUT ➡️', 
-                      overflow: TextOverflow.ellipsis,
+                    alignment: Alignment.center,
+                    child: Text(
+                      totalItems > 99 ? '99+' : '$totalItems',
                       style: GoogleFonts.lexend(
                         fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white.withOpacity(0.6),
-                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              
-              const Gap(12),   
-              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
-      ).animate().fadeIn().slideX(begin: 0.2, end: 0),
+      ).animate().fadeIn(duration: 220.ms).scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1)),
     );
   }
 
   void _showCartBottomSheet(BuildContext context, WidgetRef ref, SentinelColors sentinel) {
     final cart = ref.read(missionCartNotifierProvider);
-    final theme = Theme.of(context);
     
     showModalBottomSheet(
       context: context,
@@ -587,7 +639,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
   Widget _buildEmptyState(BuildContext context, String searchQuery) {
     final sentinel = Theme.of(context).sentinel;
     final selectedCategory = ref.watch(selectedCategoryProvider);
-    final theme = Theme.of(context);
     final isSearching = searchQuery.isNotEmpty;
 
     return Center(
@@ -629,28 +680,29 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with TickerPr
 
   Widget _buildWarehouseErrorState(BuildContext context, Object? error) {
     final sentinel = Theme.of(context).sentinel;
-    final errorMsg = error.toString();
     
-    // Parse specific error types
-    String title = 'Sync Error';
-    String message = 'Unable to load inventory data.';
+    // 🛡️ SENIOR DEV PATTERN: Use centralized ExceptionHandler for consistent UI messaging
+    final errorMsg = ExceptionHandler.getDisplayMessage(error ?? 'Unknown error').toUpperCase();
+    final rawError = error.toString().toLowerCase();
+    
+    String title = 'SYNC ERROR';
+    String message = errorMsg;
     IconData icon = Icons.cloud_off_rounded;
     
-    if (errorMsg.contains('Authentication expired') || errorMsg.contains('JWT')) {
+    if (rawError.contains('jwt') || rawError.contains('auth')) {
       title = 'SESSION EXPIRED';
-      message = 'Your session has expired. Please log in again.';
       icon = Icons.lock_clock_rounded;
-    } else if (errorMsg.contains('Access denied') || errorMsg.contains('policy')) {
+    } else if (rawError.contains('access') || rawError.contains('policy')) {
       title = 'ACCESS DENIED';
-      message = 'Your account is pending approval. Contact your administrator.';
       icon = Icons.shield_outlined;
-    } else if (errorMsg.contains('Network error') || errorMsg.contains('connection')) {
+    } else if (rawError.contains('network') || rawError.contains('socket') || rawError.contains('connection') || rawError.contains('host lookup')) {
       title = 'NETWORK ERROR';
-      message = 'Check your internet connection and try again.';
       icon = Icons.wifi_off_rounded;
-    } else if (errorMsg.contains('No warehouse assigned')) {
-      title = 'NO WAREHOUSE ASSIGNED';
-      message = 'Contact your administrator to assign you to a warehouse location.';
+    } else if (rawError.contains('timeout')) {
+      title = 'CONNECTION TIMED OUT';
+      icon = Icons.timer_off_rounded;
+    } else if (rawError.contains('no warehouse')) {
+      title = 'NO WAREHOUSE';
       icon = Icons.warehouse_outlined;
     }
     

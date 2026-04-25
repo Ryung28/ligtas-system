@@ -4,7 +4,7 @@ import '../../domain/entities/loan_item.dart';
 import '../../domain/repositories/loan_repository.dart';
 import '../../data/repositories/supabase_loan_repository.dart';
 import '../../data/sources/loan_local_source.dart';
-import 'package:mobile/src/features/auth/providers/auth_provider.dart';
+import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/providers/inventory_provider.dart';
 
 part 'loan_provider.g.dart';
@@ -19,30 +19,43 @@ ILoanRepository loanRepository(LoanRepositoryRef ref) {
 /// Reactive Loan List Provider
   @riverpod
 class MyLoansNotifier extends _$MyLoansNotifier {
-  late final ILoanRepository _repository;
+  late ILoanRepository _repository;
 
   @override
   Stream<List<LoanItem>> build() async* {
+    final currentUser = ref.watch(currentUserProvider);
     _repository = ref.watch(loanRepositoryProvider);
+    final resolvedUserId = currentUser?.id ?? Supabase.instance.client.auth.currentUser?.id;
+
+    // Ensure this provider is identity-bound: user switch/login/logout forces rebuild.
+    if (resolvedUserId == null) {
+      yield const <LoanItem>[];
+      return;
+    }
     
     // 1. Await initial sync to populate Isar
     try {
-      await _repository.fetchMyLoans();
+      final fetched = await _repository.fetchMyLoans(userId: resolvedUserId);
+      // Ensure UI gets immediate user-bound data on hot restart/user switch
+      // even before local watch stream emits its next frame.
+      yield fetched;
     } catch (e) {
       // Background sync failed, we'll rely on existing local data
     }
 
     // 🚀 NEW: Auto-Sync Loop (Realtime)
     // Subscribe to remote changes and keep local Isar updated
-    final remoteSubscription = _repository.watchRemote().listen((_) {});
+    final remoteSubscription = _repository.watchRemote(userId: resolvedUserId).listen((_) {});
     ref.onDispose(() => remoteSubscription.cancel());
 
     // 2. Yield Local Stream
-    yield* (_repository as SupabaseLoanRepository).watchLoans();
+    yield* (_repository as SupabaseLoanRepository).watchLoans(userId: resolvedUserId);
   }
 
   Future<void> refresh() async {
-    await _repository.fetchMyLoans();
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) return;
+    await _repository.fetchMyLoans(userId: currentUser.id);
   }
 
   // User Actions

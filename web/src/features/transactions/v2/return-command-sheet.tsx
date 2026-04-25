@@ -288,9 +288,9 @@ export function ReturnCommandSheet({
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[860px] p-0 border-none bg-white rounded-3xl overflow-hidden shadow-2xl">
-                <form onSubmit={handleReturn}>
-                    <DialogHeader className="p-8 pb-4">
+            <DialogContent className="sm:max-w-[860px] w-[95vw] h-auto max-h-[90vh] p-0 border-none bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                <form onSubmit={handleReturn} className="flex flex-col h-full overflow-hidden">
+                    <DialogHeader className="p-8 pb-4 shrink-0 bg-white">
                         <DialogTitle className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             🔄 Process Return
                         </DialogTitle>
@@ -301,7 +301,7 @@ export function ReturnCommandSheet({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="px-8 pb-8 space-y-6">
+                    <div className="px-8 pb-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Left Summary Panel */}
                             <div className="bg-slate-50/70 p-6 rounded-2xl border border-slate-100 space-y-5">
@@ -571,7 +571,7 @@ export function ReturnCommandSheet({
                         )}
                     </div>
 
-                    <DialogFooter className="px-8 pb-8 pt-2 flex items-center justify-between gap-4">
+                    <DialogFooter className="px-8 pb-8 pt-2 flex items-center justify-between gap-4 shrink-0 bg-white border-t border-slate-50">
                         <Button
                             type="button"
                             variant="ghost"

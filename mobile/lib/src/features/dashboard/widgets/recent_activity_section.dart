@@ -189,12 +189,11 @@ class ActivityPixelCard extends ConsumerWidget {
   const ActivityPixelCard({super.key, required this.item, required this.delay});
 
   String _getStatusText(LoanStatus status, int overdueDays) {
-    if (overdueDays > 0) return 'OVERDUE';
+    if (status == LoanStatus.returned) return 'COMPLETED';
+    if (overdueDays > 0 || status == LoanStatus.overdue) return 'OVERDUE';
     switch (status) {
       case LoanStatus.active: return 'ACTIVE';
-      case LoanStatus.returned: return 'COMPLETED';
       case LoanStatus.pending: return 'PENDING';
-      case LoanStatus.overdue: return 'OVERDUE';
       case LoanStatus.staged: return 'STAGED';
       default: return 'ACTIVE';
     }
@@ -202,8 +201,8 @@ class ActivityPixelCard extends ConsumerWidget {
 
   // 🛡️ REFINED SIGNALING: Tactical Black for most, Red for Crisis
   Color _getStatusColor(LoanStatus status, int overdueDays, LigtasColors sentinel) {
-    if (overdueDays > 0) return const Color(0xFFEF4444); // Red-500
     if (status == LoanStatus.returned) return const Color(0xFF10B981); // Emerald-500
+    if (overdueDays > 0 || status == LoanStatus.overdue) return const Color(0xFFEF4444); // Red-500
     return sentinel.navy; // 🛡️ ASSET STANDARD: High-contrast Navy/Black
   }
 

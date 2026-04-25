@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../presentation/providers/notification_provider.dart';
-import '../data/models/notification_model.dart';
 import '../presentation/widgets/tactical_notification_card.dart';
 import '../widgets/sync_error_banner.dart';
 
@@ -66,7 +65,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'CENTRAL INTELLIGENCE FEED',
+                    'NOTIFICATIONS',
                     style: GoogleFonts.lexend(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
@@ -89,10 +88,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             actions: [
               IconButton(
                 icon: Icon(Icons.done_all_rounded, color: sentinel.primary),
-                onPressed: () {
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   HapticFeedback.mediumImpact();
-                  ref.read(markAllNotificationsAsReadProvider.future);
-                  ref.invalidate(systemNotificationsProvider);
+                  try {
+                    await ref.read(markAllNotificationsAsReadProvider.future);
+                    ref.invalidate(systemNotificationsProvider);
+                    ref.invalidate(unreadNotificationCountProvider);
+                  } catch (error) {
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Failed to mark all as read: $error')),
+                    );
+                  }
                 },
               ),
               const Gap(8),
@@ -102,13 +110,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           // ── NOTIFICATION STREAM ──
           notificationsAsync.when(
             data: (allNotifications) {
-              // 🛡️ NOISE SUPPRESSION: Filter out boilerplate access messages
-              final notifications = allNotifications.where((n) {
-                final title = n.title.toLowerCase();
-                final message = n.message.toLowerCase();
-                final isAccessNoise = title.contains('new access') || message.contains('access granted');
-                return !isAccessNoise;
-              }).toList();
+              final notifications = allNotifications;
 
               if (notifications.isEmpty) {
                 return SliverFillRemaining(child: _buildEmptyState(context));
@@ -130,11 +132,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     if (active.isNotEmpty) ...[
                       _buildProtocolHeader(
                         context,
-                        title: "Today's Protocol",
+                        title: "Today's Alerts",
                         subtitle: DateFormat('MMMM dd, yyyy').format(DateTime.now()),
                         icon: Icons.calendar_today_rounded,
                         isDark: true,
-                        priority: hasCritical ? "High" : "Standard",
+                        priority: hasCritical ? "High" : "Normal",
                       ),
                       ...active.asMap().entries.map((entry) {
                         final idx = entry.key;
@@ -152,11 +154,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       const Gap(24),
                       _buildProtocolHeader(
                         context,
-                        title: "Resolved Events",
+                        title: "Resolved Alerts",
                         subtitle: DateFormat('MMMM dd, yyyy').format(DateTime.now().subtract(const Duration(days: 1))),
                         icon: Icons.history_rounded,
                         isDark: false,
-                        priority: "Archived",
+                        priority: "Resolved",
                       ),
                       ...resolved.asMap().entries.map((entry) {
                         final idx = entry.key;
@@ -267,7 +269,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
           const Gap(24),
           Text(
-            'INTEL FEED SILENT',
+            'NO NEW ALERTS',
             style: GoogleFonts.lexend(
               fontSize: 14,
               fontWeight: FontWeight.w900,
@@ -277,7 +279,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
           const Gap(8),
           Text(
-            'All tactical updates acknowledged.',
+            'You are all caught up.',
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -300,7 +302,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.errorRed.withOpacity(0.3)),
             const Gap(16),
             Text(
-              'SIGNAL INTERRUPTED',
+              'CONNECTION ISSUE',
               style: GoogleFonts.lexend(fontWeight: FontWeight.w900, color: AppTheme.errorRed, fontSize: 14, letterSpacing: 1.5),
             ),
             const Gap(8),

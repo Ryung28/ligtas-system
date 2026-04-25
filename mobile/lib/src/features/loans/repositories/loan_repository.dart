@@ -35,18 +35,27 @@ class SupabaseLoanRepository implements LoanRepository {
 
   @override
   Future<List<LoanModel>> fetchMyLoans() async {
-    final userId = _client.auth.currentUser?.id;
+    final user = _client.auth.currentUser;
+    final userId = user?.id;
     if (userId == null) {
       debugPrint('🚫 SupabaseLoanRepository: No logged-in user, returning empty list.');
       return [];
     }
+
+    final userEmail = user?.email;
+    final fullName = user?.userMetadata?['full_name'] as String?;
     
     try {
-      debugPrint('🚀 SupabaseLoanRepository: Fetching logs for user $userId from "borrow_logs" table...');
+      debugPrint('🚀 SupabaseLoanRepository: Fetching logs for user $userId (Email: $userEmail, Name: $fullName) from "borrow_logs" table...');
+      
+      // 🛡️ DOUBLE-GUARD: Catch ghost records via ID or Email
+      String filter = 'borrowed_by.eq.$userId,borrower_user_id.eq.$userId';
+      if (userEmail != null) filter += ',borrower_email.eq.$userEmail';
+
       final response = await _client
           .from('borrow_logs')
           .select('*, inventory:inventory_id(image_url)')
-          .eq('borrowed_by', userId) // Strict Tenant Isolation
+          .or(filter) // 🚀 Unified Identity Gate (Legacy Sync)
           .order('borrow_date', ascending: false);
       
       final List<dynamic> data = response;
@@ -165,7 +174,9 @@ class SupabaseLoanRepository implements LoanRepository {
 
     // Calculate derived fields
     final dbDaysBorrowed = now.difference(borrowDate).inDays;
-    final dbDaysOverdue = expectedReturnDate.isBefore(now) ? now.difference(expectedReturnDate).inDays : 0;
+    final dbDaysOverdue = (finalStatus != LoanStatus.returned && expectedReturnDate.isBefore(now)) 
+        ? now.difference(expectedReturnDate).inDays 
+        : 0;
 
     // 🛡️ RELATIONAL EXTRACTION: Support both Map and List join formats
     String? imageUrl;

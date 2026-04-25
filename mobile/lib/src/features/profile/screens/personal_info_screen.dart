@@ -275,13 +275,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     return AppBar(
       backgroundColor: sentinel.containerLowest,
       elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: sentinel.navy),
-        onPressed: () => context.pop(),
-      ),
+      automaticallyImplyLeading: false,
       centerTitle: true,
       title: Text(
-        'OPERATIVE PROFILE',
+        'PROFILE PAGE',
         style: GoogleFonts.lexend(
           fontWeight: FontWeight.w900,
           fontSize: 14,
@@ -291,9 +288,18 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       ),
       actions: [
         if (!_isEditing)
-          IconButton(
+          TextButton.icon(
             onPressed: () => setState(() => _isEditing = true),
-            icon: Icon(Icons.edit_note_rounded, color: sentinel.navy),
+            icon: Icon(Icons.edit_rounded, size: 16, color: sentinel.navy),
+            label: Text(
+              'EDIT',
+              style: GoogleFonts.lexend(
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                color: sentinel.navy,
+                letterSpacing: 0.5,
+              ),
+            ),
           )
         else
           TextButton(
@@ -409,10 +415,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: done ? AppTheme.successGreen.withOpacity(0.08) : sentinel.navy.withOpacity(0.05),
+        color: done ? sentinel.navy.withOpacity(0.08) : sentinel.navy.withOpacity(0.05),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: done ? AppTheme.successGreen.withOpacity(0.35) : sentinel.navy.withOpacity(0.12),
+          color: done ? sentinel.navy.withOpacity(0.35) : sentinel.navy.withOpacity(0.12),
         ),
       ),
       child: Row(
@@ -421,7 +427,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
           Icon(
             done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
             size: 14,
-            color: done ? AppTheme.successGreen : sentinel.navy.withOpacity(0.4),
+            color: done ? sentinel.navy : sentinel.navy.withOpacity(0.4),
           ),
           const Gap(6),
           Text(
@@ -429,7 +435,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
             style: GoogleFonts.lexend(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: done ? AppTheme.successGreen : sentinel.navy.withOpacity(0.6),
+              color: done ? sentinel.navy : sentinel.navy.withOpacity(0.6),
             ),
           ),
         ],

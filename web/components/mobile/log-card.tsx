@@ -27,7 +27,7 @@ export function LogCard({ session }: LogCardProps) {
     const imageUrl = rawImageUrl ? getInventoryImageUrl(rawImageUrl) : null
 
     let statusConfig = {
-        label: 'BORROWED',
+        label: 'OUT',
         color: 'text-blue-600 bg-blue-50 border-blue-100',
         icon: ArrowUpRight,
         ring: 'ring-blue-500/10'
@@ -35,7 +35,7 @@ export function LogCard({ session }: LogCardProps) {
     
     if (isReturned) {
         statusConfig = {
-            label: 'RETURNED',
+            label: 'BACK',
             color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
             icon: ArrowDownLeft,
             ring: 'ring-emerald-500/10'
@@ -69,7 +69,7 @@ export function LogCard({ session }: LogCardProps) {
             {/* 🚨 Overdue Pulse Indicator */}
             {isOverdue && (
                 <div className="absolute top-0 right-0 w-32 h-6 bg-rose-600 text-white text-[9px] font-black italic flex items-center justify-center rotate-[25deg] translate-x-12 translate-y-2 shadow-sm uppercase tracking-widest z-10">
-                    Overdue
+                    Late
                 </div>
             )}
 
@@ -137,7 +137,7 @@ export function LogCard({ session }: LogCardProps) {
             {/* 🕰️ The Audit Bar: Chronological Integrity */}
             <div className="grid grid-cols-2 gap-2 mt-4">
                 <div className="bg-gray-50/50 rounded-xl p-2 border border-gray-100">
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Borrowed Date</p>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Picked Up</p>
                     <div className="flex items-center gap-1.5">
                         <Calendar className="w-3 h-3 text-blue-500" />
                         <span className="text-[10px] font-black text-gray-900 uppercase">
@@ -151,7 +151,7 @@ export function LogCard({ session }: LogCardProps) {
                     isOverdue ? "bg-rose-50 border-rose-100" : "bg-gray-50/50 border-gray-100"
                 )}>
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        {isReturned ? "Returned Date" : "Expected Return"}
+                        {isReturned ? "Brought Back" : "Due Back"}
                     </p>
                     <div className="flex items-center gap-1.5">
                         <Clock className={cn("w-3 h-3", isOverdue ? "text-rose-500 animate-pulse" : "text-emerald-500")} />
@@ -163,7 +163,7 @@ export function LogCard({ session }: LogCardProps) {
                                 format(new Date(firstItem.actual_return_date), 'MMM dd, HH:mm')
                             ) : firstItem.expected_return_date ? (
                                 format(new Date(firstItem.expected_return_date), 'MMM dd')
-                            ) : "Permanent"}
+                            ) : "Kept"}
                         </span>
                     </div>
                 </div>
@@ -177,7 +177,7 @@ export function LogCard({ session }: LogCardProps) {
                 </div>
                 {isOverdue && (
                    <span className="text-[9px] font-black text-rose-600 uppercase tracking-tighter bg-rose-100/50 px-2 py-0.5 rounded-full">
-                       {daysOverdue}D EXPIRED
+                       {daysOverdue}D LATE
                    </span>
                 )}
             </div>

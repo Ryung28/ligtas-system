@@ -165,6 +165,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
                     released_by_name: log.released_by_name,
                     pickup_scheduled_at: log.pickup_scheduled_at,
                     platform_origin: log.platform_origin,
+                    created_origin: log.created_origin,
                     created_at: log.created_at
                 }
                 sessionsList.push(currentSession)

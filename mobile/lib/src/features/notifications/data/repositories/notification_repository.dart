@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mobile/src/core/local_storage/isar_service.dart';
 import 'package:mobile/src/features/notifications/data/models/notification_model.dart';
 import 'dart:async';
@@ -11,6 +12,7 @@ class NotificationRepository {
   final SupabaseClient _supabase;
   StreamSubscription? _notificationStream;
   StreamSubscription? _readReceiptStream;
+  Timer? _realtimeDebounce;
 
   NotificationRepository() : _supabase = Supabase.instance.client;
 
@@ -22,15 +24,23 @@ class NotificationRepository {
     // Clean up existing subscriptions
     _notificationStream?.cancel();
     _readReceiptStream?.cancel();
+    _realtimeDebounce?.cancel();
+
+    void scheduleRefresh() {
+      _realtimeDebounce?.cancel();
+      _realtimeDebounce = Timer(const Duration(milliseconds: 350), onUpdate);
+    }
 
     // 📡 STREAM A: System notifications (like web)
+    // Listen to all visible notifications for the session user.
+    // This captures both targeted rows and role-based broadcasts.
     _notificationStream = _supabase
         .from('system_notifications')
         .stream(primaryKey: ['id'])
-        .eq('user_id', userId)
         .order('created_at', ascending: false)
+        .limit(50)
         .listen((_) {
-          onUpdate();
+          scheduleRefresh();
         });
 
     // 📡 STREAM B: Read receipts (like web)
@@ -39,7 +49,7 @@ class NotificationRepository {
         .stream(primaryKey: ['notification_id', 'user_id'])
         .eq('user_id', userId)
         .listen((_) {
-          onUpdate();
+          scheduleRefresh();
         });
   }
 
@@ -47,8 +57,10 @@ class NotificationRepository {
   void stopRealtimeSync() {
     _notificationStream?.cancel();
     _readReceiptStream?.cancel();
+    _realtimeDebounce?.cancel();
     _notificationStream = null;
     _readReceiptStream = null;
+    _realtimeDebounce = null;
   }
 
   /// Fetches the user's notification inbox using the same RPC as web
@@ -97,7 +109,7 @@ class NotificationRepository {
         message: 'Intel synchronized',
       );
     } catch (error) {
-      print('[NotificationRepository] Error fetching inbox: $error');
+      debugPrint('[NotificationRepository] Error fetching inbox: $error');
       
       // Fallback to cached data
       final cached = await _getCachedNotifications();
@@ -147,7 +159,7 @@ class NotificationRepository {
         message: 'Intel marked as read',
       );
     } catch (error) {
-      print('[NotificationRepository] Error marking as read: $error');
+      debugPrint('[NotificationRepository] Error marking as read: $error');
       return NotificationResult(
         success: false,
         data: [],
@@ -203,7 +215,7 @@ class NotificationRepository {
         message: 'Full inbox sync complete',
       );
     } catch (error) {
-      print('[NotificationRepository] Error marking all as read: $error');
+      debugPrint('[NotificationRepository] Error marking all as read: $error');
       return NotificationResult(
         success: false,
         data: [],
@@ -231,7 +243,7 @@ class NotificationRepository {
         message: 'Intel erased',
       );
     } catch (error) {
-      print('[NotificationRepository] Error deleting notification: $error');
+      debugPrint('[NotificationRepository] Error deleting notification: $error');
       return NotificationResult(
         success: false,
         data: [],

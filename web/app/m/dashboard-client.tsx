@@ -10,7 +10,10 @@ import {
     ArrowRight, 
     Search, 
     PlusCircle,
-    Activity
+    Activity,
+    ArrowUpRight,
+    ArrowDownLeft,
+    AlertCircle
 } from 'lucide-react'
 import { useDashboardStats } from '@/hooks/use-dashboard-stats'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
@@ -19,13 +22,44 @@ import { StatCard } from '@/components/mobile/stat-card'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { DashboardSkeleton } from '@/components/mobile/skeletons/dashboard-skeleton'
+import { usePendingRequests } from '@/hooks/use-pending-requests'
+import { createBrowserClient } from '@supabase/ssr'
+import { isLowStock } from '@/lib/inventory-utils'
+
+const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'GOOD MORNING'
+    if (hour < 17) return 'GOOD AFTERNOON'
+    return 'GOOD EVENING'
+}
 
 /**
  * 📱 ResQTrack Mobile Dashboard Client
  */
 export function DashboardClient() {
-    const { stats, isLoading: statsLoading, refresh: refreshStats } = useDashboardStats()
-    const { logs, isLoading: logsLoading, refresh: refreshLogs } = useBorrowLogs()
+    const { stats, data: dashboardData, isLoading: statsLoading, refresh: refreshStats } = useDashboardStats()
+    const { requests: pendingRequests, isLoading: pendingLoading } = usePendingRequests()
+    const { logs, isLoading: logsLoading, refresh: refreshLogs, stats: logStats } = useBorrowLogs()
+    const [userName, setUserName] = React.useState('ANALYST')
+
+    React.useEffect(() => {
+        async function loadProfile() {
+            const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            )
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .single()
+                if (profile?.full_name) setUserName(profile.full_name)
+            }
+        }
+        loadProfile()
+    }, [])
 
     const handleRefresh = async () => {
         await Promise.all([refreshStats(), refreshLogs()])
@@ -37,132 +71,220 @@ export function DashboardClient() {
 
     const recentLogs = logs.slice(0, 5)
 
+    // 🛰️ TACTICAL ANOMALY ENGINE: Mirrors Web Inventory 'Alerts' logic
+    const tacticalAlerts = dashboardData?.inventory?.filter(item => {
+        const isLow = isLowStock(item)
+        const isOut = item.stock_available === 0
+        const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
+        const hasPending = (item as any).stock_pending > 0
+        
+        let isExpiring = false
+        const expiry = (item as any).expiry_date
+        if (expiry) {
+            const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+            isExpiring = diff <= 30
+        }
+
+        return isLow || isOut || hasHealthIssues || hasPending || isExpiring
+    }) || []
+
+    const allAlerts = [
+        ...tacticalAlerts.map(item => {
+            let label = 'LOW STOCK'
+            let type = 'low_stock'
+            if (item.stock_available === 0) label = 'CRITICAL'
+            else if (item.qty_damaged > 0) label = 'DAMAGED'
+            else if ((item as any).expiry_date) label = 'EXPIRING'
+
+            return {
+                id: item.id,
+                type: 'low_stock', // Reusing triage route for all inventory anomalies
+                label,
+                title: item.item_name,
+                subtitle: item.stock_available === 0 ? 'Out of Stock' : `${item.stock_available} units in registry`
+            }
+        }),
+        ...pendingRequests.map(req => ({ 
+            id: req.id,
+            type: 'pending', 
+            label: 'REQUEST', 
+            title: req.item_name, 
+            subtitle: `Pending from ${req.borrower_name}` 
+        }))
+    ]
+    const displayAlerts = allAlerts.slice(0, 3)
+    const hasMoreAlerts = allAlerts.length > 3
+
     return (
-        <div className="space-y-6 px-4 pt-4">
-            <MobileHeader 
-                title="ResQTrack" 
-                onRefresh={handleRefresh} 
-                isLoading={statsLoading || logsLoading} 
-            />
+        <div className="space-y-6 pb-24">
+            {/* 🛡️ TACTICAL HEADER — Mirrors Flutter DashboardHeader */}
+            <header className="px-5 pt-8 flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-900 border-2 border-white shadow-xl flex items-center justify-center shrink-0">
+                    <span className="text-white font-black text-lg">{userName[0].toUpperCase()}</span>
+                </div>
+                <div className="flex-1">
+                    <p className="text-[10px] font-black text-slate-400 tracking-[0.2em] mb-0.5">{getGreeting()}</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter leading-none uppercase italic">
+                        {userName.split(' ')[0]}
+                    </h1>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-center">
+                        <Activity className="w-5 h-5 text-slate-900" />
+                        <span className="text-[10px] font-bold text-slate-900 mt-0.5 tracking-tighter">ONLINE</span>
+                    </div>
+                </div>
+            </header>
             
-            <section className="grid grid-cols-2 gap-3">
-                <StatCard 
-                    label="Total Items" 
-                    value={stats.totalItems} 
-                    icon={Package} 
-                    color="blue"
-                    isLoading={statsLoading}
-                />
-                <StatCard 
-                    label="Total Stock" 
-                    value={stats.totalStock} 
-                    icon={ShieldCheck} 
-                    color="green"
-                    isLoading={statsLoading}
-                />
-                <StatCard 
-                    label="Active Loans" 
-                    value={stats.activeBorrows} 
-                    icon={Truck} 
-                    color="amber"
-                    isLoading={statsLoading}
-                />
-                <StatCard 
-                    label="Low Stock" 
-                    value={stats.lowStockCount} 
-                    icon={Clock} 
-                    color="red"
-                    isLoading={statsLoading}
-                />
-            </section>
+            <div className="px-4 space-y-6">
+                <section className="grid grid-cols-2 gap-3">
+                    <StatCard 
+                        label="In Field" 
+                        value={logStats.borrowed} 
+                        icon={ArrowUpRight} 
+                        color="blue"
+                        isLoading={logsLoading}
+                    />
+                    <StatCard 
+                        label="Depleted" 
+                        value={stats.lowStockCount} 
+                        icon={AlertCircle} 
+                        color="red"
+                        isLoading={statsLoading}
+                    />
+                    <StatCard 
+                        label="Late Gear" 
+                        value={logStats.overdue} 
+                        icon={Clock} 
+                        color="amber"
+                        isLoading={logsLoading}
+                    />
+                    <StatCard 
+                        label="Registry" 
+                        value={stats.totalItems} 
+                        icon={Package} 
+                        color="slate"
+                        isLoading={statsLoading}
+                    />
+                </section>
 
-            <section className="space-y-3">
-                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight px-1 flex items-center gap-2">
-                    <PlusCircle className="w-4 h-4 text-red-600" />
-                    Quick Actions
-                </h2>
-                <div className="grid grid-cols-2 gap-3">
-                    <Link 
-                        href="/m/inventory"
-                        className="p-4 bg-gray-900 text-white rounded-2xl flex flex-col gap-2 items-start transition-all active:scale-[0.98]"
-                    >
-                        <Search className="w-5 h-5 opacity-70" />
-                        <span className="font-semibold text-sm">Browse Items</span>
-                    </Link>
-                    <Link 
-                        href="/m/approvals"
-                        className="p-4 bg-red-600 text-white rounded-2xl flex flex-col gap-2 items-start shadow-lg shadow-red-200 transition-all active:scale-[0.98]"
-                    >
-                        <CheckSquareIcon className="w-5 h-5 opacity-70" />
-                        <span className="font-semibold text-sm">View Requests</span>
-                    </Link>
-                </div>
-            </section>
-
-            <section className="space-y-3 pb-20">
-                <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-blue-600" />
-                        Recent Activity
-                    </h2>
-                    <Link href="/m/logs" className="text-xs font-semibold text-red-600 flex items-center gap-0.5" prefetch={false}>
-                        View All
-                        <ArrowRight className="w-3 h-3" />
-                    </Link>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden shadow-sm">
-                    {logsLoading ? (
-                        Array(3).fill(0).map((_, i) => (
-                            <div key={i} className="p-4 animate-pulse flex gap-3">
-                                <div className="w-10 h-10 bg-gray-100 rounded-xl" />
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-4 bg-gray-100 rounded w-3/4" />
-                                    <div className="h-3 bg-gray-50 rounded w-1/2" />
-                                </div>
-                            </div>
-                        ))
-                    ) : recentLogs.length > 0 ? (
-                        recentLogs.map((log) => (
+                {/* 📡 ALERTS — High-density Triage */}
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600" />
+                            Alerts
+                        </h2>
+                        {hasMoreAlerts && (
                             <Link 
-                                key={log.id} 
-                                href={`/m?id=${log.id}&triage=true`}
-                                scroll={false}
-                                className="p-4 flex gap-4 hover:bg-gray-50/50 transition-colors active:bg-gray-100/80 cursor-pointer"
+                                href="/m/alerts" 
+                                className="text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center gap-1"
                             >
-                                <div className={cn(
-                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
-                                    log.status === 'returned' 
-                                        ? "bg-green-50 text-green-600 border-green-100" 
-                                        : "bg-blue-50 text-blue-600 border-blue-100"
-                                )}>
-                                    <Package className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-sm font-bold text-gray-900 truncate">
-                                            {log.item_name}
-                                        </p>
-                                        <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
-                                            {formatDistanceToNow(new Date(log.borrow_date || log.created_at), { addSuffix: true })}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-gray-500 truncate">
-                                        {log.borrower_name} • {log.quantity} units {log.status}
-                                    </p>
-                                </div>
-                                <div className="shrink-0 flex items-center self-center text-gray-300">
-                                    <ArrowRight className="w-4 h-4" />
-                                </div>
+                                See All ({allAlerts.length}) <ArrowRight className="w-3 h-3" />
                             </Link>
-                        ))
+                        )}
+                    </div>
+                    
+                    {displayAlerts.length > 0 ? (
+                        <div className="space-y-3">
+                            {displayAlerts.map((alert, idx) => (
+                                <Link 
+                                    key={idx}
+                                    href={alert.type === 'low_stock' ? `/m/inventory/${alert.id}?action=restock` : `/m/alerts?id=${alert.id}`}
+                                    className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-2xl flex items-center justify-center",
+                                            alert.type === 'low_stock' ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                                        )}>
+                                            {alert.type === 'low_stock' ? <Package className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                                        </div>
+                                        <div>
+                                            <p className={cn(
+                                                "text-[9px] font-black uppercase tracking-widest",
+                                                alert.type === 'low_stock' ? "text-red-500" : "text-blue-500"
+                                            )}>{alert.label}</p>
+                                            <h4 className="font-bold text-slate-900 text-sm">{alert.title}</h4>
+                                            <p className="text-[10px] text-slate-400 font-medium">{alert.subtitle}</p>
+                                        </div>
+                                    </div>
+                                    <ArrowRight className="w-4 h-4 text-slate-300 group-active:translate-x-1 transition-transform" />
+                                </Link>
+                            ))}
+                        </div>
                     ) : (
-                        <div className="p-10 text-center">
-                            <p className="text-sm text-gray-400">No recent activity detected.</p>
+                        <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 flex flex-col items-center text-center">
+                            <ShieldCheck className="w-8 h-8 text-emerald-600 mb-2" />
+                            <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest">System Stable</p>
+                            <p className="text-[10px] text-emerald-600/80 mt-1 font-medium italic">No anomalies detected in this sector.</p>
                         </div>
                     )}
-                </div>
-            </section>
+                </section>
+
+                {/* 📜 RECENT ACTIVITY — Forensic Audit Trail */}
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-blue-600" />
+                            Recent History
+                        </h2>
+                        <Link 
+                            href="/m/logs" 
+                            className="text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all"
+                        >
+                            View All <ArrowRight className="w-3 h-3" />
+                        </Link>
+                    </div>
+
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                        {recentLogs.length > 0 ? (
+                            <div className="divide-y divide-gray-50">
+                                {recentLogs.map((log) => (
+                                    <Link 
+                                        key={log.id}
+                                        href={`/m?id=${log.id}&triage=true`}
+                                        className="flex items-start gap-4 p-4 active:bg-gray-50 transition-colors group"
+                                    >
+                                        <div className={cn(
+                                            "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-colors",
+                                            log.status === 'returned' ? "bg-green-50 border-green-100 text-green-600" :
+                                            log.status === 'overdue' ? "bg-red-50 border-red-100 text-red-600" :
+                                            "bg-blue-50 border-blue-100 text-blue-600"
+                                        )}>
+                                            <Package className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1 min-w-0 py-0.5">
+                                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                <h4 className="font-bold text-gray-900 text-sm truncate uppercase tracking-tight">
+                                                    {log.item_name}
+                                                </h4>
+                                                <span className="text-[9px] font-medium text-gray-400 whitespace-nowrap uppercase tracking-widest">
+                                                    {formatDistanceToNow(new Date(log.borrow_date || log.created_at), { addSuffix: true })}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {log.borrower_name} • {log.quantity} items {
+                                                    log.status === 'returned' ? 'back' : 
+                                                    log.status === 'borrowed' ? 'out' : 
+                                                    log.status === 'overdue' ? 'late' : log.status
+                                                }
+                                            </p>
+                                        </div>
+                                        <div className="shrink-0 flex items-center self-center text-gray-300">
+                                            <ArrowRight className="w-4 h-4 group-active:translate-x-1 transition-transform" />
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-12 text-center">
+                                <p className="text-sm text-gray-400 italic">Everything is quiet for now.</p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </div>
         </div>
     )
 }

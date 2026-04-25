@@ -115,8 +115,12 @@ class InventoryVariant with _$InventoryVariant {
 /// Maps Supabase / Isar JSON variant rows into [InventoryVariant].
 InventoryVariant inventoryVariantFromJsonMap(Map<String, dynamic> m) {
   int read(String k) => (m[k] as num?)?.toInt() ?? 0;
+  final idRaw = m['id'];
+  final int variantId = idRaw is num
+      ? idRaw.toInt()
+      : int.tryParse(idRaw?.toString() ?? '') ?? 0;
   return InventoryVariant(
-    id: (m['id'] as num).toInt(),
+    id: variantId,
     location: (m['location'] as String?)?.trim().isNotEmpty == true
         ? (m['location'] as String).trim()
         : 'Unknown',

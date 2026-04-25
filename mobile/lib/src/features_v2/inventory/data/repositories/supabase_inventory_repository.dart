@@ -19,27 +19,35 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   SupabaseInventoryRepository(this._client, this._local);
 
   @override
-  Future<List<InventoryItem>> fetchAll({String? warehouseId}) async {
+  Future<List<InventoryItem>> fetchAll({String? warehouseId, DateTime? updatedAfter}) async {
     try {
       // 🛡️ STEEL CAGE: Querying the active_inventory view for mapped data
       var query = _client.from('active_inventory').select('*');
 
-      // If warehouseId is provided, we still query the catalog but might filter
-      // or handle it differently. For now, let's keep global city-wide view.
+      // 🔄 DIFFERENTIAL SYNC: If we have a last sync date, only fetch what's new/changed
+      // Note: active_inventory view must contain 'updated_at' column
+      if (updatedAfter != null) {
+        query = query.gt('updated_at', updatedAfter.toIso8601String());
+      }
 
-      final response = await query.order('item_name', ascending: true);
+      final response = await query
+          .order('item_name', ascending: true)
+          .timeout(const Duration(seconds: 15)); // 🛡️ Resilience timeout
 
       final List<dynamic> data = response;
-
       final items = await compute(_parseAndMapItems, data);
 
-      // Parallel Sync
-      _local.saveAll(items);
+      // Parallel Sync: Only save if we actually got items
+      if (items.isNotEmpty) {
+        await _local.saveAll(items);
+      }
 
       return items;
-    } catch (e) {
-      debugPrint('Fetch Error: ${ExceptionHandler.getDisplayMessage(e)}');
-      rethrow; // Let caller handle the error
+    } catch (e, st) {
+      // 🛡️ Map to structured AppException for the UI to handle properly
+      final failure = ExceptionHandler.fromException(e);
+      debugPrint('🛡️ SupabaseInventoryRepository.fetchAll failed: $failure');
+      Error.throwWithStackTrace(failure, st);
     }
   }
 
@@ -67,7 +75,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       if (response != null) {
         final model = InventoryModel.fromJson(response);
         final item = _mapModelToEntity(model);
-        _local.saveAll([item]);
+        await _local.saveAll([item]);
         return item;
       }
     } catch (e) {
@@ -104,7 +112,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       if (response != null) {
         final model = InventoryModel.fromJson(response);
         final item = _mapModelToEntity(model);
-        _local.saveAll([item]);
+        await _local.saveAll([item]);
         return item;
       }
       return null;
@@ -138,7 +146,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       // 3. Local update
       final items = await _local.watchItems().first;
       final updatedItems = items.where((i) => i.id.toString() != id).toList();
-      _local.saveAll(updatedItems);
+      await _local.saveAll(updatedItems);
     } catch (e) {
       debugPrint('[ResQTrack-Security] 🛑 Archive failed: $e');
       rethrow;
@@ -180,9 +188,9 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       qrCode: model.qrCode,
       status: model.status,
       code: model.code,
-      modelNumber: model.modelNumber ?? '',
+      modelNumber: model.modelNumber,
       minStockLevel: model.minStockLevel,
-      targetStock: model.targetStock ?? 0,
+      targetStock: model.targetStock,
       unit: model.unit,
       imageUrl: StorageUtils.resolveAssetUrl(model.imageUrl),
       restockAlertEnabled: model.restockAlertEnabled,
@@ -194,8 +202,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       // Multi-location fields
       aggregateTotal: model.aggregateTotal,
       aggregateAvailable: model.aggregateAvailable,
-      variants:
-          model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
+      variants: inventoryVariantsFromModelMaps(model.variants),
     );
   }
 
@@ -571,14 +578,26 @@ class SupabaseInventoryRepository implements IInventoryRepository {
           user?.userMetadata?['full_name'] ?? user?.email ?? 'Authorized Staff';
       final now = DateTime.now().toUtc().toIso8601String();
 
+      // 1. Check item type
+      final logData = await _client
+          .from('borrow_logs')
+          .select('inventory_id, inventory!inner(item_type)')
+          .eq('id', logId)
+          .maybeSingle();
+
+      bool isConsumable = false;
+      if (logData != null && logData['inventory'] != null) {
+        final itemType = logData['inventory']['item_type'];
+        isConsumable = itemType == 'consumable';
+      }
+
       await _client
           .from('borrow_logs')
           .update({
-            'status': 'borrowed',
+            'status': isConsumable ? 'dispensed' : 'borrowed',
             'borrow_date': now,
             'released_by_user_id': user?.id,
             'released_by_name': userName,
-            'platform_origin': 'Mobile',
             'last_updated_origin': 'Mobile',
           })
           .eq('id', logId);
@@ -590,55 +609,143 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       throw Exception('Failed to release reserved item: $e');
     }
   }
+
+  @override
+  Future<void> createItem({
+    required String name,
+    required String category,
+    required int initialStock,
+    String? storageLocation,
+    String? unit,
+    String? serialNumber,
+    String? modelNumber,
+    int? targetStock,
+    int? lowStockThreshold,
+    String? imageUrl,
+  }) async {
+    try {
+      final trimmedName = name.trim();
+      final trimmedCategory = category.trim();
+      if (trimmedName.isEmpty) {
+        throw Exception('Item name is required.');
+      }
+      if (trimmedCategory.isEmpty) {
+        throw Exception('Category is required.');
+      }
+      if (initialStock < 0) {
+        throw Exception('Initial stock cannot be negative.');
+      }
+
+      final now = DateTime.now().toUtc().toIso8601String();
+      final location = (storageLocation ?? '').trim();
+      final normalizedUnit = (unit ?? '').trim().isEmpty ? 'pcs' : unit!.trim();
+
+      await _client.from('inventory').insert({
+        'item_name': trimmedName,
+        'base_name': trimmedName,
+        'category': trimmedCategory,
+        'item_type': 'equipment',
+        'stock_total': initialStock,
+        'stock_available': initialStock,
+        'qty_good': initialStock,
+        'qty_damaged': 0,
+        'qty_maintenance': 0,
+        'qty_lost': 0,
+        'status': 'Good',
+        'storage_location': location.isEmpty ? 'lower_warehouse' : location,
+        'unit': normalizedUnit,
+        'serial_number': serialNumber?.trim().isNotEmpty == true
+            ? serialNumber!.trim()
+            : null,
+        'model_number': modelNumber?.trim().isNotEmpty == true
+            ? modelNumber!.trim()
+            : null,
+        'target_stock': targetStock ?? 0,
+        'low_stock_threshold': lowStockThreshold ?? 20,
+        'image_url': imageUrl,
+        'created_at': now,
+        'updated_at': now,
+      });
+
+      await fetchAll();
+    } catch (e) {
+      throw Exception('Failed to create inventory item: $e');
+    }
+  }
+}
+
+List<InventoryVariant> inventoryVariantsFromModelMaps(
+  List<Map<String, dynamic>> maps,
+) {
+  final out = <InventoryVariant>[];
+  for (final v in maps) {
+    try {
+      out.add(inventoryVariantFromJsonMap(v));
+    } catch (_) {}
+  }
+  return out;
 }
 
 /// 🛡️ GLOBAL ISOLATE WORKER: Parses and maps inventory items off the main thread.
 List<InventoryItem> _parseAndMapItems(List<dynamic> data) {
-  return data.map((raw) {
-    final json = raw as Map<String, dynamic>;
-    final model = InventoryModel.fromJson(json);
+  final out = <InventoryItem>[];
+  for (final raw in data) {
+    if (raw is! Map) continue;
+    final Map<String, dynamic> json;
+    try {
+      json = Map<String, dynamic>.from(raw);
+    } catch (_) {
+      continue;
+    }
+    try {
+      final model = InventoryModel.fromJson(json);
 
-    final qtyGood = model.qtyGood;
-    final qtyDamaged = model.qtyDamaged;
-    final qtyMaintenance = model.qtyMaintenance;
-    final qtyLost = model.qtyLost;
-    final expiryRaw = json['expiry_date'] as String?;
-    final expiryDate = expiryRaw != null ? DateTime.tryParse(expiryRaw) : null;
-    final expiryAlertDays = (json['expiry_alert_days'] as num?)?.toInt() ?? 15;
+      final qtyGood = model.qtyGood;
+      final qtyDamaged = model.qtyDamaged;
+      final qtyMaintenance = model.qtyMaintenance;
+      final qtyLost = model.qtyLost;
+      final expiryRaw = json['expiry_date'] as String?;
+      final expiryDate = expiryRaw != null ? DateTime.tryParse(expiryRaw) : null;
+      final expiryAlertDays = (json['expiry_alert_days'] as num?)?.toInt() ?? 15;
 
-    return InventoryItem(
-      id: model.id,
-      name: model.name,
-      description: model.description,
-      category: model.category,
-      totalStock: model.quantity,
-      availableStock: model.available,
-      location:
-          model.location.isNotEmpty
-              ? model.location
-              : (model.primaryLocation ?? ''),
-      qrCode: model.qrCode,
-      status: model.status,
-      code: model.code,
-      modelNumber: model.modelNumber ?? '',
-      minStockLevel: model.minStockLevel,
-      targetStock: model.targetStock ?? 0,
-      unit: model.unit,
-      imageUrl: StorageUtils.resolveAssetUrl(model.imageUrl),
-      restockAlertEnabled: model.restockAlertEnabled,
-      lastUpdated: model.updatedAt,
-      expiryDate: expiryDate,
-      expiryAlertDays: expiryAlertDays,
-      qtyGood: qtyGood,
-      qtyDamaged: qtyDamaged,
-      qtyMaintenance: qtyMaintenance,
-      qtyLost: qtyLost,
+      final variants = inventoryVariantsFromModelMaps(model.variants);
 
-      // Multi-location fields
-      aggregateTotal: model.aggregateTotal,
-      aggregateAvailable: model.aggregateAvailable,
-      variants:
-          model.variants.map((v) => inventoryVariantFromJsonMap(v)).toList(),
-    );
-  }).toList();
+      out.add(
+        InventoryItem(
+          id: model.id,
+          name: model.name,
+          description: model.description,
+          category: model.category,
+          totalStock: model.quantity,
+          availableStock: model.available,
+          location:
+              model.location.isNotEmpty
+                  ? model.location
+                  : (model.primaryLocation ?? ''),
+          qrCode: model.qrCode,
+          status: model.status,
+          code: model.code,
+          modelNumber: model.modelNumber,
+          minStockLevel: model.minStockLevel,
+          targetStock: model.targetStock,
+          unit: model.unit,
+          imageUrl: StorageUtils.resolveAssetUrl(model.imageUrl),
+          restockAlertEnabled: model.restockAlertEnabled,
+          lastUpdated: model.updatedAt,
+          expiryDate: expiryDate,
+          expiryAlertDays: expiryAlertDays,
+          qtyGood: qtyGood,
+          qtyDamaged: qtyDamaged,
+          qtyMaintenance: qtyMaintenance,
+          qtyLost: qtyLost,
+          aggregateTotal: model.aggregateTotal,
+          aggregateAvailable: model.aggregateAvailable,
+          variants: variants,
+        ),
+      );
+    } catch (_) {
+      // Skip one bad API row instead of failing the entire sync + Isar write.
+    }
+  }
+  return out;
 }

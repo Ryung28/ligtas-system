@@ -48,14 +48,14 @@ class OverdueHeroPanel extends ConsumerWidget {
     final analystName = user?.fullName ?? 'Analyst';
     final sentinel = Theme.of(context).sentinel;
 
-    final person = anomaly.borrowerName ?? 'Unknown Person';
-    final org = anomaly.borrowerOrg ?? 'No Org';
-    final approvedBy = anomaly.approvedByName ?? 'System';
-    final releasedBy = anomaly.releasedByName ?? 'Pending';
+    final person = _cleanValue(anomaly.borrowerName, fallback: 'Unknown Borrower');
+    final org = _cleanValue(anomaly.borrowerOrg, fallback: 'Unspecified');
+    final approvedBy = _cleanValue(anomaly.approvedByName, fallback: 'Unassigned');
+    final releasedBy = _cleanValue(anomaly.releasedByName, fallback: 'Unassigned');
 
     final sentOutDate = anomaly.borrowedAt != null
         ? DateFormat('dd, MMM yyyy\nh:mm a').format(anomaly.borrowedAt!.toLocal())
-        : 'N/A';
+        : 'Unavailable';
     final isMobile = anomaly.platformOrigin == 'Mobile';
     final hasReturn = anomaly.borrowId != null && anomaly.inventoryId != null;
 
@@ -104,7 +104,7 @@ class OverdueHeroPanel extends ConsumerWidget {
         ),
         DetailRowData(
           icon: Icons.calendar_month_rounded,
-          label: 'TIMESTAMP',
+          label: 'SENT OUT',
           value: sentOutDate.replaceAll('\n', ' '),
           zone: 'Transaction',
           isHalfWidth: false,
@@ -126,4 +126,10 @@ class OverdueHeroPanel extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _cleanValue(String? raw, {required String fallback}) {
+  final value = raw?.trim();
+  if (value == null || value.isEmpty) return fallback;
+  return value;
 }

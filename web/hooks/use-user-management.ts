@@ -12,6 +12,7 @@ import {
     reactivateUserAction,
     authorizeUserAction,
     unauthorizeUserAction,
+    updateUserProfileAction,
 } from '@/app/actions/user-management'
 
 export type UserStatus = 'pending' | 'active' | 'suspended'
@@ -227,6 +228,16 @@ export function useUserManagement() {
         return false
     }
 
+    const updateUserProfile = async (userId: string, data: { full_name?: string; department?: string; phone_number?: string }) => {
+        const result = await updateUserProfileAction(userId, data)
+        if (result.success) {
+            refresh()
+            return true
+        }
+        toast.error(result.message)
+        return false
+    }
+
     const unauthorizeUser = async (email: string) => {
         const result = await unauthorizeUserAction(email)
         if (result.success) {
@@ -299,6 +310,7 @@ export function useUserManagement() {
         updateUserRole,
         authorizeUser,
         unauthorizeUser,
+        updateUserProfile,
         assignWarehouse,
     }
 }

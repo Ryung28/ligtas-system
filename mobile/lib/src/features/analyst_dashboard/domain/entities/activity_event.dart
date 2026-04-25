@@ -20,6 +20,7 @@ enum EventType {
   maintenance,
   requisitionDenied,
   mixed,
+  reserved,
 }
 
 enum EventStatus {
@@ -147,6 +148,7 @@ class ActivityEvent {
     if (t == 'requisition_denied') return EventType.requisitionDenied;
     if (t == 'security_trigger') return EventType.securityTrigger;
     if (t == 'maintenance') return EventType.maintenance;
+    if (t == 'reserved') return EventType.reserved;
     return EventType.systemSync;
   }
 

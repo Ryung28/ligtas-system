@@ -19,6 +19,7 @@ class SessionStatusChip extends StatelessWidget {
       case EventType.requisitionApproved:
         return const Color(0xFF10B981);
       case EventType.maintenance:
+      case EventType.reserved:
         return const Color(0xFFF59E0B);
       case EventType.requisitionDenied:
       case EventType.requisitionRejected:
@@ -38,6 +39,7 @@ class SessionStatusChip extends StatelessWidget {
       case EventType.assetIn:             return 'RETURNED';
       case EventType.requisitionApproved: return 'VERIFIED';
       case EventType.maintenance:         return 'MAINTENANCE';
+      case EventType.reserved:            return 'RESERVED';
       case EventType.requisitionDenied:   return 'DENIED';
       case EventType.requisitionRejected: return 'REJECTED';
       case EventType.securityTrigger:     return 'SECURITY';

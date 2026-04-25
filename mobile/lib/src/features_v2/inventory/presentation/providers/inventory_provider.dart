@@ -39,27 +39,36 @@ class InventoryNotifier extends _$InventoryNotifier {
     _repository = ref.watch(inventoryRepositoryProvider);
     final category = ref.watch(selectedCategoryProvider);
     
-    // 🛡️ CACHE VERSION CHECK
-    await _checkCacheVersion();
+    // 🛡️ CACHE VERSION CHECK: Soft Migration
+    // Instead of wiping the DB and leaving a blank screen, we just trigger a full refresh.
+    final needsFullRefresh = await _checkCacheVersion();
     
     // 1. Reactive Listener: If local DB changes, refresh state (if on pg 1)
     ref.listen(allInventoryStreamProvider, (prev, next) async {
       if (_offset == 0 && next.hasValue) {
-        state = AsyncValue.data(await _loadInitial(category));
+        final cat = ref.read(selectedCategoryProvider);
+        try {
+          state = AsyncValue.data(await _loadInitial(cat));
+        } catch (e) {
+          debugPrint('InventoryNotifier: stream-driven reload failed: $e');
+        }
       }
     });
 
-    // 2. Load what we have immediately
+    // 2. Load what we have immediately (even if old)
     final localItems = await _loadInitial(category);
     
-    // 3. FIRE-AND-FORGET SYNC: We do not await this, and we do not rethrow.
-    // The UI stays with local data even if network fetch fails.
+    // 3. BACKGROUND SYNC: Differential or Full
     Future.microtask(() async {
       try {
         final user = ref.read(currentUserProvider);
-        final isManager = user?.canEdit ?? false;
-        final warehouseId = isManager ? null : user?.assignedWarehouse;
-        await _repository.fetchAll(warehouseId: warehouseId);
+        final warehouseId = user?.canEdit ?? false ? null : user?.assignedWarehouse;
+        
+        // If we have data, try a differential sync (items changed in last 7 days)
+        // If the cache was just updated, do a full fetch.
+        final lastSync = needsFullRefresh ? null : DateTime.now().subtract(const Duration(days: 7));
+        
+        await _repository.fetchAll(warehouseId: warehouseId, updatedAfter: lastSync);
       } catch (e) {
         debugPrint('🛡️ Background Sync Failed (Ignored): $e');
       }
@@ -68,20 +77,18 @@ class InventoryNotifier extends _$InventoryNotifier {
     return localItems;
   }
 
-  // Remove _setupRemoteListener - it is the source of the loop 🛡️
-
-  Future<void> _checkCacheVersion() async {
+  /// 🛡️ SOFT MIGRATION: Returns true if cache version changed.
+  /// Does NOT clear the database to prevent a blank screen.
+  Future<bool> _checkCacheVersion() async {
     final prefs = await SharedPreferences.getInstance();
     final cachedVersion = prefs.getInt(_cacheVersionKey) ?? 0;
     
     if (cachedVersion < _currentCacheVersion) {
-      debugPrint('🛡️ Cache version outdated ($cachedVersion < $_currentCacheVersion). Clearing Isar...');
-      await IsarService.instance.writeTxn(() async {
-        await IsarService.instance.collection<InventoryCollection>().clear();
-      });
+      debugPrint('🛡️ Cache version outdated ($cachedVersion < $_currentCacheVersion). Triggering soft refresh...');
       await prefs.setInt(_cacheVersionKey, _currentCacheVersion);
-      debugPrint('✅ Cache cleared and version updated');
+      return true;
     }
+    return false;
   }
 
   Future<List<InventoryItem>> _loadInitial(String category) async {
@@ -116,8 +123,7 @@ class InventoryNotifier extends _$InventoryNotifier {
   /// Action: Find by QR Code
   Future<InventoryItem?> scanForId(String code) async {
     final user = ref.read(currentUserProvider);
-    final isManager = user?.canEdit ?? false;
-    final warehouseId = isManager ? null : user?.assignedWarehouse;
+    final warehouseId = user?.canEdit ?? false ? null : user?.assignedWarehouse;
     return _repository.findByQrCode(code, warehouseId: warehouseId);
   }
 
@@ -125,11 +131,24 @@ class InventoryNotifier extends _$InventoryNotifier {
   Future<void> refresh() async {
     final user = ref.read(currentUserProvider);
     final category = ref.read(selectedCategoryProvider);
-    final isManager = user?.canEdit ?? false;
-    final warehouseId = isManager ? null : user?.assignedWarehouse;
-    state = const AsyncValue.loading();
-    await _repository.fetchAll(warehouseId: warehouseId);
-    state = AsyncValue.data(await _loadInitial(category));
+    final warehouseId = user?.canEdit ?? false ? null : user?.assignedWarehouse;
+    final previousItems = state.valueOrNull ?? const <InventoryItem>[];
+    
+    state = const AsyncLoading<List<InventoryItem>>().copyWithPrevious(state);
+    try {
+      // Force a full fetch on manual refresh
+      await _repository.fetchAll(warehouseId: warehouseId);
+      state = AsyncValue.data(await _loadInitial(category));
+    } catch (e, st) {
+      // 🛡️ RECOVERY: Prefer latest local snapshot; only surface error if no local data exists.
+      final localFallback = await _loadInitial(category);
+      if (localFallback.isNotEmpty || previousItems.isNotEmpty) {
+        state = AsyncValue.data(localFallback.isNotEmpty ? localFallback : previousItems);
+      } else {
+        // Only then we pass the mapped failure to the UI
+        state = AsyncValue.error(e, st);
+      }
+    }
   }
 }
 
@@ -156,7 +175,13 @@ class SelectedCategory extends _$SelectedCategory {
       final isManager = user?.canEdit ?? false;
       final warehouseId = isManager ? null : user?.assignedWarehouse;
       
-      Future.microtask(() => ref.read(inventoryRepositoryProvider).fetchAll(warehouseId: warehouseId));
+      Future.microtask(() async {
+        try {
+          await ref.read(inventoryRepositoryProvider).fetchAll(warehouseId: warehouseId);
+        } catch (e) {
+          debugPrint('SelectedCategory silent sync failed: $e');
+        }
+      });
     }
   }
 }
@@ -213,7 +238,24 @@ AsyncValue<List<InventoryItem>> filteredInventory(FilteredInventoryRef ref) {
         ).toList()
       ),
       loading: () => const AsyncValue.loading(),
-      error: (e, st) => AsyncValue.error(e, st),
+      error: (e, st) {
+        // Stream can still error on rare Isar edge cases; degrade to paginated cache.
+        final paginated = ref.watch(inventoryNotifierProvider);
+        return paginated.when(
+          data: (items) => AsyncValue.data(
+            items
+                .where(
+                  (item) =>
+                      item.category.trim().toLowerCase() ==
+                      selectedCategory.trim().toLowerCase(),
+                )
+                .toList(),
+          ),
+          loading: () => const AsyncValue.loading(),
+          // Avoid full-screen sync error for transient dual-source failures.
+          error: (_, __) => const AsyncValue.data(<InventoryItem>[]),
+        );
+      },
     );
   }
 

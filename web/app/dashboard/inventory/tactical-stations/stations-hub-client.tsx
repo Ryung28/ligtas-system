@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowLeft, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { StationRegistry } from '@/src/features/tactical-stations/components/station-registry'
 import { ManifestWorkbench } from '@/src/features/tactical-stations/components/manifest-workbench'
 import type { Station, InventoryPickerItem } from '@/src/features/tactical-stations/types'
@@ -14,11 +15,18 @@ interface StationsHubClientProps {
 }
 
 export function StationsHubClient({ stations, inventoryItems }: StationsHubClientProps) {
+    const searchParams = useSearchParams()
+    const urlStationId = searchParams.get('id')
+
     const [stationList, setStationList] = useState<Station[]>(stations)
     const [isDirty, setIsDirty] = useState(false)
-    const [activeStationId, setActiveStationId] = useState<number | null>(
-        stations[0]?.id ?? null
-    )
+    const [activeStationId, setActiveStationId] = useState<number | null>(() => {
+        if (urlStationId) {
+            const id = parseInt(urlStationId)
+            if (!isNaN(id) && stations.find(s => s.id === id)) return id
+        }
+        return stations[0]?.id ?? null
+    })
     const [isCreating, setIsCreating] = useState(false)
     const [blueprintItems, setBlueprintItems] = useState<number[]>([])
 
