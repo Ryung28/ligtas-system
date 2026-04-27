@@ -138,6 +138,64 @@ export async function markAsReadV3(roomId: string) {
     }
 }
 
+/**
+ * Mark ALL messages as read for the current user across ALL rooms.
+ */
+export async function markAllAsReadV3() {
+    try {
+        const supabase = await createSupabaseServer()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { error } = await supabase
+            .from('chat_messages')
+            .update({ is_read: true })
+            .neq('sender_id', user.id)
+            .eq('is_read', false)
+
+        if (error) throw error
+        return { success: true }
+    } catch (error: any) {
+        console.error('[Chat-V3] Mark All Read Failure:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+/**
+ * Mark the most recent message from someone else in a room as unread.
+ */
+export async function markRoomAsUnreadV3(roomId: string) {
+    try {
+        const id = roomIdSchema.parse(roomId)
+        const supabase = await createSupabaseServer()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        // Find the latest message from someone else
+        const { data: latestMessage, error: fetchError } = await supabase
+            .from('chat_messages')
+            .select('id')
+            .eq('room_id', id)
+            .neq('sender_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+        if (fetchError || !latestMessage) return { success: true } // Nothing to mark unread
+
+        const { error } = await supabase
+            .from('chat_messages')
+            .update({ is_read: false })
+            .eq('id', latestMessage.id)
+
+        if (error) throw error
+        return { success: true }
+    } catch (error: any) {
+        console.error('[Chat-V3] Mark Unread Failure:', error)
+        return { success: false, error: error.message }
+    }
+}
+
 export async function getOrCreateRoomV3(borrowRequestId: number) {
     try {
         const supabase = await createSupabaseServer()

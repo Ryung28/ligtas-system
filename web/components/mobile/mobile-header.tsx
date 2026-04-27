@@ -56,7 +56,7 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
                                     {breadcrumb}
                                 </span>
                             )}
-                            <h1 className="font-syne font-black italic uppercase tracking-tight text-lg text-gray-900 truncate pr-1.5">
+                            <h1 className="font-display font-black italic uppercase tracking-tight text-lg text-gray-900 truncate pr-1.5">
                                 {title}
                             </h1>
                         </div>

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "node scripts/check-tailwind-text-units.js && next lint",
-    "lint:tailwind-units": "node scripts/check-tailwind-text-units.js"
+    "lint:tailwind-units": "node scripts/check-tailwind-text-units.js",
+    "test:contract:logbook-reset": "node scripts/check-logbook-reset-contract.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

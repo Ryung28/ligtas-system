@@ -261,14 +261,12 @@ export function ExpandableInventoryRow({
                                      ) : displayAvailable}
                                  </span>
                               </div>
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.1em]">
-                                 IN STOCK / {displayTotal} TOTAL
-                              </span>
-                              {planStock > 0 && (
-                                  <span className="text-[9px] font-extrabold text-gray-500 tracking-tight">
-                                      Plan {planStock}{planDelta !== 0 ? ` (${planDeltaLabel})` : ''}
-                                  </span>
-                              )}
+                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.1em]">
+                                  {planStock > 0 
+                                     ? `${displayAvailable} IN STOCK / ${planStock} FIXED` 
+                                     : `IN STOCK / ${displayTotal} TOTAL`
+                                  }
+                               </span>
                          </div>
                     </div>
                 </TableCell>

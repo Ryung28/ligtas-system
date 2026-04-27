@@ -118,7 +118,7 @@ export function CompositeStockBar({
                     })
                 }
                 return acc
-            }, new Map<string, StockPopoverRow>())
+            }, new Map<string, StockPopoverRow>()).values()
         )
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 8)

@@ -11,6 +11,7 @@ import '../../domain/entities/resource_anomaly.dart';
 import 'alert_metric_pill.dart';
 
 const double kAlertCardHeight = 118;
+
 /// Full-queue list (`LogisticalQueueScreen`): compact row — dashboard strip uses [AnomalyCard] instead.
 const double kAlertQueueListCardHeight = kAlertCardHeight;
 
@@ -122,186 +123,271 @@ class AlertTactileCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: categoryBgColor,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    anomaly.serviceStatus.toUpperCase(),
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w800,
+                                      color: categoryTextColor,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    statusLabel,
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w800,
+                                      color: statusColor,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Gap(4),
+                            if (isOverdue) ...[
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      anomaly.itemName,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                        color: navyBlue,
+                                        height: 1.1,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Gap(6),
+                              Text(
+                                'Borrower: ${_safeBorrowerName(anomaly)}',
+                                style: GoogleFonts.lexend(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.neutralGray700,
+                                  letterSpacing: 0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Gap(8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _overdueTimingLine(anomaly),
+                                      style: GoogleFonts.lexend(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.neutralGray800,
+                                        letterSpacing: 0.2,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else if (isInventory) ...[
+                              Text(
+                                anomaly.itemName,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: navyBlue,
+                                  height: 1.1,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Gap(4),
+                              Expanded(
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final tight = constraints.maxHeight < 44;
+                                    final labelSize = tight ? 6.5 : 7.0;
+                                    final valueSize = tight ? 11.0 : 12.0;
+                                    final actionSize = tight ? 8.5 : 9.0;
+                                    final metricGap = tight ? 8.0 : 10.0;
+                                    final progressGap = tight ? 4.0 : 6.0;
+                                    final progressHeight = tight ? 3.0 : 4.0;
+
+                                    final denominator =
+                                        anomaly.maxStock != null &&
+                                                anomaly.maxStock! > 0
+                                            ? anomaly.maxStock!
+                                            : anomaly.thresholdStock;
+                                    final percentage =
+                                        denominator > 0
+                                            ? (anomaly.currentStock /
+                                                    denominator)
+                                                .clamp(0.0, 1.0)
+                                            : 0.0;
+
+                                    return Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            AlertMetricPill(
+                                              label: 'CURRENT',
+                                              value:
+                                                  '${anomaly.currentStock} units',
+                                              sentinel: sentinel,
+                                              labelSize: labelSize,
+                                              valueSize: valueSize,
+                                            ),
+                                            Gap(metricGap),
+                                            AlertMetricPill(
+                                              label: 'FIXED',
+                                              value: '$denominator units',
+                                              sentinel: sentinel,
+                                              labelSize: labelSize,
+                                              valueSize: valueSize,
+                                            ),
+                                            const Spacer(),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              child: LinearProgressIndicator(
+                                                value: percentage,
+                                                minHeight: progressHeight,
+                                                backgroundColor: const Color(
+                                                  0xFFF1F3F6,
+                                                ),
+                                                valueColor: AlwaysStoppedAnimation<
+                                                  Color
+                                                >(
+                                                  statusColor ==
+                                                          AppTheme.errorRed
+                                                      ? AppTheme.errorRed
+                                                      : (statusColor ==
+                                                              Colors
+                                                                  .orangeAccent
+                                                          ? AppTheme
+                                                              .warningOrange
+                                                          : AppTheme
+                                                              .primaryBlue),
+                                                ),
+                                              ),
+                                            ),
+                                            Gap(progressGap),
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(
+                                                anomaly.shelfActionLabel
+                                                    .toUpperCase(),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.lexend(
+                                                  fontSize: actionSize,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: navyBlue,
+                                                  letterSpacing: 0.45,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ] else ...[
+                              Text(
+                                anomaly.itemName,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: navyBlue,
+                                  height: 1.1,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Gap(3),
+                              Expanded(
+                                child: Text(
+                                  anomaly.reason,
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.neutralGray600,
+                                    letterSpacing: 0.2,
+                                  ),
+                                  maxLines: 2,
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
+                                      horizontal: 10,
+                                      vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: categoryBgColor,
-                                      borderRadius: BorderRadius.circular(6),
+                                      color: categoryBgColor.withOpacity(0.5),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      anomaly.serviceStatus.toUpperCase(),
+                                      'VIEW DETAILS',
                                       style: GoogleFonts.lexend(
-                                        fontSize: 8,
+                                        fontSize: 9,
                                         fontWeight: FontWeight.w800,
-                                        color: categoryTextColor,
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      statusLabel,
-                                      style: GoogleFonts.lexend(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w800,
-                                        color: statusColor,
+                                        color: navyBlue,
                                         letterSpacing: 0.5,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const Gap(4),
-                              if (isOverdue) ...[
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        anomaly.itemName,
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          color: navyBlue,
-                                          height: 1.1,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const Gap(6),
-                                Text(
-                                  'Borrower: ${_safeBorrowerName(anomaly)}',
-                                  style: GoogleFonts.lexend(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.neutralGray700,
-                                    letterSpacing: 0.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const Gap(8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _overdueTimingLine(anomaly),
-                                        style: GoogleFonts.lexend(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppTheme.neutralGray800,
-                                          letterSpacing: 0.2,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ] else if (isInventory) ...[
-                                Text(
-                                  anomaly.itemName,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: navyBlue,
-                                    height: 1.1,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const Gap(4),
-                                const Gap(6),
-                                Row(
-                                  children: [
-                                    AlertMetricPill(
-                                      label: 'CURRENT STOCK',
-                                      value: '${anomaly.currentStock}',
-                                      sentinel: sentinel,
-                                    ),
-                                    const Gap(10),
-                                    AlertMetricPill(
-                                      label: 'FIXED STOCK',
-                                      value: '${anomaly.thresholdStock}',
-                                      sentinel: sentinel,
-                                    ),
-                                    const Spacer(),
-                                  ],
-                                ),
-                              ] else ...[
-                                Text(
-                                  anomaly.itemName,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: navyBlue,
-                                    height: 1.1,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const Gap(3),
-                                Expanded(
-                                  child: Text(
-                                    anomaly.reason,
-                                    style: GoogleFonts.lexend(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.neutralGray600,
-                                      letterSpacing: 0.2,
-                                    ),
-                                    maxLines: 2,
-                                    softWrap: true,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: categoryBgColor.withOpacity(0.5),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'VIEW DETAILS',
-                                        style: GoogleFonts.lexend(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          color: navyBlue,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                            ],
                           ],
                         ),
                       ),
                     ),
-                    ],
+                  ],
                 ),
               ),
             ),

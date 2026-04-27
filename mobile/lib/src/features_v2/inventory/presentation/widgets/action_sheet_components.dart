@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:mobile/src/core/design_system/app_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/providers/manager_action_sheet_v2/manager_action_mode.dart';
 import 'tactical_image_picker.dart';
 import '../../../../core/design_system/widgets/tactical_image_viewer.dart';
 
@@ -35,7 +36,9 @@ class ActionSheetHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center, // 🛡️ ALIGNMENT FIX: Center to eliminate gaps
+      crossAxisAlignment:
+          CrossAxisAlignment
+              .center, // 🛡️ ALIGNMENT FIX: Center to eliminate gaps
       children: [
         // ── 🛡️ TACTICAL THUMBNAIL + ACTION ──
         Column(
@@ -44,34 +47,50 @@ class ActionSheetHeader extends StatelessWidget {
             GestureDetector(
               onTap: () async {
                 if (imageUrl.isNotEmpty) {
-                  TacticalImageViewer.show(context, url: imageUrl, title: itemName);
+                  TacticalImageViewer.show(
+                    context,
+                    url: imageUrl,
+                    title: itemName,
+                  );
                 } else {
                   // 🛡️ QUICK CAPTURE: Open camera if no image exists
                   HapticFeedback.mediumImpact();
-                  final newUrl = await TacticalImagePicker.captureAndUpload(context, itemId: itemId);
+                  final newUrl = await TacticalImagePicker.captureAndUpload(
+                    context,
+                    itemId: itemId,
+                  );
                   if (newUrl != null) onImageUpdated(newUrl);
                 }
               },
               child: Container(
-                width: 80, height: 80,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F4F9),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.onyxBlack.withOpacity(0.05), width: 2),
+                  border: Border.all(
+                    color: AppTheme.onyxBlack.withOpacity(0.05),
+                    width: 2,
+                  ),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Shimmer.fromColors(
-                            baseColor: const Color(0xFFE2E8F0),
-                            highlightColor: Colors.white,
-                            child: Container(color: Colors.white),
+                  child:
+                      imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder:
+                                (context, url) => Shimmer.fromColors(
+                                  baseColor: const Color(0xFFE2E8F0),
+                                  highlightColor: Colors.white,
+                                  child: Container(color: Colors.white),
+                                ),
+                          )
+                          : Icon(
+                            Icons.inventory_2_outlined,
+                            color: AppTheme.carbonGray.withOpacity(0.2),
                           ),
-                        )
-                      : Icon(Icons.inventory_2_outlined, color: AppTheme.carbonGray.withOpacity(0.2)),
                 ),
               ),
             ),
@@ -80,14 +99,17 @@ class ActionSheetHeader extends StatelessWidget {
               GestureDetector(
                 onTap: () async {
                   HapticFeedback.lightImpact();
-                  final newUrl = await TacticalImagePicker.captureAndUpload(context, itemId: itemId);
+                  final newUrl = await TacticalImagePicker.captureAndUpload(
+                    context,
+                    itemId: itemId,
+                  );
                   if (newUrl != null) onImageUpdated(newUrl);
                 },
                 child: Text(
                   'CHANGE PHOTO',
                   style: GoogleFonts.lexend(
-                    fontSize: 9, 
-                    fontWeight: FontWeight.w800, 
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF334155), // Tactical Slate Charcoal
                     letterSpacing: 0.5,
                   ),
@@ -97,7 +119,7 @@ class ActionSheetHeader extends StatelessWidget {
           ],
         ),
         const Gap(16),
-        
+
         // ── HEADER INFO ──
         Flexible(
           child: Column(
@@ -142,7 +164,10 @@ class ActionSheetHeader extends StatelessWidget {
                 const Gap(4),
                 // Code/SKU — Lexend badge style
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.neutralGray900.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(6),
@@ -167,13 +192,13 @@ class ActionSheetHeader extends StatelessWidget {
 }
 
 class ActionSheetToggleBar extends StatelessWidget {
-  final int currentModeIndex;
-  final Function(int) onModeSelected;
+  final ManagerMode currentMode;
+  final ValueChanged<ManagerMode> onModeSelected;
   final SentinelColors sentinel;
 
   const ActionSheetToggleBar({
     super.key,
-    required this.currentModeIndex,
+    required this.currentMode,
     required this.onModeSelected,
     required this.sentinel,
   });
@@ -181,19 +206,36 @@ class ActionSheetToggleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2), // 🛡️ SHADOW FIX: Giving the raised shadow room to breathe
+      margin: const EdgeInsets.symmetric(
+        horizontal: 2,
+      ), // 🛡️ SHADOW FIX: Giving the raised shadow room to breathe
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: sentinel.containerLow,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: sentinel.tactile.recessed, // 🛡️ RECESSED TRAY (Skeuomorphic Depth)
+        boxShadow:
+            sentinel.tactile.recessed, // 🛡️ RECESSED TRAY (Skeuomorphic Depth)
       ),
       child: Row(
         children: [
-          Expanded(child: _ToggleButton(label: 'IDENTITY', isActive: currentModeIndex == 0, onTap: () => onModeSelected(0), activeColor: const Color(0xFF1E293B), sentinel: sentinel)),
-          Expanded(child: _ToggleButton(label: 'RESTOCK', isActive: currentModeIndex == 1, onTap: () => onModeSelected(1), activeColor: AppTheme.emeraldGreen, sentinel: sentinel)),
-          Expanded(child: _ToggleButton(label: 'HAND OVER', isActive: currentModeIndex == 2, onTap: () => onModeSelected(2), activeColor: AppTheme.onyxBlack, sentinel: sentinel)),
-          Expanded(child: _ToggleButton(label: 'RESERVE', isActive: currentModeIndex == 3, onTap: () => onModeSelected(3), activeColor: AppTheme.warningAmber, sentinel: sentinel)),
+          Expanded(
+            child: _ToggleButton(
+              label: 'IDENTITY',
+              isActive: currentMode == ManagerMode.edit,
+              onTap: () => onModeSelected(ManagerMode.edit),
+              activeColor: const Color(0xFF1E293B),
+              sentinel: sentinel,
+            ),
+          ),
+          Expanded(
+            child: _ToggleButton(
+              label: 'RESTOCK',
+              isActive: currentMode == ManagerMode.restock,
+              onTap: () => onModeSelected(ManagerMode.restock),
+              activeColor: AppTheme.emeraldGreen,
+              sentinel: sentinel,
+            ),
+          ),
         ],
       ),
     );
@@ -208,9 +250,9 @@ class _ToggleButton extends StatelessWidget {
   final SentinelColors sentinel;
 
   const _ToggleButton({
-    required this.label, 
-    required this.isActive, 
-    required this.onTap, 
+    required this.label,
+    required this.isActive,
+    required this.onTap,
     required this.activeColor,
     required this.sentinel,
   });
@@ -222,27 +264,32 @@ class _ToggleButton extends StatelessWidget {
         HapticFeedback.selectionClick();
         onTap();
       },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            // 🛡️ RAISED SWITCH: Button pops out when active
-            boxShadow: isActive ? sentinel.tactile.raised : [],
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.lexend(
-              fontSize: 9,
-              fontWeight: FontWeight.w900, // 🛡️ ELITE WEIGHT: Bold for all states
-              color: isActive ? activeColor : AppTheme.onyxBlack, // 🛡️ INK FIX: Solid Black for field-readability
-              letterSpacing: 0.5,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          // 🛡️ RAISED SWITCH: Button pops out when active
+          boxShadow: isActive ? sentinel.tactile.raised : [],
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.lexend(
+            fontSize: 9,
+            fontWeight:
+                FontWeight.w900, // 🛡️ ELITE WEIGHT: Bold for all states
+            color:
+                isActive
+                    ? activeColor
+                    : AppTheme
+                        .onyxBlack, // 🛡️ INK FIX: Solid Black for field-readability
+            letterSpacing: 0.5,
           ),
         ),
+      ),
     );
   }
 }
@@ -252,13 +299,21 @@ class QuantitySelector extends StatelessWidget {
   final ValueChanged<int> onChanged;
   final int max;
 
-  const QuantitySelector({super.key, required this.quantity, required this.onChanged, required this.max});
+  const QuantitySelector({
+    super.key,
+    required this.quantity,
+    required this.onChanged,
+    required this.max,
+  });
 
   @override
   Widget build(BuildContext context) {
     final sentinel = Theme.of(context).sentinel;
     return Container(
-      decoration: BoxDecoration(color: sentinel.containerLow, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: sentinel.containerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           IconButton(
@@ -267,7 +322,11 @@ class QuantitySelector extends StatelessWidget {
           ),
           Text(
             quantity.toString().padLeft(2, '0'),
-            style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.onyxBlack),
+            style: GoogleFonts.lexend(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.onyxBlack,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.add_rounded, size: 18),
@@ -301,20 +360,40 @@ class SmallTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.carbonGray)),
+        Text(
+          label,
+          style: GoogleFonts.lexend(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.carbonGray,
+          ),
+        ),
         const Gap(6),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
-          style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.onyxBlack),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.onyxBlack,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.plusJakartaSans(color: AppTheme.carbonGray.withOpacity(0.4), fontSize: 12),
+            hintStyle: GoogleFonts.plusJakartaSans(
+              color: AppTheme.carbonGray.withOpacity(0.4),
+              fontSize: 12,
+            ),
             filled: true,
             fillColor: sentinel.containerLow,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
       ],

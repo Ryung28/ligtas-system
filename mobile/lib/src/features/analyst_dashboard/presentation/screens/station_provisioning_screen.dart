@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/widgets/tactical_asset_image.dart';
-import 'package:mobile/src/features/navigation/providers/navigation_provider.dart';
 import '../controllers/analyst_dashboard_controller.dart';
 import '../../domain/entities/station_manifest.dart';
 import '../../../fast_dispatch/providers/dispatch_controller.dart';
@@ -35,17 +34,10 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
   @override
   void initState() {
     super.initState();
-    // Reuse Hero V2 dock-suppression pattern while this screen is active.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(isDockSuppressedProvider.notifier).state = true;
-      }
-    });
   }
 
   @override
   void dispose() {
-    ref.read(isDockSuppressedProvider.notifier).state = false;
     super.dispose();
   }
 
@@ -243,16 +235,8 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
   }
 
   Widget _buildItemCard(StationManifestItem item) {
-    final healthRatio = item.quantityRequired > 0 ? (item.currentStock / item.quantityRequired) : 0.0;
-    
-    // 🎨 TACTICAL TRIAGE COLORS: 
-    // Green > 80% (Safe)
-    // Orange 20-80% (Moderate/Warning)
-    // Red < 20% (Critical)
-    final Color healthColor = healthRatio < 0.2 
-        ? Colors.redAccent 
-        : (healthRatio < 0.8 ? Colors.orangeAccent : const Color(0xFF10B981));
-    
+    final bool canBorrow = item.currentStock > 0;
+
     return InkWell(
       onTap: () {
         // 🚀 ONE-TAP DISPATCH: Pre-load item into single-voucher and move to Dispatch Hub
@@ -315,12 +299,33 @@ class _StationProvisioningScreenState extends ConsumerState<StationProvisioningS
                       ),
                     ],
                   ),
-                  Text('${item.currentStock} AVAILABLE / ${item.quantityRequired} TOTAL', 
-                    style: GoogleFonts.lexend(fontSize: 9, fontWeight: FontWeight.w700, color: healthColor)),
+                  Text(
+                    '${item.currentStock} Available',
+                    style: GoogleFonts.lexend(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: canBorrow ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'BORROW',
+                style: GoogleFonts.lexend(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                  color: canBorrow ? const Color(0xFF94A3B8) : const Color(0xFFCBD5E1),
+                ),
+              ),
+            ),
           ],
         ),
       ),

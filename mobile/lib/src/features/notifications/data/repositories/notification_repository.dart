@@ -13,6 +13,37 @@ class NotificationRepository {
   StreamSubscription? _notificationStream;
   StreamSubscription? _readReceiptStream;
   Timer? _realtimeDebounce;
+  static const Set<String> _mobileAnalystRoles = {
+    'admin',
+    'staff',
+    'editor',
+    'analyst',
+    'responder',
+  };
+  static const Set<String> _mobileAnalystExcludedTypes = {
+    'chat_message',
+    'chat_message_ops',
+    'chat_message_personal',
+    'borrow_request',
+    'borrow_request_new',
+    'borrow_approved',
+    'borrow_rejected',
+    'request_approved',
+    'request_rejected',
+  };
+  static const Set<String> _operationalAlertTypes = {
+    'stock_low',
+    'stock_out',
+    'low_stock',
+    'item_overdue',
+  };
+  static const Set<String> _operationalRoles = {
+    'admin',
+    'staff',
+    'editor',
+    'analyst',
+    'responder',
+  };
 
   NotificationRepository() : _supabase = Supabase.instance.client;
 
@@ -76,29 +107,40 @@ class NotificationRepository {
       }
 
       // 🛡️ Use the same RPC function as web dashboard
-      final response = await _supabase.rpc(
-        'get_user_inbox',
-        params: {'p_limit': limit},
-      ).timeout(const Duration(seconds: 10));
+      final response = await _supabase
+          .rpc('get_user_inbox', params: {'p_limit': limit})
+          .timeout(const Duration(seconds: 10));
 
       final List<dynamic> data = response as List<dynamic>;
-      
+      final role = await _getCurrentUserRole();
+
       // Map to domain models
-      final notifications = data.map((item) {
-        return NotificationItem(
-          id: item['id']?.toString() ?? '',
-          userId: item['user_id']?.toString(),
-          referenceId: item['reference_id']?.toString(),
-          title: item['title']?.toString() ?? 'System Alert',
-          message: item['message']?.toString() ?? 'Mission status information update.',
-          time: item['created_at']?.toString() ?? DateTime.now().toIso8601String(),
-          type: item['type']?.toString() ?? 'system_alert',
-          isRead: item['is_read'] == true,
-          metadata: item['metadata'] is Map<String, dynamic> 
-              ? Map<String, dynamic>.from(item['metadata'] as Map)
-              : {},
-        );
-      }).toList();
+      final notifications =
+          data
+              .map((item) {
+                return NotificationItem(
+                  id: item['id']?.toString() ?? '',
+                  userId: item['user_id']?.toString(),
+                  referenceId: item['reference_id']?.toString(),
+                  title: item['title']?.toString() ?? 'System Alert',
+                  message:
+                      item['message']?.toString() ??
+                      'Mission status information update.',
+                  time:
+                      item['created_at']?.toString() ??
+                      DateTime.now().toIso8601String(),
+                  type: item['type']?.toString() ?? 'system_alert',
+                  isRead: item['is_read'] == true,
+                  metadata:
+                      item['metadata'] is Map<String, dynamic>
+                          ? Map<String, dynamic>.from(item['metadata'] as Map)
+                          : {},
+                );
+              })
+              .where((notification) {
+                return _isVisibleOnMobileForRole(notification.type, role);
+              })
+              .toList();
 
       // Cache in local storage for offline access
       await _cacheNotifications(notifications);
@@ -110,7 +152,7 @@ class NotificationRepository {
       );
     } catch (error) {
       debugPrint('[NotificationRepository] Error fetching inbox: $error');
-      
+
       // Fallback to cached data
       final cached = await _getCachedNotifications();
       if (cached.isNotEmpty) {
@@ -144,10 +186,7 @@ class NotificationRepository {
       // 🛡️ Insert into notification_reads junction table (same as web)
       await _supabase
           .from('notification_reads')
-          .upsert({
-            'notification_id': notificationId,
-            'user_id': userId,
-          })
+          .upsert({'notification_id': notificationId, 'user_id': userId})
           .timeout(const Duration(seconds: 5));
 
       // Update local cache
@@ -186,7 +225,8 @@ class NotificationRepository {
         return inboxResult;
       }
 
-      final unreadNotifications = inboxResult.data.where((n) => !n.isRead).toList();
+      final unreadNotifications =
+          inboxResult.data.where((n) => !n.isRead).toList();
       if (unreadNotifications.isEmpty) {
         return NotificationResult(
           success: true,
@@ -196,10 +236,10 @@ class NotificationRepository {
       }
 
       // 2. Bulk insert into notification_reads
-      final unreadIds = unreadNotifications.map((n) => ({
-        'notification_id': n.id,
-        'user_id': userId,
-      })).toList();
+      final unreadIds =
+          unreadNotifications
+              .map((n) => ({'notification_id': n.id, 'user_id': userId}))
+              .toList();
 
       await _supabase
           .from('notification_reads')
@@ -243,7 +283,9 @@ class NotificationRepository {
         message: 'Intel erased',
       );
     } catch (error) {
-      debugPrint('[NotificationRepository] Error deleting notification: $error');
+      debugPrint(
+        '[NotificationRepository] Error deleting notification: $error',
+      );
       return NotificationResult(
         success: false,
         data: [],
@@ -271,7 +313,10 @@ class NotificationRepository {
     return entities.map((e) => e.toModel()).toList();
   }
 
-  Future<void> _updateLocalReadStatus(String notificationId, bool isRead) async {
+  Future<void> _updateLocalReadStatus(
+    String notificationId,
+    bool isRead,
+  ) async {
     final col = IsarService.notificationItems;
     final entity = await col.getByRemoteId(notificationId);
     if (entity != null) {
@@ -300,6 +345,45 @@ class NotificationRepository {
     });
   }
 
+  Future<String?> _getCurrentUserRole() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    try {
+      final profile = await _supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 5));
+      return profile?['role']?.toString().toLowerCase();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isVisibleOnMobileForRole(String notificationType, String? role) {
+    final normalizedType = notificationType.toLowerCase();
+    final normalizedRole = role?.toLowerCase();
+
+    // Default-safe for unknown role: hide operational-only alerts.
+    if (normalizedRole == null) {
+      return !_operationalAlertTypes.contains(normalizedType);
+    }
+
+    // Production rule: low-stock and overdue operational alerts are analyst-side only.
+    if (_operationalAlertTypes.contains(normalizedType) &&
+        !_operationalRoles.contains(normalizedRole)) {
+      return false;
+    }
+
+    // Existing analyst feed policy: hide chat + approval traffic on analyst stream.
+    if (_mobileAnalystRoles.contains(normalizedRole)) {
+      return !_mobileAnalystExcludedTypes.contains(normalizedType);
+    }
+
+    return true;
+  }
 }
 
 class NotificationResult {

@@ -5,6 +5,9 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:intl/intl.dart';
 import '../../domain/entities/resource_anomaly.dart';
 import '../../../../core/design_system/app_theme.dart';
+import '../../../../core/design_system/widgets/tactical_image_viewer.dart';
+import '../../../../core/utils/storage_utils.dart';
+import '../../../../features_v2/inventory/presentation/widgets/tactical_asset_image.dart';
 
 /// Strip height in [ResourceAnomaliesSection] horizontal list — keep in sync with list `SizedBox`.
 const double kAnomalyStripCardHeight = 142;
@@ -168,18 +171,32 @@ class _AnomalyCardState extends State<AnomalyCard>
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: categoryBgColor,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          categoryIcon,
-                          size: 20,
-                          color: categoryColor,
+                    GestureDetector(
+                      onTap: () {
+                        final resolved = StorageUtils.resolveAssetUrl(
+                          anomaly.imageUrl,
+                        );
+                        if (resolved.trim().isNotEmpty) {
+                          TacticalImageViewer.show(
+                            context,
+                            url: resolved,
+                            title: anomaly.itemName,
+                            heroTag: 'anomaly_img_${anomaly.id}',
+                          );
+                        }
+                      },
+                      child: Hero(
+                        tag: 'anomaly_img_${anomaly.id}',
+                        child: TacticalAssetImage(
+                          path: anomaly.imageUrl,
+                          assetId: anomaly.inventoryId,
+                          width: 44,
+                          height: 44,
+                          size: 44,
+                          borderRadius: 14,
+                          fit: BoxFit.cover,
+                          fallbackIcon: categoryIcon,
+                          fallbackColor: categoryColor,
                         ),
                       ),
                     ),
@@ -404,43 +421,77 @@ class _AnomalyCardState extends State<AnomalyCard>
     required Color severityColor,
     required Color navyBlue,
   }) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percentage / 100,
-              minHeight: 6,
-              backgroundColor: const Color(0xFFF1F3F6),
-              valueColor: AlwaysStoppedAnimation<Color>(severityColor),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tight = constraints.maxHeight < 64;
+        final valueSize = tight ? 10.5 : 12.0;
+        final labelSize = tight ? 8.0 : 9.0;
+        final actionSize = tight ? 9.0 : 10.0;
+        final topGap = tight ? 4.0 : 8.0;
+        final rowGap = tight ? 6.0 : 10.0;
+        final progressGap = tight ? 4.0 : 8.0;
+        final progressHeight = tight ? 4.0 : 6.0;
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Gap(topGap),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MetricCell(
+                        label: 'Current',
+                        value:
+                            '${anomaly.currentStock} ${anomaly.currentStock == 1 ? "unit" : "units"}',
+                        labelSize: labelSize,
+                        valueSize: valueSize,
+                      ),
+                    ),
+                    Gap(rowGap),
+                    Expanded(
+                      child: _MetricCell(
+                        label: 'Fixed',
+                        value:
+                            '$denominator ${denominator == 1 ? "unit" : "units"}',
+                        labelSize: labelSize,
+                        valueSize: valueSize,
+                      ),
+                    ),
+                  ],
+                ),
+                Gap(progressGap),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: percentage / 100,
+                    minHeight: progressHeight,
+                    backgroundColor: const Color(0xFFF1F3F6),
+                    valueColor: AlwaysStoppedAnimation<Color>(severityColor),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const Gap(8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStockDisplay(
-                anomaly.currentStock,
-                denominator,
-                isMaxView: hasMaxStock,
-              ),
-              Text(
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
                 anomaly.shelfActionLabel.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.lexend(
-                  fontSize: 10,
+                  fontSize: actionSize,
                   fontWeight: FontWeight.w800,
                   color: navyBlue,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.4,
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -506,48 +557,47 @@ class _AnomalyCardState extends State<AnomalyCard>
       ),
     );
   }
+}
 
-  Widget _buildStockDisplay(int current, int total, {bool isMaxView = false}) {
-    return RichText(
-      text: TextSpan(
-        children: [
-          if (isMaxView) ...[
-            TextSpan(
-              text: current.toString(),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.neutralGray900,
-              ),
-            ),
-            TextSpan(
-              text: ' / $total UNITS AVAILABLE',
-              style: GoogleFonts.lexend(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.neutralGray500,
-              ),
-            ),
-          ] else ...[
-            TextSpan(
-              text: '$current ${current == 1 ? "UNIT" : "UNITS"} LEFT',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.neutralGray900,
-              ),
-            ),
-            TextSpan(
-              text: '  •  Fixed Stock: $total',
-              style: GoogleFonts.lexend(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.neutralGray400,
-              ),
-            ),
-          ],
-        ],
-      ),
+class _MetricCell extends StatelessWidget {
+  final String label;
+  final String value;
+  final double labelSize;
+  final double valueSize;
+
+  const _MetricCell({
+    required this.label,
+    required this.value,
+    this.labelSize = 9,
+    this.valueSize = 12,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.lexend(
+            fontSize: labelSize,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.neutralGray500,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const Gap(2),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: valueSize,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.neutralGray900,
+          ),
+        ),
+      ],
     );
   }
 }

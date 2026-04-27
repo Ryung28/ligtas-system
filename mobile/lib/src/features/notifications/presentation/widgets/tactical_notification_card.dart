@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../core/design_system/app_theme.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/notification_model.dart';
 import '../providers/notification_provider.dart';
 import '../utils/notification_route_resolver.dart';
@@ -128,7 +129,6 @@ class TacticalNotificationCard extends ConsumerWidget {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                     child: InkWell(
-                      onTap: () => _handleTriage(context, ref),
                       onLongPress: () => _showDeleteDialog(context, ref),
                       borderRadius: BorderRadius.circular(16),
                       child: Padding(
@@ -207,6 +207,32 @@ class TacticalNotificationCard extends ConsumerWidget {
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const Gap(8),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 40,
+                                child: OutlinedButton(
+                                  onPressed: () => _markAsRead(context, ref),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: sentinel.onSurfaceVariant.withOpacity(0.22),
+                                      width: 1.1,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'MARK AS READ',
+                                    style: GoogleFonts.lexend(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.7,
+                                      color: sentinel.onSurfaceVariant.withOpacity(0.82),
                                     ),
                                   ),
                                 ),
@@ -290,18 +316,92 @@ class TacticalNotificationCard extends ConsumerWidget {
 
   Future<void> _handleTriage(BuildContext context, WidgetRef ref) async {
     HapticFeedback.mediumImpact();
-    if (!notification.isRead) {
-      try {
-        await ref.read(markNotificationAsReadProvider(notification.id).future);
-      } catch (_) {
-        // Keep navigation available even if read receipt fails.
-      }
+    if (!context.mounted) return;
+    final targetRoute = _resolveNavigationTarget(notification, ref);
+    if (targetRoute == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No redirect for this approval alert.'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    context.push(targetRoute);
+  }
+
+  Future<void> _markAsRead(BuildContext context, WidgetRef ref) async {
+    if (notification.isRead) return;
+    HapticFeedback.selectionClick();
+    try {
+      await ref.read(markNotificationAsReadProvider(notification.id).future);
       ref.invalidate(systemNotificationsProvider);
       ref.invalidate(unreadNotificationCountProvider);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to mark notification as read.')),
+      );
+    }
+  }
+
+  String? _resolveNavigationTarget(NotificationItem notification, WidgetRef ref) {
+    final user = ref.read(currentUserProvider);
+    final isAnalystFlow = user?.canEdit ?? false;
+    final type = notification.type.trim().toLowerCase();
+    final approvalTypes = <String>{
+      'borrow_approved',
+      'borrow_rejected',
+      'borrow_request',
+      'request_approved',
+      'request_rejected',
+    };
+    final activityTypes = <String>{
+      'item_returned',
+      'item_overdue',
+    };
+
+    if (isAnalystFlow && approvalTypes.contains(type)) {
+      // Explicit product rule: approval-related notifications do not navigate on analyst mobile.
+      return null;
     }
 
-    if (!context.mounted) return;
-    context.push(NotificationRouteResolver.resolve(notification));
+    if (isAnalystFlow && activityTypes.contains(type)) {
+      final focusToken = _resolveActivityFocusToken(notification);
+      if (focusToken != null) {
+        return '/manager/activity?focus=${Uri.encodeComponent(focusToken)}';
+      }
+      return '/manager/activity';
+    }
+
+    final actionTarget = notification.actionTarget?.trim();
+    if (actionTarget != null && actionTarget.isNotEmpty) {
+      return _sanitizeRoute(actionTarget);
+    }
+
+    final fallback = NotificationRouteResolver.resolve(notification).trim();
+    return _sanitizeRoute(fallback);
+  }
+
+  String? _resolveActivityFocusToken(NotificationItem notification) {
+    String? asString(dynamic value) {
+      if (value == null) return null;
+      final text = value.toString().trim();
+      return text.isEmpty ? null : text;
+    }
+
+    final meta = notification.metadata;
+    return asString(meta['activity_id']) ??
+        asString(meta['activityId']) ??
+        asString(notification.referenceId) ??
+        asString(notification.id);
+  }
+
+  String _sanitizeRoute(String route) {
+    if (route.isEmpty) return '/dashboard';
+    if (!route.startsWith('/')) return '/dashboard';
+    return route;
   }
 
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {

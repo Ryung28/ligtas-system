@@ -1,14 +1,20 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
-import { Camera } from 'lucide-react'
+import { Camera, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 
 interface ScannerViewportProps {
     onScan: (text: string) => void;
     isActive: boolean;
 }
+
+// 🔊 TACTICAL FEEDBACK SINGLETON: Prevents "Too many WebMediaPlayers" intervention
+const SCAN_SOUND = typeof Audio !== 'undefined' 
+    ? new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3') 
+    : null
 
 export function ScannerViewport({ onScan, isActive }: ScannerViewportProps) {
     const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -19,16 +25,40 @@ export function ScannerViewport({ onScan, isActive }: ScannerViewportProps) {
     // Unique ID per instance to prevent "ghosting" or duplicated feeds from stale mounts
     const regionId = useRef(`qr-reader-${Math.random().toString(36).slice(2, 9)}`).current
 
+    const playScanSound = useCallback(() => {
+        if (!SCAN_SOUND) return
+        SCAN_SOUND.currentTime = 0
+        SCAN_SOUND.play().catch(() => {})
+    }, [])
+
     useEffect(() => {
         const discover = async () => {
             try {
                 const devices = await Html5Qrcode.getCameras()
                 setCameras(devices.map(d => ({ id: d.id, label: d.label })))
-                if (devices.length > 0) setSelectedCameraId(devices[0].id)
-            } catch (e) {}
+                
+                if (devices.length > 0) {
+                    // 🛰️ TACTICAL DEFAULT: Prioritize back/rear cameras
+                    const backCam = devices.find(d => 
+                        d.label.toLowerCase().includes('back') || 
+                        d.label.toLowerCase().includes('rear') ||
+                        d.label.toLowerCase().includes('environment')
+                    )
+                    setSelectedCameraId(backCam?.id || devices[0].id)
+                }
+            } catch (e) {
+                console.error('[Scanner:Discover]', e)
+            }
         }
         discover()
     }, [])
+
+    const toggleCamera = useCallback(() => {
+        if (cameras.length <= 1) return
+        const currentIndex = cameras.findIndex(c => c.id === selectedCameraId)
+        const nextIndex = (currentIndex + 1) % cameras.length
+        setSelectedCameraId(cameras[nextIndex].id)
+    }, [cameras, selectedCameraId])
 
     const stopScanner = async () => {
         if (scannerRef.current) {
@@ -77,8 +107,7 @@ export function ScannerViewport({ onScan, isActive }: ScannerViewportProps) {
                 onScan(text)
                 
                 // Tactical feedback
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3')
-                audio.play().catch(() => {})
+                playScanSound()
                 
                 // FIX: Small delay before stopping to prevent AbortError on the video stream
                 // being interrupted during the 'play' request of internal library mechanics
@@ -149,18 +178,16 @@ export function ScannerViewport({ onScan, isActive }: ScannerViewportProps) {
             )}
 
             {cameras.length > 1 && (
-                <div className="absolute top-4 right-4 z-30 flex gap-2">
-                    <select 
-                        value={selectedCameraId}
-                        onChange={(e) => setSelectedCameraId(e.target.value)}
-                        className="bg-slate-900/80 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border border-white/10 outline-none backdrop-blur-xl appearance-none cursor-pointer shadow-2xl transition-all hover:bg-slate-800"
+                <div className="absolute top-4 right-4 z-30">
+                    <Button 
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleCamera}
+                        className="bg-slate-900/80 text-white rounded-xl border border-white/10 backdrop-blur-xl h-10 w-10 hover:bg-slate-800 active:scale-95 transition-all shadow-2xl"
+                        title="Switch Camera"
                     >
-                        {cameras.map(c => (
-                            <option key={c.id} value={c.id}>
-                                {c.label.includes('Back') ? 'Primary' : c.label.includes('Front') ? 'Front' : 'External'} Cam
-                            </option>
-                        ))}
-                    </select>
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
                 </div>
             )}
         </div>

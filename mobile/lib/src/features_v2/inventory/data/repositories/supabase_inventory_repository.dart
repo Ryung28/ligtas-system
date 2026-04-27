@@ -614,14 +614,24 @@ class SupabaseInventoryRepository implements IInventoryRepository {
   Future<void> createItem({
     required String name,
     required String category,
-    required int initialStock,
+    required int locationRegistryId,
+    required String itemType,
+    required int qtyGood,
+    required int qtyDamaged,
+    required int qtyMaintenance,
+    required int qtyLost,
     String? storageLocation,
+    String? brand,
     String? unit,
     String? serialNumber,
     String? modelNumber,
+    String? expiryDate,
+    int? expiryAlertDays,
     int? targetStock,
     int? lowStockThreshold,
+    bool? restockAlertEnabled,
     String? imageUrl,
+    List<Map<String, dynamic>>? siteDistributions,
   }) async {
     try {
       final trimmedName = name.trim();
@@ -632,28 +642,50 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       if (trimmedCategory.isEmpty) {
         throw Exception('Category is required.');
       }
-      if (initialStock < 0) {
-        throw Exception('Initial stock cannot be negative.');
+      if (itemType != 'equipment' && itemType != 'consumable') {
+        throw Exception('Invalid item type.');
+      }
+      if (qtyGood < 0 || qtyDamaged < 0 || qtyMaintenance < 0 || qtyLost < 0) {
+        throw Exception('Quantity buckets cannot be negative.');
+      }
+      if (locationRegistryId <= 0) {
+        throw Exception('A valid warehouse location is required.');
+      }
+      final threshold = lowStockThreshold ?? 20;
+      if (threshold < 0 || threshold > 100) {
+        throw Exception('Low stock threshold must be between 0 and 100.');
+      }
+      final computedTotal = qtyGood + qtyDamaged + qtyMaintenance + qtyLost;
+      if (computedTotal < 1) {
+        throw Exception('Total stock must be at least 1.');
       }
 
       final now = DateTime.now().toUtc().toIso8601String();
       final location = (storageLocation ?? '').trim();
       final normalizedUnit = (unit ?? '').trim().isEmpty ? 'pcs' : unit!.trim();
+      final normalizedBrand = (brand ?? '').trim();
+      final normalizedExpiry = (expiryDate ?? '').trim();
+      final alertEnabled = restockAlertEnabled ?? true;
+      final distributions = (siteDistributions ?? const <Map<String, dynamic>>[])
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
 
-      await _client.from('inventory').insert({
+      final primaryInsert = await _client.from('inventory').insert({
         'item_name': trimmedName,
         'base_name': trimmedName,
         'category': trimmedCategory,
-        'item_type': 'equipment',
-        'stock_total': initialStock,
-        'stock_available': initialStock,
-        'qty_good': initialStock,
-        'qty_damaged': 0,
-        'qty_maintenance': 0,
-        'qty_lost': 0,
+        'item_type': itemType,
+        'stock_total': computedTotal,
+        'stock_available': qtyGood,
+        'qty_good': qtyGood,
+        'qty_damaged': qtyDamaged,
+        'qty_maintenance': qtyMaintenance,
+        'qty_lost': qtyLost,
         'status': 'Good',
-        'storage_location': location.isEmpty ? 'lower_warehouse' : location,
+        'location_registry_id': locationRegistryId,
+        'storage_location': location.isEmpty ? 'location_$locationRegistryId' : location,
         'unit': normalizedUnit,
+        'brand': normalizedBrand.isEmpty ? null : normalizedBrand,
         'serial_number': serialNumber?.trim().isNotEmpty == true
             ? serialNumber!.trim()
             : null,
@@ -661,11 +693,77 @@ class SupabaseInventoryRepository implements IInventoryRepository {
             ? modelNumber!.trim()
             : null,
         'target_stock': targetStock ?? 0,
-        'low_stock_threshold': lowStockThreshold ?? 20,
+        'low_stock_threshold': threshold,
+        'restock_alert_enabled': alertEnabled,
+        'expiry_date': normalizedExpiry.isEmpty ? null : normalizedExpiry,
+        'expiry_alert_days': expiryAlertDays,
         'image_url': imageUrl,
         'created_at': now,
         'updated_at': now,
-      });
+      }).select().single();
+
+      if (distributions.length > 1) {
+        final primaryRow = Map<String, dynamic>.from(primaryInsert as Map);
+        final primaryId = (primaryRow['id'] as num).toInt();
+        final parentId = primaryRow['parent_id'] == null
+            ? primaryId
+            : (primaryRow['parent_id'] as num).toInt();
+
+        final siblings = <Map<String, dynamic>>[];
+        for (var i = 1; i < distributions.length; i++) {
+          final dist = distributions[i];
+          final distLocationId = (dist['locationId'] as num?)?.toInt();
+          final distLocationName = (dist['locationName'] as String?)?.trim();
+          final distGood = (dist['qtyGood'] as num?)?.toInt() ?? 0;
+          final distDamaged = (dist['qtyDamaged'] as num?)?.toInt() ?? 0;
+          final distMaintenance = (dist['qtyMaintenance'] as num?)?.toInt() ?? 0;
+          final distLost = (dist['qtyLost'] as num?)?.toInt() ?? 0;
+          final distTotal = distGood + distDamaged + distMaintenance + distLost;
+
+          if (distLocationId == null || distLocationId <= 0 || distTotal < 1) {
+            continue;
+          }
+
+          siblings.add({
+            'item_name': trimmedName,
+            'base_name': trimmedName,
+            'parent_id': parentId,
+            'category': trimmedCategory,
+            'item_type': itemType,
+            'stock_total': distTotal,
+            'stock_available': distGood,
+            'qty_good': distGood,
+            'qty_damaged': distDamaged,
+            'qty_maintenance': distMaintenance,
+            'qty_lost': distLost,
+            'status': 'Good',
+            'location_registry_id': distLocationId,
+            'storage_location': (distLocationName == null || distLocationName.isEmpty)
+                ? 'location_$distLocationId'
+                : distLocationName,
+            'unit': normalizedUnit,
+            'brand': normalizedBrand.isEmpty ? null : normalizedBrand,
+            'serial_number': serialNumber?.trim().isNotEmpty == true
+                ? serialNumber!.trim()
+                : null,
+            'model_number': modelNumber?.trim().isNotEmpty == true
+                ? modelNumber!.trim()
+                : null,
+            'target_stock': targetStock ?? 0,
+            'low_stock_threshold': threshold,
+            'restock_alert_enabled': alertEnabled,
+            'expiry_date': normalizedExpiry.isEmpty ? null : normalizedExpiry,
+            'expiry_alert_days': expiryAlertDays,
+            'image_url': imageUrl,
+            'created_at': now,
+            'updated_at': now,
+          });
+        }
+
+        if (siblings.isNotEmpty) {
+          await _client.from('inventory').insert(siblings);
+        }
+      }
 
       await fetchAll();
     } catch (e) {

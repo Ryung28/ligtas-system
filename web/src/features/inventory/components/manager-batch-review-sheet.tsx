@@ -6,7 +6,7 @@ import {
     User, 
     ArrowRight, 
     AlertCircle, 
-    Calendar, 
+    Calendar as CalendarIcon, 
     CheckCircle2, 
     ChevronRight,
     Search,
@@ -23,6 +23,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useBorrowerRegistry } from '@/hooks/use-borrower-registry'
 import { BatchLine, BatchMode } from '../types'
@@ -34,6 +36,7 @@ import { useRouter } from 'next/navigation'
 import { useUser } from '@/providers/auth-provider'
 import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 import { getInventoryImageUrl } from '@/lib/supabase'
+import { format } from 'date-fns'
 
 interface ManagerBatchReviewSheetProps {
     open: boolean
@@ -189,15 +192,37 @@ export function ManagerBatchReviewSheet({
     const [department, setDepartment] = useState('')
     const [purpose, setPurpose] = useState('')
     const [approvedBy, setApprovedBy] = useState('')
+    const [releasedBy, setReleasedBy] = useState('')
     const [returnDate, setReturnDate] = useState<string>('')
     const [pickupDate, setPickupDate] = useState<string>('')
 
+    const parseIsoDate = (value: string): Date | undefined => {
+        if (!value) return undefined
+        const [year, month, day] = value.split('-').map(Number)
+        if (!year || !month || !day) return undefined
+        return new Date(year, month - 1, day)
+    }
+
     const debouncedSearch = useDebounce(borrowerName, 250)
+
+    const contactError = useMemo(() => {
+        const value = contactNumber.trim()
+        if (!value) return 'Contact number is required.'
+        if (!/^09\d{9}$/.test(value)) return 'Use a valid PH mobile number (09XXXXXXXXX).'
+        return ''
+    }, [contactNumber])
 
     // Sync isScheduled with mode
     useEffect(() => {
         setIsScheduled(mode === 'reserve')
     }, [mode])
+
+    useEffect(() => {
+        const fallbackName = user?.user_metadata?.full_name || user?.email || ''
+        if (fallbackName && !releasedBy) {
+            setReleasedBy(fallbackName)
+        }
+    }, [user, releasedBy])
 
     // 🚀 TACTICAL SEARCH ENGINE: Reusing web-parity personnel registry
     const { borrowers, isLoading: isSearching } = useBorrowerRegistry({ 
@@ -208,15 +233,15 @@ export function ManagerBatchReviewSheet({
 
     const handleSelectBorrower = (b: any) => {
         setBorrowerName(b.borrower_name)
-        setContactNumber(b.last_contact || '')
+        setContactNumber((b.last_contact || '').replace(/\D/g, '').slice(0, 11))
         setDepartment(b.last_organization || '')
     }
 
     const isValid = useMemo(() => {
-        const basic = borrowerName && contactNumber && department && purpose && approvedBy
+        const basic = borrowerName && department && purpose && approvedBy && releasedBy && !contactError
         if (isScheduled) return basic && pickupDate
         return basic
-    }, [borrowerName, contactNumber, department, purpose, approvedBy, isScheduled, pickupDate])
+    }, [borrowerName, department, purpose, approvedBy, releasedBy, contactError, isScheduled, pickupDate])
 
     const handleDispatch = () => {
         if (!isValid) return
@@ -229,7 +254,7 @@ export function ManagerBatchReviewSheet({
                     office_department: department,
                     purpose,
                     approved_by: approvedBy,
-                    released_by: user?.user_metadata?.full_name || user?.email || 'Authorized Staff',
+                    released_by: releasedBy,
                     expected_return_date: returnDate || null,
                     pickup_scheduled_at: isScheduled ? pickupDate : null,
                     items: items.map(item => ({
@@ -257,8 +282,8 @@ export function ManagerBatchReviewSheet({
         })
     }
 
-    const title = mode === 'reserve' ? 'Finalize Reservation' : 'Finalize Hand Borrow'
-    const description = `Reviewing ${items.length} unique items for ${mode === 'reserve' ? 'staging' : 'immediate handoff'}.`
+    const title = mode === 'reserve' ? 'Confirm Reservation' : 'Confirm Borrow'
+    const description = `Review ${items.length} selected item(s) before ${mode === 'reserve' ? 'scheduling' : 'dispatch'}.`
 
     return (
         <BottomSheet 
@@ -294,12 +319,12 @@ export function ManagerBatchReviewSheet({
                             <>
                                 {step === 'audit' ? (
                                     <>
-                                        Next: Personnel Info
+                                        Next: Borrower Info
                                         <ChevronRight className="w-4 h-4" />
                                     </>
                                 ) : (
                                     <>
-                                        {mode === 'reserve' ? 'Confirm Reservation' : 'Confirm & Dispatch'}
+                                        {mode === 'reserve' ? 'Confirm Reservation' : 'Confirm Borrow'}
                                         <CheckCircle2 className="w-4 h-4" />
                                     </>
                                 )}
@@ -316,7 +341,7 @@ export function ManagerBatchReviewSheet({
                     {/* 👤 Personnel Identity Form */}
                     <div className="space-y-6">
                             <div className="space-y-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                <Label className="text-[10px] font-black text-slate-950 uppercase tracking-widest px-1">Logistics Timing</Label>
+                                <Label className="text-[10px] font-black text-slate-950 uppercase tracking-widest px-1">Borrow Type</Label>
                                 <div className="flex gap-2 p-1 bg-slate-200/50 rounded-xl">
                                     <button 
                                         type="button"
@@ -343,7 +368,7 @@ export function ManagerBatchReviewSheet({
                                 {isScheduled && (
                                     <div className="pt-2 space-y-1.5 animate-in slide-in-from-top-2 duration-300">
                                         <div className="flex items-center gap-1.5 px-1 text-slate-500">
-                                            <Calendar className="w-3 h-3 text-blue-600" />
+                                            <CalendarIcon className="w-3 h-3 text-blue-600" />
                                             <span className="text-[10px] font-black uppercase">Pickup Date</span>
                                         </div>
                                         <Input 
@@ -357,7 +382,7 @@ export function ManagerBatchReviewSheet({
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Borrower Attribution</Label>
+                                <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Borrower Info</Label>
                                 <BorrowerSearchSection 
                                     borrowerName={borrowerName}
                                     setBorrowerName={setBorrowerName}
@@ -376,14 +401,30 @@ export function ManagerBatchReviewSheet({
                                     <Input 
                                         placeholder="09XXXXXXXXX"
                                         value={contactNumber}
-                                        onChange={(e) => setContactNumber(e.target.value)}
-                                        className="h-11 bg-white border-slate-100 rounded-xl font-bold text-sm"
+                                        onChange={(e) => {
+                                            const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 11)
+                                            setContactNumber(digitsOnly)
+                                        }}
+                                        inputMode="numeric"
+                                        className={cn(
+                                            "h-11 bg-white rounded-xl font-bold text-sm",
+                                            contactError ? "border-red-300 focus-visible:ring-red-200" : "border-slate-100",
+                                        )}
                                     />
+                                    {contactError ? (
+                                        <p className="px-1 text-[10px] font-semibold text-red-500">
+                                            {contactError}
+                                        </p>
+                                    ) : (
+                                        <p className="px-1 text-[10px] font-semibold text-slate-400">
+                                            Must be exactly 11 digits, starts with 09.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 px-1 text-slate-500">
                                         <Building2 className="w-3 h-3" />
-                                        <span className="text-[10px] font-black uppercase">Unit/Dept</span>
+                                        <span className="text-[10px] font-black uppercase">Department</span>
                                     </div>
                                     <Input 
                                         placeholder="Office name"
@@ -396,15 +437,15 @@ export function ManagerBatchReviewSheet({
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Tactical Metadata</Label>
+                            <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Details</Label>
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 px-1 text-slate-500">
                                         <FileText className="w-3 h-3" />
-                                        <span className="text-[10px] font-black uppercase">Mission Purpose</span>
+                                        <span className="text-[10px] font-black uppercase">Purpose</span>
                                     </div>
                                     <Input 
-                                        placeholder="Deployment or training details"
+                                        placeholder="Reason for borrowing"
                                         value={purpose}
                                         onChange={(e) => setPurpose(e.target.value)}
                                         className="h-11 bg-white border-slate-100 rounded-xl font-bold text-sm"
@@ -414,11 +455,11 @@ export function ManagerBatchReviewSheet({
                                 <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 px-1 text-slate-500">
                                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                        <span className="text-[10px] font-black uppercase">Authorized By</span>
+                                        <span className="text-[10px] font-black uppercase">Approved By</span>
                                     </div>
                                     <div className="relative">
                                         <Input 
-                                            placeholder="Name of approving officer"
+                                            placeholder="Approver name"
                                             value={approvedBy}
                                             onChange={(e) => setApprovedBy(e.target.value)}
                                             className="h-11 bg-white border-slate-100 rounded-xl font-bold text-sm pr-12"
@@ -427,7 +468,28 @@ export function ManagerBatchReviewSheet({
                                             onClick={() => setApprovedBy(user?.user_metadata?.full_name || '')}
                                             className="absolute right-3 top-2.5 text-[9px] font-black text-blue-600 uppercase"
                                         >
-                                            Self
+                                            Use My Name
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center gap-1.5 px-1 text-slate-500">
+                                        <ShieldCheck className="w-3 h-3 text-slate-600" />
+                                        <span className="text-[10px] font-black uppercase">Released By</span>
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            placeholder="Name of releasing staff"
+                                            value={releasedBy}
+                                            onChange={(e) => setReleasedBy(e.target.value)}
+                                            className="h-11 bg-white border-slate-100 rounded-xl font-bold text-sm pr-20"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setReleasedBy(user?.user_metadata?.full_name || user?.email || '')}
+                                            className="absolute right-3 top-2.5 text-[9px] font-black text-blue-600 uppercase"
+                                        >
+                                            Use My Name
                                         </button>
                                     </div>
                                 </div>
@@ -436,17 +498,37 @@ export function ManagerBatchReviewSheet({
 
                         <div className="space-y-3 p-5 bg-slate-50 border border-slate-100 rounded-2xl">
                             <div className="flex items-center justify-between">
-                                <Label className="text-[11px] font-black text-slate-950 uppercase">Return Schedule</Label>
+                                <Label className="text-[11px] font-black text-slate-950 uppercase">Return Date</Label>
                                 <Badge variant="outline" className="text-[9px] font-black uppercase h-5 bg-white">Optional</Badge>
                             </div>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                <Input 
-                                    type="date"
-                                    value={returnDate}
-                                    onChange={(e) => setReturnDate(e.target.value)}
-                                    className="h-11 pl-10 bg-white border-slate-100 rounded-xl font-bold text-sm"
-                                />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-11 w-full justify-start rounded-xl border-slate-100 bg-white pl-10 text-left text-sm font-bold text-slate-950 hover:bg-white"
+                                        >
+                                            <CalendarIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                                            {returnDate ? format(parseIsoDate(returnDate)!, 'dd/MM/yyyy') : 'dd/mm/yyyy'}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        side="top"
+                                        align="start"
+                                        sideOffset={8}
+                                        avoidCollisions
+                                        className="w-auto p-0"
+                                    >
+                                        <Calendar
+                                            mode="single"
+                                            selected={parseIsoDate(returnDate)}
+                                            onSelect={(date) => setReturnDate(date ? format(date, 'yyyy-MM-dd') : '')}
+                                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         </div>
 

@@ -22,6 +22,7 @@ import { ManagerCommandHub } from '@/src/features/inventory/components/manager-c
 import { ManagerBatchActionBar } from '@/src/features/inventory/components/manager-batch-action-bar'
 import { ManagerBatchReviewSheet } from '@/src/features/inventory/components/manager-batch-review-sheet'
 import { BatchMode, BatchLine } from '@/src/features/inventory/types'
+import { useInventoryIntents } from '@/src/features/inventory/hooks/use-inventory-intents'
 
 import { toast } from 'sonner'
 
@@ -44,6 +45,15 @@ export function InventoryClient() {
 
     const searchParams = useSearchParams()
     const isFlatMode = searchParams.get('flat') === 'true'
+
+    // 🛰️ INTENT SWITCHBOARD: Handle Direct Borrow from QR Scanner
+    useInventoryIntents({
+        inventory,
+        isLoading,
+        setBatchMode,
+        setSelectedItems,
+        setReviewOpen
+    })
 
     const aggregatedItems = useMemo(() => {
         if (isFlatMode) {

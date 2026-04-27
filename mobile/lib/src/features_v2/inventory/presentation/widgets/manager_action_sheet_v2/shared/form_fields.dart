@@ -35,28 +35,48 @@ class SheetTextField extends StatelessWidget {
           style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w900, color: color),
         ),
         const Gap(8),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          onChanged: onChanged,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.onyxBlack,
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: sentinel.shadowColor.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.plusJakartaSans(
-              color: sentinel.onSurfaceVariant.withOpacity(0.4),
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            onChanged: onChanged,
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.onyxBlack,
             ),
-            filled: true,
-            fillColor: sentinel.containerLow,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.plusJakartaSans(
+                color: sentinel.onSurfaceVariant.withOpacity(0.4),
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: sentinel.containerLow,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: sentinel.navy.withOpacity(0.45), width: 1.4),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
       ],
@@ -108,39 +128,58 @@ class SheetNumberField extends StatelessWidget {
           ],
         ),
         const Gap(8),
-        TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          onChanged: onChanged,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: statusColor ?? AppTheme.onyxBlack,
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: sentinel.shadowColor.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.plusJakartaSans(
-              color: sentinel.onSurfaceVariant.withOpacity(0.4),
-              fontSize: 13,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: onChanged,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: statusColor ?? AppTheme.onyxBlack,
             ),
-            filled: true,
-            fillColor: statusColor != null
-                ? statusColor!.withOpacity(0.04)
-                : sentinel.containerLow,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: statusColor != null
-                  ? BorderSide(color: statusColor!.withOpacity(0.2), width: 1.5)
-                  : BorderSide.none,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.plusJakartaSans(
+                color: sentinel.onSurfaceVariant.withOpacity(0.4),
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: statusColor != null
+                  ? statusColor!.withOpacity(0.04)
+                  : sentinel.containerLow,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: statusColor != null
+                    ? BorderSide(color: statusColor!.withOpacity(0.2), width: 1.5)
+                    : BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: statusColor != null
+                    ? BorderSide(color: statusColor!.withOpacity(0.2), width: 1.5)
+                    : BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: (statusColor ?? sentinel.navy).withOpacity(0.45),
+                  width: 1.4,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: statusColor != null
-                  ? BorderSide(color: statusColor!.withOpacity(0.2), width: 1.5)
-                  : BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
       ],

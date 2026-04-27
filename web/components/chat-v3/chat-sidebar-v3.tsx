@@ -1,8 +1,10 @@
 'use client'
 
 import React from 'react'
-import { Search, MessageSquare, Clock } from 'lucide-react'
+import { Search, MessageSquare, Clock, CheckCheck, Mail, MailOpen } from 'lucide-react'
 import { ChatRoomV3 } from '@/hooks/use-chat-rooms-v3'
+import { markAsReadV3, markAllAsReadV3, markRoomAsUnreadV3 } from '@/app/actions/chat-v3'
+import { toast } from 'sonner'
 import { ChatMessageTimestampV3 } from './_components/chat-message-timestamp-v3'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -67,9 +69,24 @@ export function ChatSidebarV3({ selectedRoomId, onSelectRoom, rooms, isLoading, 
             <div className="p-4 border-b border-slate-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10 space-y-3">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Messages (V3)</h2>
-                    <button onClick={refresh} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
-                        <Clock className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button 
+                            onClick={async () => {
+                                const res = await markAllAsReadV3()
+                                if (res.success) {
+                                    toast.success('All messages marked as read')
+                                    refresh()
+                                }
+                            }} 
+                            title="Mark all as read"
+                            className="p-1.5 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        >
+                            <CheckCheck className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={refresh} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
+                            <Clock className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -91,12 +108,30 @@ export function ChatSidebarV3({ selectedRoomId, onSelectRoom, rooms, isLoading, 
                     </div>
                 ) : (
                     filteredRooms.map((room) => (
-                        <button
+                        <div
                             key={room.id}
                             onClick={() => onSelectRoom(room.id)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    onSelectRoom(room.id)
+                                }
+                            }}
                             className={cn(
-                                "w-full text-left p-4 flex gap-3 transition-all hover:bg-slate-50 border-b border-slate-50",
-                                selectedRoomId === room.id ? "bg-blue-50/80 border-l-4 border-l-blue-600 border-b-blue-100" : "border-l-4 border-l-transparent"
+                                "w-full text-left p-4 flex gap-3 transition-all border-b border-slate-50 group cursor-pointer relative",
+                                // Selected priority
+                                selectedRoomId === room.id 
+                                    ? "bg-blue-50/90 border-l-4 border-l-blue-600 border-b-blue-100 z-10" 
+                                    : "border-l-4 border-l-transparent",
+                                // Unread Lift: Stand out from the crowd
+                                room.unread_count > 0 && selectedRoomId !== room.id 
+                                    ? "bg-white shadow-[0_4px_20px_rgba(0,0,0,0.08)] z-10 ring-1 ring-slate-100 scale-[1.02] mx-1 rounded-xl my-1 translate-x-1" 
+                                    : "hover:bg-slate-50",
+                                // Read Mute: Fade into background
+                                room.unread_count === 0 && selectedRoomId !== room.id 
+                                    ? "bg-slate-50/20 opacity-70" 
+                                    : ""
                             )}
                         >
                             <div className="relative flex-shrink-0">
@@ -115,18 +150,53 @@ export function ChatSidebarV3({ selectedRoomId, onSelectRoom, rooms, isLoading, 
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-1">
-                                    <h4 className={cn("text-sm font-bold truncate pr-2", selectedRoomId === room.id ? "text-blue-900" : "text-slate-900")}>
-                                        {room.borrower?.full_name || 'LGU User'}
-                                    </h4>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <h4 className={cn(
+                                            "text-sm truncate pr-2 tracking-tight", 
+                                            selectedRoomId === room.id ? "text-blue-900 font-black" : 
+                                            room.unread_count > 0 ? "text-slate-900 font-black" : "text-slate-600 font-semibold"
+                                        )}>
+                                            {room.borrower?.full_name || 'LGU User'}
+                                        </h4>
+                                        {room.unread_count > 0 ? (
+                                            <button 
+                                                onClick={async (e) => {
+                                                    e.stopPropagation()
+                                                    const res = await markAsReadV3(room.id)
+                                                    if (res.success) refresh()
+                                                }}
+                                                title="Mark as read"
+                                                className="p-1 hover:bg-blue-100 rounded text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <MailOpen className="h-3 w-3" />
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={async (e) => {
+                                                    e.stopPropagation()
+                                                    const res = await markRoomAsUnreadV3(room.id)
+                                                    if (res.success) refresh()
+                                                }}
+                                                title="Mark as unread"
+                                                className="p-1 hover:bg-slate-200 rounded text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Mail className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </div>
                                     {room.lastMessage && (
                                         <ChatMessageTimestampV3 timestamp={room.lastMessage.created_at} className="text-slate-400 whitespace-nowrap pt-0.5" />
                                     )}
                                 </div>
-                                <p className={cn("text-xs truncate font-medium", selectedRoomId === room.id ? "text-blue-700/70" : "text-slate-500")}>
+                                <p className={cn(
+                                    "text-xs truncate transition-colors", 
+                                    selectedRoomId === room.id ? "text-blue-700/70 font-medium" : 
+                                    room.unread_count > 0 ? "text-slate-900 font-bold" : "text-slate-400 font-medium"
+                                )}>
                                     {room.lastMessage?.content || 'No messages yet'}
                                 </p>
                             </div>
-                        </button>
+                        </div>
                     ))
                 )}
             </div>

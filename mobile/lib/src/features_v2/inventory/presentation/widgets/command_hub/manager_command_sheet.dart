@@ -64,20 +64,10 @@ class _ManagerCommandSheetBody extends StatelessWidget {
               _ActionCard(
                 icon: Icons.assignment_ind_rounded,
                 title: 'BORROW',
-                subtitle: 'Issue items immediately to personnel',
+                subtitle: 'Issue now or schedule pickup in one flow',
                 onTap: () {
                   Navigator.pop(context);
                   controller.start(ManagerMode.handover);
-                },
-              ),
-              const Gap(12),
-              _ActionCard(
-                icon: Icons.calendar_today_rounded,
-                title: 'RESERVE',
-                subtitle: 'Stage for scheduled pickup and prep',
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.start(ManagerMode.reserve);
                 },
               ),
               const Gap(12),

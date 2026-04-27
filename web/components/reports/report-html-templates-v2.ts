@@ -34,10 +34,10 @@ function statusBadge(status: string): string {
     
     if (s === 'borrowed' || s === 'low') bgColor = '#ea580c'
     else if (s === 'returned' || s === 'ready' || s === 'ok') bgColor = '#16a34a'
-    else if (s === 'overdue' || s === 'expired') bgColor = '#dc2626'
+    else if (s === 'overdue' || s === 'expired' || s === 'out' || s.includes('out')) bgColor = '#dc2626'
     else if (s === 'pending' || s === 'reserved') bgColor = '#2563eb'
 
-    return `<span class="badge" style="background-color:${bgColor} !important; color: white !important;">${e(status).toUpperCase()}</span>`
+    return `<span class="badge" style="background-color:${bgColor} !important; color: white !important; font-size: 6pt;">${e(status).toUpperCase()}</span>`
 }
 
 /** 📂 RENDERING SLOT: Inventory / Low Stock (CATEGORY GROUPING) */
@@ -60,12 +60,8 @@ function renderInventoryLikeTable(data: any[]): string {
                 </tr>`
         }
 
-        const target = Number(i.target_stock ?? 0)
-        const threshold = Number(i.low_stock_threshold ?? 0)
-        const available = i.stock_available ?? 0
-        const alertEnabled = i.restock_alert_enabled !== false
-        
-        const isLow = alertEnabled && target > 0 && threshold > 0 
+        const isOut = available <= 0
+        const isLow = !isOut && alertEnabled && target > 0 && threshold > 0 
             ? available <= Math.ceil((target * threshold) / 100)
             : false
         
@@ -75,7 +71,7 @@ function renderInventoryLikeTable(data: any[]): string {
             <td style="font-weight:900; text-align: center;">${i.stock_available ?? 0}</td>
             <td style="text-align: center;">
                 <div style="display: flex; justify-content: center; width: 100%;">
-                    ${statusBadge(isLow ? 'LOW' : 'READY')}
+                    ${statusBadge(isOut ? 'STOCK OUT' : isLow ? 'LOW' : 'READY')}
                 </div>
             </td>
             <td style="color:#64748b;">${e(i.storage_location)}</td>
@@ -228,6 +224,78 @@ function renderOverdueTable(data: any[]): string {
     </table>`
 }
 
+function renderSystemSummary(data: any[]): string {
+    const categories = Array.from(new Set(data.map(i => i.category || 'Unspecified')))
+    const totalItems = data.reduce((acc, i) => acc + (i.stock_total || 0), 0)
+    const available = data.reduce((acc, i) => acc + (i.stock_available || 0), 0)
+    const lent = totalItems - available
+    
+    // Aggregation by category
+    const statsByCategory = categories.map(cat => {
+        const items = data.filter(i => (i.category || 'Unspecified') === cat)
+        const catTotal = items.reduce((acc, i) => acc + (i.stock_total || 0), 0)
+        const catAvail = items.reduce((acc, i) => acc + (i.stock_available || 0), 0)
+        const catGood = items.reduce((acc, i) => acc + (i.qty_good || 0), 0)
+        return {
+            name: cat,
+            total: catTotal,
+            available: catAvail,
+            lent: catTotal - catAvail,
+            readiness: catTotal > 0 ? Math.round((catGood / catTotal) * 100) : 0
+        }
+    }).sort((a, b) => b.total - a.total)
+
+    const cardsHtml = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                <div style="font-size: 8pt; color: #64748b; font-weight: 800; text-transform: uppercase; margin-bottom: 5px;">Total Assets</div>
+                <div style="font-size: 18pt; font-weight: 900; color: #0f172a;">${totalItems.toLocaleString()}</div>
+            </div>
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0; text-align: center;">
+                <div style="font-size: 8pt; color: #166534; font-weight: 800; text-transform: uppercase; margin-bottom: 5px;">Units On-Hand</div>
+                <div style="font-size: 18pt; font-weight: 900; color: #166534;">${available.toLocaleString()}</div>
+            </div>
+            <div style="background: #fff7ed; padding: 15px; border-radius: 8px; border: 1px solid #ffedd5; text-align: center;">
+                <div style="font-size: 8pt; color: #9a3412; font-weight: 800; text-transform: uppercase; margin-bottom: 5px;">Units Lent</div>
+                <div style="font-size: 18pt; font-weight: 900; color: #9a3412;">${lent.toLocaleString()}</div>
+            </div>
+        </div>
+    `
+
+    const tableRows = statsByCategory.map(s => `
+        <tr>
+            <td style="font-weight: 800; font-size: 9pt;">${e(s.name)}</td>
+            <td style="text-align: center; font-weight: 700;">${s.total}</td>
+            <td style="text-align: center; color: #166534;">${s.available}</td>
+            <td style="text-align: center; color: #9a3412;">${s.lent}</td>
+            <td style="text-align: center;">
+                <div style="font-weight: 900; color: ${s.readiness > 80 ? '#16a34a' : s.readiness > 50 ? '#ca8a04' : '#dc2626'}">
+                    ${s.readiness}%
+                </div>
+            </td>
+        </tr>
+    `).join('')
+
+    return `
+        ${cardsHtml}
+        <div style="font-size: 8.5pt; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Operational Readiness by Category</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Category</th>
+                    <th style="text-align: center;">Total Units</th>
+                    <th style="text-align: center;">On-Hand</th>
+                    <th style="text-align: center;">Lent</th>
+                    <th style="text-align: center;">Readiness</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRows}
+            </tbody>
+        </table>
+    `
+}
+
 function renderSimpleBorrowTable(data: any[]): string {
     return `<table><thead><tr><th>Date</th><th>Borrower</th><th>Item</th><th>Qty</th><th style="text-align:center;">Status</th><th>Signature</th></tr></thead><tbody>
         ${data
@@ -246,7 +314,8 @@ function renderSimpleBorrowTable(data: any[]): string {
 const RENDERERS: Record<ReportType, ReportRenderer> = {
     inventory: renderInventoryLikeTable,
     'low-stock': renderInventoryLikeTable,
-    summary: renderInventoryLikeTable,
+    'out-of-stock': renderInventoryLikeTable,
+    summary: renderSystemSummary,
     'expiry-alert': renderExpiryAlertTable,
     logs: renderLogsTable,
     overdue: renderOverdueTable,

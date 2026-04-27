@@ -47,7 +47,7 @@ export default function MobileLayout({
             <div className="fixed inset-0 flex flex-col bg-white overflow-hidden select-none transform-gpu mobile-cage">
                 <AdaptiveRoutingSentry />
                 {/* Main Interactive Field: The "Steel Cage" scrollable area */}
-                <main className="flex-1 overflow-y-auto mb-[calc(64px+env(safe-area-inset-bottom))] bg-gray-50/50 animate-in fade-in duration-300 ease-out custom-scrollbar">
+                <main className="flex-1 overflow-y-auto mb-[calc(64px+env(safe-area-inset-bottom))] bg-gray-50/50 animate-in fade-in duration-150 ease-out custom-scrollbar">
                     <div className="min-h-full">
                         {children}
                     </div>

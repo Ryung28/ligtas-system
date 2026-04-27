@@ -7,12 +7,16 @@ class AlertMetricPill extends StatelessWidget {
   final String label;
   final String value;
   final LigtasColors sentinel;
+  final double labelSize;
+  final double valueSize;
 
   const AlertMetricPill({
     super.key,
     required this.label,
     required this.value,
     required this.sentinel,
+    this.labelSize = 7,
+    this.valueSize = 14,
   });
 
   @override
@@ -23,7 +27,7 @@ class AlertMetricPill extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.lexend(
-            fontSize: 7,
+            fontSize: labelSize,
             fontWeight: FontWeight.w800,
             color: sentinel.onSurfaceVariant.withOpacity(0.5),
             letterSpacing: 0.5,
@@ -31,8 +35,10 @@ class AlertMetricPill extends StatelessWidget {
         ),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.lexend(
-            fontSize: 14,
+            fontSize: valueSize,
             fontWeight: FontWeight.w900,
             color: sentinel.navy,
           ),

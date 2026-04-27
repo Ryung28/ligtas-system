@@ -153,7 +153,7 @@ export function V2StatusFields({
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 opacity-70">
                             <Target className="h-3.5 w-3.5 text-slate-600" />
-                            <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Max Stock Goal</Label>
+                            <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Fixed / Max Stock</Label>
                         </div>
                         <Input 
                             data-restock-input="target"

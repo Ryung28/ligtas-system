@@ -153,6 +153,8 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
                 .select('packaging_json')
                 .eq('id', validatedData.item_id)
                 .single();
+            
+            const oldPackaging = item?.packaging_json;
 
             if (fetchErr) {
                 console.error('Batch sync fetch error:', fetchErr);
@@ -170,10 +172,12 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
                     
                     targetBatch.units = Math.max(0, targetBatch.units - validatedData.quantity);
                     
+                    // 🔒 OPTIMISTIC LOCK: Only update if the JSON hasn't changed since our fetch
                     const { error: updateErr } = await supabase
                         .from('inventory')
                         .update({ packaging_json: newPackaging })
-                        .eq('id', validatedData.item_id);
+                        .eq('id', validatedData.item_id)
+                        .eq('packaging_json', oldPackaging);
 
                     if (updateErr) {
                         console.error('Batch sync update error:', updateErr);

@@ -9,11 +9,11 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { Station, InventoryPickerItem } from '@/src/features/tactical-stations/types'
 import {
-    getStationManifest,
     syncStationManifest,
     updateStationName,
     deleteStation,
 } from '@/src/features/tactical-stations/actions/station.actions'
+import { getStationManifest } from '@/src/features/tactical-stations/actions/station.queries'
 import { PrintLabelSheet } from './print-label-sheet'
 import { InventoryPicker } from './inventory-picker'
 import { StationIdentityCard } from './station-identity-card'
@@ -47,8 +47,8 @@ export function ManifestWorkbench({
         if (activeStationId && !isLoaded) {
             startTransition(async () => {
                 const result = await getStationManifest(activeStationId)
-                if (!result.error) {
-                    const ids = (result.data ?? []).map(i => i.item_id)
+                if (result.data && !result.error) {
+                    const ids = result.data.items.map(i => i.item_id)
                     setManifestItemIds(ids); setOriginalItemIds(ids); setIsLoaded(true)
                 }
             })

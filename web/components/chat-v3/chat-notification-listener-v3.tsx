@@ -35,17 +35,28 @@ export function ChatNotificationListenerV3() {
                 const newMessage = payload.new
                 try {
                     if (!currentUserId || newMessage.sender_id === currentUserId) return
-                    if (newMessage.receiver_id !== currentUserId) return
 
-                    // Only ring for borrower/mobile -> admin messages.
-                    // If sender is not the room borrower, treat it as non-mobile origin.
+                    // Senior Dev: Logic align with useUnreadChat
+                    // Ring if:
+                    // 1. Direct message specifically for me
+                    // 2. Room message in a room I am authorized to monitor (Viewer rooms or my rooms)
                     const { data: room } = await supabase
                         .from('chat_rooms')
-                        .select('borrower_user_id')
+                        .select('borrower_user_id, borrower:borrower_user_id(role)')
                         .eq('id', newMessage.room_id)
-                        .maybeSingle()
+                        .single()
 
-                    if (!room?.borrower_user_id || room.borrower_user_id !== newMessage.sender_id) return
+                    if (!room) return
+
+                    const isDirectToMe = newMessage.receiver_id === currentUserId
+                    const isRoomBroadcast = !newMessage.receiver_id
+                    const isMyRoom = room.borrower_user_id === currentUserId
+                    const isViewerRoom = (room as any).borrower?.role === 'viewer'
+
+                    // Determine if I should be notified
+                    const shouldNotify = isDirectToMe || (isRoomBroadcast && (isMyRoom || isViewerRoom))
+
+                    if (!shouldNotify) return
                 } catch (err) {
                     console.warn('[Notification-V3] Chat notification evaluation failed:', err)
                     return
@@ -55,7 +66,9 @@ export function ChatNotificationListenerV3() {
                 const now = Date.now()
                 if (now - lastPlayedRef.current > 2000) {
                     try {
-                        new Audio('/sounds/notification.mp3').play().catch(() => {})
+                        const audio = new Audio('/sounds/notification.mp3')
+                        audio.volume = 0.5
+                        audio.play().catch(e => console.warn('[Audio] Playback blocked:', e))
                         lastPlayedRef.current = now
                     } catch (err) {}
                 }

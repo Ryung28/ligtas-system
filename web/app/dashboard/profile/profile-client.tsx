@@ -1,14 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import useSWR from 'swr'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Mail, Shield, Building, Loader2, User, Save } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Separator } from '@/components/ui/separator'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Mail, Shield, Building, Loader2, User, Save, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { UserProfile } from '@/hooks/use-user-management'
 
@@ -16,17 +30,95 @@ interface ProfileClientProps {
     initialProfile: UserProfile
 }
 
+interface LogbookJobStatus {
+    id: string | null
+    status: string | null
+    created_at: string | null
+    completed_at: string | null
+    snapshot_id: string | null
+}
+
+interface LogbookAdminStatusResponse {
+    success: boolean
+    data?: {
+        backup: LogbookJobStatus
+        reset: LogbookJobStatus
+        restore: LogbookJobStatus
+    }
+    error?: string
+}
+
+interface SnapshotPreviewResponse {
+    success: boolean
+    data?: {
+        snapshot_id: string
+        created_at: string
+        requested_by: string
+        reason: string
+        scope_version: string
+        table_counts: Array<{ table_name: string; row_count: number }>
+    }
+    error?: string
+}
+
 export function ProfileClient({ initialProfile }: ProfileClientProps) {
-    const [profile, setProfile] = useState<UserProfile>(initialProfile)
     const [saving, setSaving] = useState(false)
+    const [resetReason, setResetReason] = useState('')
+    const [resetConfirmation, setResetConfirmation] = useState('')
+    const [restoreSnapshotId, setRestoreSnapshotId] = useState('')
+    const [resetLoading, setResetLoading] = useState(false)
+    const [backupLoading, setBackupLoading] = useState(false)
+    const [restoreLoading, setRestoreLoading] = useState(false)
+    const [previewLoading, setPreviewLoading] = useState(false)
+    const [exportLoading, setExportLoading] = useState(false)
+    const [snapshotPreview, setSnapshotPreview] = useState<SnapshotPreviewResponse['data'] | null>(null)
 
     // Form states
     const [fullName, setFullName] = useState(initialProfile.full_name || '')
     const [department, setDepartment] = useState(initialProfile.department || '')
 
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = useMemo(
+        () =>
+            createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            ),
+        []
+    )
+
+    const profileKey = ['profile-me', initialProfile.id]
+    const { data: profile = initialProfile, mutate: mutateProfile } = useSWR<UserProfile>(
+        profileKey,
+        async () => {
+            const { data, error } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('id', initialProfile.id)
+                .single()
+
+            if (error) throw error
+            return data as UserProfile
+        },
+        {
+            fallbackData: initialProfile,
+            revalidateOnFocus: false,
+            dedupingInterval: 30000,
+        }
+    )
+
+    const { data: logbookStatus, mutate: mutateLogbookStatus } = useSWR<LogbookAdminStatusResponse>(
+        profile.role === 'admin' ? 'logbook-admin-status' : null,
+        async () => {
+            const response = await fetch('/api/admin/logbook-status', {
+                method: 'GET',
+                cache: 'no-store',
+            })
+            return response.json()
+        },
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 10000,
+        }
     )
 
     const handleSave = async () => {
@@ -43,13 +135,208 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
             if (error) throw error
 
             toast.success('Profile updated successfully')
-            // Update local state
-            setProfile({ ...profile, full_name: fullName, department })
+            await mutateProfile(
+                { ...profile, full_name: fullName, department },
+                false
+            )
         } catch (error) {
             console.error('Error updating profile:', error)
             toast.error('Failed to update profile')
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleLogbookReset = async () => {
+        if (!latestBackup?.id || latestBackup?.status !== 'completed') {
+            toast.error('Create a completed backup first before resetting.')
+            return
+        }
+
+        if (resetConfirmation !== 'RESET LOGBOOK') {
+            toast.error('Type RESET LOGBOOK exactly to continue.')
+            return
+        }
+
+        if (resetReason.trim().length < 10) {
+            toast.error('Please provide a clear reason (at least 10 characters).')
+            return
+        }
+
+        try {
+            setResetLoading(true)
+            const response = await fetch('/api/admin/logbook-reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirmation: resetConfirmation,
+                    reason: resetReason,
+                }),
+            })
+
+            const result = await response.json()
+
+            if (!response.ok || !result.success) {
+                toast.error(result.error || 'Reset failed.')
+                return
+            }
+
+            toast.success(`Logbook reset complete. Job: ${result.jobId}`)
+            setResetReason('')
+            setResetConfirmation('')
+            await mutateLogbookStatus()
+        } catch (error) {
+            console.error('Logbook reset error:', error)
+            toast.error('Failed to trigger logbook reset.')
+        } finally {
+            setResetLoading(false)
+        }
+    }
+
+    const handleLogbookBackup = async () => {
+        if (resetReason.trim().length < 10) {
+            toast.error('Please provide a clear reason (at least 10 characters).')
+            return
+        }
+
+        try {
+            setBackupLoading(true)
+            const response = await fetch('/api/admin/logbook-backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirmation: resetConfirmation,
+                    reason: resetReason,
+                }),
+            })
+
+            const result = await response.json()
+
+            if (!response.ok || !result.success) {
+                toast.error(result.error || 'Backup failed.')
+                return
+            }
+
+            toast.success(`Logbook backup complete. Snapshot: ${result.snapshotId}`)
+            await mutateLogbookStatus()
+        } catch (error) {
+            console.error('Logbook backup error:', error)
+            toast.error('Failed to trigger logbook backup.')
+        } finally {
+            setBackupLoading(false)
+        }
+    }
+
+    const handleLogbookRestore = async () => {
+        if (resetConfirmation !== 'RESET LOGBOOK') {
+            toast.error('Type RESET LOGBOOK exactly to continue.')
+            return
+        }
+
+        if (resetReason.trim().length < 10) {
+            toast.error('Please provide a clear reason (at least 10 characters).')
+            return
+        }
+
+        if (!restoreSnapshotId.trim()) {
+            toast.error('Snapshot ID is required for restore.')
+            return
+        }
+
+        if (!snapshotPreview || snapshotPreview.snapshot_id !== restoreSnapshotId.trim()) {
+            toast.error('Preview the snapshot first before restore.')
+            return
+        }
+
+        try {
+            setRestoreLoading(true)
+            const response = await fetch('/api/admin/logbook-restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirmation: resetConfirmation,
+                    reason: resetReason,
+                    snapshotId: restoreSnapshotId.trim(),
+                }),
+            })
+
+            const result = await response.json()
+
+            if (!response.ok || !result.success) {
+                toast.error(result.error || 'Restore failed.')
+                return
+            }
+
+            toast.success(`Logbook restore complete. Job: ${result.jobId}`)
+            await mutateLogbookStatus()
+        } catch (error) {
+            console.error('Logbook restore error:', error)
+            toast.error('Failed to trigger logbook restore.')
+        } finally {
+            setRestoreLoading(false)
+        }
+    }
+
+    const handleSnapshotPreview = async () => {
+        if (!restoreSnapshotId.trim()) {
+            toast.error('Enter a snapshot ID first.')
+            return
+        }
+
+        try {
+            setPreviewLoading(true)
+            const response = await fetch('/api/admin/logbook-snapshot-preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ snapshotId: restoreSnapshotId.trim() }),
+            })
+            const result: SnapshotPreviewResponse = await response.json()
+
+            if (!response.ok || !result.success || !result.data) {
+                setSnapshotPreview(null)
+                toast.error(result.error || 'Failed to preview snapshot.')
+                return
+            }
+
+            setSnapshotPreview(result.data)
+            toast.success('Snapshot preview loaded.')
+        } catch (error) {
+            console.error('Snapshot preview error:', error)
+            setSnapshotPreview(null)
+            toast.error('Failed to preview snapshot.')
+        } finally {
+            setPreviewLoading(false)
+        }
+    }
+
+    const handleExportBackup = async () => {
+        const targetSnapshotId =
+            (restoreSnapshotId.trim().length > 0
+                ? restoreSnapshotId.trim()
+                : latestBackup?.snapshot_id) ?? ''
+
+        if (!targetSnapshotId) {
+            toast.error('No snapshot to export. Create a backup first or enter a snapshot ID.')
+            return
+        }
+
+        try {
+            setExportLoading(true)
+            // Use direct navigation download so the browser can open Save dialog immediately
+            // without waiting for full blob materialization in JS memory.
+            const url = `/api/admin/logbook-export?snapshotId=${encodeURIComponent(targetSnapshotId)}`
+            const a = document.createElement('a')
+            a.href = url
+            a.download = ''
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            toast.success('Backup export started.')
+        } catch (error) {
+            console.error('Backup export error:', error)
+            toast.error('Failed to export backup.')
+        } finally {
+            setExportLoading(false)
         }
     }
 
@@ -60,6 +347,15 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
         viewer: 'bg-gray-100 text-gray-700 border-gray-200',
         responder: 'bg-orange-100 text-orange-700 border-orange-200'
     }
+
+    const latestBackup = logbookStatus?.data?.backup
+    const latestReset = logbookStatus?.data?.reset
+    const latestRestore = logbookStatus?.data?.restore
+    const hasCompletedBackup = latestBackup?.status === 'completed'
+    const canRestore =
+        !!snapshotPreview &&
+        snapshotPreview.snapshot_id === restoreSnapshotId.trim() &&
+        !previewLoading
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500">
@@ -173,6 +469,222 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                     </CardFooter>
                 </Card>
             </div>
+
+            {profile.role === 'admin' && (
+                <Card className="border-red-200 shadow-sm">
+                    <CardHeader>
+                        <div className="flex items-center gap-2 text-red-700">
+                            <AlertTriangle className="h-5 w-5" />
+                            <CardTitle className="text-lg">Danger Zone</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Reset logbook data while keeping inventory and storage files intact.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="reset-reason">Reason</Label>
+                            <Textarea
+                                id="reset-reason"
+                                value={resetReason}
+                                onChange={(e) => setResetReason(e.target.value)}
+                                placeholder="Why are you resetting the logbook?"
+                                className="bg-white"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="reset-confirmation">
+                                Type <span className="font-semibold">RESET LOGBOOK</span> to confirm
+                            </Label>
+                            <Input
+                                id="reset-confirmation"
+                                value={resetConfirmation}
+                                onChange={(e) => setResetConfirmation(e.target.value)}
+                                placeholder="RESET LOGBOOK"
+                                className="bg-white"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="restore-snapshot-id">Restore Snapshot ID (optional, for restore)</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="restore-snapshot-id"
+                                    value={restoreSnapshotId}
+                                    onChange={(e) => {
+                                        setRestoreSnapshotId(e.target.value)
+                                        setSnapshotPreview(null)
+                                    }}
+                                    placeholder="Paste snapshot UUID to restore"
+                                    className="bg-white"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleSnapshotPreview}
+                                    disabled={previewLoading || restoreLoading || backupLoading || resetLoading}
+                                >
+                                    {previewLoading ? 'Checking...' : 'Preview'}
+                                </Button>
+                            </div>
+                            {snapshotPreview ? (
+                                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 space-y-1">
+                                    <p>
+                                        <span className="font-semibold">Snapshot:</span> {snapshotPreview.snapshot_id}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Created:</span>{' '}
+                                        {new Date(snapshotPreview.created_at).toLocaleString()}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold">Rows:</span>{' '}
+                                        {snapshotPreview.table_counts.reduce((acc, row) => acc + row.row_count, 0)}
+                                    </p>
+                                    <p className="font-semibold mt-1">Per table:</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1">
+                                        {snapshotPreview.table_counts.map((row) => (
+                                            <p key={row.table_name}>
+                                                {row.table_name}: {row.row_count}
+                                            </p>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+
+                        <Separator className="bg-red-100" />
+
+                        <div className="grid gap-3 text-sm">
+                            <div>
+                                <p className="font-semibold text-slate-800">Last Backup</p>
+                                <p className="text-slate-600">
+                                    {latestBackup?.created_at
+                                        ? `${new Date(latestBackup.created_at).toLocaleString()} | ${latestBackup.status ?? 'unknown'}`
+                                        : 'No backup yet'}
+                                </p>
+                                <p className="text-xs text-slate-500 break-all">
+                                    Snapshot: {latestBackup?.snapshot_id ?? 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-slate-800">Last Restore</p>
+                                <p className="text-slate-600">
+                                    {latestRestore?.created_at
+                                        ? `${new Date(latestRestore.created_at).toLocaleString()} | ${latestRestore.status ?? 'unknown'}`
+                                        : 'No restore yet'}
+                                </p>
+                                <p className="text-xs text-slate-500 break-all">
+                                    Snapshot: {latestRestore?.snapshot_id ?? 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-slate-800">Last Reset</p>
+                                <p className="text-slate-600">
+                                    {latestReset?.created_at
+                                        ? `${new Date(latestReset.created_at).toLocaleString()} | ${latestReset.status ?? 'unknown'}`
+                                        : 'No reset yet'}
+                                </p>
+                                <p className="text-xs text-slate-500 break-all">
+                                    Snapshot: {latestReset?.snapshot_id ?? 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter className="justify-end border-t border-red-100 pt-6 bg-red-50/40">
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={handleLogbookRestore}
+                                disabled={restoreLoading || backupLoading || resetLoading || exportLoading || !canRestore}
+                                className="min-w-[170px]"
+                            >
+                                {restoreLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Restoring...
+                                    </>
+                                ) : (
+                                    'Restore Logbook'
+                                )}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleLogbookBackup}
+                                disabled={backupLoading || resetLoading || restoreLoading || exportLoading}
+                                className="min-w-[170px]"
+                            >
+                                {backupLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Backing up...
+                                    </>
+                                ) : (
+                                    'Backup Logbook'
+                                )}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleExportBackup}
+                                disabled={exportLoading || backupLoading || resetLoading || restoreLoading}
+                                className="min-w-[170px]"
+                            >
+                                {exportLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Exporting...
+                                    </>
+                                ) : (
+                                    'Export Backup'
+                                )}
+                            </Button>
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="destructive"
+                                        disabled={resetLoading || backupLoading || restoreLoading || !hasCompletedBackup}
+                                        className="min-w-[170px]"
+                                    >
+                                        {resetLoading ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                Resetting...
+                                            </>
+                                        ) : (
+                                            'Reset Logbook'
+                                        )}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Logbook Reset</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will clear logbook-related records and cannot be undone without restore from snapshot.
+                                        </AlertDialogDescription>
+                                        {!hasCompletedBackup ? (
+                                            <p className="text-sm text-red-600 font-medium">
+                                                Reset is disabled until at least one backup is completed.
+                                            </p>
+                                        ) : null}
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel disabled={resetLoading}>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleLogbookReset}
+                                            disabled={resetLoading}
+                                            className="bg-red-600 hover:bg-red-700"
+                                        >
+                                            Confirm Reset
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    </CardFooter>
+                </Card>
+            )}
         </div>
     )
 }

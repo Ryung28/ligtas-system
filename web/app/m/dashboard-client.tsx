@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { DashboardSkeleton } from '@/components/mobile/skeletons/dashboard-skeleton'
 import { usePendingRequests } from '@/hooks/use-pending-requests'
-import { createBrowserClient } from '@supabase/ssr'
 import { isLowStock } from '@/lib/inventory-utils'
 
 const getGreeting = () => {
@@ -36,84 +35,68 @@ const getGreeting = () => {
 /**
  * 📱 ResQTrack Mobile Dashboard Client
  */
-export function DashboardClient() {
+export function DashboardClient({ initialUserName = 'ANALYST' }: { initialUserName?: string }) {
     const { stats, data: dashboardData, isLoading: statsLoading, refresh: refreshStats } = useDashboardStats()
     const { requests: pendingRequests, isLoading: pendingLoading } = usePendingRequests()
     const { logs, isLoading: logsLoading, refresh: refreshLogs, stats: logStats } = useBorrowLogs()
-    const [userName, setUserName] = React.useState('ANALYST')
-
-    React.useEffect(() => {
-        async function loadProfile() {
-            const supabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            )
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                const { data: profile } = await supabase
-                    .from('user_profiles')
-                    .select('full_name')
-                    .eq('id', user.id)
-                    .single()
-                if (profile?.full_name) setUserName(profile.full_name)
-            }
-        }
-        loadProfile()
-    }, [])
+    const [userName] = React.useState(initialUserName)
 
     const handleRefresh = async () => {
         await Promise.all([refreshStats(), refreshLogs()])
     }
 
+    // Senior Dev: Moved hooks to top level to avoid Rules of Hooks violation (early return must be after hooks)
+    const recentLogs = React.useMemo(() => logs.slice(0, 5), [logs])
+
+    // 🛰️ TACTICAL ANOMALY ENGINE: Memoized to prevent UI stutter
+    const allAlerts = React.useMemo(() => {
+        const tactical = dashboardData?.inventory?.filter(item => {
+            const isLow = isLowStock(item)
+            const isOut = item.stock_available === 0
+            const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
+            const hasPending = (item as any).stock_pending > 0
+            
+            let isExpiring = false
+            const expiry = (item as any).expiry_date
+            if (expiry) {
+                const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                isExpiring = diff <= 30
+            }
+
+            return isLow || isOut || hasHealthIssues || hasPending || isExpiring
+        }) || []
+
+        return [
+            ...tactical.map(item => {
+                let label = 'LOW STOCK'
+                if (item.stock_available === 0) label = 'CRITICAL'
+                else if (item.qty_damaged > 0) label = 'DAMAGED'
+                else if ((item as any).expiry_date) label = 'EXPIRING'
+
+                return {
+                    id: item.id,
+                    type: 'low_stock' as const,
+                    label,
+                    title: item.item_name,
+                    subtitle: item.stock_available === 0 ? 'Out of Stock' : `${item.stock_available} units in registry`
+                }
+            }),
+            ...pendingRequests.map(req => ({ 
+                id: req.id,
+                type: 'pending' as const, 
+                label: 'REQUEST', 
+                title: req.item_name, 
+                subtitle: `Pending from ${req.borrower_name}` 
+            }))
+        ]
+    }, [dashboardData?.inventory, pendingRequests])
+
+    const displayAlerts = React.useMemo(() => allAlerts.slice(0, 3), [allAlerts])
+    const hasMoreAlerts = allAlerts.length > 3
+
     if (statsLoading && logs.length === 0) {
         return <DashboardSkeleton />
     }
-
-    const recentLogs = logs.slice(0, 5)
-
-    // 🛰️ TACTICAL ANOMALY ENGINE: Mirrors Web Inventory 'Alerts' logic
-    const tacticalAlerts = dashboardData?.inventory?.filter(item => {
-        const isLow = isLowStock(item)
-        const isOut = item.stock_available === 0
-        const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
-        const hasPending = (item as any).stock_pending > 0
-        
-        let isExpiring = false
-        const expiry = (item as any).expiry_date
-        if (expiry) {
-            const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-            isExpiring = diff <= 30
-        }
-
-        return isLow || isOut || hasHealthIssues || hasPending || isExpiring
-    }) || []
-
-    const allAlerts = [
-        ...tacticalAlerts.map(item => {
-            let label = 'LOW STOCK'
-            let type = 'low_stock'
-            if (item.stock_available === 0) label = 'CRITICAL'
-            else if (item.qty_damaged > 0) label = 'DAMAGED'
-            else if ((item as any).expiry_date) label = 'EXPIRING'
-
-            return {
-                id: item.id,
-                type: 'low_stock', // Reusing triage route for all inventory anomalies
-                label,
-                title: item.item_name,
-                subtitle: item.stock_available === 0 ? 'Out of Stock' : `${item.stock_available} units in registry`
-            }
-        }),
-        ...pendingRequests.map(req => ({ 
-            id: req.id,
-            type: 'pending', 
-            label: 'REQUEST', 
-            title: req.item_name, 
-            subtitle: `Pending from ${req.borrower_name}` 
-        }))
-    ]
-    const displayAlerts = allAlerts.slice(0, 3)
-    const hasMoreAlerts = allAlerts.length > 3
 
     return (
         <div className="space-y-6 pb-24">

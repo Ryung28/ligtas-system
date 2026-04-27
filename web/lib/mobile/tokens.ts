@@ -95,7 +95,7 @@ export const mType = {
     titleMd: 'text-base font-bold text-gray-900',
     titleLg: 'text-lg font-bold text-gray-900',
     // Display (hero)
-    display: 'font-syne font-black italic uppercase tracking-tight',
+    display: 'font-display font-black italic uppercase tracking-tight',
 } as const
 
 export const mMotion = {

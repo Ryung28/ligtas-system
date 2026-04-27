@@ -11,8 +11,6 @@ import 'sections/mode_toggle_section.dart';
 import 'sections/note_section.dart';
 import 'sections/submit_section.dart';
 import 'forms/restock_form.dart';
-import 'forms/handover_form.dart';
-import 'forms/reserve_form.dart';
 import 'forms/edit_form.dart';
 
 /// Entry point for the V2 Manager Action Sheet.
@@ -35,7 +33,8 @@ class ManagerActionSheetV2 extends ConsumerStatefulWidget {
   const ManagerActionSheetV2({super.key, required this.item});
 
   @override
-  ConsumerState<ManagerActionSheetV2> createState() => _ManagerActionSheetV2State();
+  ConsumerState<ManagerActionSheetV2> createState() =>
+      _ManagerActionSheetV2State();
 }
 
 class _ManagerActionSheetV2State extends ConsumerState<ManagerActionSheetV2> {
@@ -83,8 +82,9 @@ class _ManagerActionSheetV2State extends ConsumerState<ManagerActionSheetV2> {
             ],
           ),
           child: ConstrainedBox(
-            constraints:
-                BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               clipBehavior: Clip.none,
@@ -136,11 +136,11 @@ class _ActiveForm extends ConsumerWidget {
     switch (mode) {
       case ManagerMode.restock:
         return RestockForm(item: item);
-      case ManagerMode.handover:
-        return HandoverForm(item: item);
-      case ManagerMode.reserve:
-        return ReserveForm(item: item);
       case ManagerMode.edit:
+        return EditForm(item: item);
+      case ManagerMode.handover:
+      case ManagerMode.reserve:
+        // Shelves sheet keeps dispatch flows in FAB batch UX.
         return EditForm(item: item);
     }
   }

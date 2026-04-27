@@ -18,32 +18,74 @@ class AddItemSheet extends ConsumerStatefulWidget {
   ConsumerState<AddItemSheet> createState() => _AddItemSheetState();
 }
 
+class _SiteDistribution {
+  final int locationId;
+  final String locationName;
+  final int qtyGood;
+  final int qtyDamaged;
+  final int qtyMaintenance;
+  final int qtyLost;
+
+  const _SiteDistribution({
+    required this.locationId,
+    required this.locationName,
+    required this.qtyGood,
+    required this.qtyDamaged,
+    required this.qtyMaintenance,
+    required this.qtyLost,
+  });
+
+  int get total => qtyGood + qtyDamaged + qtyMaintenance + qtyLost;
+}
+
 class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
+  final _brandCtrl = TextEditingController();
   final _serialCtrl = TextEditingController();
   final _modelCtrl = TextEditingController();
-  final _stockCtrl = TextEditingController(text: '0');
+  final _qtyGoodCtrl = TextEditingController(text: '1');
+  final _qtyDamagedCtrl = TextEditingController(text: '0');
+  final _qtyMaintenanceCtrl = TextEditingController(text: '0');
+  final _qtyLostCtrl = TextEditingController(text: '0');
   final _unitCtrl = TextEditingController(text: 'pcs');
   final _targetCtrl = TextEditingController();
   final _minCtrl = TextEditingController(text: '20');
   
   String _selectedCategory = 'Logistics';
+  String _selectedItemType = 'equipment';
   int? _selectedLocationId;
+  DateTime? _expiryDate;
+  bool _restockAlertEnabled = true;
   Uint8List? _compressedBytes;
   bool _submitting = false;
+  final List<_SiteDistribution> _extraDistributions = [];
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _brandCtrl.dispose();
     _serialCtrl.dispose();
     _modelCtrl.dispose();
-    _stockCtrl.dispose();
+    _qtyGoodCtrl.dispose();
+    _qtyDamagedCtrl.dispose();
+    _qtyMaintenanceCtrl.dispose();
+    _qtyLostCtrl.dispose();
     _unitCtrl.dispose();
     _targetCtrl.dispose();
     _minCtrl.dispose();
     super.dispose();
   }
+
+  int _safeInt(TextEditingController controller, {int fallback = 0}) {
+    return int.tryParse(controller.text.trim()) ?? fallback;
+  }
+
+  int get _totalStock =>
+      _safeInt(_qtyGoodCtrl) +
+      _safeInt(_qtyDamagedCtrl) +
+      _safeInt(_qtyMaintenanceCtrl) +
+      _safeInt(_qtyLostCtrl);
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -214,6 +256,153 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     );
   }
 
+  Future<void> _openDistributionEditor({
+    required List<StorageHub> hubs,
+    _SiteDistribution? existing,
+    int? editIndex,
+  }) async {
+    int? selectedLocationId = existing?.locationId;
+    final qtyGoodCtrl = TextEditingController(text: (existing?.qtyGood ?? 0).toString());
+    final qtyDamagedCtrl = TextEditingController(text: (existing?.qtyDamaged ?? 0).toString());
+    final qtyMaintenanceCtrl = TextEditingController(text: (existing?.qtyMaintenance ?? 0).toString());
+    final qtyLostCtrl = TextEditingController(text: (existing?.qtyLost ?? 0).toString());
+
+    final result = await showModalBottomSheet<_SiteDistribution>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final sentinel = Theme.of(context).sentinel;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+            final keyboardOpen = keyboardInset > 0;
+            return SafeArea(
+              top: false,
+              child: AnimatedPadding(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.only(bottom: keyboardInset),
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  offset: keyboardOpen ? Offset.zero : const Offset(0, 0.015),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.82,
+                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    decoration: BoxDecoration(
+                      color: sentinel.surface,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                    ),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            existing == null ? 'ADD DISTRIBUTION SITE' : 'EDIT DISTRIBUTION SITE',
+                            style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w900, color: sentinel.navy),
+                          ),
+                          const Gap(12),
+                          DropdownButtonFormField<int>(
+                            value: selectedLocationId,
+                            decoration: _inputDecoration(context, 'WAREHOUSE'),
+                            items: hubs
+                                .map((h) => DropdownMenuItem(
+                                      value: h.id,
+                                      child: Text(h.name, style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) => setSheetState(() => selectedLocationId = value),
+                          ),
+                          const Gap(10),
+                          Row(
+                            children: [
+                              Expanded(child: _field(qtyGoodCtrl, 'GOOD', keyboard: TextInputType.number, required: true, labelColor: const Color(0xFF16A34A))),
+                              const Gap(8),
+                              Expanded(child: _field(qtyDamagedCtrl, 'DAMAGED', keyboard: TextInputType.number, labelColor: const Color(0xFFDC2626))),
+                            ],
+                          ),
+                          const Gap(8),
+                          Row(
+                            children: [
+                              Expanded(child: _field(qtyMaintenanceCtrl, 'MAINTENANCE', keyboard: TextInputType.number, labelColor: const Color(0xFFEA580C))),
+                              const Gap(8),
+                              Expanded(child: _field(qtyLostCtrl, 'LOST', keyboard: TextInputType.number, labelColor: const Color(0xFF6B7280))),
+                            ],
+                          ),
+                          const Gap(12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                StorageHub? selectedHub;
+                                for (final hub in hubs) {
+                                  if (hub.id == selectedLocationId) {
+                                    selectedHub = hub;
+                                    break;
+                                  }
+                                }
+                                final good = int.tryParse(qtyGoodCtrl.text.trim()) ?? 0;
+                                final damaged = int.tryParse(qtyDamagedCtrl.text.trim()) ?? 0;
+                                final maintenance = int.tryParse(qtyMaintenanceCtrl.text.trim()) ?? 0;
+                                final lost = int.tryParse(qtyLostCtrl.text.trim()) ?? 0;
+                                final total = good + damaged + maintenance + lost;
+                                if (selectedHub == null) {
+                                  AppToast.showError(context, 'SELECT A WAREHOUSE');
+                                  return;
+                                }
+                                if (total < 1) {
+                                  AppToast.showError(context, 'SITE TOTAL MUST BE AT LEAST 1');
+                                  return;
+                                }
+                                Navigator.pop(
+                                  context,
+                                  _SiteDistribution(
+                                    locationId: selectedHub.id,
+                                    locationName: selectedHub.name,
+                                    qtyGood: good,
+                                    qtyDamaged: damaged,
+                                    qtyMaintenance: maintenance,
+                                    qtyLost: lost,
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: sentinel.navy,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text(
+                                existing == null ? 'ADD SITE' : 'SAVE SITE',
+                                style: GoogleFonts.lexend(fontWeight: FontWeight.w800, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+    setState(() {
+      if (editIndex != null) {
+        _extraDistributions[editIndex] = result;
+      } else {
+        _extraDistributions.add(result);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final sentinel = Theme.of(context).sentinel;
@@ -300,6 +489,49 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
               _sectionLabel('IDENTITY'),
               _field(_nameCtrl, 'ITEM NAME', required: true),
               const Gap(16),
+              _sectionLabel('ITEM TYPE'),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('EQUIPMENT'),
+                      selected: _selectedItemType == 'equipment',
+                      onSelected: (_) => setState(() => _selectedItemType = 'equipment'),
+                      checkmarkColor: Colors.white,
+                      labelStyle: GoogleFonts.lexend(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: _selectedItemType == 'equipment'
+                            ? Colors.white
+                            : sentinel.navy.withOpacity(0.65),
+                      ),
+                      selectedColor: sentinel.navy,
+                      backgroundColor: sentinel.containerLow,
+                      side: BorderSide.none,
+                    ),
+                  ),
+                  const Gap(10),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('CONSUMABLE'),
+                      selected: _selectedItemType == 'consumable',
+                      onSelected: (_) => setState(() => _selectedItemType = 'consumable'),
+                      checkmarkColor: Colors.white,
+                      labelStyle: GoogleFonts.lexend(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: _selectedItemType == 'consumable'
+                            ? Colors.white
+                            : sentinel.navy.withOpacity(0.65),
+                      ),
+                      selectedColor: sentinel.navy,
+                      backgroundColor: sentinel.containerLow,
+                      side: BorderSide.none,
+                    ),
+                  ),
+                ],
+              ),
+              const Gap(16),
               Row(
                 children: [
                   Expanded(child: _field(_serialCtrl, 'SERIAL NO')),
@@ -307,6 +539,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   Expanded(child: _field(_modelCtrl, 'MODEL NO')),
                 ],
               ),
+              const Gap(12),
+              _field(_brandCtrl, 'BRAND'),
               const Gap(24),
 
               // ── CATEGORY MATRIX ──
@@ -320,6 +554,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                     label: Text(cat.toUpperCase()),
                     selected: isSelected,
                     onSelected: (val) => setState(() => _selectedCategory = cat),
+                    checkmarkColor: Colors.white,
                     labelStyle: GoogleFonts.lexend(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -335,36 +570,256 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
               ),
               const Gap(24),
 
-              // ── RESOURCE MATRIX ──
-              _sectionLabel('RESOURCE MATRIX'),
+              // ── STOCK BREAKDOWN ──
+              _sectionLabel('STOCK BREAKDOWN'),
               Row(
                 children: [
-                  Expanded(child: _field(_stockCtrl, 'INITIAL STOCK', keyboard: TextInputType.number, required: true)),
+                  Expanded(
+                    child: _field(
+                      _qtyGoodCtrl,
+                      'AVAILABLE',
+                      keyboard: TextInputType.number,
+                      required: true,
+                      labelColor: const Color(0xFF16A34A),
+                    ),
+                  ),
                   const Gap(12),
-                  Expanded(child: _field(_unitCtrl, 'UNIT (PCS/BOX)')),
+                  Expanded(
+                    child: _field(
+                      _qtyDamagedCtrl,
+                      'DAMAGED',
+                      keyboard: TextInputType.number,
+                      labelColor: const Color(0xFFDC2626),
+                    ),
+                  ),
                 ],
               ),
               const Gap(12),
               Row(
                 children: [
-                  Expanded(child: _field(_minCtrl, 'LOW THRESHOLD', keyboard: TextInputType.number)),
+                  Expanded(
+                    child: _field(
+                      _qtyMaintenanceCtrl,
+                      'IN MAINTENANCE',
+                      keyboard: TextInputType.number,
+                      labelColor: const Color(0xFFEA580C),
+                    ),
+                  ),
                   const Gap(12),
-                  Expanded(child: _field(_targetCtrl, 'TARGET STOCK', keyboard: TextInputType.number)),
+                  Expanded(
+                    child: _field(
+                      _qtyLostCtrl,
+                      'LOST / MISSING',
+                      keyboard: TextInputType.number,
+                      labelColor: const Color(0xFF6B7280),
+                    ),
+                  ),
                 ],
               ),
+              const Gap(10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: sentinel.containerLow,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: sentinel.onSurfaceVariant.withOpacity(0.12)),
+                ),
+                child: Text(
+                  'TOTAL STOCK: $_totalStock',
+                  style: GoogleFonts.lexend(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                    color: sentinel.navy.withOpacity(0.85),
+                  ),
+                ),
+              ),
+              const Gap(12),
+              Row(
+                children: [
+                  Expanded(child: _field(_targetCtrl, 'MAX STOCK GOAL', keyboard: TextInputType.number)),
+                  const Gap(12),
+                  Expanded(child: _field(_minCtrl, 'WARN AT (%)', keyboard: TextInputType.number)),
+                ],
+              ),
+              const Gap(12),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _restockAlertEnabled,
+                onChanged: (value) => setState(() => _restockAlertEnabled = value),
+                title: Text(
+                  'ENABLE RESTOCK ALERT',
+                  style: GoogleFonts.lexend(fontSize: 11, fontWeight: FontWeight.w800, color: sentinel.navy),
+                ),
+                subtitle: Text(
+                  'Uses target and warning percentage to trigger alerts.',
+                  style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w500, color: sentinel.onSurfaceVariant.withOpacity(0.7)),
+                ),
+              ),
+              if (_selectedItemType == 'consumable') ...[
+                const Gap(12),
+                _sectionLabel('EXPIRY TRACKING'),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10)),
+                  ),
+                  tileColor: sentinel.containerLow,
+                  title: Text(
+                    _expiryDate == null
+                        ? 'SELECT EXPIRY DATE'
+                        : '${_expiryDate!.year}-${_expiryDate!.month.toString().padLeft(2, '0')}-${_expiryDate!.day.toString().padLeft(2, '0')}',
+                    style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                  trailing: Icon(Icons.calendar_month_rounded, color: sentinel.navy),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 30)),
+                      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (picked != null) setState(() => _expiryDate = picked);
+                  },
+                ),
+              ],
               const Gap(24),
 
               // ── STORAGE PLOT ──
               _sectionLabel('STORAGE PLOT'),
               storageHubs.when(
-                data: (hubs) => DropdownButtonFormField<int>(
-                  value: _selectedLocationId,
-                  onChanged: (val) => setState(() => _selectedLocationId = val),
-                  decoration: _inputDecoration(context, 'SELECT WAREHOUSE'),
-                  items: hubs.map((h) => DropdownMenuItem(
-                    value: h.id,
-                    child: Text(h.name, style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w600)),
-                  )).toList(),
+                data: (hubs) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      value: _selectedLocationId,
+                      onChanged: (val) => setState(() => _selectedLocationId = val),
+                      validator: (val) => val == null ? 'SELECT A WAREHOUSE' : null,
+                      decoration: _inputDecoration(context, 'PRIMARY WAREHOUSE'),
+                      items: hubs
+                          .map((h) => DropdownMenuItem(
+                                value: h.id,
+                                child: Text(h.name, style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w600)),
+                              ))
+                          .toList(),
+                    ),
+                    const Gap(10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Additional Sites (${_extraDistributions.length})',
+                            style: GoogleFonts.lexend(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: sentinel.onSurfaceVariant.withOpacity(0.7),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _openDistributionEditor(hubs: hubs),
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
+                          label: Text(
+                            'ADD SITE',
+                            style: GoogleFonts.lexend(fontSize: 10, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_extraDistributions.isNotEmpty)
+                      ..._extraDistributions.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final dist = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: sentinel.containerLow,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: sentinel.onSurfaceVariant.withOpacity(0.12)),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        dist.locationName,
+                                        style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w800, color: sentinel.navy),
+                                      ),
+                                      const Gap(2),
+                                      Wrap(
+                                        spacing: 10,
+                                        runSpacing: 4,
+                                        children: [
+                                          Text(
+                                            'GOOD ${dist.qtyGood}',
+                                            style: GoogleFonts.lexend(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFF16A34A),
+                                            ),
+                                          ),
+                                          Text(
+                                            'MAINT ${dist.qtyMaintenance}',
+                                            style: GoogleFonts.lexend(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFFEA580C),
+                                            ),
+                                          ),
+                                          Text(
+                                            'DAMAGE ${dist.qtyDamaged}',
+                                            style: GoogleFonts.lexend(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                          Text(
+                                            'LOST ${dist.qtyLost}',
+                                            style: GoogleFonts.lexend(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                          Text(
+                                            'TOTAL ${dist.total}',
+                                            style: GoogleFonts.lexend(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w900,
+                                              color: sentinel.navy,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => _openDistributionEditor(
+                                    hubs: hubs,
+                                    existing: dist,
+                                    editIndex: idx,
+                                  ),
+                                  icon: Icon(Icons.edit_outlined, size: 18, color: sentinel.navy),
+                                ),
+                                IconButton(
+                                  onPressed: () => setState(() => _extraDistributions.removeAt(idx)),
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
                 ),
                 loading: () => const LinearProgressIndicator(),
                 error: (_, __) => _field(TextEditingController(), 'ERROR LOADING HUBS'),
@@ -414,30 +869,79 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     );
   }
 
-  InputDecoration _inputDecoration(BuildContext context, String label) {
+  InputDecoration _inputDecoration(
+    BuildContext context,
+    String label, {
+    Color? labelColor,
+  }) {
     final sentinel = Theme.of(context).sentinel;
     return InputDecoration(
       labelText: label,
-      labelStyle: GoogleFonts.lexend(color: sentinel.onSurfaceVariant.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+      labelStyle: GoogleFonts.lexend(
+        color: labelColor ?? sentinel.onSurfaceVariant.withOpacity(0.4),
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.5,
+      ),
       filled: true,
       fillColor: sentinel.containerLow,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10), width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: sentinel.onSurfaceVariant.withOpacity(0.10), width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: sentinel.navy.withOpacity(0.45), width: 1.4),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 
-  Widget _field(TextEditingController controller, String label, {bool required = false, TextInputType keyboard = TextInputType.text}) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboard,
-      style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600),
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'REQUIRED' : null : null,
-      decoration: _inputDecoration(context, label),
+  Widget _field(
+    TextEditingController controller,
+    String label, {
+    bool required = false,
+    TextInputType keyboard = TextInputType.text,
+    Color? labelColor,
+  }) {
+    final sentinel = Theme.of(context).sentinel;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: sentinel.shadowColor.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboard,
+        style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600),
+        validator: required ? (v) => (v == null || v.isEmpty) ? 'REQUIRED' : null : null,
+        decoration: _inputDecoration(context, label, labelColor: labelColor),
+      ),
     );
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final totalStock = _totalStock;
+    final thresholdPercent = _safeInt(_minCtrl, fallback: 20);
+    if (totalStock < 1) {
+      AppToast.showError(context, 'TOTAL STOCK MUST BE AT LEAST 1');
+      return;
+    }
+    if (thresholdPercent < 0 || thresholdPercent > 100) {
+      AppToast.showError(context, 'WARN AT (%) MUST BE 0-100');
+      return;
+    }
     setState(() => _submitting = true);
     
     try {
@@ -451,17 +955,62 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
       }
 
       final repo = ref.read(inventoryRepositoryProvider);
+      final hubs = ref.read(storageHubsProvider).valueOrNull ?? const <StorageHub>[];
+      final selectedLocationId = _selectedLocationId;
+      if (selectedLocationId == null) {
+        throw Exception('Please select a warehouse before creating the item.');
+      }
+      final selectedHubName = hubs
+          .where((h) => h.id == selectedLocationId)
+          .map((h) => h.name)
+          .firstWhere((_) => true, orElse: () => 'location_$selectedLocationId');
+      final primaryDistribution = {
+        'locationId': selectedLocationId,
+        'locationName': selectedHubName,
+        'qtyGood': _safeInt(_qtyGoodCtrl),
+        'qtyDamaged': _safeInt(_qtyDamagedCtrl),
+        'qtyMaintenance': _safeInt(_qtyMaintenanceCtrl),
+        'qtyLost': _safeInt(_qtyLostCtrl),
+      };
+      final allDistributions = <Map<String, dynamic>>[
+        primaryDistribution,
+        ..._extraDistributions.map((d) => {
+              'locationId': d.locationId,
+              'locationName': d.locationName,
+              'qtyGood': d.qtyGood,
+              'qtyDamaged': d.qtyDamaged,
+              'qtyMaintenance': d.qtyMaintenance,
+              'qtyLost': d.qtyLost,
+            }),
+      ];
+      final uniqueLocationIds = allDistributions
+          .map((d) => d['locationId'] as int)
+          .toSet();
+      if (uniqueLocationIds.length != allDistributions.length) {
+        AppToast.showError(context, 'DUPLICATE DISTRIBUTION SITES ARE NOT ALLOWED');
+        return;
+      }
       await repo.createItem(
         name: _nameCtrl.text,
         category: _selectedCategory,
-        initialStock: int.parse(_stockCtrl.text),
-        storageLocation: _selectedLocationId?.toString() ?? '',
+        itemType: _selectedItemType,
+        qtyGood: _safeInt(_qtyGoodCtrl),
+        qtyDamaged: _safeInt(_qtyDamagedCtrl),
+        qtyMaintenance: _safeInt(_qtyMaintenanceCtrl),
+        qtyLost: _safeInt(_qtyLostCtrl),
+        locationRegistryId: selectedLocationId,
+        storageLocation: selectedHubName,
+        brand: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
         unit: _unitCtrl.text,
         serialNumber: _serialCtrl.text,
         modelNumber: _modelCtrl.text,
+        expiryDate: _expiryDate?.toIso8601String().split('T').first,
+        expiryAlertDays: _selectedItemType == 'consumable' ? 15 : null,
         targetStock: int.tryParse(_targetCtrl.text),
-        lowStockThreshold: int.tryParse(_minCtrl.text),
+        lowStockThreshold: thresholdPercent,
+        restockAlertEnabled: _restockAlertEnabled,
         imageUrl: remoteImagePath,
+        siteDistributions: allDistributions,
       );
       
       await ref.read(inventoryNotifierProvider.notifier).refresh();

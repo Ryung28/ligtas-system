@@ -4,12 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/design_system/app_theme.dart';
-import '../../../../core/design_system/widgets/atmospheric_background.dart';
 import '../../../dashboard/widgets/dashboard_background.dart';
-import '../../domain/entities/activity_event.dart';
-import '../_components/audit_vault_components.dart';
 import '../_components/session_card.dart';
 import '../controllers/activity_ledger_controller.dart';
 import '../widgets/models/activity_session.dart';
@@ -26,11 +22,18 @@ class ActivityLedgerScreen extends ConsumerStatefulWidget {
 class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
+  String? _focusToken;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _focusToken ??= GoRouterState.of(context).uri.queryParameters['focus']?.trim();
   }
 
   @override
@@ -46,9 +49,21 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
     }
   }
 
+  bool _sessionMatchesFocus(ActivitySession session, String focusToken) {
+    final token = focusToken.toLowerCase();
+    for (final event in session.events) {
+      final eventId = event.id.toLowerCase();
+      final refId = (event.referenceId ?? '').toLowerCase();
+      final assetId = event.assetId?.toString().toLowerCase() ?? '';
+      if (eventId == token || refId == token || assetId == token) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ledgerState = ref.watch(activityLedgerProvider);
     final sentinel = Theme.of(context).sentinel;
 
     return Scaffold(
@@ -279,9 +294,29 @@ class _ActivityLedgerScreenState extends ConsumerState<ActivityLedgerScreen> {
                                       child: Column(
                                         children: dateSessions.asMap().entries.map((e) {
                                           final isLast = e.key == dateSessions.length - 1;
+                                          final isFocused = _focusToken != null &&
+                                              _focusToken!.isNotEmpty &&
+                                              _sessionMatchesFocus(e.value, _focusToken!);
                                           return Column(
                                             children: [
-                                              SessionCard(session: e.value),
+                                              AnimatedContainer(
+                                                duration: const Duration(milliseconds: 220),
+                                                curve: Curves.easeOutCubic,
+                                                margin: isFocused
+                                                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+                                                    : EdgeInsets.zero,
+                                                decoration: isFocused
+                                                    ? BoxDecoration(
+                                                        color: const Color(0xFFEFF6FF),
+                                                        borderRadius: BorderRadius.circular(14),
+                                                        border: Border.all(
+                                                          color: const Color(0xFF93C5FD),
+                                                          width: 1.2,
+                                                        ),
+                                                      )
+                                                    : null,
+                                                child: SessionCard(session: e.value),
+                                              ),
                                               if (!isLast)
                                                 Container(
                                                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -342,7 +377,6 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = value == currentValue;
-    final themeColor = color ?? const Color(0xFF1E293B);
 
     return GestureDetector(
       onTap: () {

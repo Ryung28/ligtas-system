@@ -11,7 +11,6 @@ import '../../providers/dispatch_controller.dart';
 import '../../model/dispatch_session.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../borrowing/providers/personnel_search_controller.dart';
-import '../../../borrowing/repositories/personnel_repository.dart';
 
 class FastDispatchScreen extends ConsumerStatefulWidget {
   const FastDispatchScreen({super.key});
@@ -90,16 +89,11 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
       ref.read(fastDispatchControllerProvider.notifier).setBorrower(borrower);
       _updateControllers(borrower);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            missing.isEmpty
-                ? 'Autofill used your profile details.'
-                : 'Autofill partial - missing ${missing.join(', ')} in your profile.',
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      AppToast.showInfo(
+        context,
+        missing.isEmpty
+            ? 'Autofill used your profile details.'
+            : 'Autofill partial - missing ${missing.join(', ')} in your profile.',
       );
     }
   }
@@ -587,11 +581,9 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
         onPressed: canSubmit
             ? () {
                 if (!hasRequiredBorrowerData) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Complete borrower name, contact, and office to continue.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  AppToast.showError(
+                    context,
+                    'Complete borrower name, contact, and office to continue.',
                   );
                   return;
                 }

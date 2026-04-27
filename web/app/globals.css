@@ -83,6 +83,24 @@
     }
   }
 
+  /* 📱 PWA / MOBILE UPSCALE (+2px) */
+  @media (max-width: 767px) {
+    html {
+      font-size: 112.5%; /* 16px -> 18px */
+    }
+    
+    /* SCALE-UP HARDCODED PIXELS (+2px) */
+    .text-\[8px\]  { font-size: 10px !important; }
+    .text-\[9px\]  { font-size: 11px !important; }
+    .text-\[10px\] { font-size: 12px !important; }
+    .text-\[11px\] { font-size: 13px !important; }
+    .text-\[12px\] { font-size: 14px !important; }
+    .text-\[13px\] { font-size: 15px !important; }
+    .text-\[14px\] { font-size: 16px !important; }
+    .text-\[15px\] { font-size: 17px !important; }
+    .text-\[16px\] { font-size: 18px !important; }
+  }
+
   /* 💻 14-16 INCH LAPTOP OPTIMIZATION (1366px - 1700px) */
   @media (min-width: 1366px) and (max-width: 1700px) {
     :root {
@@ -100,25 +118,57 @@
   /* 🖥️ 24"+ MONITOR UPSCALE (1920px - 2559px) */
   @media (min-width: 1920px) {
     html {
-      font-size: 106.25%; /* Bumps 16px -> ~17px base */
+      font-size: 112.5%; /* Bumps 16px -> 18px base (+2px boost) */
     }
     :root {
       --dashboard-padding: 3rem;
       --section-gap: 2.5rem;
       --card-radius: 20px;
     }
+
+    /* SCALE-UP HARDCODED PIXELS (+2px) */
+    .text-\[8px\]  { font-size: 10px !important; }
+    .text-\[9px\]  { font-size: 11px !important; }
+    .text-\[10px\] { font-size: 12px !important; }
+    .text-\[11px\] { font-size: 13px !important; }
+    .text-\[12px\] { font-size: 14px !important; }
+    .text-\[13px\] { font-size: 15px !important; }
+    .text-\[14px\] { font-size: 16px !important; }
+    .text-\[15px\] { font-size: 17px !important; }
+    .text-\[16px\] { font-size: 18px !important; }
+    .text-\[18px\] { font-size: 20px !important; }
+    .text-\[20px\] { font-size: 22px !important; }
+    .text-\[24px\] { font-size: 26px !important; }
+    .text-\[30px\] { font-size: 32px !important; }
+    .text-\[32px\] { font-size: 34px !important; }
   }
 
   /* 🛸 4K / ULTRA LARGE MONITOR (2560px+) */
   @media (min-width: 2560px) {
     html {
-      font-size: 112.5%; /* Bumps to 18px base */
+      font-size: 125%; /* Bumps to 20px base (+4px boost) */
     }
     :root {
       --dashboard-padding: 4.5rem;
       --section-gap: 4rem;
       --dashboard-content-max-width: 2200px;
     }
+
+    /* 4K DEEP SCALE (+4px) */
+    .text-\[8px\]  { font-size: 12px !important; }
+    .text-\[9px\]  { font-size: 13px !important; }
+    .text-\[10px\] { font-size: 14px !important; }
+    .text-\[11px\] { font-size: 15px !important; }
+    .text-\[12px\] { font-size: 16px !important; }
+    .text-\[13px\] { font-size: 17px !important; }
+    .text-\[14px\] { font-size: 18px !important; }
+    .text-\[15px\] { font-size: 19px !important; }
+    .text-\[16px\] { font-size: 20px !important; }
+    .text-\[18px\] { font-size: 22px !important; }
+    .text-\[20px\] { font-size: 24px !important; }
+    .text-\[24px\] { font-size: 28px !important; }
+    .text-\[30px\] { font-size: 34px !important; }
+    .text-\[32px\] { font-size: 36px !important; }
   }
 
   /* Premium Custom Scrollbar */

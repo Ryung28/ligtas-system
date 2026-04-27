@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getStationManifest } from '@/src/features/tactical-stations/actions/station.actions';
+import { getStationManifest } from '@/src/features/tactical-stations/actions/station.queries';
 import { ScannerPayload, ScanResult } from '../types';
 import { toast } from 'sonner';
 
@@ -11,8 +11,15 @@ import { toast } from 'sonner';
 export function useScannerData() {
     const [isResolving, setIsResolving] = useState(false);
     const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+    const isProcessing = useRef(false);
+    const hasActiveResult = useRef(false);
 
     const resolvePayload = useCallback(async (payload: ScannerPayload) => {
+        // 🛡️ RE-ENTRANCY GUARD: Use Refs for synchronous locking
+        // We check both 'processing' and 'hasActiveResult' to prevent loops
+        if (isProcessing.current || hasActiveResult.current) return;
+
+        isProcessing.current = true;
         setIsResolving(true);
         setScanResult(null);
 
@@ -27,19 +34,24 @@ export function useScannerData() {
                 if (error || !item) {
                     setScanResult({ error: `Item ID ${payload.id} not found.` });
                 } else {
+                    hasActiveResult.current = true;
                     setScanResult({ item });
                 }
             } else if (payload.type === 'station') {
-                const result = await getStationManifest(Number(payload.id));
+                // 🛰️ TACTICAL RESOLUTION: Support both numeric IDs and string codes
+                const result = await getStationManifest(payload.id);
                 
                 if (result.error || !result.data) {
                     setScanResult({ error: result.error || 'Station not found.' });
                 } else {
+                    const { station, items } = result.data;
+                    hasActiveResult.current = true;
                     setScanResult({ 
                         station: { 
-                            id: Number(payload.id), 
-                            name: payload.metadata?.name || 'Tactical Hub',
-                            manifest: result.data 
+                            id: station.id, 
+                            name: station.station_name || station.location_name,
+                            image_url: station.image_url,
+                            manifest: items 
                         } 
                     });
                 }
@@ -53,10 +65,13 @@ export function useScannerData() {
             setScanResult({ error: 'Network error while resolving scan.' });
         } finally {
             setIsResolving(false);
+            isProcessing.current = false;
         }
-    }, []);
+    }, []); // Removed scanResult dependency to keep the function stable
 
     const resetScanner = useCallback(() => {
+        isProcessing.current = false;
+        hasActiveResult.current = false;
         setScanResult(null);
         setIsResolving(false);
     }, []);

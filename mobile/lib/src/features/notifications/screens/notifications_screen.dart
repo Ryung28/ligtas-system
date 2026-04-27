@@ -6,9 +6,11 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design_system/app_theme.dart';
+import '../data/models/notification_model.dart';
 import '../presentation/providers/notification_provider.dart';
 import '../presentation/widgets/tactical_notification_card.dart';
 import '../widgets/sync_error_banner.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -18,11 +20,16 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  late final NotificationRealtimeSync _realtimeSync;
+  String _selectedTypeFilter = 'all';
+  bool _sortNewestFirst = true;
+
   @override
   void initState() {
     super.initState();
+    _realtimeSync = ref.read(notificationRealtimeSyncProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationRealtimeSyncProvider.notifier).startSync(() {
+      _realtimeSync.startSync(() {
         ref.invalidate(systemNotificationsProvider);
         ref.invalidate(unreadNotificationCountProvider);
       });
@@ -31,13 +38,22 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   @override
   void dispose() {
-    ref.read(notificationRealtimeSyncProvider.notifier).stopSync();
+    _realtimeSync.stopSync();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(systemNotificationsProvider);
+    final currentUser = ref.watch(currentUserProvider);
+    final role = currentUser?.role.toLowerCase();
+    final canViewOperationalFilters = const {
+      'admin',
+      'staff',
+      'editor',
+      'analyst',
+      'responder',
+    }.contains(role);
     final sentinel = Theme.of(context).sentinel;
 
     return Scaffold(
@@ -110,10 +126,32 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           // ── NOTIFICATION STREAM ──
           notificationsAsync.when(
             data: (allNotifications) {
-              final notifications = allNotifications;
+              final notifications = allNotifications
+                  .where(_matchesFilter)
+                  .toList()
+                ..sort((a, b) {
+                  final aTime = DateTime.tryParse(a.time);
+                  final bTime = DateTime.tryParse(b.time);
+                  if (aTime == null || bTime == null) return 0;
+                  final compare = aTime.compareTo(bTime);
+                  return _sortNewestFirst ? -compare : compare;
+                });
 
               if (notifications.isEmpty) {
-                return SliverFillRemaining(child: _buildEmptyState(context));
+                return SliverList(
+                  delegate: SliverChildListDelegate([
+                    const SyncErrorBanner(),
+                    const Gap(8),
+                    _buildFilterToolbar(
+                      context,
+                      canViewOperationalFilters: canViewOperationalFilters,
+                    ),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.55,
+                      child: _buildEmptyState(context),
+                    ),
+                  ]),
+                );
               }
 
               final active = notifications.where((n) => !n.isRead).toList();
@@ -127,6 +165,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     const SyncErrorBanner(),
+                    const Gap(8),
+                    _buildFilterToolbar(
+                      context,
+                      canViewOperationalFilters: canViewOperationalFilters,
+                    ),
                     
                     // ACTIVE ALERTS SECTION
                     if (active.isNotEmpty) ...[
@@ -289,6 +332,131 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildFilterToolbar(
+    BuildContext context, {
+    required bool canViewOperationalFilters,
+  }) {
+    final sentinel = Theme.of(context).sentinel;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildTypeChip(context, label: 'All', value: 'all'),
+                const Gap(8),
+                if (canViewOperationalFilters) ...[
+                  _buildTypeChip(context, label: 'Low Stock', value: 'stock'),
+                  const Gap(8),
+                ],
+                _buildTypeChip(context, label: 'Returned', value: 'returned'),
+                const Gap(8),
+                if (canViewOperationalFilters) ...[
+                  _buildTypeChip(context, label: 'Overdue', value: 'overdue'),
+                  const Gap(8),
+                ],
+                _buildTypeChip(context, label: 'Approvals', value: 'approval'),
+                const Gap(8),
+                _buildTypeChip(context, label: 'System', value: 'system'),
+              ],
+            ),
+          ),
+          const Gap(8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() => _sortNewestFirst = !_sortNewestFirst);
+              },
+              icon: Icon(
+                _sortNewestFirst
+                    ? Icons.south_rounded
+                    : Icons.north_rounded,
+                size: 16,
+                color: sentinel.onSurfaceVariant.withOpacity(0.8),
+              ),
+              label: Text(
+                _sortNewestFirst ? 'Newest first' : 'Oldest first',
+                style: GoogleFonts.lexend(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: sentinel.onSurfaceVariant.withOpacity(0.85),
+                  letterSpacing: 0.4,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: sentinel.onSurfaceVariant.withOpacity(0.2),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeChip(
+    BuildContext context, {
+    required String label,
+    required String value,
+  }) {
+    final sentinel = Theme.of(context).sentinel;
+    final selected = _selectedTypeFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _selectedTypeFilter = value),
+      labelStyle: GoogleFonts.lexend(
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        color: selected ? Colors.white : sentinel.onSurfaceVariant.withOpacity(0.85),
+      ),
+      selectedColor: sentinel.navy,
+      backgroundColor: Colors.white,
+      side: BorderSide(
+        color: selected
+            ? sentinel.navy
+            : sentinel.onSurfaceVariant.withOpacity(0.2),
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+  bool _matchesFilter(NotificationItem n) {
+    final type = n.type.toLowerCase();
+    switch (_selectedTypeFilter) {
+      case 'stock':
+        return type == 'stock_low' || type == 'stock_out' || type == 'low_stock';
+      case 'returned':
+        return type == 'item_returned';
+      case 'overdue':
+        return type == 'item_overdue';
+      case 'approval':
+        return type == 'borrow_request' ||
+            type == 'borrow_approved' ||
+            type == 'borrow_rejected' ||
+            type == 'request_approved' ||
+            type == 'request_rejected';
+      case 'system':
+        return type == 'system_alert' || type.startsWith('user_');
+      case 'all':
+      default:
+        return true;
+    }
   }
 
   Widget _buildErrorState(BuildContext context, String error) {

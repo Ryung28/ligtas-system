@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -160,9 +161,9 @@ class TacticalAssetImage extends ConsumerWidget {
       ),
       child: Center(
         child: Icon(
-          Icons.category_rounded, // High-Contrast Ghost
+          fallbackIcon ?? CupertinoIcons.cube_box,
           size: iconDim,
-          color: Colors.black, // Solid Black
+          color: fallbackColor ?? Colors.black,
         ),
       ),
     );

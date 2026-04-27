@@ -6,7 +6,7 @@ import 'package:mobile/src/features_v2/inventory/presentation/providers/manager_
 import 'package:mobile/src/features_v2/inventory/presentation/providers/manager_action_sheet_v2/manager_action_mode.dart';
 import 'package:mobile/src/features_v2/inventory/presentation/widgets/action_sheet_components.dart';
 
-/// 4-button mode toggle (Logistics / Hand Over / Reserve / Identity).
+/// 2-button mode toggle for Shelves (Identity / Restock only).
 /// Delegates to the existing [ActionSheetToggleBar] for visual consistency
 /// with the original sheet. Mode changes go through the controller only.
 class ModeToggleSection extends ConsumerWidget {
@@ -17,12 +17,19 @@ class ModeToggleSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sentinel = Theme.of(context).sentinel;
-    final mode = ref.watch(managerActionControllerProvider(item).select((s) => s.mode));
+    final mode = ref.watch(
+      managerActionControllerProvider(item).select((s) => s.mode),
+    );
     final ctrl = ref.read(managerActionControllerProvider(item).notifier);
 
+    // Shelves flow no longer exposes direct Hand Over / Reserve actions.
+    final sanitizedMode =
+        (mode == ManagerMode.handover || mode == ManagerMode.reserve)
+            ? ManagerMode.edit
+            : mode;
     return ActionSheetToggleBar(
-      currentModeIndex: mode.index,
-      onModeSelected: (index) => ctrl.setMode(ManagerMode.values[index]),
+      currentMode: sanitizedMode,
+      onModeSelected: ctrl.setMode,
       sentinel: sentinel,
     );
   }

@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Outfit, Inter_Tight, JetBrains_Mono, Syne, DM_Sans } from "next/font/google"; // Added Syne and DM Sans
+import { Outfit, JetBrains_Mono, DM_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { AudioPermissionWrapper } from "@/components/audio-permission-wrapper";
 import { RealtimeAudioProvider } from "@/components/realtime-audio";
 import { AuthProvider } from "@/providers/auth-provider";
-
-const inter = Inter({
-    subsets: ["latin"],
-    display: "swap",
-    variable: "--font-inter",
-});
 
 const outfit = Outfit({
     subsets: ["latin"],
@@ -18,22 +12,10 @@ const outfit = Outfit({
     variable: "--font-outfit",
 });
 
-const interTight = Inter_Tight({
-    subsets: ["latin"],
-    display: "swap",
-    variable: "--font-inter-tight",
-});
-
 const jetbrainsMono = JetBrains_Mono({
     subsets: ["latin"],
     display: "swap",
     variable: "--font-jetbrains-mono",
-});
-
-const syne = Syne({
-    subsets: ["latin"],
-    display: "swap",
-    variable: "--font-syne",
 });
 
 const dmSans = DM_Sans({
@@ -71,7 +53,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className={`${inter.variable} ${outfit.variable} ${interTight.variable} ${jetbrainsMono.variable} ${syne.variable} ${dmSans.variable}`}>
+        <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} ${dmSans.variable}`}>
             <head>
                 <link rel="apple-touch-icon" href="/oro-cervo.png" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
