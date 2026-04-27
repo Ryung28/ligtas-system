@@ -257,18 +257,40 @@ begin
     p_scope_version
   );
 
-  -- FK-safe reset order (child tables first)
-  truncate table public.chat_messages restart identity;
-  truncate table public.chat_rooms restart identity;
-  truncate table public.borrow_logs restart identity;
-  truncate table public.notification_reads restart identity;
-  truncate table public.notification_deliveries restart identity;
-  truncate table public.notification_events restart identity;
-  truncate table public.system_notifications restart identity;
-  truncate table public.activity_log restart identity;
-  truncate table public.cctv_logs restart identity;
-  truncate table public.logistics_actions restart identity;
-  truncate table public.auth_debug_logs restart identity;
+  -- FK-safe clear must be done in one TRUNCATE statement.
+  truncate table
+    public.chat_messages,
+    public.chat_rooms,
+    public.borrow_logs,
+    public.notification_reads,
+    public.notification_deliveries,
+    public.notification_events,
+    public.system_notifications,
+    public.activity_log,
+    public.cctv_logs,
+    public.logistics_actions,
+    public.auth_debug_logs
+  restart identity;
+
+  -- Normalize operational availability after clearing borrow logs.
+  -- This keeps equipment master records but removes residual "borrowed/dispensed"
+  -- state that is encoded via stock_available deltas.
+  update public.inventory i
+  set stock_available = greatest(
+    0,
+    coalesce(i.stock_total, 0)
+      - coalesce(i.qty_damaged, 0)
+      - coalesce(i.qty_maintenance, 0)
+      - coalesce(i.qty_lost, 0)
+  ),
+      updated_at = now()
+  where coalesce(i.stock_available, 0) <> greatest(
+    0,
+    coalesce(i.stock_total, 0)
+      - coalesce(i.qty_damaged, 0)
+      - coalesce(i.qty_maintenance, 0)
+      - coalesce(i.qty_lost, 0)
+  );
 
   update public.reset_jobs
   set status = 'completed',
@@ -325,85 +347,230 @@ begin
   values ('started', p_requested_by, p_reason, p_scope_version, p_snapshot_id)
   returning id into v_job_id;
 
-  -- Clear current logbook rows first (same FK-safe clear order as reset)
-  truncate table public.chat_messages restart identity;
-  truncate table public.chat_rooms restart identity;
-  truncate table public.borrow_logs restart identity;
-  truncate table public.notification_reads restart identity;
-  truncate table public.notification_deliveries restart identity;
-  truncate table public.notification_events restart identity;
-  truncate table public.system_notifications restart identity;
-  truncate table public.activity_log restart identity;
-  truncate table public.cctv_logs restart identity;
-  truncate table public.logistics_actions restart identity;
-  truncate table public.auth_debug_logs restart identity;
+  -- Restore should replay snapshot rows only. Disable user triggers that enqueue side effects.
+  alter table public.borrow_logs disable trigger user;
+  alter table public.chat_messages disable trigger user;
+
+  -- Clear current logbook rows first in one FK-safe TRUNCATE statement.
+  truncate table
+    public.chat_messages,
+    public.chat_rooms,
+    public.borrow_logs,
+    public.notification_reads,
+    public.notification_deliveries,
+    public.notification_events,
+    public.system_notifications,
+    public.activity_log,
+    public.cctv_logs,
+    public.logistics_actions,
+    public.auth_debug_logs
+  restart identity;
 
   -- Restore parent-first to satisfy FK constraints
   insert into public.borrow_logs
-  select (jsonb_populate_record(null::public.borrow_logs, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.borrow_logs';
+  select (jsonb_populate_record(null::public.borrow_logs, dedup.row_data)).*
+  from (
+    select row_data
+    from (
+      select
+        sr.row_data,
+        row_number() over (
+          partition by coalesce(sr.row_data->>'id', md5(sr.row_data::text))
+          order by
+            nullif(sr.row_data->>'updated_at', '')::timestamptz desc nulls last,
+            nullif(sr.row_data->>'created_at', '')::timestamptz desc nulls last
+        ) as rn
+      from archive.logbook_snapshot_rows sr
+      where sr.snapshot_id = p_snapshot_id
+        and sr.table_name = 'public.borrow_logs'
+    ) ranked
+    where rn = 1
+  ) dedup
+  on conflict do nothing;
 
+  -- Keep all room IDs for chat_messages FK, but normalize duplicate borrow_request_id.
+  -- Winner row keeps borrow_request_id; other duplicates are forced to NULL.
   insert into public.chat_rooms
-  select (jsonb_populate_record(null::public.chat_rooms, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.chat_rooms';
+  select
+    (
+      jsonb_populate_record(
+        null::public.chat_rooms,
+        case
+          when dedup_borrow.rn_borrow = 1 then dedup_borrow.row_data
+          else jsonb_set(dedup_borrow.row_data, '{borrow_request_id}', 'null'::jsonb, true)
+        end
+      )
+    ).*
+  from (
+    with dedup_id as (
+      select row_data
+      from (
+        select
+          sr.row_data,
+          row_number() over (
+            partition by coalesce(sr.row_data->>'id', md5(sr.row_data::text))
+            order by
+              nullif(sr.row_data->>'updated_at', '')::timestamptz desc nulls last,
+              nullif(sr.row_data->>'created_at', '')::timestamptz desc nulls last
+          ) as rn_id
+        from archive.logbook_snapshot_rows sr
+        where sr.snapshot_id = p_snapshot_id
+          and sr.table_name = 'public.chat_rooms'
+      ) ranked_id
+      where rn_id = 1
+    )
+    select
+      d.row_data,
+      row_number() over (
+        partition by
+          coalesce(
+            case
+              when nullif(trim(coalesce(d.row_data->>'borrow_request_id', '')), '') is null then null
+              else (nullif(trim(d.row_data->>'borrow_request_id'), ''))::bigint::text
+            end,
+            '__NULL__:' || coalesce(d.row_data->>'id', md5(d.row_data::text))
+          )
+        order by
+          nullif(d.row_data->>'updated_at', '')::timestamptz desc nulls last,
+          nullif(d.row_data->>'created_at', '')::timestamptz desc nulls last,
+          nullif(d.row_data->>'id', '') desc nulls last
+      ) as rn_borrow
+    from dedup_id d
+  ) dedup_borrow
+  on conflict (id) do update
+  set
+    borrow_request_id = excluded.borrow_request_id,
+    borrower_user_id = excluded.borrower_user_id,
+    created_at = excluded.created_at;
 
   insert into public.chat_messages
-  select (jsonb_populate_record(null::public.chat_messages, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.chat_messages';
+  select (jsonb_populate_record(null::public.chat_messages, dedup.row_data)).*
+  from (
+    select row_data
+    from (
+      select
+        sr.row_data,
+        row_number() over (
+          partition by coalesce(sr.row_data->>'id', md5(sr.row_data::text))
+          order by
+            nullif(sr.row_data->>'created_at', '')::timestamptz desc nulls last
+        ) as rn
+      from archive.logbook_snapshot_rows sr
+      where sr.snapshot_id = p_snapshot_id
+        and sr.table_name = 'public.chat_messages'
+    ) ranked
+    where rn = 1
+  ) dedup
+  on conflict do nothing;
 
   insert into public.system_notifications
-  select (jsonb_populate_record(null::public.system_notifications, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.system_notifications';
+  select
+    (jsonb_populate_record(null::public.system_notifications, dedup.row_data)).*
+  from (
+    select row_data
+    from (
+      select
+        sr.row_data,
+        row_number() over (
+          partition by coalesce(sr.row_data->>'id', md5(sr.row_data::text))
+          order by
+            nullif(sr.row_data->>'created_at', '')::timestamptz desc nulls last,
+            nullif(sr.row_data->>'id', '') desc nulls last
+        ) as rn
+      from archive.logbook_snapshot_rows sr
+      where sr.snapshot_id = p_snapshot_id
+        and sr.table_name = 'public.system_notifications'
+    ) ranked
+    where rn = 1
+  ) dedup
+  on conflict do nothing;
 
   insert into public.notification_events
-  select (jsonb_populate_record(null::public.notification_events, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.notification_events';
+  select
+    (jsonb_populate_record(null::public.notification_events, dedup.row_data)).*
+  from (
+    select row_data
+    from (
+      select
+        sr.row_data,
+        row_number() over (
+          partition by coalesce(sr.row_data->>'id', md5(sr.row_data::text))
+          order by
+            nullif(sr.row_data->>'created_at', '')::timestamptz desc nulls last,
+            nullif(sr.row_data->>'id', '') desc nulls last
+        ) as rn
+      from archive.logbook_snapshot_rows sr
+      where sr.snapshot_id = p_snapshot_id
+        and sr.table_name = 'public.notification_events'
+    ) ranked
+    where rn = 1
+  ) dedup
+  on conflict do nothing;
 
   insert into public.notification_deliveries
-  select (jsonb_populate_record(null::public.notification_deliveries, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.notification_deliveries';
+  select nd.*
+  from (
+    select (jsonb_populate_record(null::public.notification_deliveries, sr.row_data)).*
+    from archive.logbook_snapshot_rows sr
+    where sr.snapshot_id = p_snapshot_id
+      and sr.table_name = 'public.notification_deliveries'
+  ) nd
+  join public.notification_events ne on ne.id = nd.event_id
+  on conflict do nothing;
 
   insert into public.notification_reads
-  select (jsonb_populate_record(null::public.notification_reads, sr.row_data)).*
-  from archive.logbook_snapshot_rows sr
-  where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.notification_reads';
+  select nr.*
+  from (
+    select (jsonb_populate_record(null::public.notification_reads, ranked.row_data)).*
+    from (
+      select sr.row_data,
+        row_number() over (
+          partition by
+            coalesce(sr.row_data->>'notification_id', '__NULL_NOTIFICATION__'),
+            coalesce(sr.row_data->>'user_id', '__NULL_USER__')
+          order by
+            nullif(sr.row_data->>'read_at', '')::timestamptz desc nulls last
+        ) as rn
+      from archive.logbook_snapshot_rows sr
+      where sr.snapshot_id = p_snapshot_id
+        and sr.table_name = 'public.notification_reads'
+    ) ranked
+    where rn = 1
+  ) nr
+  join public.system_notifications sn on sn.id = nr.notification_id
+  join auth.users au on au.id = nr.user_id
+  on conflict do nothing;
 
   insert into public.activity_log
   select (jsonb_populate_record(null::public.activity_log, sr.row_data)).*
   from archive.logbook_snapshot_rows sr
   where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.activity_log';
+    and sr.table_name = 'public.activity_log'
+  on conflict do nothing;
 
   insert into public.cctv_logs
   select (jsonb_populate_record(null::public.cctv_logs, sr.row_data)).*
   from archive.logbook_snapshot_rows sr
   where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.cctv_logs';
+    and sr.table_name = 'public.cctv_logs'
+  on conflict do nothing;
 
   insert into public.logistics_actions
   select (jsonb_populate_record(null::public.logistics_actions, sr.row_data)).*
   from archive.logbook_snapshot_rows sr
   where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.logistics_actions';
+    and sr.table_name = 'public.logistics_actions'
+  on conflict do nothing;
 
   insert into public.auth_debug_logs
   select (jsonb_populate_record(null::public.auth_debug_logs, sr.row_data)).*
   from archive.logbook_snapshot_rows sr
   where sr.snapshot_id = p_snapshot_id
-    and sr.table_name = 'public.auth_debug_logs';
+    and sr.table_name = 'public.auth_debug_logs'
+  on conflict do nothing;
+
+  alter table public.chat_messages enable trigger user;
+  alter table public.borrow_logs enable trigger user;
 
   -- Re-align sequences for bigint identity/serial tables
   perform setval('public.borrow_logs_id_seq', greatest(coalesce((select max(id) from public.borrow_logs), 0), 1), true);
@@ -417,6 +584,18 @@ begin
   return query select v_job_id, p_snapshot_id;
 exception
   when others then
+    begin
+      alter table public.chat_messages enable trigger user;
+    exception
+      when others then
+        null;
+    end;
+    begin
+      alter table public.borrow_logs enable trigger user;
+    exception
+      when others then
+        null;
+    end;
     update public.restore_jobs
     set status = 'failed',
         completed_at = now(),
@@ -516,11 +695,191 @@ begin
 end;
 $$;
 
+create or replace function public.admin_logbook_import_snapshot_v1(
+  p_requested_by uuid,
+  p_payload jsonb,
+  p_scope_version text,
+  p_reason text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, archive
+as $$
+declare
+  v_schema_version text;
+  v_source_snapshot jsonb;
+  v_scope_version text;
+  v_rows jsonb;
+  v_import_reason text;
+  v_new_snapshot_id uuid;
+  v_row jsonb;
+  v_table_name text;
+  v_row_data jsonb;
+  v_max_rows integer := 250000;
+begin
+  if not pg_try_advisory_xact_lock(987654321, 1002) then
+    raise exception 'Another logbook import is already running';
+  end if;
+
+  perform public.assert_admin_reset_actor(p_requested_by);
+
+  if jsonb_typeof(p_payload) is distinct from 'object' then
+    raise exception 'Import blocked: payload must be a JSON object';
+  end if;
+
+  v_schema_version := coalesce(p_payload->>'schema_version', '');
+  if v_schema_version <> 'logbook-export-v1' then
+    raise exception 'Unsupported export schema version';
+  end if;
+
+  v_source_snapshot := p_payload->'snapshot';
+  if jsonb_typeof(v_source_snapshot) is distinct from 'object' then
+    raise exception 'Import blocked: snapshot metadata missing';
+  end if;
+
+  v_scope_version := coalesce(v_source_snapshot->>'scope_version', '');
+  if v_scope_version = '' then
+    raise exception 'Import blocked: snapshot scope version missing';
+  end if;
+
+  if v_scope_version <> p_scope_version then
+    raise exception 'Scope version mismatch';
+  end if;
+
+  v_rows := p_payload->'rows';
+  if jsonb_typeof(v_rows) is distinct from 'array' then
+    raise exception 'Import blocked: rows must be a JSON array';
+  end if;
+
+  if jsonb_array_length(v_rows) > v_max_rows then
+    raise exception 'Import blocked: row count exceeds limit (%)', v_max_rows;
+  end if;
+
+  v_import_reason := trim(coalesce(p_reason, ''));
+  if length(v_import_reason) < 10 then
+    raise exception 'Import blocked: reason must be at least 10 characters';
+  end if;
+
+  insert into archive.logbook_snapshots (requested_by, reason, scope_version)
+  values (
+    p_requested_by,
+    format(
+      'Imported backup (%s): %s',
+      coalesce(v_source_snapshot->>'id', 'external'),
+      v_import_reason
+    ),
+    v_scope_version
+  )
+  returning id into v_new_snapshot_id;
+
+  for v_row in
+    select value
+    from jsonb_array_elements(v_rows)
+  loop
+    v_table_name := coalesce(v_row->>'table_name', '');
+    v_row_data := v_row->'row_data';
+
+    if v_table_name not in (
+      'public.chat_messages',
+      'public.chat_rooms',
+      'public.borrow_logs',
+      'public.notification_reads',
+      'public.notification_deliveries',
+      'public.notification_events',
+      'public.system_notifications',
+      'public.activity_log',
+      'public.cctv_logs',
+      'public.logistics_actions',
+      'public.auth_debug_logs'
+    ) then
+      raise exception 'Import blocked: unsupported table %', v_table_name;
+    end if;
+
+    if jsonb_typeof(v_row_data) is distinct from 'object' then
+      raise exception 'Import blocked: invalid row payload for table %', v_table_name;
+    end if;
+
+    insert into archive.logbook_snapshot_rows (snapshot_id, table_name, row_data)
+    values (v_new_snapshot_id, v_table_name, v_row_data);
+  end loop;
+
+  return v_new_snapshot_id;
+end;
+$$;
+
+create or replace function public.admin_logbook_prune_snapshots_v1(
+  p_requested_by uuid,
+  p_keep_latest integer default 100,
+  p_keep_days integer default 180
+)
+returns table(deleted_snapshots integer, deleted_rows bigint)
+language plpgsql
+security definer
+set search_path = public, archive
+as $$
+declare
+  v_deleted_snapshots integer := 0;
+  v_deleted_rows bigint := 0;
+begin
+  perform public.assert_admin_reset_actor(p_requested_by);
+
+  if p_keep_latest < 1 then
+    raise exception 'Prune blocked: p_keep_latest must be >= 1';
+  end if;
+
+  if p_keep_days < 1 then
+    raise exception 'Prune blocked: p_keep_days must be >= 1';
+  end if;
+
+  with referenced as (
+    select snapshot_id from public.backup_jobs where snapshot_id is not null
+    union
+    select snapshot_id from public.reset_jobs where snapshot_id is not null
+    union
+    select snapshot_id from public.restore_jobs where snapshot_id is not null
+  ),
+  ranked as (
+    select
+      s.id,
+      s.created_at,
+      row_number() over (order by s.created_at desc, s.id desc) as rn
+    from archive.logbook_snapshots s
+    left join referenced r on r.snapshot_id = s.id
+    where r.snapshot_id is null
+  ),
+  candidates as (
+    select id
+    from ranked
+    where rn > p_keep_latest
+      and created_at < now() - make_interval(days => p_keep_days)
+  ),
+  row_counts as (
+    select count(*)::bigint as row_count
+    from archive.logbook_snapshot_rows
+    where snapshot_id in (select id from candidates)
+  ),
+  deleted as (
+    delete from archive.logbook_snapshots s
+    where s.id in (select id from candidates)
+    returning s.id
+  )
+  select
+    coalesce((select count(*) from deleted), 0),
+    coalesce((select row_count from row_counts), 0)
+  into v_deleted_snapshots, v_deleted_rows;
+
+  return query select v_deleted_snapshots, v_deleted_rows;
+end;
+$$;
+
 revoke all on function public.admin_logbook_reset_v1(uuid, text, text) from public;
 revoke all on function public.admin_logbook_backup_v1(uuid, text, text) from public;
 revoke all on function public.admin_logbook_restore_v1(uuid, uuid, text, text) from public;
 revoke all on function public.admin_logbook_snapshot_preview_v1(uuid, uuid) from public;
 revoke all on function public.admin_logbook_export_snapshot_v1(uuid, uuid) from public;
+revoke all on function public.admin_logbook_import_snapshot_v1(uuid, jsonb, text, text) from public;
+revoke all on function public.admin_logbook_prune_snapshots_v1(uuid, integer, integer) from public;
 revoke all on function public.create_logbook_snapshot_v1(uuid, text, text) from public;
 revoke all on function public.assert_admin_reset_actor(uuid) from public;
 revoke all on function public.assert_no_active_logbook_job() from public;
@@ -529,3 +888,5 @@ grant execute on function public.admin_logbook_backup_v1(uuid, text, text) to au
 grant execute on function public.admin_logbook_restore_v1(uuid, uuid, text, text) to authenticated;
 grant execute on function public.admin_logbook_snapshot_preview_v1(uuid, uuid) to authenticated;
 grant execute on function public.admin_logbook_export_snapshot_v1(uuid, uuid) to authenticated;
+grant execute on function public.admin_logbook_import_snapshot_v1(uuid, jsonb, text, text) to authenticated;
+grant execute on function public.admin_logbook_prune_snapshots_v1(uuid, integer, integer) to authenticated;

@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TACTICAL_THEME } from '@/lib/theme-config'
 import { preload } from 'swr'
 import { useUser } from '@/providers/auth-provider'
+import { useUnreadChat } from '@/hooks/use-unread-chat'
 
 interface SidebarProps {
     className?: string
@@ -23,6 +24,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     const { user, isLoading } = useUser()
     const pathname = usePathname()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
+    const { unreadCount: unreadMessagesCount } = useUnreadChat()
 
     // 🛡️ SIMPLICITY PROTOCOL: We removed the dynamic pre-hydration block.
     // The global Providers and Next.js prefetching handle data warming efficiently.
@@ -89,6 +91,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                             item={item}
                             active={isActive(item.href)}
                             onNavigate={onNavigate}
+                            unreadMessagesCount={unreadMessagesCount}
                         />
                     ))}
                 </div>
@@ -105,6 +108,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                                 item={item}
                                 active={isActive(item.href)}
                                 onNavigate={onNavigate}
+                                unreadMessagesCount={unreadMessagesCount}
                             />
                         ))}
                     </div>
@@ -122,6 +126,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                                 item={item}
                                 active={isActive(item.href)}
                                 onNavigate={onNavigate}
+                                unreadMessagesCount={unreadMessagesCount}
                             />
                         ))}
                     </div>
@@ -151,6 +156,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                                             item={item}
                                             active={isActive(item.href)}
                                             onNavigate={onNavigate}
+                                            unreadMessagesCount={unreadMessagesCount}
                                         />
                                     );
                                 })
@@ -207,12 +213,20 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
 }
 
 import { usePendingRequests } from '@/hooks/use-pending-requests'
-import { useUnreadChat } from '@/hooks/use-unread-chat'
 
-function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: boolean, onNavigate?: () => void }) {
+function SidebarItem({
+    item,
+    active,
+    onNavigate,
+    unreadMessagesCount,
+}: {
+    item: NavItem
+    active: boolean
+    onNavigate?: () => void
+    unreadMessagesCount: number
+}) {
     const Icon = item.icon
     const { requests } = usePendingRequests()
-    const { unreadCount } = useUnreadChat()
     
     const pendingCount = item.label === 'Pending Requests' ? requests.length : 0
     const isMessages = item.label === 'Messages'
@@ -257,13 +271,13 @@ function SidebarItem({ item, active, onNavigate }: { item: NavItem, active: bool
             )}
 
             {/* Messages Badge */}
-            {isMessages && unreadCount > 0 && !active && (
+            {isMessages && unreadMessagesCount > 0 && !active && (
                 <span className="absolute right-3 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm">
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
                 </span>
             )}
 
-            {isMessages && unreadCount > 0 && active && (
+            {isMessages && unreadMessagesCount > 0 && active && (
                 <div className="absolute right-3 h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-100" />
             )}
         </Link>

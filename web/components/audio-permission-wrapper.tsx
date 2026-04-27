@@ -16,6 +16,67 @@ export function AudioPermissionWrapper({ children }: { children: React.ReactNode
         }
     }, [])
 
+    useEffect(() => {
+        const onAudioBlocked = () => {
+            setShowOverlay(true)
+        }
+        const onAudioUnlocked = () => {
+            setShowOverlay(false)
+        }
+
+        window.addEventListener('resqtrack:audio-blocked', onAudioBlocked as EventListener)
+        window.addEventListener('resqtrack:audio-unlocked', onAudioUnlocked as EventListener)
+
+        return () => {
+            window.removeEventListener('resqtrack:audio-blocked', onAudioBlocked as EventListener)
+            window.removeEventListener('resqtrack:audio-unlocked', onAudioUnlocked as EventListener)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!audioEnabled) return
+
+        let attempts = 0
+        const maxAttempts = 30
+        const intervalMs = 100
+
+        const tryUnlock = () => {
+            const unlock = (window as any).RESQTRACK_UNLOCK_AUDIO
+            if (typeof unlock === 'function') {
+                unlock()
+                return true
+            }
+            return false
+        }
+
+        // Try immediately in case provider already mounted.
+        if (tryUnlock()) return
+
+        // Retry briefly while provider finishes mounting.
+        const timer = window.setInterval(() => {
+            attempts += 1
+            if (tryUnlock() || attempts >= maxAttempts) {
+                window.clearInterval(timer)
+            }
+        }, intervalMs)
+
+        // Browser autoplay policy often requires a user gesture; keep a one-shot
+        // unlock hook so returning users can recover audio without reopening overlay.
+        const oneShotUnlock = () => {
+            tryUnlock()
+            window.removeEventListener('pointerdown', oneShotUnlock)
+            window.removeEventListener('keydown', oneShotUnlock)
+        }
+        window.addEventListener('pointerdown', oneShotUnlock, { once: true })
+        window.addEventListener('keydown', oneShotUnlock, { once: true })
+
+        return () => {
+            window.clearInterval(timer)
+            window.removeEventListener('pointerdown', oneShotUnlock)
+            window.removeEventListener('keydown', oneShotUnlock)
+        }
+    }, [audioEnabled])
+
     const handleEnable = () => {
         // 🛡️ TACTICAL PRIMING: Execute the acoustic handshake during the user's gesture
         if (typeof (window as any).RESQTRACK_UNLOCK_AUDIO === 'function') {

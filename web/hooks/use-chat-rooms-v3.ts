@@ -24,7 +24,7 @@ export interface ChatRoomV3 {
     unread_count: number
 }
 
-const CHAT_ROOMS_KEY = 'chat_rooms_v3'
+export const CHAT_ROOMS_KEY = 'chat_rooms_v3'
 
 /**
  * ResQTrack Platinum Inbox Hook (V3)
@@ -61,6 +61,26 @@ export function useChatRoomsV3() {
 
         return () => {
             supabase.removeChannel(channel)
+        }
+    }, [mutate])
+
+    useEffect(() => {
+        const revalidateInbox = () => {
+            mutate(CHAT_ROOMS_KEY)
+        }
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                revalidateInbox()
+            }
+        }
+
+        window.addEventListener('focus', revalidateInbox)
+        document.addEventListener('visibilitychange', onVisibilityChange)
+
+        return () => {
+            window.removeEventListener('focus', revalidateInbox)
+            document.removeEventListener('visibilitychange', onVisibilityChange)
         }
     }, [mutate])
 

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
@@ -32,6 +33,23 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  Future<void> _playIncomingMessageTone() async {
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(AssetSource('sounds/notification.mp3'));
+    } catch (e) {
+      debugPrint('[Chat-Acoustic] Audio playback failed. Verify assets/sounds/notification.mp3 exists. Error: $e');
+      // Fallback haptic-like system click so user still gets immediate feedback.
+      SystemSound.play(SystemSoundType.click);
+    }
+  }
+
+  Future<void> _markRoomAsRead() async {
+    await ref.read(chatSessionProvider(widget.roomId).notifier).markAsRead();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(presenceControllerProvider.notifier).triggerChatPulse();
       // Mark as Read immediately on entry
-      ref.read(chatSessionProvider(widget.roomId).notifier).markAsRead();
+      _markRoomAsRead();
     });
   }
 
@@ -47,6 +65,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -98,12 +117,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final msgs = next.value!;
       final previousCount = previous?.value?.length ?? 0;
       if (msgs.length > previousCount) {
-        final latestMessage = msgs.first;
+        // chat_repository sorts stream data ascending, so newest is at the tail.
+        final latestMessage = msgs.last;
         if (latestMessage.senderId != myId) {
-          final player = AudioPlayer();
-          player.play(AssetSource('sounds/notification.mp3')).catchError((e) {
-            debugPrint('[Chat-Acoustic] Audio playback error: $e');
-          });
+          _markRoomAsRead();
+          _playIncomingMessageTone();
         }
       }
     });

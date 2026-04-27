@@ -172,6 +172,7 @@ class ChatRepository with SupabasePresenceMixin implements IChatRepository {
     await _client
         .from('chat_messages')
         .update({'is_read': true})
+        .eq('is_read', false)
         .eq('room_id', roomId)
         .neq('sender_id', userId);
   }

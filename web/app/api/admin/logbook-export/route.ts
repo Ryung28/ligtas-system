@@ -1,7 +1,19 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { createSignedLogbookExportEnvelope } from '@/src/features/admin-logbook-reset/backup-integrity'
 
 export async function GET(req: Request) {
   try {
+    const exportSigningSecret = process.env.LOGBOOK_BACKUP_SIGNING_SECRET
+    if (!exportSigningSecret) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Missing LOGBOOK_BACKUP_SIGNING_SECRET on server.',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
     const url = new URL(req.url)
     const snapshotId = (url.searchParams.get('snapshotId') || '').trim()
     if (!snapshotId) {
@@ -54,7 +66,8 @@ export async function GET(req: Request) {
       )
     }
 
-    const payload = JSON.stringify(data)
+    const envelope = createSignedLogbookExportEnvelope(data, exportSigningSecret)
+    const payload = JSON.stringify(envelope)
     const createdAtRaw =
       typeof (data as any)?.snapshot?.created_at === 'string'
         ? (data as any).snapshot.created_at

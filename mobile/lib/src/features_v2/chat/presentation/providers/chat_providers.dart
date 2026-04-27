@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../data/repositories/chat_repository.dart';
 import 'package:mobile/src/core/local_storage/isar_service_provider.dart';
+import 'package:mobile/src/features_v2/chat/presentation/providers/unread_chat_provider.dart';
 
 part 'chat_providers.g.dart';
 
@@ -164,8 +165,9 @@ class ChatSession extends _$ChatSession {
     }
   }
 
-  void markAsRead() {
-    ref.read(chatRepositoryProvider).markAsRead(roomId);
+  Future<void> markAsRead() async {
+    await ref.read(chatRepositoryProvider).markAsRead(roomId);
+    ref.invalidate(unreadChatCountProvider);
   }
 
   Future<void> deleteRoom() async {

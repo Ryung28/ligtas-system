@@ -1,26 +1,43 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BorrowLog, BorrowSession, LogStats, TransactionStatus } from '@/lib/types/inventory'
-import { getBorrowLogsAction, getBorrowLogByIdAction } from '@/app/actions/logs-actions'
+import { getBorrowLogByIdAction } from '@/app/actions/logs-actions'
 
 // SWR Configurations
 export const LOGS_CACHE_KEY = 'borrow_logs'
+const BORROW_LOGS_FETCH_TIMEOUT_MS = 12000
 
 export const fetchLogs = async () => {
-    // Senior Dev Strategy: Using the "Server Bridge" (getBorrowLogsAction)
-    // This solves the "Multiple GoTrueClient" identity leak and empty log issues.
-    const res = await getBorrowLogsAction()
-    
-    if (!res.success) {
-        console.error('📡 Log Fetch Error:', res.error)
-        throw new Error(res.error || 'Failed to fetch logs')
-    }
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), BORROW_LOGS_FETCH_TIMEOUT_MS)
+    try {
+        const response = await fetch('/api/borrow-logs?limit=100', {
+            method: 'GET',
+            cache: 'no-store',
+            signal: controller.signal,
+            headers: {
+                Accept: 'application/json',
+            },
+        })
 
-    return res.data || []
+        const res = await response.json()
+        if (!response.ok || !res?.success) {
+            throw new Error(res?.error || 'Failed to fetch logs')
+        }
+
+        return res.data || []
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('Loading logs timed out. Please retry.')
+        }
+        throw error
+    } finally {
+        clearTimeout(timeout)
+    }
 }
 
 export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
@@ -47,6 +64,9 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
     const [currentPage, setCurrentPage] = useState(1)
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
     const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
+    const [isSlowLoading, setIsSlowLoading] = useState(false)
+    const [hasLoadingTimeout, setHasLoadingTimeout] = useState(false)
+    const realtimeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // 🛡️ ATOMIC RESOLUTION: Ensure the triage record is ALWAYS available
     useEffect(() => {
@@ -71,19 +91,44 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
 
     const ITEMS_PER_PAGE = 10
 
-    // Real-time updates subscription
+    // Real-time updates subscription (debounced to avoid refresh storms after restore)
     useEffect(() => {
         const channel = supabase
             .channel('public:borrow_logs_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
-                refresh() // Trigger SWR re-fetch
+                if (realtimeRefreshTimerRef.current) {
+                    clearTimeout(realtimeRefreshTimerRef.current)
+                }
+                realtimeRefreshTimerRef.current = setTimeout(() => {
+                    refresh() // Trigger SWR re-fetch after event burst settles
+                }, 700)
             })
             .subscribe()
 
         return () => {
+            if (realtimeRefreshTimerRef.current) {
+                clearTimeout(realtimeRefreshTimerRef.current)
+            }
             supabase.removeChannel(channel)
         }
     }, [refresh])
+
+    // Progressive loading guards for post-restore UX.
+    useEffect(() => {
+        if (!isLoading) {
+            setIsSlowLoading(false)
+            setHasLoadingTimeout(false)
+            return
+        }
+
+        const slowTimer = setTimeout(() => setIsSlowLoading(true), 3000)
+        const timeoutTimer = setTimeout(() => setHasLoadingTimeout(true), 15000)
+
+        return () => {
+            clearTimeout(slowTimer)
+            clearTimeout(timeoutTimer)
+        }
+    }, [isLoading])
 
     // Filter Logic
     const filteredLogs = useMemo(() => {
@@ -263,6 +308,9 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         expandedSessions,
         toggleSessionExpansion,
         refresh,
-        isValidating
+        isValidating,
+        isSlowLoading,
+        hasLoadingTimeout,
+        retryFetch: () => refresh()
     }
 }

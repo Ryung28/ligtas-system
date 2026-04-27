@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { RefreshCw, Filter } from 'lucide-react'
 import { BorrowLog } from '@/lib/types/inventory'
 import { useBorrowLogs } from '@/hooks/use-borrow-logs'
@@ -42,6 +42,9 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
         totalPages,
         toggleSessionExpansion,
         expandedSessions,
+        isSlowLoading,
+        hasLoadingTimeout,
+        retryFetch,
     } = logsHook
 
     const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set())
@@ -129,8 +132,28 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
                         {error ? (
                             <div className="p-8 text-center text-red-600 font-medium">{error}</div>
                         ) : isLoading && sessions.length === 0 ? (
-                            <div className="flex items-center justify-center py-24">
+                            <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
                                 <RefreshCw className="h-8 w-8 animate-spin text-gray-300" />
+                                {isSlowLoading ? (
+                                    <p className="text-sm text-slate-500">
+                                        Restored data is syncing. This can take a bit.
+                                    </p>
+                                ) : null}
+                                {hasLoadingTimeout ? (
+                                    <>
+                                        <p className="text-sm text-slate-500">
+                                            Still loading logs. You can retry safely.
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => retryFetch()}
+                                        >
+                                            Retry Loading
+                                        </Button>
+                                    </>
+                                ) : null}
                             </div>
                         ) : sessions.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-24 text-center">

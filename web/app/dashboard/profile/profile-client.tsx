@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import useSWR from 'swr'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
@@ -25,6 +25,13 @@ import {
 import { Mail, Shield, Building, Loader2, User, Save, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { UserProfile } from '@/hooks/use-user-management'
+import {
+    BACKUP_CONFIRMATION_PHRASE,
+    IMPORT_CONFIRMATION_PHRASE,
+    RESET_CONFIRMATION_PHRASE,
+    RESTORE_CONFIRMATION_PHRASE,
+} from '@/src/features/admin-logbook-reset/reset-scope'
+import { getMaxBackupImportBytes } from '@/src/features/admin-logbook-reset/backup-config'
 
 interface ProfileClientProps {
     initialProfile: UserProfile
@@ -71,7 +78,9 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
     const [restoreLoading, setRestoreLoading] = useState(false)
     const [previewLoading, setPreviewLoading] = useState(false)
     const [exportLoading, setExportLoading] = useState(false)
+    const [importLoading, setImportLoading] = useState(false)
     const [snapshotPreview, setSnapshotPreview] = useState<SnapshotPreviewResponse['data'] | null>(null)
+    const importFileInputRef = useRef<HTMLInputElement | null>(null)
 
     // Form states
     const [fullName, setFullName] = useState(initialProfile.full_name || '')
@@ -121,6 +130,10 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
         }
     )
 
+    const notifyLogbookMutation = () => {
+        window.dispatchEvent(new Event('resqtrack:logbook-mutated'))
+    }
+
     const handleSave = async () => {
         try {
             setSaving(true)
@@ -149,12 +162,12 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
 
     const handleLogbookReset = async () => {
         if (!latestBackup?.id || latestBackup?.status !== 'completed') {
-            toast.error('Create a completed backup first before resetting.')
+            toast.error('Create a completed recovery snapshot first.')
             return
         }
 
-        if (resetConfirmation !== 'RESET LOGBOOK') {
-            toast.error('Type RESET LOGBOOK exactly to continue.')
+        if (resetConfirmation !== RESET_CONFIRMATION_PHRASE) {
+            toast.error(`Type ${RESET_CONFIRMATION_PHRASE} exactly to continue.`)
             return
         }
 
@@ -181,19 +194,25 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                 return
             }
 
-            toast.success(`Logbook reset complete. Job: ${result.jobId}`)
+            toast.success(`Logbook cleared. Job: ${result.jobId}`)
             setResetReason('')
             setResetConfirmation('')
             await mutateLogbookStatus()
+            notifyLogbookMutation()
         } catch (error) {
             console.error('Logbook reset error:', error)
-            toast.error('Failed to trigger logbook reset.')
+            toast.error('Failed to clear logbook.')
         } finally {
             setResetLoading(false)
         }
     }
 
     const handleLogbookBackup = async () => {
+        if (resetConfirmation !== BACKUP_CONFIRMATION_PHRASE) {
+            toast.error(`Type ${BACKUP_CONFIRMATION_PHRASE} exactly to continue.`)
+            return
+        }
+
         if (resetReason.trim().length < 10) {
             toast.error('Please provide a clear reason (at least 10 characters).')
             return
@@ -217,19 +236,19 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                 return
             }
 
-            toast.success(`Logbook backup complete. Snapshot: ${result.snapshotId}`)
+            toast.success(`Recovery snapshot created. Snapshot: ${result.snapshotId}`)
             await mutateLogbookStatus()
         } catch (error) {
             console.error('Logbook backup error:', error)
-            toast.error('Failed to trigger logbook backup.')
+            toast.error('Failed to create recovery snapshot.')
         } finally {
             setBackupLoading(false)
         }
     }
 
     const handleLogbookRestore = async () => {
-        if (resetConfirmation !== 'RESET LOGBOOK') {
-            toast.error('Type RESET LOGBOOK exactly to continue.')
+        if (resetConfirmation !== RESTORE_CONFIRMATION_PHRASE) {
+            toast.error(`Type ${RESTORE_CONFIRMATION_PHRASE} exactly to continue.`)
             return
         }
 
@@ -239,12 +258,12 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
         }
 
         if (!restoreSnapshotId.trim()) {
-            toast.error('Snapshot ID is required for restore.')
+            toast.error('Snapshot ID is required.')
             return
         }
 
         if (!snapshotPreview || snapshotPreview.snapshot_id !== restoreSnapshotId.trim()) {
-            toast.error('Preview the snapshot first before restore.')
+            toast.error('Preview snapshot first before restoring.')
             return
         }
 
@@ -267,11 +286,12 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                 return
             }
 
-            toast.success(`Logbook restore complete. Job: ${result.jobId}`)
+            toast.success(`Restore complete. Job: ${result.jobId}`)
             await mutateLogbookStatus()
+            notifyLogbookMutation()
         } catch (error) {
             console.error('Logbook restore error:', error)
-            toast.error('Failed to trigger logbook restore.')
+            toast.error('Failed to restore snapshot.')
         } finally {
             setRestoreLoading(false)
         }
@@ -316,7 +336,7 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                 : latestBackup?.snapshot_id) ?? ''
 
         if (!targetSnapshotId) {
-            toast.error('No snapshot to export. Create a backup first or enter a snapshot ID.')
+            toast.error('No snapshot to export. Create one first or enter a snapshot ID.')
             return
         }
 
@@ -331,12 +351,77 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
             document.body.appendChild(a)
             a.click()
             a.remove()
-            toast.success('Backup export started.')
+            toast.success('Snapshot export started.')
         } catch (error) {
             console.error('Backup export error:', error)
-            toast.error('Failed to export backup.')
+            toast.error('Failed to export snapshot.')
         } finally {
             setExportLoading(false)
+        }
+    }
+
+    const resetImportPicker = () => {
+        if (importFileInputRef.current) {
+            importFileInputRef.current.value = ''
+        }
+    }
+
+    const handleImportBackup = async (file: File) => {
+        setImportLoading(true)
+        try {
+            if (resetConfirmation !== IMPORT_CONFIRMATION_PHRASE) {
+                toast.error(`Type ${IMPORT_CONFIRMATION_PHRASE} exactly to continue.`)
+                return
+            }
+
+            if (resetReason.trim().length < 10) {
+                toast.error('Please provide a clear reason (at least 10 characters).')
+                return
+            }
+
+            if (file.size > getMaxBackupImportBytes()) {
+                toast.error(`Snapshot file too large. Max ${Math.floor(getMaxBackupImportBytes() / (1024 * 1024))}MB.`)
+                return
+            }
+
+            toast.info(`Validating ${file.name}...`)
+            const raw = await file.text()
+            let payload: unknown
+            try {
+                payload = JSON.parse(raw)
+            } catch {
+                toast.error('Invalid JSON file.')
+                return
+            }
+
+            const response = await fetch('/api/admin/logbook-import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    confirmation: resetConfirmation,
+                    reason: resetReason,
+                    payload,
+                }),
+            })
+            const result = await response.json()
+
+            if (!response.ok || !result.success || !result.snapshotId) {
+                toast.error(result.error || 'Import failed.')
+                return
+            }
+
+            const importedSnapshotId = String(result.snapshotId)
+            setRestoreSnapshotId(importedSnapshotId)
+            setSnapshotPreview(null)
+            await mutateLogbookStatus()
+            notifyLogbookMutation()
+            toast.success(`Snapshot imported. ID: ${importedSnapshotId}`)
+        } catch (error) {
+            console.error('Backup import error:', error)
+            toast.error('Failed to import snapshot.')
+        } finally {
+            setImportLoading(false)
+            resetImportPicker()
         }
     }
 
@@ -475,59 +560,87 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                     <CardHeader>
                         <div className="flex items-center gap-2 text-red-700">
                             <AlertTriangle className="h-5 w-5" />
-                            <CardTitle className="text-lg">Danger Zone</CardTitle>
+                            <CardTitle className="text-lg">Recovery & Clear Logbook</CardTitle>
                         </div>
                         <CardDescription>
-                            Reset logbook data while keeping inventory and storage files intact.
+                            Save, restore, export, or clear logbook records. Inventory and storage files stay intact.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-5">
                         <div className="grid gap-2">
-                            <Label htmlFor="reset-reason">Reason</Label>
+                            <Label htmlFor="reset-reason">Reason (required)</Label>
                             <Textarea
                                 id="reset-reason"
                                 value={resetReason}
                                 onChange={(e) => setResetReason(e.target.value)}
-                                placeholder="Why are you resetting the logbook?"
+                                placeholder="Why are you running this operation?"
                                 className="bg-white"
                             />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="reset-confirmation">
-                                Type <span className="font-semibold">RESET LOGBOOK</span> to confirm
+                                Type one of: <span className="font-semibold">BACKUP LOGBOOK</span>, <span className="font-semibold">IMPORT LOGBOOK</span>, <span className="font-semibold">RESET LOGBOOK</span>, or <span className="font-semibold">RESTORE LOGBOOK</span>
                             </Label>
                             <Input
                                 id="reset-confirmation"
                                 value={resetConfirmation}
                                 onChange={(e) => setResetConfirmation(e.target.value)}
-                                placeholder="RESET LOGBOOK"
+                                placeholder="BACKUP LOGBOOK / IMPORT LOGBOOK / RESET LOGBOOK / RESTORE LOGBOOK"
                                 className="bg-white"
                             />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="restore-snapshot-id">Restore Snapshot ID (optional, for restore)</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    id="restore-snapshot-id"
-                                    value={restoreSnapshotId}
-                                    onChange={(e) => {
-                                        setRestoreSnapshotId(e.target.value)
-                                        setSnapshotPreview(null)
-                                    }}
-                                    placeholder="Paste snapshot UUID to restore"
-                                    className="bg-white"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleSnapshotPreview}
-                                    disabled={previewLoading || restoreLoading || backupLoading || resetLoading}
-                                >
-                                    {previewLoading ? 'Checking...' : 'Preview'}
-                                </Button>
+
+                        <Separator className="bg-red-100" />
+
+                        <section className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Step 1 · Protect</p>
+                            <p className="text-sm text-emerald-900">Create a recovery snapshot before making risky changes.</p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleLogbookBackup}
+                                disabled={backupLoading || resetLoading || restoreLoading || exportLoading || importLoading}
+                                className="min-w-[220px] border-emerald-300 text-emerald-900 hover:bg-emerald-100"
+                            >
+                                {backupLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Recovery Snapshot'
+                                )}
+                            </Button>
+                        </section>
+
+                        <section className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Step 2 · Verify</p>
+                            <p className="text-sm text-slate-700">Preview the snapshot first, then restore only if details are correct.</p>
+                            <div className="grid gap-2">
+                                <Label htmlFor="restore-snapshot-id">Snapshot ID</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="restore-snapshot-id"
+                                        value={restoreSnapshotId}
+                                        onChange={(e) => {
+                                            setRestoreSnapshotId(e.target.value)
+                                            setSnapshotPreview(null)
+                                        }}
+                                        placeholder="Paste snapshot UUID"
+                                        className="bg-white"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSnapshotPreview}
+                                        disabled={previewLoading || restoreLoading || backupLoading || resetLoading}
+                                    >
+                                        {previewLoading ? 'Checking...' : 'Preview Snapshot'}
+                                    </Button>
+                                </div>
                             </div>
                             {snapshotPreview ? (
-                                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 space-y-1">
+                                <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700 space-y-1">
                                     <p>
                                         <span className="font-semibold">Snapshot:</span> {snapshotPreview.snapshot_id}
                                     </p>
@@ -539,34 +652,141 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                                         <span className="font-semibold">Rows:</span>{' '}
                                         {snapshotPreview.table_counts.reduce((acc, row) => acc + row.row_count, 0)}
                                     </p>
-                                    <p className="font-semibold mt-1">Per table:</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-1">
-                                        {snapshotPreview.table_counts.map((row) => (
-                                            <p key={row.table_name}>
-                                                {row.table_name}: {row.row_count}
-                                            </p>
-                                        ))}
-                                    </div>
                                 </div>
                             ) : null}
-                        </div>
+                        </section>
+
+                        <section className="rounded-lg border border-amber-300 bg-amber-50/80 p-4 space-y-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Step 3 · Recover or Clear</p>
+                            <p className="text-sm text-amber-900">Restore from a verified snapshot, or clear logbook only after snapshot is saved.</p>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleLogbookRestore}
+                                    disabled={restoreLoading || backupLoading || resetLoading || exportLoading || importLoading || !canRestore}
+                                    className="min-w-[190px]"
+                                >
+                                    {restoreLoading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Restoring...
+                                        </>
+                                    ) : (
+                                        'Restore Snapshot'
+                                    )}
+                                </Button>
+
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant="destructive"
+                                            disabled={resetLoading || backupLoading || restoreLoading || !hasCompletedBackup}
+                                            className="min-w-[190px]"
+                                        >
+                                            {resetLoading ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                    Clearing...
+                                                </>
+                                            ) : (
+                                                'Clear Logbook'
+                                            )}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirm Clear Logbook</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This clears current logbook records. You can recover only by restoring a snapshot.
+                                            </AlertDialogDescription>
+                                            {!hasCompletedBackup ? (
+                                                <p className="text-sm text-red-600 font-medium">
+                                                    Clear Logbook is disabled until at least one recovery snapshot is completed.
+                                                </p>
+                                            ) : null}
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={resetLoading}>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={handleLogbookReset}
+                                                disabled={resetLoading}
+                                                className="bg-red-600 hover:bg-red-700"
+                                            >
+                                                Confirm Clear
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </section>
+
+                        <details className="rounded-lg border border-slate-200 bg-white p-4">
+                            <summary className="cursor-pointer text-sm font-semibold text-slate-700">Advanced Snapshot Tools</summary>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <input
+                                    ref={importFileInputRef}
+                                    type="file"
+                                    accept="application/json,.json"
+                                    className="hidden"
+                                    onClick={() => resetImportPicker()}
+                                    onChange={(event) => {
+                                        const file = event.target.files?.[0]
+                                        if (!file) return
+                                        void handleImportBackup(file)
+                                    }}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => importFileInputRef.current?.click()}
+                                    disabled={importLoading || backupLoading || resetLoading || restoreLoading || exportLoading}
+                                    className="min-w-[170px]"
+                                >
+                                    {importLoading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Importing...
+                                        </>
+                                    ) : (
+                                        'Import Snapshot'
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleExportBackup}
+                                    disabled={exportLoading || backupLoading || resetLoading || restoreLoading || importLoading}
+                                    className="min-w-[170px]"
+                                >
+                                    {exportLoading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Exporting...
+                                        </>
+                                    ) : (
+                                        'Export Snapshot'
+                                    )}
+                                </Button>
+                            </div>
+                        </details>
 
                         <Separator className="bg-red-100" />
 
                         <div className="grid gap-3 text-sm">
                             <div>
-                                <p className="font-semibold text-slate-800">Last Backup</p>
+                                <p className="font-semibold text-slate-800">Last Recovery Snapshot</p>
                                 <p className="text-slate-600">
                                     {latestBackup?.created_at
                                         ? `${new Date(latestBackup.created_at).toLocaleString()} | ${latestBackup.status ?? 'unknown'}`
-                                        : 'No backup yet'}
+                                        : 'No recovery snapshot yet'}
                                 </p>
                                 <p className="text-xs text-slate-500 break-all">
                                     Snapshot: {latestBackup?.snapshot_id ?? 'N/A'}
                                 </p>
                             </div>
                             <div>
-                                <p className="font-semibold text-slate-800">Last Restore</p>
+                                <p className="font-semibold text-slate-800">Last Restore Job</p>
                                 <p className="text-slate-600">
                                     {latestRestore?.created_at
                                         ? `${new Date(latestRestore.created_at).toLocaleString()} | ${latestRestore.status ?? 'unknown'}`
@@ -577,11 +797,11 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                                 </p>
                             </div>
                             <div>
-                                <p className="font-semibold text-slate-800">Last Reset</p>
+                                <p className="font-semibold text-slate-800">Last Clear Job</p>
                                 <p className="text-slate-600">
                                     {latestReset?.created_at
                                         ? `${new Date(latestReset.created_at).toLocaleString()} | ${latestReset.status ?? 'unknown'}`
-                                        : 'No reset yet'}
+                                        : 'No clear job yet'}
                                 </p>
                                 <p className="text-xs text-slate-500 break-all">
                                     Snapshot: {latestReset?.snapshot_id ?? 'N/A'}
@@ -589,100 +809,6 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="justify-end border-t border-red-100 pt-6 bg-red-50/40">
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={handleLogbookRestore}
-                                disabled={restoreLoading || backupLoading || resetLoading || exportLoading || !canRestore}
-                                className="min-w-[170px]"
-                            >
-                                {restoreLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        Restoring...
-                                    </>
-                                ) : (
-                                    'Restore Logbook'
-                                )}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleLogbookBackup}
-                                disabled={backupLoading || resetLoading || restoreLoading || exportLoading}
-                                className="min-w-[170px]"
-                            >
-                                {backupLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        Backing up...
-                                    </>
-                                ) : (
-                                    'Backup Logbook'
-                                )}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleExportBackup}
-                                disabled={exportLoading || backupLoading || resetLoading || restoreLoading}
-                                className="min-w-[170px]"
-                            >
-                                {exportLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        Exporting...
-                                    </>
-                                ) : (
-                                    'Export Backup'
-                                )}
-                            </Button>
-
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button
-                                        variant="destructive"
-                                        disabled={resetLoading || backupLoading || restoreLoading || !hasCompletedBackup}
-                                        className="min-w-[170px]"
-                                    >
-                                        {resetLoading ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                Resetting...
-                                            </>
-                                        ) : (
-                                            'Reset Logbook'
-                                        )}
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirm Logbook Reset</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will clear logbook-related records and cannot be undone without restore from snapshot.
-                                        </AlertDialogDescription>
-                                        {!hasCompletedBackup ? (
-                                            <p className="text-sm text-red-600 font-medium">
-                                                Reset is disabled until at least one backup is completed.
-                                            </p>
-                                        ) : null}
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel disabled={resetLoading}>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={handleLogbookReset}
-                                            disabled={resetLoading}
-                                            className="bg-red-600 hover:bg-red-700"
-                                        >
-                                            Confirm Reset
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </CardFooter>
                 </Card>
             )}
         </div>
