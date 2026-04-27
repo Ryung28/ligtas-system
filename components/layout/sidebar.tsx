@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TACTICAL_THEME } from '@/lib/theme-config'
 import { preload } from 'swr'
 import { useUser } from '@/providers/auth-provider'
-import { useChatRoomsV3 } from '@/hooks/use-chat-rooms-v3'
+import { useUnreadChat } from '@/hooks/use-unread-chat'
 
 interface SidebarProps {
     className?: string
@@ -24,11 +24,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     const { user, isLoading } = useUser()
     const pathname = usePathname()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
-    const { rooms: chatRooms } = useChatRoomsV3()
-    const unreadMessagesCount = chatRooms.reduce(
-        (sum, room) => sum + (Number(room.unread_count) || 0),
-        0,
-    )
+    const { unreadCount: unreadMessagesCount } = useUnreadChat()
 
     // 🛡️ SIMPLICITY PROTOCOL: We removed the dynamic pre-hydration block.
     // The global Providers and Next.js prefetching handle data warming efficiently.

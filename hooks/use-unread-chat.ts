@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 export function useUnreadChat() {
     const [unreadCount, setUnreadCount] = useState(0)
-    
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = useMemo(
+        () =>
+            createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            ),
+        [],
     )
 
     const checkUnread = useCallback(async () => {
@@ -58,7 +61,14 @@ export function useUnreadChat() {
             })
             .subscribe()
 
+        const handleLogbookMutation = () => {
+            setUnreadCount(0) // Immediate UX clear while recheck runs.
+            checkUnread()
+        }
+        window.addEventListener('resqtrack:logbook-mutated', handleLogbookMutation)
+
         return () => {
+            window.removeEventListener('resqtrack:logbook-mutated', handleLogbookMutation)
             supabase.removeChannel(channel)
         }
     }, [checkUnread, supabase])

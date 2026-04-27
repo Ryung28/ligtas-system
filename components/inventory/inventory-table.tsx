@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
-import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, Maximize2, Wrench, Cross, Shield, Box, Warehouse, Plus } from 'lucide-react'
+import { Search, Edit2, Trash2, AlertCircle, Package, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Wrench, Cross, Shield, Box, Warehouse, Plus, Info } from 'lucide-react'
 import { InventoryItem, STORAGE_LOCATION_LABELS, StorageLocation } from '@/lib/supabase'
 import { isLowStock, getStockStatusLabel } from '@/lib/inventory-utils'
 import { QRDialog } from './qr-dialog'
@@ -49,6 +50,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'low_stock' | 'out_of_stock'>('all')
     const [locationFilter, setLocationFilter] = useState<string>('all')
     const [currentPage, setCurrentPage] = useState(1)
+    const [isLegendOpen, setIsLegendOpen] = useState(false)
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
     const [localCategories, setLocalCategories] = useState<string[]>([])
     const [highlightId, setHighlightId] = useState<number | null>(null)
@@ -57,6 +59,17 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const triageId = searchParams.get('id')
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const saved = window.localStorage.getItem('inventory_legend_open')
+        setIsLegendOpen(saved === 'true')
+    }, [])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem('inventory_legend_open', isLegendOpen ? 'true' : 'false')
+    }, [isLegendOpen])
 
     // 🛡️ ATOMIC RESOLUTION ENGINE: Listen for Deep-Links
     // Applies one-time notification context, then cleans URL params so search does not persist.
@@ -465,6 +478,49 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                         activeTab={categoryFilter}
                         onTabChange={setCategoryFilter}
                     />
+
+                    {/* Stock Color Legend */}
+                    <div className="border border-slate-200 rounded-lg bg-slate-50/50">
+                        <button
+                            type="button"
+                            onClick={() => setIsLegendOpen((prev) => !prev)}
+                            className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-100/60 rounded-lg transition-colors"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Info className="h-3.5 w-3.5 text-slate-500" />
+                                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600">
+                                    Inventory Color Legend
+                                </span>
+                            </div>
+                            <ChevronDown
+                                className={`h-3.5 w-3.5 text-slate-500 transition-transform ${isLegendOpen ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+                        {isLegendOpen && (
+                            <div className="px-3 pb-3 pt-1 grid grid-cols-2 md:grid-cols-5 gap-2">
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Good / Available</span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-blue-500" />
+                                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Borrowed / Dispensed</span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Maintenance</span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-rose-500" />
+                                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Damaged</span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Lost</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
 

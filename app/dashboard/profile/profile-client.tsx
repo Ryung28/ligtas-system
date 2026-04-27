@@ -130,6 +130,10 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
         }
     )
 
+    const notifyLogbookMutation = () => {
+        window.dispatchEvent(new Event('resqtrack:logbook-mutated'))
+    }
+
     const handleSave = async () => {
         try {
             setSaving(true)
@@ -194,6 +198,7 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
             setResetReason('')
             setResetConfirmation('')
             await mutateLogbookStatus()
+            notifyLogbookMutation()
         } catch (error) {
             console.error('Logbook reset error:', error)
             toast.error('Failed to clear logbook.')
@@ -283,6 +288,7 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
 
             toast.success(`Restore complete. Job: ${result.jobId}`)
             await mutateLogbookStatus()
+            notifyLogbookMutation()
         } catch (error) {
             console.error('Logbook restore error:', error)
             toast.error('Failed to restore snapshot.')
@@ -408,6 +414,7 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
             setRestoreSnapshotId(importedSnapshotId)
             setSnapshotPreview(null)
             await mutateLogbookStatus()
+            notifyLogbookMutation()
             toast.success(`Snapshot imported. ID: ${importedSnapshotId}`)
         } catch (error) {
             console.error('Backup import error:', error)
