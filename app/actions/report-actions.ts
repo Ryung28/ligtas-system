@@ -94,8 +94,8 @@ export async function fetchReportDataAction(
             : 'inventory'
 
         // Rule: Never select *
-        const columns = type === 'inventory' || type === 'low-stock' || type === 'summary'
-            ? 'id,item_name,category,brand,model,stock_available,target_stock,low_stock_threshold,restock_alert_enabled,storage_location,status'
+        const columns = type === 'inventory' || type === 'low-stock' || type === 'summary' || type === 'out-of-stock'
+            ? 'id,item_name,category,brand,stock_available,stock_total,target_stock,low_stock_threshold,qty_good,qty_damaged,qty_maintenance,qty_lost,restock_alert_enabled,storage_location,status'
             : type === 'expiry-alert'
             ? 'id,item_name,category,brand,stock_available,expiry_date'
             : type === 'overdue' 
@@ -171,6 +171,11 @@ export async function fetchReportDataAction(
         if (type === 'low-stock' && data) {
             const { isLowStock } = await import('@/lib/inventory-utils')
             data = data.filter(i => isLowStock(i as any))
+        }
+
+        // 🎯 TACTICAL FILTERING: 'out-of-stock' only shows items with zero availability
+        if (type === 'out-of-stock' && data) {
+            data = data.filter(i => (i.stock_available ?? 0) <= 0)
         }
 
         return { success: true, data: data || [] }

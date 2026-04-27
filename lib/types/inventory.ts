@@ -22,6 +22,7 @@ export interface BorrowLog {
     approved_by_name: string | null;
     released_by_name: string | null;
     platform_origin: string | null;
+    created_origin: string | null;
     pickup_scheduled_at: string | null;
     return_scheduled_at: string | null;
     purpose: string | null;
@@ -50,6 +51,7 @@ export interface BorrowSession {
     total_items: number;
     total_quantity: number;
     status: 'mixed' | TransactionStatus;
+    created_origin?: string | null;
 }
 
 export interface LogStats {

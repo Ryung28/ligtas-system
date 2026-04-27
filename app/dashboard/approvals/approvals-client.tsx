@@ -20,8 +20,9 @@ export function ApprovalsClient({ initialRequests }: ApprovalsClientProps) {
     const [currentView, setCurrentView] = useState<'immediate' | 'reserved'>('immediate')
     const [selectedRequest, setSelectedRequest] = useState<BorrowLog | null>(null)
     const [staffName, setStaffName] = useState('')
+    const [staffRole, setStaffRole] = useState<string | null>(null)
 
-    // Resolve current staff name once
+    // Resolve current staff identity once
     useEffect(() => {
         const supabase = createBrowserClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,10 +33,11 @@ export function ApprovalsClient({ initialRequests }: ApprovalsClientProps) {
             if (user) {
                 const { data: profile } = await supabase
                     .from('user_profiles')
-                    .select('full_name')
+                    .select('full_name, role')
                     .eq('id', user.id)
                     .single()
                 if (profile?.full_name) setStaffName(profile.full_name)
+                if (profile?.role) setStaffRole(profile.role)
             }
         }
         load()
@@ -156,6 +158,7 @@ export function ApprovalsClient({ initialRequests }: ApprovalsClientProps) {
                             key={selectedRequest.id}
                             request={selectedRequest}
                             staffName={staffName}
+                            userRole={staffRole}
                             isReservationView={currentView === 'reserved'}
                             onActionComplete={handleActionComplete}
                         />

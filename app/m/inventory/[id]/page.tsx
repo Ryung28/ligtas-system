@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useMemo, useState, useTransition } from 'react'
 import Image from 'next/image'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useInventory } from '@/hooks/use-inventory'
 import { getInventoryImageUrl } from '@/lib/supabase'
@@ -17,14 +17,12 @@ import { roleCan, mFocus } from '@/lib/mobile/tokens'
 import { aggregateInventory, isLowStock } from '@/src/features/inventory/utils'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
     Package, 
     AlertTriangle, 
-    Info, 
     MapPin, 
     Layers,
     ArrowLeft,
-    Share2,
     CheckCircle2,
     XCircle,
     Pencil,
@@ -52,6 +50,9 @@ export default function MobileItemDetailsPage() {
     const [archiveOpen, setArchiveOpen] = useState(false)
     const [isArchiving, startArchive] = useTransition()
 
+    const searchParams = useSearchParams()
+    const action = searchParams.get('action')
+
     // 1. 🏛️ MASTER ASSET RESOLUTION (Aggregation Aware)
     const item = useMemo(() => {
         if (!inventory.length) return null
@@ -68,11 +69,31 @@ export default function MobileItemDetailsPage() {
         )
     }, [inventory, id])
 
+    // 🎯 TACTICAL DEEP-LINKING: Auto-open restock sheet
+    React.useEffect(() => {
+        if (item && action === 'restock' && canManage) {
+            setEditOpen(true)
+            // Remove the param from URL to prevent re-opening on refresh if needed, 
+            // but for PWA jumping it's usually fine.
+        }
+    }, [item, action, canManage])
+
     // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
     const imageUrl = item?.image_url ? getInventoryImageUrl(item.image_url) : null;
 
     const knownCategories = useMemo(
         () => Array.from(new Set(inventory.map((i) => i.category).filter(Boolean))) as string[],
+        [inventory],
+    )
+    const knownLocations = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    inventory
+                        .map((i) => i.storage_location)
+                        .filter((loc): loc is string => !!loc && loc.trim().length > 0),
+                ),
+            ),
         [inventory],
     )
 
@@ -99,7 +120,7 @@ export default function MobileItemDetailsPage() {
         return (
             <div className="flex flex-col items-center justify-center p-20 space-y-4">
                 <div className="w-12 h-12 border-4 border-gray-100 border-t-red-600 rounded-full animate-spin" />
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Loading Intel...</p>
+                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Loading item...</p>
             </div>
         )
     }
@@ -111,15 +132,15 @@ export default function MobileItemDetailsPage() {
                     <Package className="w-10 h-10 text-gray-300" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-gray-900">Asset Not Located</h2>
-                    <p className="text-sm text-gray-500">The requested Item ID does not exist in the tactical ledger.</p>
+                    <h2 className="text-xl font-bold text-gray-900">Item not found</h2>
+                    <p className="text-sm text-gray-500">The requested item is not in the active inventory list.</p>
                 </div>
                 <button 
                     onClick={() => router.push('/m/inventory')}
                     className="px-6 py-3 bg-red-600 text-white rounded-2xl font-bold flex items-center gap-2"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Back to Registry
+                    Back to Inventory
                 </button>
             </div>
         )
@@ -150,10 +171,37 @@ export default function MobileItemDetailsPage() {
 
     const ratio = total > 0 ? available / total : 0
     const stockPercent = Math.min(100, Math.round(ratio * 100))
+    const primaryLocation =
+        ((item as any).storage_bin as string | undefined) ||
+        item.variants?.[0]?.location ||
+        'Unassigned'
+
+    const packaging = (item as any).packaging_json
+    const hasPackaging = packaging?.enabled && packaging.batches?.length > 0
+
+    const detailFields =
+        (item as any).item_type === 'equipment' || !(item as any).item_type
+            ? [
+                  { label: 'Serial', value: (item as any).serial_number as string | undefined, icon: Tag },
+                  { label: 'Model', value: (item as any).model_number as string | undefined, icon: Layers },
+              ].filter((f) => !!f.value?.trim())
+            : [
+                  { label: 'Brand', value: (item as any).brand as string | undefined, icon: Tag },
+                  {
+                      label: 'Expiry',
+                      value: (item as any).expiry_date
+                          ? new Date((item as any).expiry_date).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                          })
+                          : undefined,
+                      icon: Calendar,
+                  },
+              ].filter((f) => !!f.value?.trim())
 
     return (
         <div className="space-y-8 pb-12">
-            <MobileHeader title="Asset Intel" />
+            <MobileHeader title="Equipment" />
             {/* 1. Hero Aspect (Image & Key Stats) */}
             <div className="relative h-64 bg-gray-900 rounded-3xl overflow-hidden shadow-xl mt-2">
                 {imageUrl ? (
@@ -182,13 +230,19 @@ export default function MobileItemDetailsPage() {
                         <Badge variant="outline" className="text-[9px] font-black bg-white/10 text-white border-white/20 uppercase tracking-tighter h-5 px-2">
                             {item.category || 'General'}
                         </Badge>
-                        <Badge variant="outline" className="text-[9px] font-black bg-white/10 text-white border-white/20 uppercase tracking-tighter h-5 px-2">
-                             BIN: {(item as any).storage_bin || 'NA'}
-                        </Badge>
+                        {((item as any).storage_bin as string | undefined)?.trim() && (
+                            <Badge variant="outline" className="text-[9px] font-black bg-white/10 text-white border-white/20 uppercase tracking-tighter h-5 px-2">
+                                BIN: {(item as any).storage_bin}
+                            </Badge>
+                        )}
                     </div>
                     <h1 className="text-2xl font-black text-white leading-tight">
                         {item.item_name}
                     </h1>
+                    <p className="mt-1 text-xs text-white/80 font-semibold flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3" />
+                        {primaryLocation}
+                    </p>
                     {/* Visual Stock Saturation Bar */}
                     <div className="mt-4 w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
                         <div 
@@ -235,66 +289,32 @@ export default function MobileItemDetailsPage() {
                 <div className="p-6 space-y-4">
                     <h2 className="text-sm font-black text-gray-900 uppercase tracking-tighter flex items-center gap-2">
                         <Fingerprint className="w-4 h-4 text-red-600" />
-                        Identification Specs
+                        Item Details
                     </h2>
                     
-                    <div className="grid grid-cols-2 gap-3">
-                        {((item as any).item_type === 'equipment' || !(item as any).item_type) ? (
-                            <>
-                                <div className="flex flex-col p-3 bg-gray-50/50 rounded-xl border border-gray-100 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
+                    {detailFields.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-3">
+                            {detailFields.map((field) => (
+                                <div
+                                    key={field.label}
+                                    className="flex flex-col p-3 bg-gray-50/50 rounded-xl border border-gray-100 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]"
+                                >
                                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                                        <Tag className="w-2.5 h-2.5" /> Serial
+                                        <field.icon className="w-2.5 h-2.5" /> {field.label}
                                     </span>
-                                    <span className="text-sm font-black text-gray-900 truncate">
-                                        {(item as any).serial_number || 'N/A'}
-                                    </span>
+                                    <span className="text-sm font-black text-gray-900 truncate">{field.value}</span>
                                 </div>
-                                <div className="flex flex-col p-3 bg-gray-50/50 rounded-xl border border-gray-100 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                                        <Layers className="w-2.5 h-2.5" /> Model
-                                    </span>
-                                    <span className="text-sm font-black text-gray-900 truncate">
-                                        {(item as any).model_number || 'N/A'}
-                                    </span>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="flex flex-col p-3 bg-gray-50/50 rounded-xl border border-gray-100 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                                        <Tag className="w-2.5 h-2.5" /> Brand
-                                    </span>
-                                    <span className="text-sm font-black text-gray-900 truncate">
-                                        {(item as any).brand || 'N/A'}
-                                    </span>
-                                </div>
-                                <div className="flex flex-col p-3 bg-gray-50/50 rounded-xl border border-gray-100 shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)]">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                                        <Calendar className="w-2.5 h-2.5" /> Expiry
-                                    </span>
-                                    <span className="text-sm font-black text-gray-900 truncate">
-                                        {(item as any).expiry_date ? new Date((item as any).expiry_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : 'N/A'}
-                                    </span>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div className="p-6 space-y-4">
-                    <h2 className="text-sm font-black text-gray-900 uppercase tracking-tighter flex items-center gap-2">
-                        <Info className="w-4 h-4 text-red-600" />
-                        Tactical Description
-                    </h2>
-                    <p className="text-gray-600 text-sm leading-relaxed">
-                        {item.description || 'No detailed tactical description available for this asset record.'}
-                    </p>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500">No extra details available.</p>
+                    )}
                 </div>
 
                 <div className="p-6 space-y-4">
                     <h2 className="text-sm font-black text-gray-900 uppercase tracking-tighter flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-red-600" />
-                        Tactical Distribution
+                        Location Stock
                     </h2>
                     
                     <div className="space-y-3">
@@ -303,7 +323,6 @@ export default function MobileItemDetailsPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
                                         <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{variant.location}</p>
-                                        <p className="text-[9px] text-gray-400 font-bold tracking-widest uppercase truncate max-w-[120px]">REF: {variant.id}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className={cn(
@@ -337,6 +356,46 @@ export default function MobileItemDetailsPage() {
                 </div>
             </div>
 
+            {/* 4. Packaging Breakdown */}
+            {hasPackaging && (
+                <div className="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="p-6 space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+                            <h2 className="text-sm font-black text-gray-900 uppercase tracking-tighter flex items-center gap-2">
+                                <Package className="w-4 h-4 text-blue-600" />
+                                Packaging
+                            </h2>
+                            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 border-blue-100 px-2 py-0.5">
+                                {packaging.batches.length} {packaging.containerType || 'Cartons'} Total
+                            </Badge>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {packaging.batches.map((batch: any) => (
+                                <div key={batch.id} className="flex justify-between items-center px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+                                        <span className="text-xs font-bold text-gray-700 uppercase tracking-tight">{batch.label}</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className={cn(
+                                            "text-lg font-black tabular-nums",
+                                            batch.units > 0 ? "text-gray-900" : "text-gray-400"
+                                        )}>
+                                            {batch.units}
+                                        </span>
+                                        {batch.max_units && (
+                                            <span className="text-xs font-bold text-gray-400">/ {batch.max_units}</span>
+                                        )}
+                                        <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest ml-1">Qty</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* 5. Strategy Actions */}
             <div className="flex gap-3">
                 {canManage && (
@@ -353,17 +412,6 @@ export default function MobileItemDetailsPage() {
                         Edit
                     </button>
                 )}
-                <button
-                    type="button"
-                    className={cn(
-                        'flex-1 h-12 bg-gray-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2',
-                        'motion-safe:transition-transform motion-safe:active:scale-[0.98]',
-                        mFocus,
-                    )}
-                >
-                    <Share2 className="w-4 h-4" aria-hidden />
-                    Report issue
-                </button>
             </div>
 
             {canManage && (
@@ -391,6 +439,8 @@ export default function MobileItemDetailsPage() {
                         onOpenChange={setEditOpen}
                         item={item}
                         knownCategories={knownCategories}
+                        knownLocations={knownLocations}
+                        triageMode={action === 'restock' ? 'restock' : 'none'}
                         onSuccess={refresh}
                     />
                     <ConfirmDialog

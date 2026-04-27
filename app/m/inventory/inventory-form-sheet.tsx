@@ -1,19 +1,23 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { toast } from 'sonner'
-import { Loader2, Save, Package, Image as ImageIcon, MapPin, Minus, Plus, Calendar, Bell } from 'lucide-react'
+import { Loader2, Save, Package, Image as ImageIcon, MapPin, Minus, Plus, Calendar, Bell, UploadCloud, Camera, X, Target, Barcode } from 'lucide-react'
 import { addItem, updateItem } from '@/src/features/catalog'
+import { createClient } from '@/lib/supabase-browser'
+import { optimizeImage } from '@/lib/image-optimizer'
+import { getInventoryImageUrl } from '@/lib/supabase'
 import {
     BottomSheet,
     FormField,
     MInput,
-    MTextarea,
 } from '@/components/mobile/primitives'
 import { cn } from '@/lib/utils'
 import { resolveCategoryIcon } from '@/lib/category-icons'
 import { mFocus } from '@/lib/mobile/tokens'
 import type { InventoryItem } from '@/lib/supabase'
+import { QtyStepper } from './qty-stepper'
 
 interface InventoryFormSheetProps {
     open: boolean
@@ -22,6 +26,10 @@ interface InventoryFormSheetProps {
     item?: InventoryItem | null
     /** Known categories from current inventory for quick-pick chips. */
     knownCategories?: string[]
+    /** Known admin-defined locations from inventory context. */
+    knownLocations?: string[]
+    /** 🎯 Tactical focus: Scroll to breakdown on open */
+    triageMode?: 'restock' | 'none'
     onSuccess?: () => void
 }
 
@@ -30,14 +38,15 @@ type ItemType = 'equipment' | 'consumable'
 interface FormState {
     name: string
     category: string
+    model_number: string
     item_type: ItemType
-    description: string
     storage_location: string
     image_url: string
     qty_good: number
     qty_damaged: number
     qty_maintenance: number
     qty_lost: number
+    target_stock: number
     low_stock_threshold: number
     expiry_date: string
     expiry_alert_days: number
@@ -46,14 +55,15 @@ interface FormState {
 const BLANK: FormState = {
     name: '',
     category: '',
+    model_number: '',
     item_type: 'equipment',
-    description: '',
     storage_location: '',
     image_url: '',
     qty_good: 0,
     qty_damaged: 0,
     qty_maintenance: 0,
     qty_lost: 0,
+    target_stock: 0,
     low_stock_threshold: 20,
     expiry_date: '',
     expiry_alert_days: 15,
@@ -64,12 +74,27 @@ export function InventoryFormSheet({
     onOpenChange,
     item,
     knownCategories = [],
+    knownLocations = [],
+    triageMode = 'none',
     onSuccess,
 }: InventoryFormSheetProps) {
     const isEdit = !!item
     const [form, setForm] = useState<FormState>(BLANK)
     const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
     const [saving, setSaving] = useState(false)
+    const [isUploadingImage, setIsUploadingImage] = useState(false)
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+    const breakdownRef = React.useRef<HTMLDivElement>(null)
+
+    // 🎯 TACTICAL ANCHOR: Scroll to breakdown if in restock triage
+    useEffect(() => {
+        if (open && triageMode === 'restock') {
+            const timer = setTimeout(() => {
+                breakdownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 300) // Small delay to wait for sheet animation
+            return () => clearTimeout(timer)
+        }
+    }, [open, triageMode])
 
     useEffect(() => {
         if (!open) return
@@ -77,14 +102,15 @@ export function InventoryFormSheet({
             setForm({
                 name: item.item_name ?? '',
                 category: item.category ?? '',
+                model_number: (item as any).model_number ?? '',
                 item_type: ((item as any).item_type as ItemType) || 'equipment',
-                description: item.description ?? '',
                 storage_location: item.storage_location ?? '',
                 image_url: item.image_url ?? '',
                 qty_good: item.qty_good ?? 0,
                 qty_damaged: item.qty_damaged ?? 0,
                 qty_maintenance: item.qty_maintenance ?? 0,
                 qty_lost: item.qty_lost ?? 0,
+                target_stock: (item as any).target_stock ?? 0,
                 low_stock_threshold: item.low_stock_threshold ?? 20,
                 expiry_date: item.expiry_date ? new Date(item.expiry_date).toISOString().split('T')[0] : '',
                 expiry_alert_days: (item as any).expiry_alert_days ?? 15,
@@ -92,6 +118,7 @@ export function InventoryFormSheet({
         } else {
             setForm(BLANK)
         }
+        setImagePreviewUrl(getInventoryImageUrl(item?.image_url) || null)
         setErrors({})
     }, [open, item])
 
@@ -119,11 +146,41 @@ export function InventoryFormSheet({
         if (!form.category.trim()) {
             next.category = 'Category is required.'
         }
+        if (!form.storage_location.trim()) {
+            next.storage_location = 'Storage location is required.'
+        }
         if (totalStock < 1 && !isEdit) {
             next.qty_good = 'Total units must be at least 1.'
         }
         setErrors(next)
         return Object.keys(next).length === 0
+    }
+
+    const supabase = useMemo(() => createClient(), [])
+
+    const uploadImage = async (file: File) => {
+        try {
+            setIsUploadingImage(true)
+            const optimized = await optimizeImage(file)
+            const fileName = `${Math.random().toString(36).substring(7)}-${Date.now()}.webp`
+            const path = `items/${fileName}`
+            const { error } = await supabase.storage.from('item-images').upload(path, optimized)
+            if (error) throw error
+            setField('image_url', path)
+            setImagePreviewUrl(getInventoryImageUrl(path))
+            toast.success('Image uploaded')
+        } catch (err: any) {
+            toast.error('Image upload failed', { description: err?.message || 'Please try again.' })
+        } finally {
+            setIsUploadingImage(false)
+        }
+    }
+
+    const onImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        await uploadImage(file)
+        e.target.value = ''
     }
 
     const handleSubmit = async () => {
@@ -134,14 +191,17 @@ export function InventoryFormSheet({
             if (isEdit && item) fd.set('id', String(item.id))
             fd.set('name', form.name.trim())
             fd.set('category', form.category.trim())
+            fd.set('model_number', form.model_number.trim())
             fd.set('item_type', form.item_type)
-            fd.set('description', form.description.trim())
+            // Keep legacy DB compatibility while description field is hidden in UI.
+            fd.set('description', isEdit ? (item?.description ?? '') : '')
             fd.set('storage_location', form.storage_location.trim())
             fd.set('image_url', form.image_url.trim())
             fd.set('qty_good', String(form.qty_good))
             fd.set('qty_damaged', String(form.qty_damaged))
             fd.set('qty_maintenance', String(form.qty_maintenance))
             fd.set('qty_lost', String(form.qty_lost))
+            fd.set('target_stock', String(form.target_stock))
             fd.set('low_stock_threshold', String(form.low_stock_threshold))
             fd.set('stock_total', String(Math.max(totalStock, 1)))
             fd.set('stock_available', String(form.qty_good))
@@ -229,6 +289,77 @@ export function InventoryFormSheet({
             }
         >
             <div className="space-y-5">
+                {/* Image */}
+                <FormField
+                    label="Item photo"
+                    htmlFor="inv-image-file"
+                    optional
+                    hint="Use camera or choose a file."
+                >
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 space-y-3">
+                        <div className="relative h-36 rounded-xl overflow-hidden border border-gray-200 bg-white">
+                            {imagePreviewUrl ? (
+                                <Image
+                                    src={imagePreviewUrl}
+                                    alt="Item preview"
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center text-gray-400">
+                                    <ImageIcon className="w-8 h-8" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <label className={cn('h-10 rounded-xl bg-white border border-gray-200 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer', mFocus)}>
+                                <Camera className="w-4 h-4" />
+                                Camera
+                                <input
+                                    id="inv-image-file"
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    onChange={onImageFileChange}
+                                    disabled={isUploadingImage}
+                                />
+                            </label>
+                            <label className={cn('h-10 rounded-xl bg-white border border-gray-200 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer', mFocus)}>
+                                <UploadCloud className="w-4 h-4" />
+                                Choose file
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={onImageFileChange}
+                                    disabled={isUploadingImage}
+                                />
+                            </label>
+                        </div>
+                        {form.image_url && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setField('image_url', '')
+                                    setImagePreviewUrl(null)
+                                }}
+                                className={cn('h-10 rounded-xl bg-white border border-gray-200 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2', mFocus)}
+                                disabled={isUploadingImage}
+                            >
+                                <X className="w-4 h-4" />
+                                Remove photo
+                            </button>
+                        )}
+                        {isUploadingImage && (
+                            <p className="text-xs text-gray-500 inline-flex items-center gap-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Uploading image...
+                            </p>
+                        )}
+                    </div>
+                </FormField>
+
                 {/* Identity */}
                 <FormField label="Item name" htmlFor="inv-name" required error={errors.name}>
                     <MInput
@@ -239,6 +370,19 @@ export function InventoryFormSheet({
                         autoComplete="off"
                         invalid={!!errors.name}
                     />
+                </FormField>
+                
+                <FormField label="Model name" htmlFor="inv-model" optional hint="Specific version or identifier.">
+                    <div className="relative">
+                        <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <MInput
+                            id="inv-model"
+                            value={form.model_number}
+                            onChange={(e) => setField('model_number', e.target.value)}
+                            placeholder="e.g. X-Series, Gen 2"
+                            className="pl-10"
+                        />
+                    </div>
                 </FormField>
 
                 <FormField label="Category" htmlFor="inv-category" required error={errors.category}>
@@ -309,69 +453,47 @@ export function InventoryFormSheet({
                     </div>
                 </FormField>
 
-                <FormField
-                    label="Description"
-                    htmlFor="inv-description"
-                    optional
-                    hint="Purpose, specs, or any field-critical notes."
-                >
-                    <MTextarea
-                        id="inv-description"
-                        value={form.description}
-                        onChange={(e) => setField('description', e.target.value)}
-                        placeholder="Describe this asset…"
-                        rows={3}
-                    />
-                </FormField>
-
-                {/* Location & Image */}
+                {/* Location */}
                 <FormField
                     label="Storage location"
                     htmlFor="inv-location"
-                    optional
+                    required
                     hint="Where this asset physically lives."
+                    error={errors.storage_location}
                 >
-                    <div className="relative">
+                    <div className="relative space-y-2">
                         <MapPin
                             className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                             aria-hidden
                         />
-                        <MInput
+                        <select
                             id="inv-location"
                             value={form.storage_location}
                             onChange={(e) => setField('storage_location', e.target.value)}
-                            placeholder="e.g. Lower Warehouse"
-                            className="pl-10"
-                        />
-                    </div>
-                </FormField>
-
-                <FormField
-                    label="Image URL"
-                    htmlFor="inv-image"
-                    optional
-                    hint="Paste a public image URL or a storage path."
-                >
-                    <div className="relative">
-                        <ImageIcon
-                            className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                            aria-hidden
-                        />
-                        <MInput
-                            id="inv-image"
-                            value={form.image_url}
-                            onChange={(e) => setField('image_url', e.target.value)}
-                            placeholder="https://… or item-images/path.png"
-                            className="pl-10"
-                            inputMode="url"
-                            autoCapitalize="none"
-                            autoCorrect="off"
-                        />
+                            className={cn(
+                                'w-full h-12 rounded-2xl border px-10 text-sm font-medium',
+                                'focus:outline-none focus:ring-2 focus:ring-red-500/20',
+                                errors.storage_location ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-red-500',
+                                'bg-white text-gray-900',
+                            )}
+                        >
+                            <option value="">Select location</option>
+                            {knownLocations.map((loc) => (
+                                <option key={loc} value={loc}>
+                                    {loc.replaceAll('_', ' ')}
+                                </option>
+                            ))}
+                        </select>
+                        {knownLocations.length === 0 && (
+                            <p className="text-xs text-amber-700">
+                                No admin-defined locations found yet. Ask admin to configure locations.
+                            </p>
+                        )}
                     </div>
                 </FormField>
 
                 {/* Status buckets */}
-                <section className="space-y-3">
+                <section className="space-y-3" ref={breakdownRef}>
                     <div className="flex items-center justify-between px-1">
                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-600 flex items-center gap-1.5">
                             <Package className="w-3.5 h-3.5 text-red-600" aria-hidden />
@@ -415,26 +537,63 @@ export function InventoryFormSheet({
                     </div>
                 </section>
 
-                <FormField
-                    label="Low-stock threshold (%)"
-                    htmlFor="inv-threshold"
-                    hint="Alert fires when available units drop below this percentage."
-                >
-                    <MInput
-                        id="inv-threshold"
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        max={100}
-                        value={form.low_stock_threshold}
-                        onChange={(e) =>
-                            setField(
-                                'low_stock_threshold',
-                                Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                            )
-                        }
-                    />
-                </FormField>
+                <section className="space-y-4 pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-blue-600" />
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                            Stock strategy
+                        </h4>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                            label="Max stock goal"
+                            htmlFor="inv-target"
+                            hint="Ideal quantity."
+                        >
+                            <MInput
+                                id="inv-target"
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                value={form.target_stock}
+                                onChange={(e) =>
+                                    setField('target_stock', Math.max(0, Number(e.target.value) || 0))
+                                }
+                            />
+                        </FormField>
+
+                        <FormField
+                            label="Warn at (%)"
+                            htmlFor="inv-threshold"
+                            hint="Alert threshold."
+                        >
+                            <MInput
+                                id="inv-threshold"
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={100}
+                                value={form.low_stock_threshold}
+                                onChange={(e) =>
+                                    setField(
+                                        'low_stock_threshold',
+                                        Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                                    )
+                                }
+                            />
+                        </FormField>
+                    </div>
+
+                    {form.target_stock > 0 && (
+                        <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-100 flex items-center gap-3">
+                            <Bell className="w-4 h-4 text-blue-600" />
+                            <p className="text-[10px] font-bold text-blue-800 leading-tight">
+                                Restock alert will trigger at or below: <span className="text-blue-600 underline underline-offset-2">{Math.ceil(form.target_stock * (form.low_stock_threshold / 100))} units</span>
+                            </p>
+                        </div>
+                    )}
+                </section>
 
                 {/* Consumable-only: expiry tracking */}
                 {form.item_type === 'consumable' && (
@@ -490,93 +649,5 @@ export function InventoryFormSheet({
                 )}
             </div>
         </BottomSheet>
-    )
-}
-
-type QtyTone = 'success' | 'warning' | 'info' | 'danger'
-
-function QtyStepper({
-    id,
-    label,
-    value,
-    onChange,
-    tone,
-    error,
-}: {
-    id: string
-    label: string
-    value: number
-    onChange: (v: number) => void
-    tone: QtyTone
-    error?: string
-}) {
-    const toneMap: Record<QtyTone, string> = {
-        success: 'bg-emerald-50 border-emerald-100',
-        warning: 'bg-amber-50 border-amber-100',
-        info: 'bg-blue-50 border-blue-100',
-        danger: 'bg-rose-50 border-rose-100',
-    }
-    const dotMap: Record<QtyTone, string> = {
-        success: 'bg-emerald-500',
-        warning: 'bg-amber-500',
-        info: 'bg-blue-500',
-        danger: 'bg-rose-500',
-    }
-
-    return (
-        <div>
-            <div className={cn('rounded-2xl border p-3 flex items-center gap-3', toneMap[tone])}>
-                <span className={cn('w-2 h-2 rounded-full shrink-0', dotMap[tone])} aria-hidden />
-                <label htmlFor={id} className="flex-1 text-sm font-semibold text-gray-900 min-w-0 truncate">
-                    {label}
-                </label>
-                <div className="flex items-center gap-1">
-                    <button
-                        type="button"
-                        onClick={() => onChange(Math.max(0, value - 1))}
-                        className={cn(
-                            'w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center',
-                            'text-gray-700 hover:bg-gray-50 disabled:opacity-40',
-                            'motion-safe:transition-colors',
-                            mFocus,
-                        )}
-                        disabled={value <= 0}
-                        aria-label={`Decrease ${label}`}
-                    >
-                        <Minus className="w-4 h-4" />
-                    </button>
-                    <input
-                        id={id}
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        value={value}
-                        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-                        className={cn(
-                            'w-14 h-9 rounded-xl bg-white border border-gray-200 text-center text-sm font-bold tabular-nums',
-                            'focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500',
-                        )}
-                        aria-label={`${label} quantity`}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => onChange(value + 1)}
-                        className={cn(
-                            'w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center',
-                            'text-gray-700 hover:bg-gray-50 motion-safe:transition-colors',
-                            mFocus,
-                        )}
-                        aria-label={`Increase ${label}`}
-                    >
-                        <Plus className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-            {error && (
-                <p className="text-xs text-rose-600 mt-1 ml-1" role="alert">
-                    {error}
-                </p>
-            )}
-        </div>
     )
 }

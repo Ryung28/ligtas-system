@@ -360,3 +360,48 @@ export async function unauthorizeUserAction(email: string): Promise<ActionResult
 
     return { success: true, message: `Access revoked for ${parsed.data.email}.` }
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTION 7: UPDATE USER PROFILE (Metadata Sync)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const UpdateProfileSchema = z.object({
+    userId: UuidSchema,
+    full_name: z.string().min(2, "Name must be at least 2 characters").optional(),
+    department: z.string().optional(),
+    phone_number: z.string().optional(),
+})
+
+export async function updateUserProfileAction(
+    userId: string,
+    data: { full_name?: string; department?: string; phone_number?: string }
+): Promise<ActionResult> {
+    const parsed = UpdateProfileSchema.safeParse({ userId, ...data })
+    if (!parsed.success) {
+        return {
+            success: false,
+            message: 'Validation failed.',
+            errors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+        }
+    }
+
+    const supabase = await createSupabaseServer()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: 'Unauthorized.' }
+
+    const { error } = await supabase
+        .from('user_profiles')
+        .update({
+            full_name: parsed.data.full_name,
+            department: parsed.data.department,
+            phone_number: parsed.data.phone_number,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', parsed.data.userId)
+
+    if (error) {
+        console.error('[UserAction:updateProfile]', error.message)
+        return { success: false, message: 'Failed to update personnel profile.' }
+    }
+
+    return { success: true, message: 'Personnel profile updated successfully.' }
+}

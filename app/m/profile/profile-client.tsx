@@ -11,9 +11,11 @@ import {
     Save,
     Loader2,
     Undo2,
+    LogOut,
     AtSign,
     User as UserIcon,
 } from 'lucide-react'
+import { logoutAction } from '@/app/actions/auth-actions'
 import { MobileHeader } from '@/components/mobile/mobile-header'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -58,6 +60,19 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
     const isDirty =
         (fullName.trim() || '') !== (profile.full_name || '') ||
         (department.trim() || '') !== (profile.department || '')
+
+    const handleLogout = async () => {
+        try {
+            // Clear SW cache before server-side redirect
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' })
+            }
+            await logoutAction()
+        } catch (error) {
+            console.error('Logout failed:', error)
+            toast.error('Logout failed')
+        }
+    }
 
     const initials = (profile.full_name || profile.email || 'AD')
         .substring(0, 2)
@@ -250,6 +265,26 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
                         </p>
                     </div>
                 </div>
+            </section>
+
+            {/* 🚪 LOGOUT — High-visibility exit point */}
+            <section className="px-4 mt-8 pb-32">
+                <button
+                    onClick={handleLogout}
+                    className={cn(
+                        "w-full bg-white border border-red-100 rounded-3xl p-5 shadow-sm",
+                        "flex items-center justify-center gap-3 active:bg-red-50 active:scale-[0.98] transition-all group"
+                    )}
+                >
+                    <LogOut className="w-5 h-5 text-red-600" />
+                    <span className="text-sm font-black text-red-600 uppercase tracking-widest">
+                        Safe Logout
+                    </span>
+                </button>
+                
+                <p className="text-[9px] text-center text-slate-300 font-bold mt-8 uppercase tracking-[0.3em]">
+                    SECURE TERMINAL • v2.4.0-RT
+                </p>
             </section>
 
             {/* Sticky save bar — visible only when dirty */}

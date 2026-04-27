@@ -59,6 +59,8 @@ interface LogSessionTableProps {
     currentPage: number
     setCurrentPage: (page: number) => void
     totalPages: number
+    selectedLogIds: Set<number>
+    setSelectedLogIds: (ids: Set<number> | ((prev: Set<number>) => Set<number>)) => void
 }
 
 export function LogSessionTable({
@@ -72,9 +74,10 @@ export function LogSessionTable({
     setStatusFilter,
     currentPage,
     setCurrentPage,
-    totalPages
+    totalPages,
+    selectedLogIds,
+    setSelectedLogIds
 }: LogSessionTableProps) {
-    const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set())
     const [isPending, startTransition] = useTransition()
     const [expandedImage, setExpandedImage] = useState<{ url: string, name: string } | null>(null)
     const searchParams = useSearchParams()
@@ -336,8 +339,8 @@ export function LogSessionTable({
 
             {/* 🚀 KINETIC BATCH ACTION DOCK */}
             {selectedLogIds.size > 0 && (
-                <div className="sticky bottom-4 left-0 right-0 flex justify-center z-[100] pointer-events-none px-4">
-                    <div className="bg-zinc-950/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-6 pointer-events-auto border border-white/10 animate-in fade-in slide-in-from-bottom-5 duration-500 max-w-2xl w-full sm:w-auto">
+                <div className="fixed bottom-6 left-0 right-0 flex justify-center z-[100] pointer-events-none px-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
+                    <div className="bg-zinc-950/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-6 pointer-events-auto border border-white/10 max-w-2xl w-full sm:w-auto">
                         <div className="flex items-center gap-3 pr-6 border-r border-white/10">
                             <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                                 <Package className="h-5 w-5 text-white" />
@@ -711,8 +714,8 @@ function LogSessionRow({
 
                                                         {/* Status + Actions */}
                                                         <div className="flex items-center gap-4 pr-1">
-                                                            {getStatusBadge(item.status)}
-                                                            {item.status !== 'returned' && item.status !== 'pending' && item.status !== 'dispensed' && item.status !== 'staged' && item.status !== 'reserved' && (
+                                                            {getStatusBadge(item.inventory?.item_type === 'consumable' && item.status === 'borrowed' ? 'dispensed' : item.status)}
+                                                            {item.status !== 'returned' && item.status !== 'pending' && item.status !== 'dispensed' && item.status !== 'staged' && item.status !== 'reserved' && item.inventory?.item_type !== 'consumable' && (
                                                                 <ReturnCommandSheet
                                                                     logId={item.id}
                                                                     itemName={item.item_name}

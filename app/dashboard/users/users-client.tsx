@@ -30,6 +30,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
         unauthorizeUser,
         authorizedEmails,
         updateUserRole,
+        updateUserProfile,
         assignWarehouse
     } = useUserManagement()
 
@@ -149,6 +150,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
                     onApprove={handleApproveBorrower}
                     onReject={rejectUser}
                     onRemove={suspendUser}
+                    onUpdateProfile={updateUserProfile}
                 />
             </div>
 

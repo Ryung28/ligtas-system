@@ -1,4 +1,4 @@
-import { Package, ClipboardList, TrendingDown, BarChart3, Clock, Pill } from 'lucide-react'
+import { Package, ClipboardList, TrendingDown, BarChart3, Clock, Pill, AlertCircle } from 'lucide-react'
 import { ReportCard } from './report-card'
 import type { ReportType, ReportDefinition } from './types'
 
@@ -27,6 +27,16 @@ export function ReportSections({ onConfigure }: ReportSectionsProps) {
             includes: ['Item name', 'Current stock', 'Minimum required', 'Category', 'Priority level'], 
             icon: TrendingDown, 
             color: 'orange', 
+            category: 'inventory' 
+        },
+        { 
+            type: 'out-of-stock', 
+            title: 'Out of Stock', 
+            subtitle: 'Zero availability', 
+            description: 'Critical list of items requiring immediate replenishment', 
+            includes: ['Item name', 'Target stock', 'Category', 'Storage location'], 
+            icon: AlertCircle, 
+            color: 'red', 
             category: 'inventory' 
         },
         { 

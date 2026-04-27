@@ -14,6 +14,8 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
     const criticalAudioRef = useRef<HTMLAudioElement | null>(null)
     const lastPlayTime = useRef<number>(0)
     const supabaseRef = useRef<any>(null)
+    const isUnlockingRef = useRef(false)
+    const isUnlockedRef = useRef(false)
 
     const debounceAudio = useCallback((callback: () => void) => {
         const now = Date.now();
@@ -23,57 +25,85 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
         }
     }, [])
 
+    const signalAudioBlocked = useCallback((error: unknown) => {
+        const name = (error as { name?: string } | null)?.name ?? ''
+        if (name !== 'NotAllowedError') return
+        window.dispatchEvent(new CustomEvent('resqtrack:audio-blocked'))
+    }, [])
+
     const playNotification = useCallback(() => {
         if (localStorage.getItem('audio_enabled') !== 'true') return;
         debounceAudio(() => {
             if (audioRef.current) {
                 audioRef.current.currentTime = 0
+                audioRef.current.volume = 0.5
                 audioRef.current.play().catch(e => {
                     console.warn('[Audio] Playback blocked by browser policy:', e);
+                    signalAudioBlocked(e);
                     // 🛡️ TACTICAL FALLBACK: If blocked, the user might need to click the UI again
                 })
             }
         });
-    }, [debounceAudio])
+    }, [debounceAudio, signalAudioBlocked])
 
     const playCriticalAlert = useCallback(() => {
         if (localStorage.getItem('audio_enabled') !== 'true') return;
         debounceAudio(() => {
             if (criticalAudioRef.current) {
                 criticalAudioRef.current.currentTime = 0
+                criticalAudioRef.current.volume = 0.7
                 criticalAudioRef.current.play().catch(e => {
                     console.warn('[Critical] Playback blocked by browser policy:', e);
+                    signalAudioBlocked(e);
                 })
             }
         });
-    }, [debounceAudio])
+    }, [debounceAudio, signalAudioBlocked])
 
     // 🛡️ TACTICAL UNLOCK: The "Acoustic Blessing"
     // This function MUST be called during a User-Initiated Event (Click)
     const unlockAudio = useCallback(() => {
+        if (isUnlockedRef.current || isUnlockingRef.current) {
+            return
+        }
+        isUnlockingRef.current = true
         console.log('[Audio-Dispatcher] Attempting Acoustic Priming...');
         
         const prime = (audio: HTMLAudioElement | null) => {
-            if (!audio) return;
+            if (!audio) return Promise.resolve();
             const originalVolume = audio.volume;
             audio.volume = 0; // Mute for priming
-            audio.play()
+            return audio.play()
                 .then(() => {
                     audio.pause();
                     audio.currentTime = 0;
                     audio.volume = originalVolume;
                     console.log(`[Audio-Dispatcher] ${audio.src.split('/').pop()} primed successfully.`);
                 })
-                .catch(e => console.warn('[Audio-Dispatcher] Priming failed:', e));
+                .catch(e => {
+                    console.warn('[Audio-Dispatcher] Priming failed:', e)
+                    signalAudioBlocked(e)
+                });
         };
 
-        prime(audioRef.current);
-        prime(criticalAudioRef.current);
-    }, [])
+        Promise.allSettled([prime(audioRef.current), prime(criticalAudioRef.current)]).finally(() => {
+            isUnlockingRef.current = false
+            isUnlockedRef.current = true
+            window.dispatchEvent(new CustomEvent('resqtrack:audio-unlocked'))
+        })
+    }, [signalAudioBlocked])
 
     useEffect(() => {
         // Expose unlock function to the global scope for the Permission Wrapper to call
         (window as any).RESQTRACK_UNLOCK_AUDIO = unlockAudio;
+        // Single sound dispatcher used by all feature listeners.
+        (window as any).RESQTRACK_PLAY_AUDIO = (type: 'notification' | 'critical' = 'notification') => {
+            if (type === 'critical') {
+                playCriticalAlert();
+                return;
+            }
+            playNotification();
+        };
 
         const supabase = createBrowserClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,6 +155,8 @@ export function RealtimeAudioProvider({ children }: { children: React.ReactNode 
 
         return () => {
             supabase.removeChannel(notificationChannel)
+            delete (window as any).RESQTRACK_UNLOCK_AUDIO;
+            delete (window as any).RESQTRACK_PLAY_AUDIO;
         }
     }, [playCriticalAlert, playNotification, unlockAudio])
 

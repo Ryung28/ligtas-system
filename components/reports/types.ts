@@ -2,6 +2,7 @@ export type ReportType =
     | 'inventory' 
     | 'logs' 
     | 'low-stock' 
+    | 'out-of-stock'
     | 'summary'
     | 'overdue'
     | 'expiry-alert'
@@ -38,5 +39,5 @@ export interface ReportDefinition {
     includes: string[]
     icon: any
     color: 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'indigo'
-    category: 'inventory' | 'transaction' | 'management'
+    category: 'inventory' | 'transaction' | 'management' | 'activity'
 }

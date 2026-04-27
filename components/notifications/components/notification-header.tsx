@@ -49,7 +49,7 @@ export function NotificationHeader({ unreadCount, isRefreshing, onRefresh, onMar
 
           <motion.button onClick={onMarkAllRead} disabled={unreadCount === 0} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors", unreadCount > 0 ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100" : "text-gray-300 cursor-not-allowed")} whileTap={{ scale: unreadCount > 0 ? 0.95 : 1 }}>
             <CheckCheck className="w-4 h-4" strokeWidth={2} />
-            <span className="text-xs font-medium">Mark All</span>
+            <span className="text-xs font-medium">Mark all read</span>
           </motion.button>
 
           <SheetClose asChild>

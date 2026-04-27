@@ -10,18 +10,55 @@ import { createSupabaseServer } from '@/lib/supabase-server'
  * Implements the tactical staging workflow.
  */
 
-export async function approveRequest(logId: number, approvedBy: string, isInstant: boolean = false) {
+export async function approveRequest(
+    logId: number, 
+    approvedBy: string, 
+    isInstant: boolean = false,
+    auditOptions?: { 
+        handedBy?: string, 
+        physicallyReceivedBy?: string,
+        adminId?: string 
+    }
+) {
     try {
         const supabase = await createSupabaseServer()
         
+        // 🛡️ SECURITY: Verify Admin Role
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (profile?.role?.toLowerCase() !== 'admin') {
+            return { success: false, error: 'Authorization failed: Only Administrators can approve requests.' }
+        }
+        
+        // 1. Fetch item type to handle consumables correctly
+        const { data: log } = await supabase
+            .from('borrow_logs')
+            .select('inventory_id, inventory(item_type)')
+            .eq('id', logId)
+            .single()
+
+        const isConsumable = log?.inventory?.item_type === 'consumable' || log?.inventory?.[0]?.item_type === 'consumable'
+
         const updateData: any = { 
-            status: isInstant ? 'borrowed' : 'staged',
+            status: isInstant ? (isConsumable ? 'dispensed' : 'borrowed') : 'staged',
             approved_by: approvedBy,
-            approved_at: new Date().toISOString()
+            approved_by_name: approvedBy,
+            approved_at: new Date().toISOString(),
+            last_updated_origin: 'Web'
         }
 
         if (isInstant) {
-            updateData.handed_by = approvedBy
+            updateData.handed_by = auditOptions?.handedBy || approvedBy
+            updateData.released_by_name = approvedBy
+            updateData.released_by_user_id = auditOptions?.adminId || null
+            updateData.physically_received_by = auditOptions?.physicallyReceivedBy || null
             updateData.handed_at = new Date().toISOString()
             updateData.borrow_date = new Date().toISOString()
         }
@@ -34,6 +71,7 @@ export async function approveRequest(logId: number, approvedBy: string, isInstan
         if (error) throw error
 
         revalidatePath('/dashboard/logs')
+        revalidatePath('/dashboard/approvals')
         revalidatePath('/dashboard')
         revalidatePath('/m')
         revalidatePath('/m/logs')
@@ -49,16 +87,49 @@ export async function approveRequest(logId: number, approvedBy: string, isInstan
     }
 }
 
-export async function completeHandoff(logId: number, handedBy: string) {
+export async function completeHandoff(
+    logId: number, 
+    handedBy: string, 
+    adminId?: string,
+    physicallyReceivedBy?: string
+) {
     try {
         const supabase = await createSupabaseServer()
+
+        // 🛡️ SECURITY: Verify Admin Role
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (profile?.role?.toLowerCase() !== 'admin') {
+            return { success: false, error: 'Authorization failed: Only Administrators can complete handoffs.' }
+        }
+
+        // 1. Fetch item type to handle consumables correctly
+        const { data: log } = await supabase
+            .from('borrow_logs')
+            .select('inventory_id, inventory(item_type)')
+            .eq('id', logId)
+            .single()
+
+        const isConsumable = log?.inventory?.item_type === 'consumable' || log?.inventory?.[0]?.item_type === 'consumable'
+
         const { error } = await supabase
             .from('borrow_logs')
             .update({ 
-                status: 'borrowed',
+                status: isConsumable ? 'dispensed' : 'borrowed',
                 borrow_date: new Date().toISOString(),
                 handed_by: handedBy,
-                handed_at: new Date().toISOString()
+                released_by_name: handedBy,
+                released_by_user_id: adminId || null,
+                physically_received_by: physicallyReceivedBy || null,
+                handed_at: new Date().toISOString(),
+                last_updated_origin: 'Web'
             })
             .eq('id', logId)
 
@@ -78,6 +149,20 @@ export async function completeHandoff(logId: number, handedBy: string) {
 export async function rejectRequest(logId: number) {
     try {
         const supabase = await createSupabaseServer()
+
+        // 🛡️ SECURITY: Verify Admin Role
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (profile?.role?.toLowerCase() !== 'admin') {
+            return { success: false, error: 'Authorization failed: Only Administrators can reject requests.' }
+        }
         // 1. Fetch Log to get inventory_id and quantity for restoration
         const { data: log, error: fetchError } = await supabase
             .from('borrow_logs')

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, RefreshCw } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/hooks/use-notifications'
@@ -109,7 +109,7 @@ export function NotificationBellV2() {
       >
         <SheetTitle className="sr-only">Notifications</SheetTitle>
         <SheetDescription className="sr-only">
-          View and manage your recent activity, alerts, and logistical notifications.
+          View and manage recent notifications and alerts.
         </SheetDescription>
         <motion.div
           initial={{ opacity: 0, x: 20 }} 
@@ -134,7 +134,7 @@ export function NotificationBellV2() {
 
           <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
             <div className="flex items-center justify-between mb-3 px-1">
-              <p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Recent Activity</p>
+              <p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Recent Notifications</p>
               <p className="text-[10px] font-bold text-gray-400">{filtered.length} {filtered.length === 1 ? "item" : "items"}</p>
             </div>
 
@@ -167,7 +167,7 @@ export function NotificationBellV2() {
                           Unread
                         </p>
                         <p className="text-[10px] font-semibold text-slate-400">
-                          These are unread messages
+                          New notifications
                         </p>
                       </motion.div>
                     )}
@@ -229,7 +229,7 @@ export function NotificationBellV2() {
                 {isScanning && <motion.div initial={{ x: "-100%" }} animate={{ x: "200%" }} transition={{ duration: 1.2, ease: "easeInOut", repeat: 1 }} className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)", width: "60%" }} />}
               </AnimatePresence>
               <motion.div animate={{ rotate: isScanning ? 360 : 0 }} transition={{ duration: 0.8, repeat: isScanning ? Infinity : 0, ease: "linear" }} className="w-4 h-4">{Icons.scan}</motion.div>
-              <span>{isScanning ? "Loading…" : "Load More"}</span>
+              <span>{isScanning ? "Loading…" : "Show Older"}</span>
             </motion.button>
           </div>
         </motion.div>

@@ -30,7 +30,7 @@ export function isLowStock(item: Partial<InventoryItem>): boolean {
 
     const eff = getEffectiveLowStockThreshold(item)
     if (eff == null) return false
-    return available <= eff
+    return available > 0 && available <= eff
 }
 
 /** @deprecated Use getEffectiveLowStockThreshold; kept for any external imports */

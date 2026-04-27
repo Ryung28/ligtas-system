@@ -1,6 +1,6 @@
 {
-  "name": "ResQTrack",
-  "short_name": "ResQTrack",
+  "name": "CDRRMO Oroquieta · ResQTrack",
+  "short_name": "CDRRMO",
   "description": "Unified Logistics & Disaster Response Information System",
   "start_url": "/m",
   "display": "standalone",
@@ -9,15 +9,15 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/resqtrack-logo.jpg",
+      "src": "/oro-cervo.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/resqtrack-logo.jpg",
+      "src": "/oro-cervo.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],

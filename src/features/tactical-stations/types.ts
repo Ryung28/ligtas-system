@@ -10,6 +10,7 @@ export type Station = {
 }
 
 export type StationManifestItem = {
+    station_id: number
     item_id: number
     item_name: string
     base_name: string | null

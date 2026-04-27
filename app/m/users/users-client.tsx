@@ -267,8 +267,8 @@ export function UsersClient() {
                     className={cn(
                         'fixed right-4 z-40',
                         'bottom-[calc(72px+env(safe-area-inset-bottom)+16px)]',
-                        'h-14 w-14 rounded-full bg-red-600 text-white shadow-xl shadow-red-300',
-                        'flex items-center justify-center',
+                        'h-14 w-14 rounded-full bg-slate-950 text-white shadow-xl shadow-slate-900/20',
+                        'flex items-center justify-center p-0',
                         'motion-safe:transition-transform motion-safe:active:scale-90',
                         mFocus,
                     )}

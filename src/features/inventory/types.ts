@@ -17,3 +17,15 @@ export interface AggregatedInventoryItem extends InventoryItem {
     is_multi_location: boolean
     primary_location: string
 }
+
+export type BatchMode = 'none' | 'borrow' | 'reserve'
+
+export interface BatchLine {
+    id: string | number
+    item_name: string
+    quantity: number
+    variant_id: number | string
+    location?: string
+    item_type?: string
+    image_url?: string | null
+}

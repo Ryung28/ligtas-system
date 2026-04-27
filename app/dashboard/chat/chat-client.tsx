@@ -66,12 +66,21 @@ export default function AdminMessengerPage() {
                         participant={activeParticipant}
                     />
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                        <div className="h-16 w-16 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center text-slate-300 mb-6">
-                            <MessageSquare className="h-8 w-8 stroke-[1.5px]" />
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-gradient-to-b from-white/0 to-slate-50/30">
+                        {/* 🛡️ TACTICAL ICON — Glassmorphism Effect */}
+                        <div className="relative group mb-8">
+                            <div className="absolute -inset-4 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-700" />
+                            <div className="relative h-24 w-24 bg-white/40 backdrop-blur-md border border-white/50 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.04)] flex items-center justify-center text-blue-600 transition-transform duration-500 hover:scale-105">
+                                <MessageSquare className="h-10 w-10 stroke-[1.25px]" />
+                            </div>
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-900 mb-1">ResQTrack Chat (V3)</h2>
-                        <p className="text-sm text-slate-400 font-medium">Select a conversation to start messaging</p>
+
+                        {/* 📝 CONTENT */}
+                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">ResQTrack Message</h2>
+                        <p className="text-slate-500 font-medium max-w-[280px] leading-relaxed mb-8">
+                            Select a conversation to begin operational coordination and dispatch.
+                        </p>
+
                     </div>
                 )}
             </div>

@@ -4,9 +4,10 @@ import { BorrowLog } from '@/lib/types/inventory'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Check, X, Clock, User, Package, MessageSquare } from 'lucide-react'
+import { Check, X, User } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { TacticalAssetImage } from '@/src/shared/ui/tactical-asset-image'
 
 interface ApprovalCardProps {
     request: BorrowLog
@@ -18,23 +19,30 @@ interface ApprovalCardProps {
 
 export function ApprovalCard({ request, onApprove, onReject, onHandoff, isProcessing }: ApprovalCardProps) {
     const isStaged = request.status === 'staged'
+    const imageUrl = request.image_url || request.inventory?.image_url
     
     return (
-        <Card className="p-4 rounded-2xl border-none shadow-sm bg-white active:scale-[0.98] transition-all">
+        <Card 
+            id={`request-${request.id}`}
+            className={cn(
+                "p-4 rounded-2xl border-none shadow-sm bg-white active:scale-[0.98] transition-all",
+                "target:ring-4 target:ring-red-500/20 target:animate-pulse"
+            )}
+        >
             <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
-                    <div className={cn(
-                        "p-2 rounded-xl",
-                        isStaged ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                    )}>
-                        {isStaged ? <Package className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                    </div>
+                <div className="flex items-center gap-3">
+                    <TacticalAssetImage 
+                        url={imageUrl} 
+                        alt={request.item_name}
+                        size="sm"
+                        className="rounded-xl shadow-sm overflow-hidden"
+                    />
                     <div>
                         <h4 className="text-sm font-bold text-slate-900 leading-tight truncate max-w-[150px]">
                             {request.item_name}
                         </h4>
                         <p className="text-[10px] text-slate-500 font-medium">
-                            {request.quantity} {request.quantity > 1 ? 'units' : 'unit'}
+                            {request.quantity} {request.quantity > 1 ? 'items' : 'item'}
                         </p>
                     </div>
                 </div>
@@ -42,28 +50,14 @@ export function ApprovalCard({ request, onApprove, onReject, onHandoff, isProces
                     "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-none",
                     isStaged ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600"
                 )}>
-                    {request.status}
+                    {isStaged ? "Ready" : "New"}
                 </Badge>
             </div>
 
-            <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <User className="h-3 w-3 text-slate-400" />
-                    <span className="font-semibold text-slate-800">{request.borrower_name}</span>
-                    <span className="text-slate-300">|</span>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">
-                        {request.borrower_organization || 'External'}
-                    </span>
-                </div>
-                
-                {request.purpose && (
-                    <div className="flex items-start gap-2 bg-slate-50 p-2 rounded-xl">
-                        <MessageSquare className="h-3 w-3 text-slate-400 mt-0.5" />
-                        <p className="text-[11px] text-slate-600 italic leading-snug">
-                            &quot;{request.purpose}&quot;
-                        </p>
-                    </div>
-                )}
+            <div className="flex items-center gap-2 mb-3">
+                <User className="h-3 w-3 text-slate-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Requester:</span>
+                <span className="text-[10px] font-bold text-slate-800">{request.borrower_name}</span>
             </div>
 
             <div className="flex items-center justify-between gap-2 border-t border-slate-50 pt-3">
@@ -80,7 +74,7 @@ export function ApprovalCard({ request, onApprove, onReject, onHandoff, isProces
                             className="bg-emerald-600 hover:bg-emerald-700 h-8 px-4 rounded-lg text-[10px] font-black uppercase tracking-wider"
                         >
                             <Check className="h-3 w-3 mr-1.5" /> 
-                            Dispatch
+                            Hand Over
                         </Button>
                     ) : (
                         <>
@@ -92,7 +86,7 @@ export function ApprovalCard({ request, onApprove, onReject, onHandoff, isProces
                                 className="text-red-600 hover:bg-red-50 h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider"
                             >
                                 <X className="h-3 w-3 mr-1" />
-                                Deny
+                                Decline
                             </Button>
                             <Button 
                                 size="sm" 

@@ -142,6 +142,9 @@ export function BorrowerTable({
                                         ? borrower.borrower_user_id === selectedBorrower.borrower_user_id 
                                         : borrower.borrower_name === selectedBorrower.borrower_name)
 
+                                const isActuallyStaff = borrower.is_verified_user && 
+                                    (borrower.user_role?.toLowerCase() === 'admin' || borrower.user_role?.toLowerCase() === 'manager')
+
                                 return (
                                     <TableRow
                                         key={borrower.borrower_user_id || borrower.borrower_name}
@@ -155,18 +158,18 @@ export function BorrowerTable({
                                         <TableCell className="pl-4 py-0">
                                             <div className="flex items-center gap-3">
                                                 <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border transition-colors ${
-                                                    borrower.is_verified_user 
+                                                    isActuallyStaff 
                                                         ? 'bg-indigo-50 border-indigo-100 text-indigo-600' 
                                                         : 'bg-gray-50 border-gray-100 text-gray-400'
                                                 }`}>
-                                                    {borrower.is_verified_user ? <Briefcase className="h-3.5 w-3.5" /> : 'G'}
+                                                    {isActuallyStaff ? <Briefcase className="h-3.5 w-3.5" /> : 'G'}
                                                 </div>
                                                 <div className="min-w-0 pr-2">
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-xs font-black truncate tracking-tight uppercase text-gray-900 group-hover:text-indigo-600 transition-colors">
                                                             {borrower.borrower_name}
                                                         </p>
-                                                        {borrower.is_verified_user && (
+                                                        {isActuallyStaff && (
                                                             <Badge variant="outline" className="h-4 px-1 text-[8px] font-black bg-indigo-50 text-indigo-600 border-indigo-100 rounded-[4px] uppercase tracking-tighter shrink-0">
                                                                 Staff
                                                             </Badge>

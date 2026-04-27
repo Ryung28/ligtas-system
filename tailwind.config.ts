@@ -42,11 +42,11 @@ const config = {
         },
         extend: {
             fontFamily: {
-                sans: ['var(--font-dm-sans)', 'var(--font-inter)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                sans: ['var(--font-dm-sans)', 'system-ui', '-apple-system', 'sans-serif'],
                 heading: ['var(--font-outfit)', 'sans-serif'],
-                tight: ['var(--font-inter-tight)', 'sans-serif'],
+                tight: ['var(--font-dm-sans)', 'sans-serif'], // Consolidated to DM Sans
                 mono: ['var(--font-jetbrains-mono)', 'monospace'],
-                display: ['var(--font-syne)', 'sans-serif'], // Added Syne
+                display: ['var(--font-outfit)', 'sans-serif'], // Consolidated to Outfit
             },
             fontSize: {
                 'xs': ['clamp(0.625rem, 0.6rem + 0.125vw, 0.75rem)', { lineHeight: '1rem' }],

@@ -247,7 +247,7 @@ export function BorrowItemDialog() {
 
         startTransition(async () => {
             let result;
-
+            if (isSmartReturn && existingBorrow) {
                 result = await returnItem(existingBorrow.id, {
                     receivedByName: '',
                     returnCondition: returnCondition.toLowerCase() as any,

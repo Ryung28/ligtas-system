@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { createBrowserClient } from '@supabase/ssr'
 import { ChatMessage } from '@/lib/types/chat'
 import { sendChatMessageV3, markAsReadV3, getRoomMessagesV3 } from '@/app/actions/chat-v3'
 import { toast } from 'sonner'
+import { CHAT_ROOMS_KEY } from '@/hooks/use-chat-rooms-v3'
 
 /**
  * ResQTrack CHAT-V3 Kinetic Hook
@@ -19,6 +20,30 @@ export function useChatV3(roomId: string | null) {
     
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [presence, setPresence] = useState<Record<string, any>>({})
+    const { mutate: mutateGlobal } = useSWRConfig()
+
+    const markRoomReadAndSync = useCallback(async (targetRoomId: string) => {
+        const result = await markAsReadV3(targetRoomId)
+        if (!result.success) return
+
+        // Optimistic unread sync for sidebar badge responsiveness.
+        mutateGlobal(
+            CHAT_ROOMS_KEY,
+            (prev: unknown) => {
+                if (!Array.isArray(prev)) return prev
+                return prev.map((room) => {
+                    if (!room || typeof room !== 'object') return room
+                    const typedRoom = room as { id?: string; unread_count?: number }
+                    if (typedRoom.id !== targetRoomId) return room
+                    return { ...typedRoom, unread_count: 0 }
+                })
+            },
+            false,
+        )
+
+        // Then reconcile with server truth.
+        mutateGlobal(CHAT_ROOMS_KEY)
+    }, [mutateGlobal])
 
     // Identity pre-warm
     useEffect(() => {
@@ -38,7 +63,7 @@ export function useChatV3(roomId: string | null) {
         if (!roomId) return []
         const result = await getRoomMessagesV3(roomId)
         if (!result.success) throw new Error(result.error)
-        markAsReadV3(roomId)
+        await markRoomReadAndSync(roomId)
         return result.data as ChatMessage[]
     }, {
         revalidateOnFocus: false, // Focus revalidation handled by realtime
@@ -86,7 +111,9 @@ export function useChatV3(roomId: string | null) {
                 const newMessage = payload.new as ChatMessage
                 // Trigger SWR mutation to integrate the new message
                 mutate()
-                markAsReadV3(roomId)
+                if (newMessage.sender_id !== currentUserId) {
+                    void markRoomReadAndSync(roomId)
+                }
             })
             .subscribe()
 
@@ -103,7 +130,7 @@ export function useChatV3(roomId: string | null) {
             supabase.removeChannel(msgChannel)
             supabase.removeChannel(presenceChannel)
         }
-    }, [roomId, supabase, currentUserId, mutate])
+    }, [roomId, supabase, currentUserId, mutate, markRoomReadAndSync])
 
     return { 
         messages, 

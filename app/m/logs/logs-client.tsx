@@ -28,9 +28,9 @@ export function LogsClient() {
     
     const filters = [
         { id: 'all', label: 'All' },
-        { id: 'borrowed', label: 'Borrowed' },
-        { id: 'returned', label: 'Returned' },
-        { id: 'overdue', label: 'Overdue' }
+        { id: 'borrowed', label: 'Out' },
+        { id: 'returned', label: 'Back' },
+        { id: 'overdue', label: 'Late' }
     ]
 
     if (error) {
@@ -39,33 +39,35 @@ export function LogsClient() {
                 <div className="bg-red-50 p-4 rounded-full text-red-500">
                     <PackageX className="w-12 h-12" />
                 </div>
-                <h2 className="font-bold text-gray-900">Connection Terminated</h2>
-                <p className="text-sm text-gray-500">The ledger sync failed. Ensure your device has an active uplink.</p>
+                <h2 className="font-bold text-gray-900">Sync Error</h2>
+                <p className="text-sm text-gray-500">We can't reach the server. Please check your internet.</p>
             </div>
         )
     }
 
     return (
-        <div className="space-y-6 pb-20 px-4 pt-4">
+        <div className="space-y-6 pb-20">
             <MobileHeader 
-                title="Log Triage" 
+                title="Usage History" 
                 onRefresh={() => refresh()} 
                 isLoading={isLoading || isValidating} 
             />
-            
-            <div className="sticky top-[56px] bg-gray-50/95 backdrop-blur-md pt-2 pb-4 z-40 space-y-4 -mx-4 px-4 border-b border-gray-100">
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                        <Search className="w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+
+            <div className="px-4 space-y-6">
+                {/* Search & Filter Tactical Row */}
+                <div className="space-y-4">
+                    <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <Search className="w-5 h-5" />
+                        </div>
+                        <input 
+                            type="text"
+                            placeholder="Search history..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full h-12 bg-white border border-gray-200 rounded-2xl pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                        />
                     </div>
-                    <input 
-                        type="text"
-                        placeholder="Search ledger entries..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-12 bg-white border border-gray-200 rounded-2xl pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-                    />
-                </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-4 px-4">
                     <div className="flex-shrink-0 p-2 bg-white border border-gray-200 rounded-xl">
@@ -105,12 +107,13 @@ export function LogsClient() {
                                 <div className="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center mb-4">
                                     <Activity className="w-8 h-8 text-gray-300" />
                                 </div>
-                                <h3 className="font-bold text-gray-900">Ledger Empty</h3>
-                                <p className="text-sm text-gray-500">No transactions match your current search.</p>
+                                <h3 className="font-bold text-gray-900">History Empty</h3>
+                                <p className="text-sm text-gray-500">Nothing was found for your search.</p>
                             </div>
                         )}
                     </div>
                 )}
+                </div>
             </div>
         </div>
     )

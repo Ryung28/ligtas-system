@@ -60,7 +60,7 @@ export function TransactionDetailBody({ log, onActionSuccess, isMobile = false }
         }
     }, [isReturning, user, receivedBy])
 
-    const isReturned = log.status === 'returned'
+    const isReturned = log.status === 'returned' || log.status === 'dispensed'
     const isOverdue = log.status === 'borrowed' && log.expected_return_date && new Date(log.expected_return_date) < new Date()
     const isPendingStatus = log.status === 'pending'
     const isDamaged = returnCondition === 'damaged' || returnCondition === 'lost'
@@ -240,7 +240,7 @@ export function TransactionDetailBody({ log, onActionSuccess, isMobile = false }
                                         tone={isReturned ? 'success' : isOverdue ? 'danger' : 'info'} 
                                         size="xs"
                                     >
-                                        {log.status}
+                                        {(log.inventory as any)?.item_type === 'consumable' && log.status === 'borrowed' ? 'dispensed' : log.status}
                                     </MBadge>
                                 </div>
                             </div>
@@ -299,7 +299,7 @@ export function TransactionDetailBody({ log, onActionSuccess, isMobile = false }
                             <div className="flex items-center gap-1.5">
                                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                                    Borrowed: {format(new Date(log.borrow_date || log.created_at), 'MMM dd')}
+                                {(log.inventory as any)?.item_type === 'consumable' ? 'Dispensed:' : 'Borrowed:'} {format(new Date(log.borrow_date || log.created_at), 'MMM dd, yyyy • hh:mm a')}
                                 </span>
                             </div>
                             {isOverdue && !isReturned && (
@@ -313,7 +313,7 @@ export function TransactionDetailBody({ log, onActionSuccess, isMobile = false }
                 </section>
                 {/* 3. Audit Trail */}
                 <section className="space-y-3">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Chain of Custody</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Personnel Verification</p>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-gray-50/50 rounded-xl p-3 border border-gray-100 space-y-2">
                             <div className="flex items-center gap-1.5 opacity-60">
@@ -349,7 +349,7 @@ export function TransactionDetailBody({ log, onActionSuccess, isMobile = false }
                 )}
 
                 {/* 5. Strategic Actions */}
-                {!isReturned && !isPendingStatus && (
+                {!isReturned && !isPendingStatus && (log.inventory as any)?.item_type !== 'consumable' && (
                     <section className="pt-4">
                         <Button 
                             onClick={() => setIsReturning(true)}

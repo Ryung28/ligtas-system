@@ -1,67 +1,67 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 export function useUnreadChat() {
-    const supabase = useMemo(() => createBrowserClient(
+    const [unreadCount, setUnreadCount] = useState(0)
+    
+    const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    ), [])
-    const [unreadCount, setUnreadCount] = useState(0)
+    )
 
-    useEffect(() => {
-        let mounted = true
+    const checkUnread = useCallback(async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-        const checkUnread = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+        // Fetch user profile to determine role-based visibility
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
 
-            // Query total exact count of unread messages where sender is NOT the current user
-            const { count, error } = await supabase
-                .from('chat_messages')
-                .select('*', { count: 'exact', head: true })
-                .eq('is_read', false)
-                .neq('sender_id', user.id)
+        if (!profile) return
 
-            if (!error && count !== null && mounted) {
-                setUnreadCount(count)
-            }
+        // Senior Dev: Scoped count to match Messenger RPC logic
+        // We join with rooms to ensure we only count messages in accessible conversations
+        let query = supabase
+            .from('chat_messages')
+            .select('id, room:room_id!inner(borrower_user_id)', { count: 'exact', head: true })
+            .eq('is_read', false)
+            .neq('sender_id', user.id)
+
+        const isAdmin = ['admin', 'manager', 'editor'].includes(profile.role)
+
+        if (!isAdmin) {
+            // Regular users only see messages in their own rooms
+            query = query.eq('room.borrower_user_id', user.id)
         }
 
+        const { count } = await query
+        setUnreadCount(count || 0)
+    }, [supabase])
+
+    useEffect(() => {
         checkUnread()
 
-        // ── Realtime Global Radar for Unread Messages ──
+        // Centralized subscription: Listen for all state changes that affect count
         const channel = supabase
-            .channel('global_unread_messages')
+            .channel('global-unread-sync')
             .on('postgres_changes', {
-                event: 'INSERT',
+                event: '*', // Listen for INSERT, UPDATE, and DELETE
                 schema: 'public',
-                table: 'chat_messages',
-                filter: 'is_read=eq.false'
-            }, async (payload) => {
-                const { data: { user } } = await supabase.auth.getUser()
-                if (user && payload.new.sender_id !== user.id) {
-                    setUnreadCount(prev => prev + 1)
-                }
-            })
-            // We also listen to updates (for when a message is read, we MUST recalculate total count securely from server)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'chat_messages',
-                filter: 'is_read=eq.true'
+                table: 'chat_messages'
             }, () => {
-                // If a message was marked read, resync the count with the database to ensure perfection
                 checkUnread()
             })
             .subscribe()
 
         return () => {
-            mounted = false
             supabase.removeChannel(channel)
         }
-    }, [supabase])
+    }, [checkUnread, supabase])
 
-    return { unreadCount }
+    return { unreadCount, refresh: checkUnread }
 }

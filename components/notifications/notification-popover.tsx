@@ -2,7 +2,6 @@
 
 import React from 'react'
 import { PopoverContent } from '@/components/ui/popover'
-import { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { BellRing, CheckCheck, RefreshCcw, AlertTriangle } from 'lucide-react'
 import { useNotifications } from '@/hooks/use-notifications'
@@ -34,8 +33,8 @@ export const NotificationPopover: React.FC = () => {
                 )}
             </div>
             <div className="flex flex-col">
-                <span className="font-black text-slate-900 text-[11px] tracking-widest uppercase leading-none">Intelligence Inbox</span>
-                <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Status: {unreadCount > 0 ? `${unreadCount} Active Advisories` : 'Clear Skies'}</span>
+                <span className="font-black text-slate-900 text-[11px] tracking-widest uppercase leading-none">Notifications</span>
+                <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Status: {unreadCount > 0 ? `${unreadCount} Unread` : 'All caught up'}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -67,9 +66,9 @@ export const NotificationPopover: React.FC = () => {
               <div className="p-3 mb-3 bg-red-500/10 border border-red-500/20 rounded-tl-none rounded-tr-xl rounded-b-xl backdrop-blur-md flex gap-3 items-start">
                   <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                      <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Protocol Sync Failure</p>
+                      <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Sync Failed</p>
                       <p className="text-xs text-red-800/80 leading-snug font-medium italic">
-                          {error.message || 'The data stream is currently obstructed.'}
+                          {error.message || 'Unable to load notifications right now.'}
                       </p>
                   </div>
               </div>
@@ -99,8 +98,8 @@ export const NotificationPopover: React.FC = () => {
                   <BellRing className="w-6 h-6 text-slate-300" />
                   <div className="absolute inset-0 rounded-full border border-slate-200 animate-ping opacity-20" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Aura Nominal</p>
-              <p className="text-[9px] font-bold italic text-slate-400/60 mt-2 max-w-[160px] mx-auto leading-relaxed">No active advisories detected in this sector.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">No New Notifications</p>
+              <p className="text-[9px] font-bold italic text-slate-400/60 mt-2 max-w-[160px] mx-auto leading-relaxed">You are all caught up.</p>
             </div>
           )}
         </div>
@@ -116,9 +115,9 @@ export const NotificationPopover: React.FC = () => {
             {isLoading && notifications.length > 0 ? (
                 <div className="flex items-center gap-2">
                     <RefreshCcw className="w-3 h-3 animate-spin" />
-                    SYNCING COMMS...
+                    Syncing...
                 </div>
-            ) : 'Load Archived Intel'}
+            ) : 'Show Older'}
           </Button>
         </div>
       </div>
