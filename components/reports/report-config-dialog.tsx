@@ -98,7 +98,7 @@ export function ReportConfigDialog({ reportType, onClose, onGenerate }: ReportCo
                         <div className="bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
                             <Label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block">Filters</Label>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                {['borrowed', 'returned', 'overdue', 'pending'].map((status) => (
+                                {['borrowed', 'returned', 'overdue', 'pending', 'dispensed'].map((status) => (
                                     <div key={status} className="flex items-center gap-2">
                                         <Checkbox
                                             checked={config.status?.includes(status)}

@@ -31,6 +31,12 @@ interface StatusFieldsProps {
     updateBatch?: (idx: number, val: number) => void
     updateBatchLabel?: (idx: number, label: string) => void
     addExtraBatch?: () => void
+    removeBatch?: (batchId: string) => void
+    addExpiryGroup?: () => void
+    updateExpiryGroup?: (groupId: string, updates: Partial<{ label: string; expiry_date: string; batch_ids: string[] }>) => void
+    removeExpiryGroup?: (groupId: string) => void
+    assignBatchToGroup?: (groupId: string, batchId: string, assigned: boolean) => void
+    splitExpiryPerCarton?: () => void
     showPackaging?: boolean
     categoryName?: string
     itemType?: string
@@ -50,6 +56,7 @@ export function V2StatusFields({
     restockAlertEnabled, setRestockAlertEnabled,
     policyErrors,
     packaging, updatePackaging, updateBatch, updateBatchLabel, addExtraBatch,
+    removeBatch, addExpiryGroup, updateExpiryGroup, removeExpiryGroup, assignBatchToGroup, splitExpiryPerCarton,
     showPackaging = true,
     categoryName = '',
     itemType = 'equipment'
@@ -78,13 +85,19 @@ export function V2StatusFields({
             </div>
 
             {/* Packaging Logic (Repositioned to TOP for Option 5) */}
-            {showPackaging && packaging && updatePackaging && updateBatch && updateBatchLabel && addExtraBatch && (
+            {showPackaging && packaging && updatePackaging && updateBatch && updateBatchLabel && addExtraBatch && removeBatch && addExpiryGroup && updateExpiryGroup && removeExpiryGroup && assignBatchToGroup && splitExpiryPerCarton && (
                 <V2BulkPackagingBuilder 
                     packaging={packaging}
                     onUpdate={updatePackaging}
                     onUpdateBatch={updateBatch}
                     onUpdateLabel={updateBatchLabel}
                     onAddExtra={addExtraBatch}
+                    onRemoveBatch={removeBatch}
+                    onAddExpiryGroup={addExpiryGroup}
+                    onUpdateExpiryGroup={updateExpiryGroup}
+                    onRemoveExpiryGroup={removeExpiryGroup}
+                    onAssignBatchToGroup={assignBatchToGroup}
+                    onSplitExpiryPerCarton={splitExpiryPerCarton}
                 />
             )}
 

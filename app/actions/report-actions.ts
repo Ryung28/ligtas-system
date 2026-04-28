@@ -89,6 +89,35 @@ export async function fetchReportDataAction(
         // 🔍 VALIDATION
         const validatedConfig = reportConfigSchema.parse(config)
 
+        // 🛠️ ASSET CONDITION: Inventory snapshot only — exits before standard pipeline
+        if (type === 'asset-condition') {
+            const inventoryColumns = 'id,item_name,category,brand,stock_available,storage_location,qty_good,qty_damaged,qty_maintenance,qty_lost'
+
+            let inventoryQuery = supabase
+                .from('inventory')
+                .select(inventoryColumns)
+                .is('deleted_at', null)
+                .or('qty_damaged.gt.0,qty_maintenance.gt.0,qty_lost.gt.0')
+                .order('item_name', { ascending: true })
+
+            if (validatedConfig.category && validatedConfig.category !== 'all') {
+                inventoryQuery = inventoryQuery.eq('category', validatedConfig.category)
+            }
+
+            const { data: inventory, error } = await inventoryQuery
+            if (error) throw error
+
+            return {
+                success: true,
+                data: [{
+                    _multiSection: true,
+                    damaged: (inventory ?? []).filter(i => (i.qty_damaged ?? 0) > 0),
+                    maintenance: (inventory ?? []).filter(i => (i.qty_maintenance ?? 0) > 0),
+                    lost: (inventory ?? []).filter(i => (i.qty_lost ?? 0) > 0),
+                }],
+            }
+        }
+
         const table = (type === 'logs' || type === 'overdue' || type === 'borrower-activity') 
             ? 'borrow_logs' 
             : 'inventory'

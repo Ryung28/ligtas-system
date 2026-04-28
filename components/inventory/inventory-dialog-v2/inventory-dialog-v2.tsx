@@ -125,6 +125,34 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         }
         setPolicyErrors({ ready: '', target: '', threshold: '' })
 
+        if (state.packaging?.enabled) {
+            const batches = state.packaging.batches || []
+            const groups = state.packaging.expiry_groups || []
+            const mode = state.packaging.expiry_mode || 'none'
+
+            if ((mode === 'single' || mode === 'grouped' || mode === 'per_carton') && groups.some((g: any) => !g.expiry_date)) {
+                toast.error('Cannot save: please complete carton expiry assignments.')
+                return
+            }
+
+            if (mode === 'grouped' || mode === 'per_carton') {
+                const seen = new Set<string>()
+                for (const g of groups) {
+                    for (const batchId of g.batch_ids || []) {
+                        if (seen.has(batchId)) {
+                            toast.error('Cannot save: duplicate carton assignment found.')
+                            return
+                        }
+                        seen.add(batchId)
+                    }
+                }
+                if (batches.some((b: any) => !seen.has(b.id))) {
+                    toast.error('Cannot save: please complete carton expiry assignments.')
+                    return
+                }
+            }
+        }
+
         const formData = new FormData()
         if (existingItem?.id) formData.append('id', existingItem.id.toString())
 
@@ -139,8 +167,13 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         formData.append('serial_number', state.serialNumber)
         formData.append('model_number', state.modelNumber)
         formData.append('brand', state.brand)
-        if (state.expiryDate) formData.append('expiry_date', state.expiryDate)
-        if (state.expiryDate && state.expiryAlertDays) formData.append('expiry_alert_days', String(state.expiryAlertDays))
+        const packagingExpiryDates = (state.packaging?.expiry_groups || [])
+            .map((g: any) => g.expiry_date)
+            .filter((d: string) => !!d)
+            .sort()
+        const fallbackExpiryDate = packagingExpiryDates[0] || state.expiryDate
+        if (fallbackExpiryDate) formData.append('expiry_date', fallbackExpiryDate)
+        if (fallbackExpiryDate && state.expiryAlertDays) formData.append('expiry_alert_days', String(state.expiryAlertDays))
 
         // Legacy variant and model fields have been structurally severed.
 
@@ -232,6 +265,12 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                                 updateBatch={state.updateBatchUnits}
                                 updateBatchLabel={state.updateBatchLabel}
                                 addExtraBatch={state.addExtraBatch}
+                                removeBatch={state.removeBatch}
+                                addExpiryGroup={state.addExpiryGroup}
+                                updateExpiryGroup={state.updateExpiryGroup}
+                                removeExpiryGroup={state.removeExpiryGroup}
+                                assignBatchToGroup={state.assignBatchToGroup}
+                                splitExpiryPerCarton={state.splitExpiryPerCarton}
                                 showPackaging={isBulkCategory}
                                 categoryName={selectedCategoryName}
                                 itemType={state.itemType}

@@ -256,7 +256,7 @@ export function ManagerBatchReviewSheet({
                     approved_by: approvedBy,
                     released_by: releasedBy,
                     expected_return_date: returnDate || null,
-                    pickup_scheduled_at: isScheduled ? pickupDate : null,
+                    pickup_scheduled_at: isScheduled && pickupDate ? new Date(pickupDate).toISOString() : null,
                     items: items.map(item => ({
                         item_id: item.id,
                         quantity: item.quantity,

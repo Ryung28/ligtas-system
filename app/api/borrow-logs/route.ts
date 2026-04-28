@@ -58,7 +58,6 @@ export async function GET(req: Request) {
           platform_origin,
           created_origin,
           pickup_scheduled_at,
-          return_scheduled_at,
           purpose,
           created_at,
           updated_at,

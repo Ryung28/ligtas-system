@@ -164,7 +164,7 @@ export function DispatchCommandSheet() {
                 released_by: releasedByInput,
                 approved_by: approvedByVal,
                 expected_return_date: returnType === 'date' ? expectedReturnDate : null,
-                pickup_scheduled_at: intakeMode === 'scheduled' ? pickupDate : null,
+                pickup_scheduled_at: intakeMode === 'scheduled' && pickupDate ? new Date(pickupDate).toISOString() : null,
             };
 
             if (cart.length > 0) {

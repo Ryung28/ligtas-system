@@ -1,4 +1,4 @@
-import { Package, ClipboardList, TrendingDown, BarChart3, Clock, Pill, AlertCircle } from 'lucide-react'
+import { Package, ClipboardList, TrendingDown, BarChart3, Clock, Pill, AlertCircle, Wrench } from 'lucide-react'
 import { ReportCard } from './report-card'
 import type { ReportType, ReportDefinition } from './types'
 
@@ -47,6 +47,16 @@ export function ReportSections({ onConfigure }: ReportSectionsProps) {
             includes: ['Item name', 'Brand', 'Expiry date', 'Days remaining', 'Storage location'], 
             icon: Pill, 
             color: 'red', 
+            category: 'inventory' 
+        },
+        { 
+            type: 'asset-condition', 
+            title: 'Asset Condition', 
+            subtitle: 'Damage, maintenance & dispense log', 
+            description: 'Damaged items, units under maintenance, lost assets, and dispensed consumables', 
+            includes: ['Damaged units', 'Under maintenance', 'Lost / missing', 'Dispensed items', 'Storage location'], 
+            icon: Wrench, 
+            color: 'orange', 
             category: 'inventory' 
         },
         

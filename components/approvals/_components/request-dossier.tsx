@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
-import { Phone, Building, MessageSquare, Package, MapPin, ShieldCheck, Clock, Calendar, CheckCircle2, Loader2, X, Zap, ArrowRight, Maximize2 } from 'lucide-react'
+import { Phone, Building, MessageSquare, Package, MapPin, ShieldCheck, Clock, Calendar, CheckCircle2, Loader2, X, Zap, ArrowRight, Maximize2, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog as ShadinDialog,

@@ -46,6 +46,25 @@ function prepareExcelData(type: ReportType, data: any[]): { headers: string[], r
         { key: 'status', label: 'Status' }
     ]
     
+    // 🛠️ ASSET CONDITION: Multi-section data — flatten dispensed logs for Excel
+    if (type === 'asset-condition' && data[0]?._multiSection) {
+        const section = data[0]
+        const flatRows = [
+            ...section.damaged.map((i: any) => ({ ...i, _section: 'DAMAGED', _qty: i.qty_damaged })),
+            ...section.maintenance.map((i: any) => ({ ...i, _section: 'MAINTENANCE', _qty: i.qty_maintenance })),
+            ...section.lost.map((i: any) => ({ ...i, _section: 'LOST/MISSING', _qty: i.qty_lost })),
+        ]
+        const headers = ['Section', 'Item Name', 'Category', 'Units Affected', 'Storage Location']
+        const rows = flatRows.map(r => [
+            r._section,
+            r.item_name || '—',
+            r.category || '—',
+            r._qty ?? '—',
+            r.storage_location || '—',
+        ])
+        return { headers, rows }
+    }
+
     const columnMaps: Record<string, { key: string, label: string }[]> = {
         'inventory': registryCols,
         'low-stock': registryCols,

@@ -316,6 +316,58 @@ function renderSimpleBorrowTable(data: any[]): string {
     </tbody></table>`
 }
 
+function renderAssetConditionReport(data: any[]): string {
+    const section = data[0]
+    if (!section?._multiSection) return '<p>No asset condition data available.</p>'
+
+    const { damaged, maintenance, lost } = section as {
+        damaged: any[]; maintenance: any[]; lost: any[];
+    }
+
+    function sectionHeader(label: string, count: number, bg: string, borderColor: string): string {
+        return `<div style="margin: 20px 0 8px 0; padding: 8px 12px; background:${bg}; border-left: 4px solid ${borderColor}; border-radius: 0 6px 6px 0; display:flex; justify-content:space-between; align-items:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+            <span style="font-weight:900; font-size:9pt; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px;">${label}</span>
+            <span style="font-weight:700; font-size:8pt; background:#0f172a; color:#fff; padding: 2px 8px; border-radius:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${count} item${count !== 1 ? 's' : ''}</span>
+        </div>`
+    }
+
+    function emptyRow(colspan: number): string {
+        return `<tr><td colspan="${colspan}" style="text-align:center; color:#94a3b8; font-style:italic; padding:12px 0;">No items recorded</td></tr>`
+    }
+
+    function conditionTable(items: any[], qtyKey: string, qtyLabel: string): string {
+        const rows = !items.length ? emptyRow(4) : items.map(i => `<tr>
+            <td style="font-weight:700;">${e(i.item_name)}</td>
+            <td style="color:#64748b;">${e(i.category)}</td>
+            <td style="text-align:center; font-weight:900; color:#dc2626;">${i[qtyKey] ?? 0} ${e(i.unit || 'units')}</td>
+            <td style="color:#64748b;">${e(i.storage_location)}</td>
+        </tr>`).join('')
+
+        return `<table>
+            <colgroup>
+                <col style="width:40%;">
+                <col style="width:18%;">
+                <col style="width:14%;">
+                <col style="width:28%;">
+            </colgroup>
+            <thead><tr>
+                <th>Item Name</th><th>Category</th>
+                <th style="text-align:center;">${qtyLabel}</th><th>Location</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`
+    }
+
+    return `
+        ${sectionHeader('🔴 Damaged — Awaiting Repair', damaged.length, '#fef2f2', '#dc2626')}
+        ${conditionTable(damaged, 'qty_damaged', 'Damaged Units')}
+        ${sectionHeader('🔧 Under Maintenance / Calibration', maintenance.length, '#fff7ed', '#ea580c')}
+        ${conditionTable(maintenance, 'qty_maintenance', 'In Service')}
+        ${sectionHeader('⚠️ Lost / Missing / Unaccounted', lost.length, '#fffbeb', '#ca8a04')}
+        ${conditionTable(lost, 'qty_lost', 'Units Lost')}
+    `
+}
+
 const RENDERERS: Record<ReportType, ReportRenderer> = {
     inventory: renderInventoryLikeTable,
     'low-stock': renderInventoryLikeTable,
@@ -325,6 +377,7 @@ const RENDERERS: Record<ReportType, ReportRenderer> = {
     logs: renderLogsTable,
     overdue: renderOverdueTable,
     'borrower-activity': renderSimpleBorrowTable,
+    'asset-condition': renderAssetConditionReport,
 }
 
 function renderReportShell(args: {
@@ -364,7 +417,7 @@ function renderReportShell(args: {
         .footer { margin-top: 40px; text-align: center; font-size: 7pt; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px; font-weight: 700; letter-spacing: 0.5px; }
     </style></head><body>
         <div class="header">
-            <img src="/resqtrack-logo.jpg" alt="Logo" />
+            <img src="/oro-cervo.png" alt="Logo" />
             <div>
                 <div style="font-weight:bold; font-size: 7.5pt; color: #475569;">REPUBLIC OF THE PHILIPPINES</div>
                 <div style="font-size:15pt; font-weight:900; color: #0f172a;">CDRRMO OROQUIETA</div>

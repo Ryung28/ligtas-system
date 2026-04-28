@@ -23,6 +23,35 @@ export function AssetStatusSummary({ item, className }: AssetStatusSummaryProps)
     const isLowStock = item.stock_available <= (item.stock_total * 0.2) // Simplified check for summary
     const packaging = (item as any).packaging_json
     const hasPackaging = packaging?.enabled && packaging.batches?.length > 0
+    const expiryGroups = (packaging?.expiry_groups || []) as Array<{ id: string; expiry_date: string; batch_ids: string[] }>
+    const nearestPackagingExpiry = expiryGroups
+        .map((g) => g.expiry_date)
+        .filter(Boolean)
+        .sort()[0]
+    const packagingRows = hasPackaging
+        ? packaging.batches.map((batch: any) => {
+            const group = expiryGroups.find((g) => (g.batch_ids || []).includes(batch.id))
+            const batchExpiry = group?.expiry_date || batch.expiry_date || null
+            const batchExpiryInfo = getExpiryInfo(batchExpiry, (item as any).expiry_alert_days)
+            return {
+                id: batch.id,
+                label: batch.label,
+                units: Number(batch.units) || 0,
+                expiryDate: batchExpiry,
+                expiryInfo: batchExpiryInfo,
+            }
+        })
+        : []
+    const expiredCartonsCount = packagingRows.filter((row) => row.expiryInfo.status === 'expired').length
+    const getMinigridExpiryTone = (info: { status: string; daysRemaining: number | null }) => {
+        if (info.status === 'expired') {
+            return 'text-rose-600'
+        }
+        if (info.daysRemaining !== null && info.daysRemaining <= 7) {
+            return 'text-amber-600'
+        }
+        return 'text-emerald-600'
+    }
 
     if (variants.length === 0 && !hasExpiryAlert && !hasPackaging) return null
 
@@ -117,17 +146,65 @@ export function AssetStatusSummary({ item, className }: AssetStatusSummaryProps)
             {hasPackaging && (
                 <div className="p-2 border-t border-slate-100 bg-slate-50/30">
                     <p className="px-2 py-1 text-[8px] font-black text-slate-400 uppercase tracking-[0.15em]">Packaging Batches</p>
-                    <div className="p-1 space-y-1">
-                        {packaging.batches.slice(0, 3).map((batch: any) => (
-                            <div key={batch.id} className="flex justify-between items-center px-2 py-1.5 rounded-lg bg-white border border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <Boxes className="h-2.5 w-2.5 text-blue-600" />
-                                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-tight truncate max-w-[120px]">{batch.label}</span>
-                                </div>
-                                <span className="text-[10px] font-black text-slate-900 tabular-nums">{batch.units}u</span>
-                            </div>
-                        ))}
+                    <div className="px-2 pb-1 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">
+                            {packaging.batches.length} {(packaging.containerType || 'Carton').toUpperCase()}{packaging.batches.length !== 1 ? 'S' : ''} TOTAL
+                        </span>
+                        <span className="text-[9px] font-black text-blue-600 uppercase tracking-tight italic">
+                            Breakdown
+                        </span>
                     </div>
+                    <div className="p-1 space-y-1">
+                        {packagingRows.map((batch) => {
+                            return (
+                                <div key={batch.id} className="flex justify-between items-center px-2 py-1.5 rounded-lg bg-white border border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                        <Boxes className="h-2.5 w-2.5 text-blue-600" />
+                                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-tight truncate max-w-[120px]">{batch.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="text-[10px] font-black text-slate-900 tabular-nums">{batch.units} qty</span>
+                                        {batch.expiryDate && (
+                                            <span className={cn(
+                                                "text-[8px] font-black uppercase tracking-tight",
+                                                getMinigridExpiryTone(batch.expiryInfo)
+                                            )}>
+                                                EXP: {new Date(batch.expiryDate).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }).toUpperCase()} ({batch.expiryInfo.label})
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    <div className="px-2 pt-1">
+                        <p className="text-[9px] font-black uppercase tracking-tight text-slate-500 flex items-center gap-3">
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                Expired
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                ≤7d
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                Good
+                            </span>
+                        </p>
+                    </div>
+                    {(nearestPackagingExpiry || packagingRows.length > 0) && (
+                        <div className="px-2 pt-2 border-t border-slate-100 mt-1 space-y-1">
+                            {nearestPackagingExpiry && (
+                                <p className="text-[9px] font-black text-slate-600 uppercase tracking-tight">
+                                    Nearest Expiry: {new Date(nearestPackagingExpiry).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }).toUpperCase()}
+                                </p>
+                            )}
+                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-tight">
+                                Expired Cartons: {expiredCartonsCount} / {packagingRows.length}
+                            </p>
+                        </div>
+                    )}
                 </div>
             )}
 
