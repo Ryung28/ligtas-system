@@ -14,11 +14,11 @@ export const metadata: Metadata = {
         capable: true,
         statusBarStyle: 'default',
         title: 'CDRRMO · ResQTrack',
-        startupImage: '/oro-cervo.png',
+        startupImage: '/oro-cervo.webp',
     },
     icons: {
-        icon: [{ url: '/oro-cervo.png', type: 'image/png', sizes: '512x512' }],
-        apple: [{ url: '/oro-cervo.png', sizes: '180x180', type: 'image/png' }],
+        icon: [{ url: '/oro-cervo.webp', type: 'image/webp', sizes: '512x512' }],
+        apple: [{ url: '/oro-cervo.webp', sizes: '180x180', type: 'image/webp' }],
     },
 }
 

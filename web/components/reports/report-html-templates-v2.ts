@@ -421,7 +421,7 @@ function renderReportShell(args: {
         .footer { margin-top: 40px; text-align: center; font-size: 7pt; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px; font-weight: 700; letter-spacing: 0.5px; }
     </style></head><body>
         <div class="header">
-            <img src="/oro-cervo.png" alt="Logo" />
+            <img src="${window.location.origin}/oro-cervo.webp" alt="Logo" />
             <div>
                 <div style="font-weight:bold; font-size: 7.5pt; color: #475569;">REPUBLIC OF THE PHILIPPINES</div>
                 <div style="font-size:15pt; font-weight:900; color: #0f172a;">CDRRMO OROQUIETA</div>

@@ -64,7 +64,7 @@ export function MobileHeader({ title, breadcrumb, onRefresh, isLoading }: Mobile
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100 shadow-sm">
                                 <Image
-                                    src="/oro-cervo.png"
+                                    src="/oro-cervo.webp"
                                     alt=""
                                     width={32}
                                     height={32}

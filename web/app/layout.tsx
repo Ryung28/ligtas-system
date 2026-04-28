@@ -28,9 +28,9 @@ export const metadata: Metadata = {
     title: "CDRRMO Oroquieta · ResQTrack",
     description: "City Disaster Risk Reduction & Management Office inventory and logistics system",
     icons: {
-        icon: [{ url: "/oro-cervo.png", type: "image/png", sizes: "512x512" }],
-        shortcut: "/oro-cervo.png",
-        apple: "/oro-cervo.png",
+        icon: [{ url: "/oro-cervo.webp", type: "image/webp", sizes: "512x512" }],
+        shortcut: "/oro-cervo.webp",
+        apple: "/oro-cervo.webp",
     },
     manifest: "/manifest.json",
     appleWebApp: {
@@ -55,7 +55,7 @@ export default function RootLayout({
     return (
         <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} ${dmSans.variable}`}>
             <head>
-                <link rel="apple-touch-icon" href="/oro-cervo.png" />
+                <link rel="apple-touch-icon" href="/oro-cervo.webp" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
                 <meta name="apple-mobile-web-app-title" content="CDRRMO · ResQTrack" />
