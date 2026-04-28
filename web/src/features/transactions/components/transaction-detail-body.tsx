@@ -332,18 +332,44 @@ export function TransactionDetailBody({ log, onActionSuccess, isMobile = false }
                     </div>
                 </section>
 
-                {/* 4. Declarations (Notes/Purpose) */}
-                {(log.purpose || log.notes) && (
+                {/* 4. Audit & Declarations (Notes/Purpose) */}
+                {(log.purpose || log.notes || log.recipient_name) && (
                     <section className="space-y-3">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Declarations</p>
-                        <div className="bg-blue-50/30 rounded-2xl p-4 border border-blue-100/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
-                                <span className="text-[10px] font-bold text-blue-600 uppercase">Field Purpose</span>
-                            </div>
-                            <p className="text-xs text-gray-700 italic leading-relaxed">
-                                &ldquo;{log.purpose || log.notes}&rdquo;
-                            </p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Audit & Declarations</p>
+                        <div className="bg-blue-50/30 rounded-2xl p-4 border border-blue-100/50 space-y-4">
+                            {log.recipient_name && (
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <UserCircle2 className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Audit Recipient</span>
+                                    </div>
+                                    <p className="text-[13px] font-black text-blue-900 ml-5.5">{log.recipient_name}</p>
+                                </div>
+                            )}
+                            
+                            {log.purpose && (
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Transaction Purpose</span>
+                                    </div>
+                                    <p className="text-xs text-gray-700 italic leading-relaxed ml-5.5">
+                                        &ldquo;{log.purpose}&rdquo;
+                                    </p>
+                                </div>
+                            )}
+
+                            {log.notes && (
+                                <div className="space-y-1 pt-1 border-t border-blue-100/30">
+                                    <div className="flex items-center gap-2">
+                                        <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Audit Notes</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 leading-relaxed ml-5.5">
+                                        {log.notes}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </section>
                 )}

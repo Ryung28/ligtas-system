@@ -154,6 +154,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && isPublicRoute && state.uri.path != '/splash') {
         if (user.isActive) {
           if (user.role == 'loading') return null;
+          
+          // 🛡️ PROFILE COMPLETION GUARD
+          if (!user.isProfileComplete) return '/profile/personal-info';
+          
           return user.canEdit ? '/manager' : '/dashboard';
         }
       }
@@ -162,6 +166,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && !isPublicRoute) {
         if (user.isActive) {
           if (user.role == 'loading') return null;
+
+          // 🛡️ PROFILE COMPLETION GUARD: Force complete profile before allowing access
+          final isCompletingProfile = state.uri.path == '/profile/personal-info';
+          if (!user.isProfileComplete && !isCompletingProfile) {
+            return '/profile/personal-info';
+          }
 
           final onManagerRoute = state.uri.path.startsWith('/manager');
 

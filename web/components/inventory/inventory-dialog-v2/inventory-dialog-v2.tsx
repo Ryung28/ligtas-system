@@ -264,6 +264,8 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                                 updatePackaging={state.updatePackaging}
                                 updateBatch={state.updateBatchUnits}
                                 updateBatchLabel={state.updateBatchLabel}
+                                updateBatchLocation={state.updateBatchLocation}
+                                updateMultipleBatchLocations={state.updateMultipleBatchLocations}
                                 addExtraBatch={state.addExtraBatch}
                                 removeBatch={state.removeBatch}
                                 addExpiryGroup={state.addExpiryGroup}
@@ -274,6 +276,7 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                                 showPackaging={isBulkCategory}
                                 categoryName={selectedCategoryName}
                                 itemType={state.itemType}
+                                locations={locations}
                             />
                         </div>
 

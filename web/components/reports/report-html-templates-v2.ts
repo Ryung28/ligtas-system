@@ -143,7 +143,7 @@ function renderLogsTable(data: any[]): string {
         </colgroup>
         <thead>
             <tr>
-                <th>DATE/TIME</th><th>BORROWER</th><th>ITEM</th><th style="text-align:center;">QTY</th><th>AUTH</th><th>ISSUED</th><th>TAKEN BY</th><th>RETURN</th><th>RETURNER</th><th>STAFF RCVR</th><th style="text-align:center;">STATUS</th><th>AUDIT</th>
+                <th>DATE/TIME</th><th>BORROWER</th><th>ITEM</th><th style="text-align:center;">QTY</th><th>AUTH</th><th>ISSUED</th><th>TAKEN BY</th><th>RETURN</th><th>RETURNER</th><th>RECIPIENT</th><th style="text-align:center;">STATUS</th><th>AUDIT</th>
             </tr>
         </thead>
         <tbody>
@@ -161,9 +161,13 @@ function renderLogsTable(data: any[]): string {
                         : (l.expected_return_date ? `DUE: ${formatDate(l.expected_return_date)}` : '—')}
                 </td>
                 <td>${e(l.returned_by_name)}</td>
-                <td>${e(l.received_by_name)}</td>
+                <td>${e(l.recipient_name || l.received_by_name)}</td>
                 <td style="text-align:center;">${statusBadge(l.status)}</td>
-                <td style="font-size:6.5pt; font-style:italic; color:#64748b; line-height: 1;">${l.status === 'returned' ? `"${e(l.return_condition || 'GOOD')}"` : 'AWAITS'}</td>
+                <td style="font-size:6.5pt; font-style:italic; color:#64748b; line-height: 1;">
+                    ${l.status === 'returned' 
+                        ? `"${e(l.return_condition || 'GOOD')}"` 
+                        : (l.notes?.trim() ? e(l.notes) : '---')}
+                </td>
             </tr>`).join('')}
         </tbody>
     </table>`

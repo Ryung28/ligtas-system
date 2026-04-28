@@ -89,6 +89,7 @@ export function BorrowItemDialog() {
     const [returnNotes, setReturnNotes] = useState('')
     const [releasedBy, setReleasedBy] = useState('')
     const [approvedBy, setApprovedBy] = useState('')
+    const [recipientName, setRecipientName] = useState('')
 
     const supabase = createClient()
     const router = useRouter()
@@ -190,6 +191,8 @@ export function BorrowItemDialog() {
                     released_by: releasedByInput,
                     expected_return_date: expectedReturnDate || null,
                     pickup_scheduled_at: intakeMode === 'scheduled' ? pickupDate : null,
+                    recipient_name: isConsumable ? recipientName : null,
+                    notes: purpose,
                     items: cart.map(c => ({
                         item_id: c.item.id,
                         quantity: c.quantity,
@@ -260,6 +263,13 @@ export function BorrowItemDialog() {
                         label: selectedItem?.packaging_json?.batches?.find(b => b.id === selectedBatchId)?.label
                     }))
                 }
+
+                // Add recipient and notes to formData
+                if (isConsumable) {
+                    formData.set('recipient_name', recipientName)
+                }
+                formData.set('notes', formData.get('purpose') as string || '')
+
                 result = await borrowItem(formData)
             }
 
@@ -925,10 +935,25 @@ export function BorrowItemDialog() {
 
                                 {/* Consumable Notice */}
                                 {isConsumable && (
-                                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                        <p className="text-sm text-purple-800 font-medium">
-                                            ℹ️ This is a consumable item. It will be marked as dispensed and no return is required.
-                                        </p>
+                                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 space-y-4">
+                                        <div className="flex items-center gap-2 text-purple-800 font-medium">
+                                            <Info className="h-4 w-4" />
+                                            <span>Consumable Item: No return required.</span>
+                                        </div>
+                                        
+                                        <div className="grid gap-2 p-3 bg-white/50 rounded-lg border border-purple-100">
+                                            <Label htmlFor="recipient_name_dialog" className="text-xs font-bold text-purple-900 uppercase tracking-tight">
+                                                Recipient Full Name <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="recipient_name_dialog"
+                                                placeholder="Who is receiving this?"
+                                                value={recipientName}
+                                                onChange={(e) => setRecipientName(e.target.value)}
+                                                required={isConsumable}
+                                                className="h-10 bg-white border-purple-200 focus:ring-purple-500"
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </>

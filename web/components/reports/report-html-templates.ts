@@ -172,7 +172,11 @@ function renderLogsTable(data: any[], s: any, fD: Function): string {
             <td>${e(l.received_by_name)}</td>
             <td><span class="status-badge" style="background-color:${l.status === 'borrowed' ? '#ea580c' : l.status === 'returned' ? '#16a34a' : '#dc2626'} !important;">${e(l.status)}</span></td>
             <td style="font-size:calc(${s.table} - 2px); font-style:italic; color:#475569;">
-                ${l.status === 'returned' ? `"${e(l.return_condition || 'GOOD')}"` : 'AWAITS RETURN'}
+                ${l.status === 'returned' 
+                    ? `"${e(l.return_condition || 'GOOD')}"` 
+                    : (l.recipient_name || l.notes 
+                        ? `RCV: ${e(l.recipient_name || 'N/A')}${l.notes ? ` [${e(l.notes)}]` : ''}` 
+                        : 'AWAITS RETURN')}
             </td>
         </tr>`).join('')}
     </tbody></table>`;

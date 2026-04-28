@@ -52,12 +52,21 @@ export async function middleware(request: NextRequest) {
     let session = null;
     if (rawSession) {
         if (typeof rawSession === 'string') {
-            console.error('[Middleware] Corrupted session string detected. Clearing cookies.');
-            // Clear all auth cookies if we find a naked string where an object should be
-            const response = NextResponse.redirect(new URL('/login', request.url));
-            const authCookies = request.cookies.getAll().filter(c => c.name.includes('auth-token'));
-            authCookies.forEach(c => response.cookies.delete(c.name));
-            return response;
+            console.error('[Middleware] Corrupted session string detected. Executing Atomic Purge.');
+            
+            // 🛡️ Atomic Purge: Force wipe all auth-related cookies to prevent crash loop
+            const loginUrl = new URL('/login', request.url)
+            loginUrl.searchParams.set('error', 'Your session was corrupted and has been reset. Please sign in again.')
+            const response = NextResponse.redirect(loginUrl)
+            
+            // Clear all possible Supabase auth cookies
+            request.cookies.getAll().forEach(c => {
+                if (c.name.includes('auth-token') || c.name.startsWith('sb-')) {
+                    response.cookies.delete(c.name)
+                }
+            })
+            
+            return response
         }
         session = rawSession;
     }

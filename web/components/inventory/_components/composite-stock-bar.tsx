@@ -91,7 +91,7 @@ export function CompositeStockBar({
         return { name: ranked[0][0], quantity: ranked[0][1] }
     })()
     const hasActiveLoans = isConsumable
-        ? (borrowedCount > 0 || dispensedRows.length > 0 || isLoadingActiveLoans)
+        ? (borrowedCount > 0 || dispensedRows.length > 0)
         : (borrowedCount > 0 || activeLoans.length > 0)
     const displayRows: StockPopoverRow[] = isConsumable
         ? Array.from(

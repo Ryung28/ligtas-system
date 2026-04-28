@@ -129,7 +129,7 @@ export async function fetchReportDataAction(
             ? 'id,item_name,category,brand,stock_available,expiry_date'
             : type === 'overdue' 
             ? 'id,borrower_name,borrower_contact,item_name,expected_return_date,actual_return_date,status'
-            : 'id,borrower_name,borrower_organization,borrower_contact,item_name,quantity,status,borrow_date,expected_return_date,actual_return_date,return_notes,return_condition,approved_by_name,released_by_name,handed_by,physically_received_by,received_by_name,returned_by_name,created_at'
+            : 'id,borrower_name,borrower_organization,borrower_contact,item_name,quantity,status,borrow_date,expected_return_date,actual_return_date,return_notes,return_condition,approved_by_name,released_by_name,handed_by,physically_received_by,received_by_name,returned_by_name,notes,recipient_name,created_at'
 
         let query = supabase.from(table).select(columns)
 

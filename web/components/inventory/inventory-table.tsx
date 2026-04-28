@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -55,12 +55,14 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
     const [localCategories, setLocalCategories] = useState<string[]>([])
     const [highlightId, setHighlightId] = useState<number | null>(null)
     const [triageItem, setTriageItem] = useState<InventoryItem | null>(null)
+    const [mounted, setMounted] = useState(false)
     const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const triageId = searchParams.get('id')
 
     useEffect(() => {
+        setMounted(true)
         if (typeof window === 'undefined') return
         const saved = window.localStorage.getItem('inventory_legend_open')
         setIsLegendOpen(saved === 'true')
@@ -123,6 +125,12 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false })
         }
     }, [searchParams, items, router, pathname])
+
+    // 🏎️ UNIFIED FILTER ORCHESTRATOR: Clears search query on any filter change
+    const handleFilterChange = useCallback((setter: (val: any) => void, value: any) => {
+        setter(value)
+        setSearchQuery('')
+    }, [])
 
     const handleCategoryCreate = (name: string) => {
         if (!name) return
@@ -427,32 +435,36 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                 />
                             </div>
 
-                            <Select value={locationFilter} onValueChange={setLocationFilter}>
-                                <SelectTrigger className="w-[180px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <SelectValue placeholder="Location" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
-                                    <SelectItem value="all" className="text-[14px] rounded-md">All Locations</SelectItem>
-                                    {displayLocations.map(location => (
-                                        <SelectItem key={location} value={location} className="text-[14px] rounded-md">
-                                            {STORAGE_LOCATION_LABELS[location as StorageLocation] || location}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {mounted && (
+                                <>
+                                    <Select value={locationFilter} onValueChange={(val) => handleFilterChange(setLocationFilter, val)}>
+                                        <SelectTrigger className="w-[180px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                            <SelectValue placeholder="Location" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
+                                            <SelectItem value="all" className="text-[14px] rounded-md">All Locations</SelectItem>
+                                            {displayLocations.map(location => (
+                                                <SelectItem key={location} value={location} className="text-[14px] rounded-md">
+                                                    {STORAGE_LOCATION_LABELS[location as StorageLocation] || location}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
 
-                            <Select value={conditionFilter} onValueChange={setConditionFilter}>
-                                <SelectTrigger className="w-[150px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <SelectValue placeholder="Condition" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
-                                    <SelectItem value="all" className="text-[14px] rounded-md">All Conditions</SelectItem>
-                                    <SelectItem value="Good" className="text-[14px] rounded-md">On Hand</SelectItem>
-                                    <SelectItem value="Maintenance" className="text-[14px] rounded-md">Maintenance</SelectItem>
-                                    <SelectItem value="Damaged" className="text-[14px] rounded-md">Damaged</SelectItem>
-                                    <SelectItem value="Lost" className="text-[14px] rounded-md">Lost</SelectItem>
-                                </SelectContent>
-                            </Select>
+                                    <Select value={conditionFilter} onValueChange={(val) => handleFilterChange(setConditionFilter, val)}>
+                                        <SelectTrigger className="w-[150px] h-10 bg-white border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                            <SelectValue placeholder="Condition" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-lg border-gray-200 shadow-lg p-1">
+                                            <SelectItem value="all" className="text-[14px] rounded-md">All Conditions</SelectItem>
+                                            <SelectItem value="Good" className="text-[14px] rounded-md">On Hand</SelectItem>
+                                            <SelectItem value="Maintenance" className="text-[14px] rounded-md">Maintenance</SelectItem>
+                                            <SelectItem value="Damaged" className="text-[14px] rounded-md">Damaged</SelectItem>
+                                            <SelectItem value="Lost" className="text-[14px] rounded-md">Lost</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -461,7 +473,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                         <FilterTabs 
                             tabs={filterTabs}
                             activeTab={statusFilter}
-                            onTabChange={(val) => setStatusFilter(val as any)}
+                            onTabChange={(val) => handleFilterChange(setStatusFilter, val as any)}
                         />
                         
                         <CategoryManager 
@@ -476,7 +488,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                     <FilterTabs 
                         tabs={categoryFilterTabs}
                         activeTab={categoryFilter}
-                        onTabChange={setCategoryFilter}
+                        onTabChange={(val) => handleFilterChange(setCategoryFilter, val)}
                     />
 
                     {/* Stock Color Legend */}

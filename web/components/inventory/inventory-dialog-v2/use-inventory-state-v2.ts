@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 
 /**
  * ResQTrack V2 STATE HOOK (ULTIMATE PARITY)
@@ -32,7 +32,8 @@ export function useInventoryStateV2(initialItem?: any) {
         containerType: string;
         containerCount: number | string;
         unitsPerContainer: number | string;
-        batches: Array<{ id: string, label: string, units: number, expiry_date?: string | null }>;
+        defaultLocationId: string | null;
+        batches: Array<{ id: string, label: string, units: number, locationId?: string | null, expiry_date?: string | null }>;
         expiry_mode: 'none' | 'single' | 'grouped' | 'per_carton';
         expiry_groups: Array<{ id: string; label: string; expiry_date: string; batch_ids: string[] }>;
     }>(() => {
@@ -43,6 +44,7 @@ export function useInventoryStateV2(initialItem?: any) {
                     id: b?.id || createId(),
                     label: b?.label || `${p.containerType || 'Box'} ${idx + 1}`,
                     units: Number(b?.units) || 0,
+                    locationId: b?.locationId ?? p.defaultLocationId ?? null,
                     expiry_date: b?.expiry_date ?? null,
                 }))
                 : []
@@ -60,6 +62,7 @@ export function useInventoryStateV2(initialItem?: any) {
 
             return {
                 ...p,
+                defaultLocationId: p.defaultLocationId ?? null,
                 batches: normalizedBatches,
                 expiry_mode: mode,
                 expiry_groups: normalizedGroups,
@@ -70,6 +73,7 @@ export function useInventoryStateV2(initialItem?: any) {
             containerType: 'Box',
             containerCount: 0,
             unitsPerContainer: 0,
+            defaultLocationId: null,
             batches: [],
             expiry_mode: 'none',
             expiry_groups: [],
@@ -80,16 +84,24 @@ export function useInventoryStateV2(initialItem?: any) {
         setPackaging(prev => {
             const next = { ...prev, ...updates };
             
-            // Auto-generate batches if count/units change
-            if (updates.containerCount !== undefined || updates.unitsPerContainer !== undefined) {
+            // Auto-generate batches if count/units/location change
+            if (updates.containerCount !== undefined || updates.unitsPerContainer !== undefined || updates.defaultLocationId !== undefined) {
                 const count = Math.max(0, Number(next.containerCount) || 0);
                 const upc = Math.max(0, Number(next.unitsPerContainer) || 0);
+                const defaultLoc = next.defaultLocationId ?? null;
+                
+                // 🔄 Master Sync: force-apply when the master field is explicitly changed
+                const isBulkUnitUpdate = updates.unitsPerContainer !== undefined;
+                const isBulkLocUpdate = updates.defaultLocationId !== undefined;
+
                 next.batches = Array(count).fill(0).map((_, i) => {
                     const existing = prev.batches[i]
                     return {
                         id: existing?.id || createId(),
                         label: existing?.label || `${next.containerType} ${i + 1}`,
-                        units: existing ? existing.units : upc,
+                        units: isBulkUnitUpdate ? upc : (existing ? existing.units : upc),
+                        // Force location only when master location is explicitly changed
+                        locationId: isBulkLocUpdate ? defaultLoc : (existing?.locationId ?? defaultLoc),
                         expiry_date: existing?.expiry_date ?? null,
                     }
                 });
@@ -151,23 +163,70 @@ export function useInventoryStateV2(initialItem?: any) {
         }]
     })
 
-    // 🔄 SYNC ENGINE: Packaging -> Distributions
-    // Ensures Bulk Mode totals are atomically synced to the primary distribution
-    // This solves the issue where consumable stock updates failed to persist due to stale state.
-    useEffect(() => {
-        if (packaging.enabled) {
-            const total = packaging.batches.reduce((sum, b) => sum + (Number(b.units) || 0), 0)
-            setDistributions(prev => {
-                if (prev.length === 0) return prev
-                if (prev[0].qtyGood === total) return prev
-                const next = [...prev]
-                next[0] = { ...next[0], qtyGood: total }
-                return next
-            })
-        }
-    }, [packaging.enabled, packaging.batches])
+    // 🔄 SYNC ENGINE: Packaging -> Distributions (Location-Aware)
+    // Optimized sync dependency: only trigger when logistics data changes (ignores label edits to eliminate lag)
+    const syncKey = useMemo(() => {
+        return [
+            packaging.enabled,
+            packaging.defaultLocationId,
+            ...packaging.batches.map(b => `${b.id}-${b.units}-${b.locationId}`)
+        ].join('|');
+    }, [packaging.enabled, packaging.batches, packaging.defaultLocationId]);
 
-    const updateBatchUnits = (index: number, val: number) => {
+    useEffect(() => {
+        if (!packaging.enabled) return
+
+        // Build a map: locationId -> total units
+        const byLocation = new Map<string | null, number>()
+        for (const batch of packaging.batches) {
+            const loc = batch.locationId ?? packaging.defaultLocationId ?? null
+            byLocation.set(loc, (byLocation.get(loc) ?? 0) + (Number(batch.units) || 0))
+        }
+
+        setDistributions(prev => {
+            if (prev.length === 0) return prev
+
+            // Clone existing distributions so we can mutate them
+            const next = prev.map((d: any) => ({ ...d }))
+
+            // Reset all existing bulk-managed qtyGood to 0 before re-applying
+            for (const d of next) d._bulkManaged = false
+
+            for (const [locId, units] of byLocation.entries()) {
+                const existingIdx = next.findIndex((d: any) =>
+                    d.locationId === locId ||
+                    (locId === null && d === next[0])
+                )
+
+                if (existingIdx !== -1) {
+                    next[existingIdx] = { ...next[existingIdx], qtyGood: units, _bulkManaged: true }
+                } else {
+                    // Auto-discover new location
+                    next.push({
+                        locationId: locId,
+                        locationName: locId ?? 'Unknown',
+                        qtyGood: units,
+                        qtyDamaged: 0,
+                        qtyMaintenance: 0,
+                        qtyLost: 0,
+                        _bulkManaged: true,
+                    })
+                }
+            }
+
+            // Zero out any existing distribution not touched by this bulk pass
+            return next.map((d: any) => {
+                if (!d._bulkManaged && !byLocation.has(d.locationId)) {
+                    const { _bulkManaged: _, ...rest } = d
+                    return { ...rest, qtyGood: 0 }
+                }
+                const { _bulkManaged: _, ...rest } = d
+                return rest
+            })
+        })
+    }, [syncKey])
+
+    const updateBatchUnits = useCallback((index: number, val: number) => {
         setPackaging(prev => {
             const nextBatches = [...prev.batches];
             if (nextBatches[index]) {
@@ -175,9 +234,9 @@ export function useInventoryStateV2(initialItem?: any) {
             }
             return { ...prev, batches: nextBatches };
         });
-    }
+    }, []);
 
-    const updateBatchLabel = (index: number, label: string) => {
+    const updateBatchLabel = useCallback((index: number, label: string) => {
         setPackaging(prev => {
             const nextBatches = [...prev.batches];
             if (nextBatches[index]) {
@@ -185,14 +244,57 @@ export function useInventoryStateV2(initialItem?: any) {
             }
             return { ...prev, batches: nextBatches };
         });
-    }
+    }, []);
+
+    const updateBatchLocation = useCallback((index: number, locationId: string | null, locationName: string) => {
+        setPackaging(prev => {
+            const nextBatches = [...prev.batches];
+            if (nextBatches[index]) {
+                nextBatches[index] = { ...nextBatches[index], locationId };
+            }
+            return { ...prev, batches: nextBatches };
+        });
+        // Ensure this location exists in distributions so the sync engine can map to it
+        setDistributions(prev => {
+            if (prev.some((d: any) => d.locationId === locationId)) return prev
+            return [...prev, {
+                locationId,
+                locationName,
+                qtyGood: 0, qtyDamaged: 0, qtyMaintenance: 0, qtyLost: 0,
+            }]
+        })
+    }, []);
+
+    const updateMultipleBatchLocations = useCallback((indices: number[], locationId: string | null, locationName: string) => {
+        setPackaging(prev => {
+            const nextBatches = [...prev.batches];
+            indices.forEach(idx => {
+                if (nextBatches[idx]) {
+                    nextBatches[idx] = { ...nextBatches[idx], locationId };
+                }
+            });
+            return { ...prev, batches: nextBatches };
+        });
+
+        if (locationId) {
+            setDistributions(prev => {
+                if (prev.some((d: any) => d.locationId === locationId)) return prev
+                return [...prev, {
+                    locationId,
+                    locationName,
+                    qtyGood: 0, qtyDamaged: 0, qtyMaintenance: 0, qtyLost: 0,
+                }]
+            })
+        }
+    }, []);
 
     const addExtraBatch = () => {
         setPackaging(prev => {
             const nextBatches = [...prev.batches, {
                 id: createId(),
                 label: `Extra ${prev.containerType}`,
-                units: 0,
+                units: Number(prev.unitsPerContainer) || 0,
+                locationId: prev.defaultLocationId ?? null,
                 expiry_date: null,
             }];
             return { ...prev, batches: nextBatches, containerCount: nextBatches.length };
@@ -324,7 +426,7 @@ export function useInventoryStateV2(initialItem?: any) {
         brand, setBrand, expiryDate, setExpiryDate, expiryAlertDays, setExpiryAlertDays,
         targetStock, setTargetStock, lowStockThreshold, setLowStockThreshold,
         restockAlertEnabled, setRestockAlertEnabled,
-        packaging, updatePackaging, updateBatchUnits, updateBatchLabel, addExtraBatch, removeBatch,
+        packaging, updatePackaging, updateBatchUnits, updateBatchLabel, updateBatchLocation, updateMultipleBatchLocations, addExtraBatch, removeBatch,
         addExpiryGroup, updateExpiryGroup, removeExpiryGroup, assignBatchToGroup, splitExpiryPerCarton,
         distributions, updateSiteQty, totals,
         addDistribution, removeDistribution

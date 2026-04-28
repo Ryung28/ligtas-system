@@ -195,6 +195,10 @@ export function ManagerBatchReviewSheet({
     const [releasedBy, setReleasedBy] = useState('')
     const [returnDate, setReturnDate] = useState<string>('')
     const [pickupDate, setPickupDate] = useState<string>('')
+    const [recipientName, setRecipientName] = useState('')
+
+    const hasConsumable = useMemo(() => items.some(i => i.item_type === 'consumable'), [items])
+    const hasEquipment = useMemo(() => items.some(i => i.item_type !== 'consumable'), [items])
 
     const parseIsoDate = (value: string): Date | undefined => {
         if (!value) return undefined
@@ -238,10 +242,11 @@ export function ManagerBatchReviewSheet({
     }
 
     const isValid = useMemo(() => {
-        const basic = borrowerName && department && purpose && approvedBy && releasedBy && !contactError
+        const basic = borrowerName && department && (hasEquipment ? purpose : true) && approvedBy && releasedBy && !contactError
         if (isScheduled) return basic && pickupDate
+        if (hasConsumable) return basic && recipientName
         return basic
-    }, [borrowerName, department, purpose, approvedBy, releasedBy, contactError, isScheduled, pickupDate])
+    }, [borrowerName, department, purpose, approvedBy, releasedBy, contactError, isScheduled, pickupDate, hasConsumable, recipientName, hasEquipment])
 
     const handleDispatch = () => {
         if (!isValid) return
@@ -257,6 +262,8 @@ export function ManagerBatchReviewSheet({
                     released_by: releasedBy,
                     expected_return_date: returnDate || null,
                     pickup_scheduled_at: isScheduled && pickupDate ? new Date(pickupDate).toISOString() : null,
+                    recipient_name: hasConsumable ? recipientName : null,
+                    notes: purpose,
                     items: items.map(item => ({
                         item_id: item.id,
                         quantity: item.quantity,
@@ -436,21 +443,23 @@ export function ManagerBatchReviewSheet({
                             </div>
                         </div>
 
+
                         <div className="space-y-3">
                             <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Details</Label>
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 px-1 text-slate-500">
                                         <FileText className="w-3 h-3" />
-                                        <span className="text-[10px] font-black uppercase">Purpose</span>
+                                        <span className="text-[10px] font-black uppercase">Purpose / Audit Notes</span>
                                     </div>
                                     <Input 
-                                        placeholder="Reason for borrowing"
+                                        placeholder="Reason for borrowing or audit notes..."
                                         value={purpose}
                                         onChange={(e) => setPurpose(e.target.value)}
                                         className="h-11 bg-white border-slate-100 rounded-xl font-bold text-sm"
                                     />
                                 </div>
+
 
                                 <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 px-1 text-slate-500">
@@ -496,43 +505,28 @@ export function ManagerBatchReviewSheet({
                             </div>
                         </div>
 
-                        <div className="space-y-3 p-5 bg-slate-50 border border-slate-100 rounded-2xl">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-[11px] font-black text-slate-950 uppercase">Return Date</Label>
-                                <Badge variant="outline" className="text-[9px] font-black uppercase h-5 bg-white">Optional</Badge>
+                        {hasConsumable && (
+                            <div className="space-y-6 animate-in slide-in-from-bottom-2">
+                                <div className="space-y-3">
+                                    <Label className="text-[11px] font-black text-amber-600 uppercase tracking-widest px-1">Consumable Audit</Label>
+                                    <div className="space-y-4 p-5 bg-amber-50/50 border border-amber-100 rounded-2xl">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center gap-1.5 px-1 text-amber-700">
+                                                <User className="w-3 h-3" />
+                                                <span className="text-[10px] font-black uppercase">Recipient Name <span className="text-red-500">*</span></span>
+                                            </div>
+                                            <Input 
+                                                placeholder="Who is receiving the consumable?"
+                                                value={recipientName}
+                                                onChange={(e) => setRecipientName(e.target.value)}
+                                                className="h-11 bg-white border-amber-200 rounded-xl font-bold text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="relative">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="h-11 w-full justify-start rounded-xl border-slate-100 bg-white pl-10 text-left text-sm font-bold text-slate-950 hover:bg-white"
-                                        >
-                                            <CalendarIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                                            {returnDate ? format(parseIsoDate(returnDate)!, 'dd/MM/yyyy') : 'dd/mm/yyyy'}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                        side="top"
-                                        align="start"
-                                        sideOffset={8}
-                                        avoidCollisions
-                                        className="w-auto p-0"
-                                    >
-                                        <Calendar
-                                            mode="single"
-                                            selected={parseIsoDate(returnDate)}
-                                            onSelect={(date) => setReturnDate(date ? format(date, 'yyyy-MM-dd') : '')}
-                                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                        </div>
-
-                </div>
+                        )}
+                    </div>
             )}
         </BottomSheet>
     )

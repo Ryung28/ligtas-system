@@ -30,6 +30,8 @@ interface StatusFieldsProps {
     updatePackaging?: (updates: any) => void
     updateBatch?: (idx: number, val: number) => void
     updateBatchLabel?: (idx: number, label: string) => void
+    updateBatchLocation?: (idx: number, locationId: string | null, locationName: string) => void
+    updateMultipleBatchLocations?: (indices: number[], locationId: string | null, locationName: string) => void
     addExtraBatch?: () => void
     removeBatch?: (batchId: string) => void
     addExpiryGroup?: () => void
@@ -40,6 +42,7 @@ interface StatusFieldsProps {
     showPackaging?: boolean
     categoryName?: string
     itemType?: string
+    locations?: Array<{ id: string | number; location_name: string }>
 }
 
 /**
@@ -55,11 +58,12 @@ export function V2StatusFields({
     lowStockThreshold, setLowStockThreshold,
     restockAlertEnabled, setRestockAlertEnabled,
     policyErrors,
-    packaging, updatePackaging, updateBatch, updateBatchLabel, addExtraBatch,
+    packaging, updatePackaging, updateBatch, updateBatchLabel, updateBatchLocation, updateMultipleBatchLocations, addExtraBatch,
     removeBatch, addExpiryGroup, updateExpiryGroup, removeExpiryGroup, assignBatchToGroup, splitExpiryPerCarton,
     showPackaging = true,
     categoryName = '',
-    itemType = 'equipment'
+    itemType = 'equipment',
+    locations = [],
 }: StatusFieldsProps) {
     
     const targetNum = Number(targetStock) || 0
@@ -85,12 +89,15 @@ export function V2StatusFields({
             </div>
 
             {/* Packaging Logic (Repositioned to TOP for Option 5) */}
-            {showPackaging && packaging && updatePackaging && updateBatch && updateBatchLabel && addExtraBatch && removeBatch && addExpiryGroup && updateExpiryGroup && removeExpiryGroup && assignBatchToGroup && splitExpiryPerCarton && (
+            {showPackaging && packaging && updatePackaging && updateBatch && updateBatchLabel && updateMultipleBatchLocations && addExtraBatch && removeBatch && addExpiryGroup && updateExpiryGroup && removeExpiryGroup && assignBatchToGroup && splitExpiryPerCarton && (
                 <V2BulkPackagingBuilder 
                     packaging={packaging}
+                    locations={locations}
                     onUpdate={updatePackaging}
                     onUpdateBatch={updateBatch}
                     onUpdateLabel={updateBatchLabel}
+                    onUpdateBatchLocation={updateBatchLocation ?? (() => {})}
+                    onUpdateMultipleLocations={updateMultipleBatchLocations ?? (() => {})}
                     onAddExtra={addExtraBatch}
                     onRemoveBatch={removeBatch}
                     onAddExpiryGroup={addExpiryGroup}

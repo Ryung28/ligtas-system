@@ -22,7 +22,7 @@ export function LogStatsCards({ stats, currentFilter, onFilterChange }: LogStats
         { id: 'all', title: 'Total', value: stats.total, color: 'slate', icon: ClipboardList, label: 'Records' },
         { id: 'pending', title: 'Pending', value: stats.pending, color: 'amber', icon: Clock, label: 'Requests' },
         { id: 'staged', title: 'Staged', value: stats.staged, color: 'amber', icon: Package, label: 'Pickup' },
-        { id: 'borrowed', title: 'Borrowed', value: stats.borrowed, color: 'blue', icon: Package, label: 'Units' },
+        { id: 'borrowed', title: 'Borrowed', value: stats.borrowed, color: 'blue', icon: Package, label: 'Borrowers' },
         { id: 'returned', title: 'Returned', value: stats.returned, color: 'emerald', icon: RefreshCcw, label: 'Units' },
         { id: 'overdue', title: 'Overdue', value: stats.overdue, color: 'rose', icon: AlertCircle, label: 'Alert' },
         { id: 'reserved', title: 'Reserved', value: stats.reserved, color: 'indigo', icon: Bookmark, label: 'Units' },

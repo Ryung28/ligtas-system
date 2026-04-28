@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,12 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
     } = logsHook
 
     const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set())
+
+    // 🏎️ UNIFIED FILTER ORCHESTRATOR: Clears search query on any filter change
+    const handleFilterChange = useCallback((setter: (val: any) => void, value: any) => {
+        setter(value)
+        setSearchQuery('')
+    }, [setSearchQuery])
 
     const searchParams = useSearchParams()
     const [highlightedName, setHighlightedName] = useState<string | null>(null)
@@ -112,7 +118,7 @@ export function LogsClient({ initialLogs }: LogsClientProps) {
                 <LogStatsCards 
                     stats={stats} 
                     currentFilter={statusFilter}
-                    onFilterChange={setStatusFilter}
+                    onFilterChange={(val) => handleFilterChange(setStatusFilter, val)}
                 />
 
                 {/* Main Log Section */}

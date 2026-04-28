@@ -38,6 +38,8 @@ export function DirectBorrowSheet({ isOpen, onOpenChange, item, onSuccess }: Dir
     const [office, setOffice] = useState('')
     const [approvedBy, setApprovedBy] = useState('')
     const [issuerName, setIssuerName] = useState('')
+    const [recipientName, setRecipientName] = useState('')
+    const [purpose, setPurpose] = useState('Borrow Equipment (QR Scan)')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Hydrate from User Profile on open
@@ -81,7 +83,9 @@ export function DirectBorrowSheet({ isOpen, onOpenChange, item, onSuccess }: Dir
                 contact_number: contactNo,
                 office_department: office,
                 approved_by: approvedBy,
-                purpose: 'Borrow Equipment (QR Scan)',
+                recipient_name: item.item_type === 'consumable' ? recipientName : null,
+                notes: purpose,
+                purpose: purpose,
             })
 
             if (res.success) {
@@ -241,17 +245,33 @@ export function DirectBorrowSheet({ isOpen, onOpenChange, item, onSuccess }: Dir
 
                         {/* 3. Authorization */}
                         <section className="space-y-4">
-                            <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Approval</Label>
-                            <div className="bg-white border-2 border-slate-200 border-dashed p-6 rounded-[32px] text-center space-y-4">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Approved By</p>
-                                <Input 
-                                    placeholder="Approver Full Name"
-                                    value={approvedBy}
-                                    onChange={(e) => setApprovedBy(e.target.value)}
-                                    className="border-none bg-transparent text-xl font-black text-slate-900 text-center placeholder:text-slate-200 h-auto p-0 focus:ring-0"
-                                />
+                            <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Purpose & Approval</Label>
+                            
+                            <div className="bg-white border border-slate-200 p-6 rounded-[32px] space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="purpose" className="text-[10px] font-black text-slate-400 uppercase tracking-tight px-1">Purpose / Mission</Label>
+                                    <Input 
+                                        id="purpose"
+                                        placeholder="Specific mission or task details..."
+                                        value={purpose}
+                                        onChange={(e) => setPurpose(e.target.value)}
+                                        className="h-12 bg-slate-50/50 border-slate-100 rounded-2xl font-bold text-sm focus:ring-blue-500"
+                                    />
+                                </div>
+
                                 <div className="h-[1px] w-full bg-slate-100" />
-                                <div className="flex flex-col items-center gap-1">
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tight px-1 text-center block">Approved By</Label>
+                                    <Input 
+                                        placeholder="Approver Full Name"
+                                        value={approvedBy}
+                                        onChange={(e) => setApprovedBy(e.target.value)}
+                                        className="border-none bg-transparent text-xl font-black text-slate-900 text-center placeholder:text-slate-200 h-auto p-0 focus:ring-0"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col items-center gap-1 pt-2">
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Verified & Logged</span>
@@ -262,7 +282,28 @@ export function DirectBorrowSheet({ isOpen, onOpenChange, item, onSuccess }: Dir
                                 </div>
                             </div>
                         </section>
-                            </>
+                        </>
+                    )}
+
+                    {/* 4. Consumable Audit */}
+                        {item.item_type === 'consumable' && (
+                            <section className="space-y-4 animate-in slide-in-from-bottom-2">
+                                <Label className="text-[11px] font-black text-amber-600 uppercase tracking-widest px-1">Consumable Audit</Label>
+                                <div className="p-6 bg-amber-50/50 border border-amber-100 rounded-[32px] space-y-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 px-1 text-amber-700">
+                                            <User className="w-4 h-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-tight">Recipient Name <span className="text-red-500">*</span></span>
+                                        </div>
+                                        <Input 
+                                            placeholder="Who is receiving the consumable?"
+                                            value={recipientName}
+                                            onChange={(e) => setRecipientName(e.target.value)}
+                                            className="h-14 bg-white border-amber-200 rounded-2xl font-bold text-sm focus:ring-amber-500"
+                                        />
+                                    </div>
+                                </div>
+                            </section>
                         )}
                     </div>
 

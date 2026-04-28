@@ -20,22 +20,14 @@ class LigtasScannerSwitchboard {
 
     payload.when(
       equipment: (protocol, version, action, itemId, itemName) {
-        final user = ref.read(currentUserProvider);
-        final isManager = user?.canEdit ?? false;
-
-        if (isManager) {
-          // 🚀 MANAGER FLOW: Fast Dispatch Hub
-          ref.read(fastDispatchControllerProvider.notifier).selectItem(itemId, itemName);
-          context.push('/manager/dispatch');
-        } else {
-          // 📦 USER FLOW: Quick Borrow Sheet
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => ScanResultSheet(payload: payload),
-          );
-        }
+        // 🚀 UNIFIED FLOW: Both analysts and managers now use the enhanced 3-phase sheet
+        // This ensures editable requester details and consistent UX across all roles.
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => ScanResultSheet(payload: payload),
+        );
         
         ref.read(dockSuppressionControllerProvider.notifier).release(DockSuppressionReason.fullScreenFlow);
       },

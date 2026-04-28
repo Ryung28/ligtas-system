@@ -235,7 +235,7 @@ export function useBorrowLogs(initialFilter: TransactionStatus = 'all') {
         const now = new Date();
         return {
             total: logs.length,
-            borrowed: logs.filter(l => l.status === 'borrowed').length,
+            borrowed: new Set(logs.filter(l => l.status === 'borrowed').map(l => l.borrower_name)).size,
             returned: logs.filter(l => l.status === 'returned').length,
             overdue: logs.filter(l => 
                 l.status === 'borrowed' && 

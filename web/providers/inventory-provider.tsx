@@ -24,7 +24,11 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
  */
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
-    const [lastUpdated, setLastUpdated] = React.useState(new Date())
+    const [lastUpdated, setLastUpdated] = React.useState(new Date(0))
+
+    useEffect(() => {
+        setLastUpdated(new Date())
+    }, [])
 
     // ── 1. The Global Master Data Fetch ──
     const { data: inventory = [], isLoading, mutate: refresh, isValidating } = useSWR(

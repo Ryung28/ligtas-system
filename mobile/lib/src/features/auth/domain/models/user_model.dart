@@ -84,4 +84,12 @@ class UserModel with _$UserModel {
   
   /// Check if manager has warehouse assigned
   bool get hasWarehouseAssigned => assignedWarehouse != null && assignedWarehouse!.isNotEmpty;
+
+  /// 🛡️ IDENTITY GUARD: Check if profile metadata is complete
+  bool get isProfileComplete {
+    final nameValid = displayName != null && displayName!.isNotEmpty && displayName != '?';
+    final phoneValid = phoneNumber != null && phoneNumber!.isNotEmpty;
+    final orgValid = organization != null && organization!.isNotEmpty;
+    return nameValid && phoneValid && orgValid;
+  }
 }

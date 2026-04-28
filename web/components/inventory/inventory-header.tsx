@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, ListPlus, Package, Layers, AlertTriangle, XCircle, Trash2, CheckSquare, Settings2 } from 'lucide-react'
 import { BulkAddDialog } from './bulk-add-dialog'
@@ -25,6 +25,12 @@ interface InventoryHeaderProps {
 }
 
 export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [], selectedCount = 0, onBulkDelete, selectionMode = false, onToggleSelectionMode, onAddItem, activeStatus, onStatusChange }: InventoryHeaderProps) {
+    const [mounted, setMounted] = useState(false)
+    
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     const stats = useMemo(() => {
         const totalItems = items.length
         const lowStockItems = items.filter(item => isLowStock(item)).length
@@ -75,19 +81,24 @@ export function InventoryHeader({ lastUpdated, isLoading, onRefresh, items = [],
                                 Select Multiple
                             </Button>
                             
-                            <LocationManagerDialog />
-                            <TacticalStationDialog items={items} />
-                            <DispatchCommandSheet />
+                            {mounted && (
+                                <>
+                                    <LocationManagerDialog />
+                                    <TacticalStationDialog items={items} />
+                                    <DispatchCommandSheet />
+                                    
+                                    <BulkAddDialog
+                                        onSuccess={onRefresh}
+                                        trigger={
+                                            <Button variant="ghost" size="sm" className="h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 text-[13px] font-medium transition-colors rounded-lg px-3">
+                                                <ListPlus className="h-4 w-4 mr-1.5" />
+                                                Bulk Add
+                                            </Button>
+                                        }
+                                    />
+                                </>
+                            )}
                             
-                            <BulkAddDialog
-                                onSuccess={onRefresh}
-                                trigger={
-                                    <Button variant="ghost" size="sm" className="h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 text-[13px] font-medium transition-colors rounded-lg px-3">
-                                        <ListPlus className="h-4 w-4 mr-1.5" />
-                                        Bulk Add
-                                    </Button>
-                                }
-                            />
                             <Button 
                                 onClick={onAddItem}
                                 size="sm" 

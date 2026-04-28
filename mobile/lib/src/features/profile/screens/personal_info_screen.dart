@@ -43,6 +43,11 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       _nameController.text = user?.fullName ?? '';
       _phoneController.text = user?.phoneNumber ?? '';
       _orgController.text = user?.organization ?? '';
+      
+      // 🛡️ AUTO-ENFORCE: If profile is incomplete, jump straight into edit mode
+      if (user != null && !user.isProfileComplete) {
+        _isEditing = true;
+      }
     }
   }
 
@@ -97,6 +102,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     final state = ref.watch(profileControllerProvider);
     final user = state.user;
     final isLoading = state.isLoading;
+    final isForced = user != null && !user.isProfileComplete;
 
     final initials = (user?.fullName.isNotEmpty == true)
         ? user!.fullName.trim().split(' ').take(2).map((w) => w[0]).join().toUpperCase()
@@ -104,7 +110,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
     return Scaffold(
       backgroundColor: sentinel.containerLowest,
-      appBar: _buildAppBar(context, sentinel, isLoading),
+      appBar: _buildAppBar(context, sentinel, isLoading, isForced),
       body: SafeArea(
         child: isLoading && !_isEditing
             ? Center(child: CircularProgressIndicator(color: sentinel.navy))
@@ -261,7 +267,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
                       if (_isEditing) ...[
                         const Gap(32),
-                        _buildActionButtons(sentinel, isLoading),
+                        _buildActionButtons(sentinel, isLoading, isForced),
                       ],
                     ],
                   ),
@@ -271,23 +277,23 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, SentinelColors sentinel, bool isLoading) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, SentinelColors sentinel, bool isLoading, bool isForced) {
     return AppBar(
       backgroundColor: sentinel.containerLowest,
       elevation: 0,
-      automaticallyImplyLeading: false,
+      automaticallyImplyLeading: !isForced, // 🛡️ LOCKDOWN: No escape if profile is incomplete
       centerTitle: true,
       title: Text(
-        'PROFILE PAGE',
+        isForced ? 'COMPLETE PROFILE' : 'PROFILE PAGE',
         style: GoogleFonts.lexend(
           fontWeight: FontWeight.w900,
           fontSize: 14,
           letterSpacing: 1.5,
-          color: sentinel.navy,
+          color: isForced ? AppTheme.errorRed : sentinel.navy,
         ),
       ),
       actions: [
-        if (!_isEditing)
+        if (!_isEditing && !isForced)
           TextButton.icon(
             onPressed: () => setState(() => _isEditing = true),
             icon: Icon(Icons.edit_rounded, size: 16, color: sentinel.navy),
@@ -301,7 +307,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
               ),
             ),
           )
-        else
+        else if (_isEditing)
           TextButton(
             onPressed: isLoading ? null : _handleSave,
             child: Text(
@@ -372,20 +378,22 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     );
   }
 
-  Widget _buildActionButtons(SentinelColors sentinel, bool isLoading) {
+  Widget _buildActionButtons(SentinelColors sentinel, bool isLoading, bool isForced) {
     return Row(
       children: [
-        Expanded(
-          child: TextButton(
-            onPressed: isLoading ? null : _handleCancel,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        if (!isForced) ...[
+          Expanded(
+            child: TextButton(
+              onPressed: isLoading ? null : _handleCancel,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('CANCEL', style: GoogleFonts.lexend(fontWeight: FontWeight.w900, fontSize: 13, color: sentinel.navy.withOpacity(0.4))),
             ),
-            child: Text('CANCEL', style: GoogleFonts.lexend(fontWeight: FontWeight.w900, fontSize: 13, color: sentinel.navy.withOpacity(0.4))),
           ),
-        ),
-        const Gap(16),
+          const Gap(16),
+        ],
         Expanded(
           flex: 2,
           child: ElevatedButton(

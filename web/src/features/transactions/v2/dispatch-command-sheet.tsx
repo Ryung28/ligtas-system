@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, UserPlus, Warehouse, Search, Info, MapPin, Box, Calendar } from 'lucide-react'
+import { ClipboardList, Loader2, RotateCcw, Package, Plus, X, ShoppingCart, Clock, ShieldCheck, UserCheck, UserPlus, Warehouse, Search, Info, MapPin, Box, Calendar, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase-browser'
 import { toast } from 'sonner'
@@ -87,6 +87,7 @@ export function DispatchCommandSheet() {
     const [releasedBy, setReleasedBy] = useState('Brandon James C. Galabin')
     const [approvedBy, setApprovedBy] = useState('')
     const [officeDepartment, setOfficeDepartment] = useState('')
+    const [recipientName, setRecipientName] = useState('')
 
     const handleBorrowerSelect = (borrower: BorrowerStats) => {
         if (borrower.last_contact) {
@@ -110,6 +111,8 @@ export function DispatchCommandSheet() {
     }, [open])
 
     const isConsumable = selectedItem?.item_type === 'consumable'
+    const cartHasConsumable = useMemo(() => cart.some(c => c.item.item_type === 'consumable'), [cart])
+    const hasAnyConsumable = isConsumable || cartHasConsumable
 
     // Monolith logic for releasedBy sync
     useEffect(() => {
@@ -143,6 +146,9 @@ export function DispatchCommandSheet() {
             return; 
         }
 
+        const recipientNameInput = formData.get('recipient_name') as string
+        const notesInput = formData.get('notes') as string
+
         if (intakeMode === 'scheduled') {
             if (!pickupDate) { toast.error('Please specify a pickup date'); return; }
             // Add a 1-minute grace buffer to allow "Now" selection
@@ -165,6 +171,8 @@ export function DispatchCommandSheet() {
                 approved_by: approvedByVal,
                 expected_return_date: returnType === 'date' ? expectedReturnDate : null,
                 pickup_scheduled_at: intakeMode === 'scheduled' && pickupDate ? new Date(pickupDate).toISOString() : null,
+                recipient_name: hasAnyConsumable ? recipientNameInput : null,
+                notes: purpose,
             };
 
             if (cart.length > 0) {
@@ -203,6 +211,7 @@ export function DispatchCommandSheet() {
                 setBorrowerManualEntry(false)
                 setContactNumber('')
                 setOfficeDepartment('')
+                setRecipientName('')
                 router.refresh()
             } else {
                 toast.error(result.error || 'Failed to process dispatch')
@@ -611,9 +620,35 @@ export function DispatchCommandSheet() {
                         )}
 
                         <div className="grid gap-2">
-                            <Label htmlFor="purpose" className="text-sm font-semibold text-gray-700">Purpose <span className="text-gray-400">(Optional)</span></Label>
+                            <Label htmlFor="purpose" className="text-sm font-semibold text-gray-700">Purpose / Audit Notes <span className="text-gray-400">(Optional)</span></Label>
                             <Input id="purpose" name="purpose" placeholder="Specific mission or task details..." disabled={isPending} className="rounded-lg border-gray-300 focus:border-blue-400" />
                         </div>
+
+                        {hasAnyConsumable && (
+                            <div className="grid gap-4 p-5 bg-amber-50/50 rounded-2xl border border-amber-100 animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center gap-2 text-amber-800">
+                                    <User className="h-4 w-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Consumable Recipient Audit</span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="recipient_name" className="text-xs font-semibold text-amber-900">
+                                            Recipient Full Name <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input
+                                            id="recipient_name"
+                                            name="recipient_name"
+                                            required={hasAnyConsumable}
+                                            value={recipientName}
+                                            onChange={(e) => setRecipientName(e.target.value)}
+                                            placeholder="Who is receiving this item?"
+                                            className="h-11 bg-white border-amber-200 rounded-xl shadow-sm focus:ring-amber-500"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-[9px] text-amber-600 font-medium">* This data will be reflected in the printed transaction receipt.</p>
+                            </div>
+                        )}
 
                         <div className="group/audit relative mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 hover:border-blue-200">
                             <div className="relative space-y-4">

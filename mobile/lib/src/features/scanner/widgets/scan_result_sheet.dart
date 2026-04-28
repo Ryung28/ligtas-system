@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
 import '../../../core/utils/storage_utils.dart';
+import '../../borrowing/providers/personnel_search_controller.dart';
+import '../../fast_dispatch/model/dispatch_session.dart';
 
 /// 🛡️ QUICK-BORROW BENTO CONSOLE (V17)
 /// User-friendly manifest with simplified wording and large visual showcases.
@@ -62,6 +64,8 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
   bool _isCustomDuration = false;
   String _transactionPurpose = 'Field Deployment';
   final _formKey = GlobalKey<FormState>();
+
+  int _currentPhase = 1; // 🛡️ 3-PHASE BORROW STATE
 
   @override
   void initState() {
@@ -173,6 +177,20 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     }
   }
 
+  void _nextPhase() {
+    if (_currentPhase < 3) {
+      setState(() => _currentPhase++);
+      HapticFeedback.mediumImpact();
+    }
+  }
+
+  void _prevPhase() {
+    if (_currentPhase > 1) {
+      setState(() => _currentPhase--);
+      HapticFeedback.lightImpact();
+    }
+  }
+
   // 🛡️ TACTICAL CONFIRMATION: Finalizes either a Borrow or a Return transaction
   Future<void> _onConfirm() async {
     if (_requestedQuantity <= 0) return;
@@ -260,7 +278,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── 1. ASSET HERO HEADER (Bigger) ──
+            // ── 1. ASSET HERO HEADER ──
             _buildHeroHeader(),
             
             Flexible(
@@ -269,145 +287,34 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── 2. IDENTITY BENTO (Simple) ──
-                    _buildBentoSection(
-                      label: 'ITEM DETAILS',
-                      icon: Icons.info_outline_rounded,
-                      children: [
-                        _buildInfoRow('AVAILABILITY', _isFetchingStock ? 'Checking...' : '${_availableStock} Available', 
-                          color: _availableStock > 0 ? const Color(0xFF10B981) : Colors.redAccent),
-                        if (_isReturnMode)
-                          _buildInfoRow('RECORD ID', '#${_selectedLog?['id'].toString().substring(0, 8).toUpperCase() ?? 'N/A'}', color: AppTheme.secondaryOrange),
-                      ],
-                    ),
-                    const Gap(12),
-
-                    // ── 3. QUANTITY BENTO (Editable) ──
-                    _buildBentoSection(
-                      label: _isReturnMode ? 'NUMBER TO RETURN' : 'HOW MANY?',
-                      icon: Icons.unfold_more_rounded,
-                      children: [
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(100)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildQuantityBtn(Icons.remove_rounded, (!_isLoading && _requestedQuantity > 1) ? () => _adjustQuantity(-1) : null),
-                                SizedBox(
-                                  width: 70,
-                                  child: TextFormField(
-                                    controller: _qtyController,
-                                    keyboardType: TextInputType.number,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.lexend(fontSize: 28, fontWeight: FontWeight.w900, color: stitchNavy),
-                                    decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
-                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                  ),
-                                ),
-                                _buildQuantityBtn(Icons.add_rounded, (!_isLoading && _requestedQuantity < (_isReturnMode ? (_selectedLog?['quantity'] ?? 0) : _availableStock)) ? () => _adjustQuantity(1) : null),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Gap(12),
-
-                    // ── 4. YOUR DETAILS & AUDIT ──
                     if (!_isReturnMode) ...[
-                      _buildBentoSection(
-                        label: 'YOUR INFO',
-                        icon: Icons.person_outline_rounded,
-                        children: [
-                          _buildTactileField(
-                            controller: _nameController, 
-                            hint: 'Full Name', 
-                            icon: Icons.person_rounded, 
-                            validator: (v) => v!.isEmpty ? 'Name required' : null
-                          ),
-                          const Gap(8),
-                          _buildTactileField(
-                            controller: _contactController, 
-                            hint: 'Phone (e.g. 09123456789)', 
-                            icon: Icons.phone_rounded,
-                            keyboardType: TextInputType.phone,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(11),
-                            ],
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return 'Phone required';
-                              if (!v.startsWith('09')) return 'Must start with 09';
-                              if (v.length != 11) return 'Must be 11 digits';
-                              return null;
-                            }
-                          ),
-                          const Gap(8),
-                          _buildTactileField(
-                            controller: _orgController, 
-                            hint: 'Office / Department', 
-                            icon: Icons.business_rounded, 
-                            validator: (v) => v!.isEmpty ? 'Office required' : null
-                          ),
-                        ],
-                      ),
-                      const Gap(12),
-                      _buildBentoSection(
-                        label: 'AUTHORIZATION',
-                        icon: Icons.verified_user_outlined,
-                        children: [
-                          _buildTactileField(
-                            controller: _authorizedByController,
-                            hint: 'Authorized by (name)',
-                            icon: Icons.shield_outlined,
-                            validator: (v) =>
-                                v == null || v.trim().isEmpty ? 'Required' : null,
-                          ),
-                          const Gap(8),
-                          _buildTactileField(
-                            controller: _releasedByController,
-                            hint: 'Released by (name)',
-                            icon: Icons.front_hand_outlined,
-                            validator: (v) =>
-                                v == null || v.trim().isEmpty ? 'Required' : null,
-                          ),
-                        ],
-                      ),
-                      const Gap(12),
-                      _buildBentoSection(
-                        label: 'PURPOSE & DURATION',
-                        icon: Icons.flag_outlined,
-                        children: [
-                          Text('PURPOSE', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.0)),
-                          const Gap(8),
-                          _buildTactileField(
-                            controller: _purposeController, 
-                            hint: 'Describe why you are borrowing this...', 
-                            icon: Icons.edit_note_rounded, 
-                            maxLines: 3,
-                            validator: (v) => v!.isEmpty ? 'Purpose required' : null
-                          ),
-                          const Gap(16),
-                          Text('HOW LONG?', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.0)),
-                          const Gap(8),
-                          _buildDurationSelector(),
-                        ],
-                      ),
+                      _buildPhaseIndicator(),
+                      const Gap(16),
                     ],
-
-                    if (_isReturnMode)
-                      _buildBentoSection(
-                        label: 'ITEM CONDITION',
-                        icon: Icons.check_circle_outline_rounded,
-                        children: [
-                          _buildConditionSelector(),
-                          const Gap(12),
-                          _buildTactileField(controller: _notesController, hint: 'Any notes?', icon: Icons.edit_note_rounded),
-                        ],
-                      ),
-
+                    
+                    AnimatedSwitcher(
+                      duration: 400.ms,
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: animation.drive(
+                              Tween<Offset>(
+                                begin: const Offset(0.05, 0),
+                                end: Offset.zero,
+                              ),
+                            ),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _isReturnMode 
+                        ? _buildReturnFlow()
+                        : _buildBorrowPhaseContent(),
+                    ),
+                    
                     if (_fetchError != null)
                       _buildErrorBanner(_fetchError!),
 
@@ -421,6 +328,228 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPhaseIndicator() {
+    return Row(
+      children: List.generate(3, (index) {
+        final step = index + 1;
+        final isActive = _currentPhase >= step;
+        final isCurrent = _currentPhase == step;
+        
+        return Expanded(
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: 300.ms,
+                width: isCurrent ? 24 : 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: isActive ? stitchNavy : stitchBorder,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              if (index < 2)
+                Expanded(
+                  child: Container(
+                    height: 2,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    color: _currentPhase > step ? stitchNavy : stitchBorder,
+                  ),
+                ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildBorrowPhaseContent() {
+    return Column(
+      key: ValueKey('phase_$_currentPhase'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_currentPhase == 1) ...[
+          _buildBentoSection(
+            label: 'PHASE 1: IDENTIFY REQUESTER',
+            icon: Icons.person_search_rounded,
+            children: [
+              _buildInfoRow('AVAILABILITY', _isFetchingStock ? 'Checking...' : '${_availableStock} Available', 
+                color: _availableStock > 0 ? const Color(0xFF10B981) : Colors.redAccent),
+              const Gap(12),
+              Text('REQUESTER DETAILS', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+              const Gap(8),
+              _buildPersonnelSearchField(),
+              const Gap(8),
+              _buildTactileField(
+                controller: _contactController, 
+                hint: 'Phone (e.g. 09123456789)', 
+                icon: Icons.phone_rounded,
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
+                ],
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Phone required';
+                  if (!v.startsWith('09')) return 'Must start with 09';
+                  if (v.length != 11) return 'Must be 11 digits';
+                  return null;
+                }
+              ),
+              const Gap(8),
+              _buildTactileField(
+                controller: _orgController, 
+                hint: 'Office / Department', 
+                icon: Icons.business_rounded, 
+                validator: (v) => v!.isEmpty ? 'Office required' : null
+              ),
+            ],
+          ),
+        ],
+
+        if (_currentPhase == 2) ...[
+          _buildBentoSection(
+            label: 'PHASE 2: BORROW SPECIFICATIONS',
+            icon: Icons.settings_input_component_rounded,
+            children: [
+              Text('QUANTITY', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8))),
+              const Gap(12),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(100)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildQuantityBtn(Icons.remove_rounded, (!_isLoading && _requestedQuantity > 1) ? () => _adjustQuantity(-1) : null),
+                      SizedBox(
+                        width: 70,
+                        child: TextFormField(
+                          controller: _qtyController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.lexend(fontSize: 28, fontWeight: FontWeight.w900, color: stitchNavy),
+                          decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        ),
+                      ),
+                      _buildQuantityBtn(Icons.add_rounded, (!_isLoading && _requestedQuantity < _availableStock) ? () => _adjustQuantity(1) : null),
+                    ],
+                  ),
+                ),
+              ),
+              const Gap(20),
+              Text('PURPOSE', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8))),
+              const Gap(8),
+              _buildTactileField(
+                controller: _purposeController, 
+                hint: 'Why are you borrowing this?', 
+                icon: Icons.edit_note_rounded, 
+                maxLines: 2,
+                validator: (v) => v!.isEmpty ? 'Purpose required' : null
+              ),
+              const Gap(16),
+              Text('DURATION', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8))),
+              const Gap(8),
+              _buildDurationSelector(),
+            ],
+          ),
+        ],
+
+        if (_currentPhase == 3) ...[
+          _buildBentoSection(
+            label: 'PHASE 3: AUDIT & AUTHORIZATION',
+            icon: Icons.verified_user_rounded,
+            children: [
+              _buildTactileField(
+                controller: _authorizedByController,
+                hint: 'Authorized by (name)',
+                icon: Icons.shield_outlined,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const Gap(8),
+              _buildTactileField(
+                controller: _releasedByController,
+                hint: 'Released by (name)',
+                icon: Icons.front_hand_outlined,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+            ],
+          ),
+          const Gap(12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: stitchBorder),
+            ),
+            child: Column(
+              children: [
+                _buildInfoRow('REQUESTER', _nameController.text),
+                _buildInfoRow('ITEM', _itemName ?? _initialItemName),
+                _buildInfoRow('QUANTITY', '$_requestedQuantity unit(s)'),
+                _buildInfoRow('DURATION', '$_durationDays Days'),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReturnFlow() {
+    return Column(
+      key: const ValueKey('return_flow'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildBentoSection(
+          label: 'RETURN DETAILS',
+          icon: Icons.assignment_return_rounded,
+          children: [
+            _buildInfoRow('RECORD ID', '#${_selectedLog?['id'].toString().substring(0, 8).toUpperCase() ?? 'N/A'}', color: AppTheme.secondaryOrange),
+            const Gap(12),
+            Text('QUANTITY TO RETURN', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8))),
+            const Gap(8),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(100)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildQuantityBtn(Icons.remove_rounded, (!_isLoading && _requestedQuantity > 1) ? () => _adjustQuantity(-1) : null),
+                    SizedBox(
+                      width: 70,
+                      child: TextFormField(
+                        controller: _qtyController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.lexend(fontSize: 28, fontWeight: FontWeight.w900, color: stitchNavy),
+                        decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      ),
+                    ),
+                    _buildQuantityBtn(Icons.add_rounded, (!_isLoading && _requestedQuantity < (_selectedLog?['quantity'] ?? 0)) ? () => _adjustQuantity(1) : null),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const Gap(12),
+        _buildBentoSection(
+          label: 'CONDITION & NOTES',
+          icon: Icons.check_circle_outline_rounded,
+          children: [
+            _buildConditionSelector(),
+            const Gap(12),
+            _buildTactileField(controller: _notesController, hint: 'Return notes...', icon: Icons.edit_note_rounded),
+          ],
+        ),
+      ],
     );
   }
 
@@ -621,16 +750,22 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     int maxLines = 1,
+    void Function(String)? onChanged,
     String? Function(String?)? validator
   }) {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9), 
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0))
+      ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         maxLines: maxLines,
         validator: validator,
+        onChanged: onChanged,
         style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: stitchNavy),
         decoration: InputDecoration(
           hintText: hint,
@@ -644,49 +779,82 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
     );
   }
 
+  Widget _buildPersonnelSearchField() {
+    return SearchAnchor(
+      builder: (context, controller) {
+        return _buildTactileField(
+          controller: _nameController,
+          hint: 'Search or Type Name',
+          icon: Icons.person_add_rounded,
+          onChanged: (val) {
+            controller.text = val;
+            if (val.isNotEmpty && !controller.isOpen) controller.openView();
+          },
+          validator: (v) => v == null || v.isEmpty ? 'Name required' : null,
+        );
+      },
+      suggestionsBuilder: (context, controller) {
+        final results = ref.watch(personnelSearchControllerProvider(controller.text));
+        
+        return results.map((p) => ListTile(
+          leading: const Icon(Icons.person_outline_rounded, size: 20, color: stitchNavy),
+          title: Text(p.name, style: GoogleFonts.lexend(fontWeight: FontWeight.w700, fontSize: 14, color: stitchNavy)),
+          subtitle: Text('${p.office} • ${p.contact}', style: GoogleFonts.plusJakartaSans(fontSize: 11)),
+          onTap: () {
+            setState(() {
+              _nameController.text = p.name;
+              _contactController.text = p.contact;
+              _orgController.text = p.office ?? '';
+            });
+            controller.closeView(p.name);
+            FocusScope.of(context).unfocus();
+          },
+        )).toList();
+      },
+    );
+  }
+
   Widget _buildActionButtons() {
     final String actionLabel = _isReturnMode ? 'Return' : 'Borrow';
     
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            minimumSize: const Size(0, 40),
-          ),
-          child: Text(
-            'Cancel', 
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w700, 
-              color: const Color(0xFF64748B), 
-              fontSize: 13
-            )
-          ),
-        ),
-        const Gap(8),
-        SizedBox(
-          height: 40,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _onConfirm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: stitchNavy,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        if (_currentPhase > 1 && !_isReturnMode) ...[
+          IconButton(
+            onPressed: _isLoading ? null : _prevPhase,
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFFF1F5F9),
+              foregroundColor: stitchNavy,
+              padding: const EdgeInsets.all(12),
             ),
-            child: _isLoading 
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Text(
-                  'Confirm $actionLabel',
-                  style: GoogleFonts.lexend(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
+          ),
+          const Gap(12),
+        ],
+        
+        Expanded(
+          child: SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _isLoading 
+                ? null 
+                : (_isReturnMode || _currentPhase == 3 ? _onConfirm : _nextPhase),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: stitchNavy,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: _isLoading 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(
+                    _isReturnMode || _currentPhase == 3 ? 'Confirm $actionLabel' : 'Next Step',
+                    style: GoogleFonts.lexend(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
+            ),
           ),
         ),
       ],

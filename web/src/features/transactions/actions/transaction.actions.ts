@@ -32,7 +32,9 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
                 released_by: input.get('released_by') || '',
                 expected_return_date: input.get('expected_return_date') || null,
                 pickup_scheduled_at: input.get('pickup_scheduled_at') || null,
-                source_batch: input.get('source_batch') ? JSON.parse(input.get('source_batch') as string) : null
+                source_batch: input.get('source_batch') ? JSON.parse(input.get('source_batch') as string) : null,
+                recipient_name: input.get('recipient_name') || null,
+                notes: input.get('notes') || null
             }
             validatedData = borrowItemSchema.parse(rawData)
         } else {
@@ -118,6 +120,8 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
             p_created_origin: 'Web',
             p_last_updated_origin: 'Web',
             p_source_batch: validatedData.source_batch || null,
+            p_recipient_name: validatedData.recipient_name || null,
+            p_notes: validatedData.notes || null,
             p_now: now,
         })
 
@@ -224,6 +228,8 @@ export async function batchBorrowItems(data: {
     released_by?: string
     expected_return_date?: string | null
     pickup_scheduled_at?: string | null
+    recipient_name?: string | null
+    notes?: string | null
     items: Array<{
         item_id: number
         quantity: number
@@ -314,6 +320,8 @@ export async function batchBorrowItems(data: {
                 p_created_origin: 'Web',
                 p_last_updated_origin: 'Web',
                 p_source_batch: item.source_batch || null,
+                p_recipient_name: validatedData.recipient_name || null,
+                p_notes: validatedData.notes || null,
                 p_now: now,
             })
             if (txErr) {

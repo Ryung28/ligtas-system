@@ -22,6 +22,8 @@ export const borrowItemSchema = z.object({
     pickup_scheduled_at: z.string().optional().nullable(),
     inventory_variant_id: z.coerce.number().optional().nullable(),
     source_batch: z.any().optional().nullable(),
+    recipient_name: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
 })
 
 export const batchBorrowSchema = z.object({
@@ -35,6 +37,8 @@ export const batchBorrowSchema = z.object({
     released_by: z.string().optional(),
     expected_return_date: z.string().optional().nullable(),
     pickup_scheduled_at: z.string().optional().nullable(),
+    recipient_name: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
     items: z.array(z.object({
         item_id: z.number().min(1),
         quantity: z.number().min(1),
