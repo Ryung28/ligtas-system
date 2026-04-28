@@ -89,6 +89,30 @@ class LigtasQrPayload with _$LigtasQrPayload {
           );
         }
 
+        final type = (data['type'] ?? '').toString().toLowerCase();
+        if (type == 'item') {
+          final itemId = int.tryParse(data['id']?.toString() ?? '') ?? 0;
+          if (itemId > 0) {
+            return LigtasQrPayload.equipment(
+              protocol: (data['protocol'] ?? 'resqtrack').toString(),
+              version: (data['version'] ?? '2.0').toString(),
+              action: (data['action'] ?? 'view').toString(),
+              itemId: itemId,
+              itemName: (data['name'] ?? data['itemName'] ?? 'Unknown Item').toString(),
+            );
+          }
+        }
+        if (type == 'station') {
+          final stationCode = data['code']?.toString();
+          final stationId = data['id']?.toString();
+          if ((stationCode ?? '').isNotEmpty || (stationId ?? '').isNotEmpty) {
+            return LigtasQrPayload.station(
+              stationId: stationCode ?? stationId ?? '',
+              locationName: data['name']?.toString() ?? 'Station Hub',
+            );
+          }
+        }
+
         if (data['protocol'] == 'resqtrack' || data['protocol'] == 'ligtas') {
           final processedData = Map<String, dynamic>.from(data);
           processedData['itemId'] = int.tryParse(data['itemId']?.toString() ?? '') ?? 0;

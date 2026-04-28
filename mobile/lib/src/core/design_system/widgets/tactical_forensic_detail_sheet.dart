@@ -78,7 +78,9 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
     double heroHeight = 240,
   }) async {
     // 1. Suppress global navigation dock
-    ref.read(isDockSuppressedProvider.notifier).state = true;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .suppress(DockSuppressionReason.detailSheet);
 
     final result = await showModalBottomSheet<T>(
       context: context,
@@ -108,7 +110,9 @@ class TacticalForensicDetailSheet extends ConsumerWidget {
     );
 
     // 2. Restore navigation dock awareness
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .release(DockSuppressionReason.detailSheet);
     
     return result;
   }

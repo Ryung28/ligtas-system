@@ -170,7 +170,7 @@ class _ChatSyncStreamProviderElement
   String get roomId => (origin as ChatSyncStreamProvider).roomId;
 }
 
-String _$chatSessionHash() => r'50ce93205e3a9504df02adb59e2dbbe8c45175b8';
+String _$chatSessionHash() => r'dbb722f9805f57464a31cdd322b6605b03728732';
 
 abstract class _$ChatSession
     extends BuildlessAutoDisposeNotifier<List<ChatMessage>> {

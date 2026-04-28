@@ -16,16 +16,22 @@ class AnomalyActionSheetV2 extends ConsumerWidget {
   const AnomalyActionSheetV2({super.key, required this.anomaly});
 
   static Future<T?> show<T>(BuildContext context, WidgetRef ref, ResourceAnomaly anomaly) async {
-    ref.read(isDockSuppressedProvider.notifier).state = true;
-    final result = await showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AnomalyActionSheetV2(anomaly: anomaly),
-    );
-    ref.read(isDockSuppressedProvider.notifier).state = false;
-    return result;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .suppress(DockSuppressionReason.modalSheet);
+    try {
+      return await showModalBottomSheet<T>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => AnomalyActionSheetV2(anomaly: anomaly),
+      );
+    } finally {
+      ref
+          .read(dockSuppressionControllerProvider.notifier)
+          .release(DockSuppressionReason.modalSheet);
+    }
   }
 
   @override

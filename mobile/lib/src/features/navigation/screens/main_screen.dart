@@ -54,23 +54,25 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ProviderSubscription<bool>? _dockSuppressionSub;
   DateTime? _lastBackPressed;
   static const _exitConfirmationDuration = Duration(seconds: 2);
-  
+
   @override
   void initState() {
     super.initState();
     _startHideTimer();
-    _dockSuppressionSub = ref.listenManual<bool>(
-      isDockSuppressedProvider,
-      (previous, next) {
-        // Always wake dock when suppression is released.
-        if (next == false) {
-          _handleActivity(force: true);
-        }
-      },
-    );
-    
+    _dockSuppressionSub = ref.listenManual<bool>(isDockSuppressedProvider, (
+      previous,
+      next,
+    ) {
+      // Always wake dock when suppression is released.
+      if (next == false) {
+        _handleActivity(force: true);
+      }
+    });
+
     // 📡 Navigation Bridge: Listen for tactical notification deep-links
-    _notifSubscription = UserNotificationService.navigationStream.listen((path) {
+    _notifSubscription = UserNotificationService.navigationStream.listen((
+      path,
+    ) {
       if (mounted) {
         debugPrint('🧭 Navigation Bridge: Jumping to $path');
         context.go(path);
@@ -96,7 +98,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   void _handleActivity({bool force = false}) {
-    // Senior Dev Logic: If navigation is suppressed (e.g. detailed view open), 
+    // Senior Dev Logic: If navigation is suppressed (e.g. detailed view open),
     // we ignore activity triggers unless forced (e.g. by suppression exit).
     final isSuppressed = ref.read(isDockSuppressedProvider);
     if (isSuppressed && !force) return;
@@ -110,24 +112,28 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   void _openScanner() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ScannerView(
-          onQrCodeDetected: (qrCode) {
-            Navigator.of(context).pop();
-            _handleScannedCode(qrCode);
-          },
-          overlayText: 'Scan CDRRMO equipment label',
-        ),
+        builder:
+            (context) => ScannerView(
+              onQrCodeDetected: (qrCode) {
+                Navigator.of(context).pop();
+                _handleScannedCode(qrCode);
+                return null;
+              },
+              overlayText: 'QUICK SCAN',
+            ),
       ),
     );
   }
 
   void _handleScannedCode(String qrCode) async {
     final payload = LigtasQrPayload.tryParse(qrCode);
-    
+
     if (payload == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid QR Code. Please scan a ${Branding.appName} label.'),
+          content: Text(
+            'Invalid QR Code. Please scan a ${Branding.appName} label.',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -157,76 +163,82 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final isManager = user?.canEdit ?? false;
     final isDockSuppressed = ref.watch(isDockSuppressedProvider);
     final isKeyboardVisible = viewInsets.bottom > 0;
-    
     final showDock = _isDockVisible && !isKeyboardVisible && !isDockSuppressed;
     final isCommsDrawerOpen = ref.watch(commsDrawerStateProvider);
 
     // 🗺️ TACTICAL MANIFEST: Provision items based on Role (Filled vs Outlined)
-    final List<_NavAction> actions = isManager ? [
-      const _NavAction(
-        label: 'Dashboard', 
-        activeIcon: Icons.grid_view_rounded, 
-        inactiveIcon: Icons.grid_view_outlined, 
-        path: '/manager'
-      ),
-      const _NavAction(
-        label: 'Alerts', 
-        activeIcon: Icons.notifications_active_rounded, 
-        inactiveIcon: Icons.notifications_active_outlined, 
-        path: '/manager/queue'
-      ),
-      const _NavAction(
-        label: 'Shelves', 
-        activeIcon: Icons.inventory_2_rounded, 
-        inactiveIcon: Icons.inventory_2_outlined, 
-        path: '/inventory'
-      ),
-      const _NavAction(
-        label: 'System', 
-        activeIcon: Icons.settings_rounded, 
-        inactiveIcon: Icons.settings_outlined, 
-        path: '/profile'
-      ),
-    ] : [
-      const _NavAction(
-        label: 'Home', 
-        activeIcon: Icons.home_filled, 
-        inactiveIcon: Icons.home_outlined, 
-        path: '/dashboard'
-      ),
-      const _NavAction(
-        label: 'Pending', 
-        activeIcon: Icons.assignment_returned_rounded, 
-        inactiveIcon: Icons.assignment_returned_outlined, 
-        path: '/requests'
-      ),
-      const _NavAction(
-        label: 'Inventory', 
-        activeIcon: Icons.inventory_2_rounded, 
-        inactiveIcon: Icons.inventory_2_outlined, 
-        path: '/inventory'
-      ),
-      const _NavAction(
-        label: 'Settings', 
-        activeIcon: Icons.settings_rounded, 
-        inactiveIcon: Icons.settings_outlined, 
-        path: '/profile'
-      ),
-    ];
+    final List<_NavAction> actions =
+        isManager
+            ? [
+              const _NavAction(
+                label: 'Dashboard',
+                activeIcon: Icons.grid_view_rounded,
+                inactiveIcon: Icons.grid_view_outlined,
+                path: '/manager',
+              ),
+              const _NavAction(
+                label: 'Alerts',
+                activeIcon: Icons.notifications_active_rounded,
+                inactiveIcon: Icons.notifications_active_outlined,
+                path: '/manager/queue',
+              ),
+              const _NavAction(
+                label: 'Shelves',
+                activeIcon: Icons.inventory_2_rounded,
+                inactiveIcon: Icons.inventory_2_outlined,
+                path: '/inventory',
+              ),
+              const _NavAction(
+                label: 'System',
+                activeIcon: Icons.settings_rounded,
+                inactiveIcon: Icons.settings_outlined,
+                path: '/profile',
+              ),
+            ]
+            : [
+              const _NavAction(
+                label: 'Home',
+                activeIcon: Icons.home_filled,
+                inactiveIcon: Icons.home_outlined,
+                path: '/dashboard',
+              ),
+              const _NavAction(
+                label: 'Pending',
+                activeIcon: Icons.assignment_returned_rounded,
+                inactiveIcon: Icons.assignment_returned_outlined,
+                path: '/requests',
+              ),
+              const _NavAction(
+                label: 'Inventory',
+                activeIcon: Icons.inventory_2_rounded,
+                inactiveIcon: Icons.inventory_2_outlined,
+                path: '/inventory',
+              ),
+              const _NavAction(
+                label: 'Settings',
+                activeIcon: Icons.settings_rounded,
+                inactiveIcon: Icons.settings_outlined,
+                path: '/profile',
+              ),
+            ];
 
     // Split for the center Scanner FAB (Functional Parity)
     final leftActions = actions.sublist(0, 2);
     final rightActions = actions.sublist(2, 4);
-    
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        
+
         final now = DateTime.now();
-        if (_lastBackPressed == null || now.difference(_lastBackPressed!) > _exitConfirmationDuration) {
+        if (_lastBackPressed == null ||
+            now.difference(_lastBackPressed!) > _exitConfirmationDuration) {
           _lastBackPressed = now;
-          AppToast.showInfo(context, 'Press back again to exit ${Branding.appName}');
+          AppToast.showInfo(
+            context,
+            'Press back again to exit ${Branding.appName}',
+          );
         } else {
           try {
             await _taskChannel.invokeMethod('minimize');
@@ -237,7 +249,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       },
       child: Scaffold(
         extendBody: true,
-        backgroundColor: const Color(0xFFF5F5F7), 
+        backgroundColor: const Color(0xFFF5F5F7),
         body: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
             _handleActivity();
@@ -254,24 +266,37 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   child: Stack(
                     children: [
                       Positioned.fill(child: widget.child),
-            
+
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutCubic, 
-                        left: 20, 
+                        curve: Curves.easeOutCubic,
+                        left: 20,
                         right: 20,
-                        bottom: showDock ? (padding.bottom > 0 ? padding.bottom : 8.0) : -120,
+                        bottom:
+                            showDock
+                                ? (padding.bottom > 0 ? padding.bottom : 8.0)
+                                : -120,
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 250),
                           opacity: showDock ? 1.0 : 0.0,
-                          child: _buildAdaptiveTacticalDock(leftActions, rightActions),
+                          child: _buildAdaptiveTacticalDock(
+                            leftActions,
+                            rightActions,
+                          ),
                         ),
                       ),
 
                       if (isCommsDrawerOpen)
                         GestureDetector(
-                          onTap: () => ref.read(commsDrawerStateProvider.notifier).close(),
-                          child: Container(color: Colors.black.withOpacity(0.3)).animate().fadeIn(),
+                          onTap:
+                              () =>
+                                  ref
+                                      .read(commsDrawerStateProvider.notifier)
+                                      .close(),
+                          child:
+                              Container(
+                                color: Colors.black.withOpacity(0.3),
+                              ).animate().fadeIn(),
                         ),
 
                       if (!isManager) ...[
@@ -291,9 +316,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   /// 🏗️ THE ADAPTIVE DOCK
   /// A unified glass-morphic pill that maps polymorphic items and anchors the scanner.
-  Widget _buildAdaptiveTacticalDock(List<_NavAction> left, List<_NavAction> right) {
+  Widget _buildAdaptiveTacticalDock(
+    List<_NavAction> left,
+    List<_NavAction> right,
+  ) {
     final sentinel = Theme.of(context).sentinel;
-    
+
     return Container(
       height: 64,
       decoration: BoxDecoration(
@@ -311,7 +339,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             children: [
               ...left.map((action) => _buildTacticalItem(action, left + right)),
               _buildScannerDockAction(),
-              ...right.map((action) => _buildTacticalItem(action, left + right)),
+              ...right.map(
+                (action) => _buildTacticalItem(action, left + right),
+              ),
             ],
           ),
         ),
@@ -323,23 +353,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   /// Icon shift (Filled/Outlined) and color aware.
   Widget _buildTacticalItem(_NavAction action, List<_NavAction> allActions) {
     // 🛡️ TACTICAL SNIPER: Match selection via route-prefix.
-    // To prevent prefix-collisions (e.g. /manager vs /manager/queue), 
+    // To prevent prefix-collisions (e.g. /manager vs /manager/queue),
     // we ensure there isn't a more specific match in the manifest.
     bool checkSelection() {
       if (widget.location == action.path) return true;
-      
+
       // If action path is just '/', only matches exact.
       if (action.path == '/') return widget.location == '/';
-      
+
       final isPrefix = widget.location.startsWith(action.path);
       if (!isPrefix) return false;
 
       // Check if another top-level nav item has a longer prefix match.
       // e.g. if we are at /manager/queue, 'Alerts' matches it better than 'Dashboard' (/manager).
-      final betterMatch = allActions.any((other) => 
-        other != action && 
-        other.path.length > action.path.length && 
-        widget.location.startsWith(other.path)
+      final betterMatch = allActions.any(
+        (other) =>
+            other != action &&
+            other.path.length > action.path.length &&
+            widget.location.startsWith(other.path),
       );
 
       return !betterMatch;
@@ -361,11 +392,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isSelected ? action.activeIcon : action.inactiveIcon,
-              color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant,
-              size: 24,
-            ).animate(target: isSelected ? 1 : 0)
-             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 200.ms, curve: Curves.easeOutBack),
+                  isSelected ? action.activeIcon : action.inactiveIcon,
+                  color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant,
+                  size: 24,
+                )
+                .animate(target: isSelected ? 1 : 0)
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.1, 1.1),
+                  duration: 200.ms,
+                  curve: Curves.easeOutBack,
+                ),
             const Gap(4),
             Text(
               action.label,
@@ -386,35 +423,36 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Widget _buildScannerDockAction() {
     return GestureDetector(
-      onTap: _openScanner,
-      child: Container(
-        width: 62,
-        height: 62,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF0A0E14), 
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+          onTap: _openScanner,
+          child: Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF0A0E14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: AppTheme.primaryBlue.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-            BoxShadow(
-              color: AppTheme.primaryBlue.withOpacity(0.1),
-              blurRadius: 20,
-              spreadRadius: 2,
+            child: const Center(
+              child: Icon(
+                Icons.qr_code_scanner_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
             ),
-          ],
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.qr_code_scanner_rounded,
-            color: Colors.white,
-            size: 32,
           ),
-        ),
-      ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-       .shimmer(duration: 3.seconds, color: Colors.white.withOpacity(0.1)),
-    );
+        )
+        .animate(onPlay: (controller) => controller.repeat(reverse: true))
+        .shimmer(duration: 3.seconds, color: Colors.white.withOpacity(0.1));
   }
 }

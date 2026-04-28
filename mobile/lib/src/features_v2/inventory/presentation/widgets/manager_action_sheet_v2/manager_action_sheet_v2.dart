@@ -43,7 +43,9 @@ class _ManagerActionSheetV2State extends ConsumerState<ManagerActionSheetV2> {
     super.initState();
     Future.microtask(() {
       if (!mounted) return;
-      ref.read(isDockSuppressedProvider.notifier).state = true;
+      ref
+          .read(dockSuppressionControllerProvider.notifier)
+          .suppress(DockSuppressionReason.modalSheet);
       ref.read(managerActionControllerProvider(widget.item).notifier).init();
     });
   }
@@ -62,7 +64,9 @@ class _ManagerActionSheetV2State extends ConsumerState<ManagerActionSheetV2> {
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) {
-          ref.read(isDockSuppressedProvider.notifier).state = false;
+          ref
+              .read(dockSuppressionControllerProvider.notifier)
+              .release(DockSuppressionReason.modalSheet);
         }
       },
       child: GestureDetector(

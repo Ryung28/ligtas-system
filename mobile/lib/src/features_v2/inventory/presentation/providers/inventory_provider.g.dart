@@ -353,7 +353,7 @@ class _InventoryItemStreamProviderElement
   int get id => (origin as InventoryItemStreamProvider).id;
 }
 
-String _$filteredInventoryHash() => r'863fb05886e5d3ee0e43e84f323a299b756d572b';
+String _$filteredInventoryHash() => r'2669e0dff0d79e7c92ae0271fdda566e0d1e67f5';
 
 /// See also [filteredInventory].
 @ProviderFor(filteredInventory)
@@ -547,7 +547,7 @@ class _CategoryIconProviderElement extends AutoDisposeProviderElement<IconData>
   String get category => (origin as CategoryIconProvider).category;
 }
 
-String _$inventoryNotifierHash() => r'5165bf28f2483d57551778dd36e20304ec6829dd';
+String _$inventoryNotifierHash() => r'28b18fc4f98bba0c5fb7471bfd5f69204916d593';
 
 /// The state of our Inventory List (Reactive & Streams)
 /// 🚀 THE GOLD STANDARD: Paginated Inventory Notifier
@@ -586,7 +586,7 @@ final inventorySearchQueryProvider =
 );
 
 typedef _$InventorySearchQuery = AutoDisposeNotifier<String>;
-String _$selectedCategoryHash() => r'e62a93d3a7a9d6c5041bb9cab7d2c288bdfd020a';
+String _$selectedCategoryHash() => r'd3d871d4226f3e26b6b56d0ad698b21973903443';
 
 /// See also [SelectedCategory].
 @ProviderFor(SelectedCategory)

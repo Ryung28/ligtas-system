@@ -1,5 +1,6 @@
 // ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:mobile/src/core/utils/json_converters.dart';
 
 part 'loan_item.freezed.dart';
 part 'loan_item.g.dart';
@@ -29,9 +30,9 @@ class LoanItem with _$LoanItem {
     @Default('') String borrowerEmail,
     required String purpose,
     required int quantityBorrowed,
-    required DateTime borrowDate,
-    required DateTime expectedReturnDate,
-    DateTime? actualReturnDate,
+    @DateTimeUtcConverter() required DateTime borrowDate,
+    @DateTimeUtcConverter() required DateTime expectedReturnDate,
+    @DateTimeNullableUtcConverter() DateTime? actualReturnDate,
     @Default(LoanStatus.active) LoanStatus status,
     String? notes,
     String? returnNotes,
@@ -40,13 +41,13 @@ class LoanItem with _$LoanItem {
     
     // Audit & Accountability fields (Checklist 2.0)
     @JsonKey(name: 'approved_by') String? approvedBy,
-    @JsonKey(name: 'approved_at') DateTime? approvedAt,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'approved_at') DateTime? approvedAt,
     @JsonKey(name: 'handed_by') String? handedBy,
-    @JsonKey(name: 'handed_at') DateTime? handedAt,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'handed_at') DateTime? handedAt,
     @JsonKey(name: 'received_by_name') String? receivedByName,
     @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
     @JsonKey(name: 'return_condition') String? returnCondition,
-    @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
     
     @JsonKey(name: 'platform_origin') String? platformOrigin,
     @Default(0) int daysOverdue,

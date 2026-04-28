@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
@@ -32,7 +31,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-
   // Premium Gold Standard Curve
   static const _premiumCurve = Cubic(0.05, 0.7, 0.1, 1.0);
 
@@ -58,19 +56,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final userName = ref.watch(dashboardUserNameProvider);
     final controller = ref.watch(dashboardControllerProvider);
     final loansAsync = ref.watch(sortedDashboardActivityProvider);
-    
+
     // 🛡️ GOLD STANDARD: Animation Gating
     final hasEntered = ref.watch(dashboardEntryProvider);
     final duration = hasEntered ? 0.ms : 600.ms;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // ── Layer 1: Ambient Background ──
           const DashboardBackground(),
-
-          // ── Layer 2: Main Content (Sliver Based) ──
           SafeArea(
             bottom: false,
             child: RefreshIndicator(
@@ -80,7 +74,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ref.invalidate(freshDashboardLoansProvider);
                 ref.invalidate(myBorrowedItemsProvider);
                 ref.invalidate(myLoansNotifierProvider);
-                
+
                 if (mounted) {
                   AppToast.showSuccess(context, 'Dashboard synced with server');
                 }
@@ -88,105 +82,122 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               color: AppTheme.primaryBlue,
               child: Listener(
                 onPointerDown: (_) {
-                  // 🏁 KINETIC PRE-LOAD: Signal display governor on touch
                   HapticFeedback.selectionClick();
                 },
                 child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   slivers: [
-                  // 0. Notification Sync Status
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-                    sliver: SliverToBoxAdapter(
-                      child: const SyncErrorBanner()
-                          .animate()
-                          .fadeIn(duration: duration, curve: _premiumCurve)
-                          .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
-                    ),
-                  ),
-
-                  // 1. Header Section
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                    sliver: SliverToBoxAdapter(
-                      child: DashboardHeader(userName: userName)
-                          .animate()
-                          .fadeIn(duration: duration, curve: _premiumCurve)
-                          .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
-                    ),
-                  ),
-
-                  if (missingProfileFields.isNotEmpty)
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                       sliver: SliverToBoxAdapter(
-                        child: _ProfileIncompleteBanner(missingFields: missingProfileFields),
+                        child: const SyncErrorBanner()
+                            .animate()
+                            .fadeIn(duration: duration, curve: _premiumCurve)
+                            .slideY(
+                              begin: 0.2,
+                              end: 0,
+                              duration: duration,
+                              curve: _premiumCurve,
+                            ),
                       ),
                     ),
-
-                  // 2. Scan Hero
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: 140,
-                        child: BentoScanTile(
-                          onTap: () => controller.openScanner(context),
-                          animationDelay: hasEntered ? 0 : 200, // Staggered load balance
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                      sliver: SliverToBoxAdapter(
+                        child: DashboardHeader(userName: userName),
+                      ),
+                    ),
+                    if (missingProfileFields.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                        sliver: SliverToBoxAdapter(
+                          child: _ProfileIncompleteBanner(
+                            missingFields: missingProfileFields,
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 140,
+                          child: BentoScanTile(
+                            onTap: () => controller.openScanner(context),
+                            animationDelay: hasEntered ? 0 : 200,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                  // 3. Equipment Ribbon (Categories)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    sliver: SliverToBoxAdapter(
-                      child: const EquipmentRibbon()
-                          .animate(delay: hasEntered ? 0.ms : 100.ms)
-                          .fadeIn(duration: duration, curve: _premiumCurve)
-                          .slideX(begin: 0.1, end: 0, duration: duration, curve: _premiumCurve),
-                    ),
-                  ),
-
-                  // 4. Mission Intelligence (Bento Stat Grid)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverToBoxAdapter(
-                      child: const SystemTelemetryGrid()
-                          .animate(delay: hasEntered ? 0.ms : 200.ms)
-                          .fadeIn(duration: duration, curve: _premiumCurve)
-                          .slideY(begin: 0.2, end: 0, duration: duration, curve: _premiumCurve),
-                    ),
-                  ),
-
-                   // 6. Recent Activity (Virtualized Sliver)
-                  ref.watch(freshDashboardLoansProvider).when(
-                    data: (_) => SliverRecentActivitySection(loans: loansAsync), // Use the pre-sorted list
-                    loading: () => const SliverRecentActivitySection(isLoading: true),
-                    error: (_, __) => SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
                       sliver: SliverToBoxAdapter(
-                        child: LigtasErrorState(
-                          title: 'Activity Error',
-                          message: 'Unable to stream recent activity logs.',
-                          onRetry: () => ref.invalidate(sortedDashboardActivityProvider),
-                        ),
+                        child: const EquipmentRibbon()
+                            .animate(delay: hasEntered ? 0.ms : 100.ms)
+                            .fadeIn(duration: duration, curve: _premiumCurve)
+                            .slideX(
+                              begin: 0.1,
+                              end: 0,
+                              duration: duration,
+                              curve: _premiumCurve,
+                            ),
                       ),
                     ),
-                  ),
-
-                  const SliverGap(40),
-                ],
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverToBoxAdapter(
+                        child: const SystemTelemetryGrid()
+                            .animate(delay: hasEntered ? 0.ms : 200.ms)
+                            .fadeIn(duration: duration, curve: _premiumCurve)
+                            .slideY(
+                              begin: 0.2,
+                              end: 0,
+                              duration: duration,
+                              curve: _premiumCurve,
+                            ),
+                      ),
+                    ),
+                    ref
+                        .watch(freshDashboardLoansProvider)
+                        .when(
+                          data:
+                              (_) => SliverRecentActivitySection(
+                                loans: loansAsync,
+                              ),
+                          loading:
+                              () => const SliverRecentActivitySection(
+                                isLoading: true,
+                              ),
+                          error:
+                              (_, __) => SliverPadding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 24,
+                                ),
+                                sliver: SliverToBoxAdapter(
+                                  child: LigtasErrorState(
+                                    title: 'Activity Error',
+                                    message:
+                                        'Unable to stream recent activity logs.',
+                                    onRetry:
+                                        () => ref.invalidate(
+                                          sortedDashboardActivityProvider,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                        ),
+                    const SliverGap(40),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
     );
   }
-
 }
 
 class _ProfileIncompleteBanner extends StatelessWidget {
@@ -207,7 +218,11 @@ class _ProfileIncompleteBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFB45309)),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: Color(0xFFB45309),
+          ),
           const Gap(8),
           Expanded(
             child: Column(

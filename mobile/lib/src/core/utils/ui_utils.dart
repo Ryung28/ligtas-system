@@ -18,7 +18,9 @@ extension TacticalUIExtension on BuildContext {
     bool useRootNavigator = false,
   }) async {
     // 1. 🛡️ ACTIVATE SHIELD: Suppress the dock
-    ref.read(isDockSuppressedProvider.notifier).state = true;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .suppress(DockSuppressionReason.modalSheet);
 
     try {
       // 2. 🎭 EXECUTE MODAL
@@ -33,7 +35,9 @@ extension TacticalUIExtension on BuildContext {
       // 3. 🔓 RELEASE SHIELD: Restore the dock regardless of how the sheet closed
       // Senior Dev Safety: Check if context is still mounted to avoid "deactivated widget" error
       if (ref.context.mounted) {
-        ref.read(isDockSuppressedProvider.notifier).state = false;
+        ref
+            .read(dockSuppressionControllerProvider.notifier)
+            .release(DockSuppressionReason.modalSheet);
       }
     }
   }

@@ -66,6 +66,17 @@ class UserNotificationService {
   static const String _pushNotificationsKey = 'push_notifications_enabled';
   bool _pushNotificationsEnabled = true;
 
+  /// Mirrors `get_user_inbox` / RLS: manager lane vs user lane for broadcast rows.
+  static const Set<String> _managerLaneRoles = {
+    'admin',
+    'editor',
+    'manager',
+    'inventory_manager',
+    'inventory manager',
+  };
+
+  String? _cachedAudienceLaneUserId;
+  String? _cachedAudienceLane;
 
   // ============================================================
   // 🏗️ SINGLE SOURCE OF TRUTH: Channel Constants
@@ -74,6 +85,38 @@ class UserNotificationService {
   static const String kEmergencyChannelId = 'emergency_coordination_v7';
 
   SupabaseClient get _supabase => Supabase.instance.client;
+
+  Future<String> _audienceLaneForCurrentUser() async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return 'user';
+    if (_cachedAudienceLaneUserId == uid && _cachedAudienceLane != null) {
+      return _cachedAudienceLane!;
+    }
+    try {
+      final row =
+          await _supabase.from('user_profiles').select('role').eq('id', uid).maybeSingle();
+      final role = (row?['role'] as String?)?.toLowerCase().trim() ?? 'viewer';
+      final lane = _managerLaneRoles.contains(role) ? 'manager' : 'user';
+      _cachedAudienceLaneUserId = uid;
+      _cachedAudienceLane = lane;
+      return lane;
+    } catch (_) {
+      return 'user';
+    }
+  }
+
+  /// Broadcast rows (`user_id` null): only play if metadata audience matches our lane.
+  bool _broadcastVisibleToMyLane(Map<String, dynamic> latest, String myLane) {
+    var aud = 'manager';
+    final meta = latest['metadata'];
+    if (meta is Map) {
+      final raw = Map<String, dynamic>.from(meta)['audience_role']?.toString().trim();
+      if (raw != null && raw.isNotEmpty) {
+        aud = raw.toLowerCase();
+      }
+    }
+    return aud == 'all' || aud == myLane;
+  }
 
   // 📡 Emergency Coordination: v6 High-Importance Tactical Channel
   static const AndroidNotificationChannel _emergencyChannel = AndroidNotificationChannel(
@@ -167,31 +210,46 @@ class UserNotificationService {
           .stream(primaryKey: ['id'])
           .order('created_at', ascending: false)
           .limit(1)
-          .listen((data) {
-        if (!_pushNotificationsEnabled) return;
-        if (data.isEmpty) return;
-        final latest = data.first;
-        final currentUserId = _supabase.auth.currentUser?.id;
-        final targetUserId = latest['user_id']?.toString();
-        if (currentUserId == null) return;
-        if (targetUserId != null && targetUserId != currentUserId) return;
-        final createdAt = DateTime.parse(latest['created_at']);
-        
-        // 🛡️ FRESHNESS GUARD: Only play for events that happened in the last 10 seconds
-        if (DateTime.now().difference(createdAt).inSeconds > 10) return;
+          .listen((data) async {
+        try {
+          if (!_pushNotificationsEnabled) return;
+          if (data.isEmpty) return;
+          final latest = Map<String, dynamic>.from(data.first);
+          final currentUserId = _supabase.auth.currentUser?.id;
+          final targetUserId = latest['user_id']?.toString();
+          if (currentUserId == null) return;
+          if (targetUserId != null && targetUserId != currentUserId) return;
 
-        // 🛡️ ACOUSTIC DEBOUNCE: Prevent "Machine Gun" audio during bulk sync
-        if (DateTime.now().difference(_lastPlayTime).inSeconds < 3) return;
-        _lastPlayTime = DateTime.now();
+          if (targetUserId == null) {
+            final lane = await _audienceLaneForCurrentUser();
+            if (!_broadcastVisibleToMyLane(latest, lane)) return;
+          }
 
-        final type = latest['type'] as String;
-        final player = AudioPlayer();
+          final createdAt = DateTime.parse(latest['created_at'] as String);
 
-        // 🏗️ TACTICAL ACOUSTIC MAPPING
-        if (['borrow_request', 'security_trigger', 'stock_out'].contains(type)) {
-          player.play(AssetSource('sounds/critical_alarm.mp3'));
-        } else {
-          player.play(AssetSource('sounds/notification.mp3'));
+          // 🛡️ FRESHNESS GUARD: Only play for events that happened in the last 10 seconds
+          if (DateTime.now().difference(createdAt).inSeconds > 10) return;
+
+          // 🛡️ ACOUSTIC DEBOUNCE: Prevent "Machine Gun" audio during bulk sync
+          if (DateTime.now().difference(_lastPlayTime).inSeconds < 3) return;
+          _lastPlayTime = DateTime.now();
+
+          final type = latest['type'] as String;
+          final player = AudioPlayer();
+
+          // 🏗️ TACTICAL ACOUSTIC MAPPING
+          if ([
+            'borrow_request',
+            'borrow_request_submitted',
+            'security_trigger',
+            'stock_out',
+          ].contains(type)) {
+            player.play(AssetSource('sounds/critical_alarm.mp3'));
+          } else {
+            player.play(AssetSource('sounds/notification.mp3'));
+          }
+        } catch (e) {
+          debugPrint('📡 [ENTERPRISE-DISPATCHER]: Realtime pulse skipped: $e');
         }
       });
       
@@ -233,6 +291,8 @@ class UserNotificationService {
 
   // 🛡️ TACTICAL SYNC: Called by global auth listener
   Future<void> handleAuthStateChange(String? userId) async {
+    _cachedAudienceLane = null;
+    _cachedAudienceLaneUserId = null;
     if (userId != null) {
       debugPrint('[Notification-Facade] Auth change detected for $userId. Initiating sync...');
       _pushNotificationsEnabled = await _readPushNotificationsEnabled();

@@ -125,7 +125,7 @@ class SupabaseLoanRepository implements LoanRepository {
 
     await _client.from('borrow_logs').update({
       'status': 'returned',
-      'actual_return_date': DateTime.now().toIso8601String(),
+      'actual_return_date': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', loanId).eq('borrowed_by', userId);
   }
 
@@ -162,7 +162,7 @@ class SupabaseLoanRepository implements LoanRepository {
     DateTime borrowDate = borrowDateStr != null ? DateTime.parse(borrowDateStr).toLocal() : DateTime.now();
     
     final expectedDateStr = data['expected_return_date'] as String? ?? 
-                          DateTime.now().add(const Duration(days: 7)).toIso8601String();
+                          DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String();
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
     final now = DateTime.now();
 

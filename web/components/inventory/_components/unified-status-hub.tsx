@@ -5,6 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { PackagingPill } from './packaging-pill'
 import { Badge } from '@/components/ui/badge'
+import { getExpiryInfo } from '@/lib/expiry-utils'
+import { pluralizeContainerType } from '@/lib/container-type'
 
 interface UnifiedStatusHubProps {
     item: any
@@ -23,11 +25,44 @@ interface UnifiedStatusHubProps {
 export function UnifiedStatusHub({ item, expiry, stockStatus, className }: UnifiedStatusHubProps) {
     const packaging = (item as any).packaging_json
     const hasPackaging = packaging?.enabled && packaging.batches?.length > 0
-    const hasExpiry = expiry?.status && ['expired', 'critical', 'warning'].includes(expiry.status)
+    const expiryGroups = (packaging?.expiry_groups || []) as Array<{ id: string; expiry_date: string; batch_ids: string[] }>
+    const packagingRows = hasPackaging
+        ? (packaging.batches || []).map((batch: any) => {
+            const group = expiryGroups.find((g) => (g.batch_ids || []).includes(batch.id))
+            const batchExpiry = group?.expiry_date || batch.expiry_date || null
+            const batchExpiryInfo = getExpiryInfo(batchExpiry, (item as any).expiry_alert_days)
+            return {
+                id: batch.id,
+                label: batch.label,
+                units: Number(batch.units) || 0,
+                expiryDate: batchExpiry,
+                expiryInfo: batchExpiryInfo,
+            }
+        })
+        : []
+    const nearestPackagingExpiry = packagingRows
+        .map((row) => row.expiryDate)
+        .filter(Boolean)
+        .sort()[0]
+    const packagingExpiryForAlert = nearestPackagingExpiry ? getExpiryInfo(nearestPackagingExpiry, (item as any).expiry_alert_days) : null
+    const hasPackagingExpiryAlert = packagingExpiryForAlert && ['expired', 'critical', 'warning'].includes(packagingExpiryForAlert.status)
+    const effectiveExpiry = hasPackagingExpiryAlert ? packagingExpiryForAlert : expiry
+    const expiredCartonsCount = packagingRows.filter((row) => row.expiryInfo.status === 'expired').length
+    const containerTypePlural = pluralizeContainerType(packaging?.containerType, { fallback: 'Box' })
+    const getMinigridExpiryTone = (info: { status: string; daysRemaining: number | null }) => {
+        if (info.status === 'expired') {
+            return 'text-rose-600'
+        }
+        if (info.daysRemaining !== null && info.daysRemaining <= 7) {
+            return 'text-amber-600'
+        }
+        return 'text-emerald-600'
+    }
+    const hasExpiry = effectiveExpiry?.status && ['expired', 'critical', 'warning'].includes(effectiveExpiry.status)
     const hasStockAlert = stockStatus?.isProblematic
 
     const activeIndicators = [
-        hasExpiry && { type: 'expiry', data: expiry },
+        hasExpiry && { type: 'expiry', data: effectiveExpiry },
         hasStockAlert && { type: 'stock', data: stockStatus },
         hasPackaging && { type: 'logistics', data: packaging }
     ].filter(Boolean) as any[]
@@ -69,7 +104,7 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
 
     // SCENARIO 2: MULTIPLE ITEMS (Collapsed Hub)
     const topSeverityStatus = hasExpiry 
-        ? (expiry?.status === 'expired' ? 'error' : 'warning')
+        ? (effectiveExpiry?.status === 'expired' ? 'error' : 'warning')
         : (hasStockAlert ? 'warning' : 'info')
 
     return (
@@ -134,21 +169,26 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                             {hasExpiry && (
                                 <div className={cn(
                                     "flex items-center justify-between p-2 rounded-xl border",
-                                    expiry?.status === 'expired' ? "bg-rose-50/50 border-rose-100" : "bg-amber-50/50 border-amber-100"
+                                    effectiveExpiry?.status === 'expired' ? "bg-rose-50/50 border-rose-100" : "bg-amber-50/50 border-amber-100"
                                 )}>
                                     <div className="flex items-center gap-2.5">
                                         <div className={cn(
                                             "h-7 w-7 rounded-lg flex items-center justify-center border shadow-sm",
-                                            expiry?.status === 'expired' ? "bg-white border-rose-200" : "bg-white border-amber-200"
+                                            effectiveExpiry?.status === 'expired' ? "bg-white border-rose-200" : "bg-white border-amber-200"
                                         )}>
-                                            <Clock className={cn("h-3.5 w-3.5", expiry?.status === 'expired' ? "text-rose-500" : "text-amber-500")} />
+                                            <Clock className={cn("h-3.5 w-3.5", effectiveExpiry?.status === 'expired' ? "text-rose-500" : "text-amber-500")} />
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-gray-950 uppercase tracking-tight leading-none">{expiry?.label}</span>
-                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">Expiring Soon</span>
+                                            <span className="text-[11px] font-black text-gray-950 uppercase tracking-tight leading-none">{effectiveExpiry?.label}</span>
+                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5">
+                                                {expiry?.status === 'expired' ? 'Already Expired' : 'Expiring Soon'}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                                    <div className={cn(
+                                        "h-2 w-2 rounded-full animate-pulse",
+                                        expiry?.status === 'expired' ? "bg-rose-500" : "bg-amber-500"
+                                    )} />
                                 </div>
                             )}
 
@@ -179,13 +219,13 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                                             <Boxes className="h-3 w-3 text-blue-600" />
                                         </div>
                                         <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">
-                                            {packaging.batches.length} {packaging.containerType || 'Box'}s Total
+                                            {packaging.batches.length} {containerTypePlural} Total
                                         </span>
                                     </div>
                                     <span className="text-[9px] font-black text-blue-600/60 uppercase tracking-widest italic">Breakdown</span>
                                 </div>
                                 <div className="p-1.5 space-y-1">
-                                    {packaging.batches.map((batch: any) => (
+                                    {packagingRows.map((batch: any) => (
                                         <div 
                                             key={batch.id} 
                                             className="flex justify-between items-center px-2 py-1.5 rounded-lg bg-white/40 border border-transparent hover:border-slate-200 hover:bg-white transition-all group"
@@ -196,21 +236,54 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                                                     {batch.label}
                                                 </span>
                                             </div>
-                                            <div className="flex items-baseline gap-1">
+                                            <div className="flex items-center gap-2.5">
                                                 <span className={cn(
                                                     "text-[12px] font-black tabular-nums",
                                                     batch.units > 0 ? "text-slate-900" : "text-slate-400"
                                                 )}>
                                                     {batch.units}
                                                 </span>
-                                                {batch.max_units && (
-                                                    <span className="text-[9px] font-bold text-slate-400">/ {batch.max_units}</span>
-                                                )}
                                                 <span className="text-[8px] font-black text-slate-300 uppercase ml-0.5 tracking-tight">Qty</span>
+                                                {batch.expiryDate && (
+                                                    <span className={cn(
+                                                        "text-[8px] font-black uppercase tracking-tight",
+                                                        getMinigridExpiryTone(batch.expiryInfo)
+                                                    )}>
+                                                        EXP: {new Date(batch.expiryDate).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }).toUpperCase()} ({batch.expiryInfo.label})
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+                                <div className="px-2 pb-1">
+                                    <p className="text-[9px] font-black uppercase tracking-tight text-slate-500 flex items-center gap-3">
+                                        <span className="inline-flex items-center gap-1">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                            Expired
+                                        </span>
+                                        <span className="inline-flex items-center gap-1">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                            ≤7d
+                                        </span>
+                                        <span className="inline-flex items-center gap-1">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                            Good
+                                        </span>
+                                    </p>
+                                </div>
+                                {(nearestPackagingExpiry || packagingRows.length > 0) && (
+                                    <div className="px-2 py-2 border-t border-white/70 space-y-1">
+                                        {nearestPackagingExpiry && (
+                                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-tight">
+                                                Nearest Expiry: {new Date(nearestPackagingExpiry).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }).toUpperCase()}
+                                            </p>
+                                        )}
+                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-tight">
+                                            Expired Cartons: {expiredCartonsCount} / {packagingRows.length}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

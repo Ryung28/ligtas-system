@@ -25,7 +25,9 @@ class LoanDetailsSheet extends ConsumerWidget {
     required LoanItem loan,
     bool readOnly = true,
   }) async {
-    ref.read(isDockSuppressedProvider.notifier).state = true;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .suppress(DockSuppressionReason.detailSheet);
     
     final result = await showModalBottomSheet<T>(
       context: context,
@@ -35,7 +37,9 @@ class LoanDetailsSheet extends ConsumerWidget {
       builder: (context) => LoanDetailsSheet(loan: loan, readOnly: readOnly),
     );
 
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .release(DockSuppressionReason.detailSheet);
     return result;
   }
 

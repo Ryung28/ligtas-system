@@ -160,29 +160,6 @@ class ActionSheetHeader extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (itemCode != null && itemCode!.isNotEmpty) ...[
-                const Gap(4),
-                // Code/SKU — Lexend badge style
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.neutralGray900.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    itemCode!.toUpperCase(),
-                    style: GoogleFonts.lexend(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.neutralGray600,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),

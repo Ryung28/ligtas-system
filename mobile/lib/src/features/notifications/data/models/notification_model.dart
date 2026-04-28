@@ -36,6 +36,7 @@ class NotificationItem with _$NotificationItem {
       case 'chat_message':
         return '💬';
       case 'borrow_request':
+      case 'borrow_request_submitted':
         return '📋';
       case 'item_returned':
         return '📥';
@@ -68,6 +69,7 @@ class NotificationItem with _$NotificationItem {
         return '#EF4444'; // Red
       case 'stock_low':
       case 'borrow_request':
+      case 'borrow_request_submitted':
       case 'item_returned':
         return '#F59E0B'; // Amber
       case 'borrow_approved':
@@ -96,6 +98,7 @@ class NotificationItem with _$NotificationItem {
       case 'chat_message':
         return 'OPEN CHAT';
       case 'borrow_request':
+      case 'borrow_request_submitted':
       case 'item_returned':
         return 'MANAGE LOG';
       case 'system_alert':
@@ -107,7 +110,10 @@ class NotificationItem with _$NotificationItem {
 
   /// Gets the appropriate action target
   String? get actionTarget {
-    if (referenceId == null && !['system_alert'].contains(type)) return null;
+    const typesWithoutReference = {'system_alert', 'borrow_request_submitted'};
+    if (referenceId == null && !typesWithoutReference.contains(type)) {
+      return null;
+    }
 
     switch (type) {
       case 'stock_low':
@@ -117,6 +123,12 @@ class NotificationItem with _$NotificationItem {
         return '/manager';
       case 'chat_message':
         return referenceId != null ? '/chat/$referenceId' : null;
+      case 'borrow_request_submitted':
+        final bid = metadata['borrow_id']?.toString().trim();
+        if (bid != null && bid.isNotEmpty) {
+          return '/requests?loanId=${Uri.encodeComponent(bid)}';
+        }
+        return '/requests';
       case 'borrow_request':
       case 'item_returned':
       case 'item_overdue':

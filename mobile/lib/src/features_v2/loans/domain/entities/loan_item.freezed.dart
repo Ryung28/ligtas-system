@@ -33,8 +33,11 @@ mixin _$LoanItem {
   String get borrowerEmail => throw _privateConstructorUsedError;
   String get purpose => throw _privateConstructorUsedError;
   int get quantityBorrowed => throw _privateConstructorUsedError;
+  @DateTimeUtcConverter()
   DateTime get borrowDate => throw _privateConstructorUsedError;
+  @DateTimeUtcConverter()
   DateTime get expectedReturnDate => throw _privateConstructorUsedError;
+  @DateTimeNullableUtcConverter()
   DateTime? get actualReturnDate => throw _privateConstructorUsedError;
   LoanStatus get status => throw _privateConstructorUsedError;
   String? get notes => throw _privateConstructorUsedError;
@@ -44,10 +47,12 @@ mixin _$LoanItem {
       throw _privateConstructorUsedError; // Audit & Accountability fields (Checklist 2.0)
   @JsonKey(name: 'approved_by')
   String? get approvedBy => throw _privateConstructorUsedError;
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'approved_at')
   DateTime? get approvedAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'handed_by')
   String? get handedBy => throw _privateConstructorUsedError;
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'handed_at')
   DateTime? get handedAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'received_by_name')
@@ -56,6 +61,7 @@ mixin _$LoanItem {
   String? get receivedByUserId => throw _privateConstructorUsedError;
   @JsonKey(name: 'return_condition')
   String? get returnCondition => throw _privateConstructorUsedError;
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'pickup_scheduled_at')
   DateTime? get pickupScheduledAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'platform_origin')
@@ -88,22 +94,28 @@ abstract class $LoanItemCopyWith<$Res> {
       String borrowerEmail,
       String purpose,
       int quantityBorrowed,
-      DateTime borrowDate,
-      DateTime expectedReturnDate,
-      DateTime? actualReturnDate,
+      @DateTimeUtcConverter() DateTime borrowDate,
+      @DateTimeUtcConverter() DateTime expectedReturnDate,
+      @DateTimeNullableUtcConverter() DateTime? actualReturnDate,
       LoanStatus status,
       String? notes,
       String? returnNotes,
       String borrowedBy,
       String? returnedBy,
       @JsonKey(name: 'approved_by') String? approvedBy,
-      @JsonKey(name: 'approved_at') DateTime? approvedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'approved_at')
+      DateTime? approvedAt,
       @JsonKey(name: 'handed_by') String? handedBy,
-      @JsonKey(name: 'handed_at') DateTime? handedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'handed_at')
+      DateTime? handedAt,
       @JsonKey(name: 'received_by_name') String? receivedByName,
       @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
       @JsonKey(name: 'return_condition') String? returnCondition,
-      @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'pickup_scheduled_at')
+      DateTime? pickupScheduledAt,
       @JsonKey(name: 'platform_origin') String? platformOrigin,
       int daysOverdue,
       int daysBorrowed,
@@ -310,22 +322,28 @@ abstract class _$$LoanItemImplCopyWith<$Res>
       String borrowerEmail,
       String purpose,
       int quantityBorrowed,
-      DateTime borrowDate,
-      DateTime expectedReturnDate,
-      DateTime? actualReturnDate,
+      @DateTimeUtcConverter() DateTime borrowDate,
+      @DateTimeUtcConverter() DateTime expectedReturnDate,
+      @DateTimeNullableUtcConverter() DateTime? actualReturnDate,
       LoanStatus status,
       String? notes,
       String? returnNotes,
       String borrowedBy,
       String? returnedBy,
       @JsonKey(name: 'approved_by') String? approvedBy,
-      @JsonKey(name: 'approved_at') DateTime? approvedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'approved_at')
+      DateTime? approvedAt,
       @JsonKey(name: 'handed_by') String? handedBy,
-      @JsonKey(name: 'handed_at') DateTime? handedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'handed_at')
+      DateTime? handedAt,
       @JsonKey(name: 'received_by_name') String? receivedByName,
       @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
       @JsonKey(name: 'return_condition') String? returnCondition,
-      @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'pickup_scheduled_at')
+      DateTime? pickupScheduledAt,
       @JsonKey(name: 'platform_origin') String? platformOrigin,
       int daysOverdue,
       int daysBorrowed,
@@ -525,22 +543,26 @@ class _$LoanItemImpl extends _LoanItem {
       this.borrowerEmail = '',
       required this.purpose,
       required this.quantityBorrowed,
-      required this.borrowDate,
-      required this.expectedReturnDate,
-      this.actualReturnDate,
+      @DateTimeUtcConverter() required this.borrowDate,
+      @DateTimeUtcConverter() required this.expectedReturnDate,
+      @DateTimeNullableUtcConverter() this.actualReturnDate,
       this.status = LoanStatus.active,
       this.notes,
       this.returnNotes,
       required this.borrowedBy,
       this.returnedBy,
       @JsonKey(name: 'approved_by') this.approvedBy,
-      @JsonKey(name: 'approved_at') this.approvedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'approved_at')
+      this.approvedAt,
       @JsonKey(name: 'handed_by') this.handedBy,
-      @JsonKey(name: 'handed_at') this.handedAt,
+      @DateTimeNullableUtcConverter() @JsonKey(name: 'handed_at') this.handedAt,
       @JsonKey(name: 'received_by_name') this.receivedByName,
       @JsonKey(name: 'received_by_user_id') this.receivedByUserId,
       @JsonKey(name: 'return_condition') this.returnCondition,
-      @JsonKey(name: 'pickup_scheduled_at') this.pickupScheduledAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'pickup_scheduled_at')
+      this.pickupScheduledAt,
       @JsonKey(name: 'platform_origin') this.platformOrigin,
       this.daysOverdue = 0,
       this.daysBorrowed = 0,
@@ -578,10 +600,13 @@ class _$LoanItemImpl extends _LoanItem {
   @override
   final int quantityBorrowed;
   @override
+  @DateTimeUtcConverter()
   final DateTime borrowDate;
   @override
+  @DateTimeUtcConverter()
   final DateTime expectedReturnDate;
   @override
+  @DateTimeNullableUtcConverter()
   final DateTime? actualReturnDate;
   @override
   @JsonKey()
@@ -599,12 +624,14 @@ class _$LoanItemImpl extends _LoanItem {
   @JsonKey(name: 'approved_by')
   final String? approvedBy;
   @override
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'approved_at')
   final DateTime? approvedAt;
   @override
   @JsonKey(name: 'handed_by')
   final String? handedBy;
   @override
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'handed_at')
   final DateTime? handedAt;
   @override
@@ -617,6 +644,7 @@ class _$LoanItemImpl extends _LoanItem {
   @JsonKey(name: 'return_condition')
   final String? returnCondition;
   @override
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'pickup_scheduled_at')
   final DateTime? pickupScheduledAt;
   @override
@@ -770,22 +798,28 @@ abstract class _LoanItem extends LoanItem {
       final String borrowerEmail,
       required final String purpose,
       required final int quantityBorrowed,
-      required final DateTime borrowDate,
-      required final DateTime expectedReturnDate,
-      final DateTime? actualReturnDate,
+      @DateTimeUtcConverter() required final DateTime borrowDate,
+      @DateTimeUtcConverter() required final DateTime expectedReturnDate,
+      @DateTimeNullableUtcConverter() final DateTime? actualReturnDate,
       final LoanStatus status,
       final String? notes,
       final String? returnNotes,
       required final String borrowedBy,
       final String? returnedBy,
       @JsonKey(name: 'approved_by') final String? approvedBy,
-      @JsonKey(name: 'approved_at') final DateTime? approvedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'approved_at')
+      final DateTime? approvedAt,
       @JsonKey(name: 'handed_by') final String? handedBy,
-      @JsonKey(name: 'handed_at') final DateTime? handedAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'handed_at')
+      final DateTime? handedAt,
       @JsonKey(name: 'received_by_name') final String? receivedByName,
       @JsonKey(name: 'received_by_user_id') final String? receivedByUserId,
       @JsonKey(name: 'return_condition') final String? returnCondition,
-      @JsonKey(name: 'pickup_scheduled_at') final DateTime? pickupScheduledAt,
+      @DateTimeNullableUtcConverter()
+      @JsonKey(name: 'pickup_scheduled_at')
+      final DateTime? pickupScheduledAt,
       @JsonKey(name: 'platform_origin') final String? platformOrigin,
       final int daysOverdue,
       final int daysBorrowed,
@@ -820,10 +854,13 @@ abstract class _LoanItem extends LoanItem {
   @override
   int get quantityBorrowed;
   @override
+  @DateTimeUtcConverter()
   DateTime get borrowDate;
   @override
+  @DateTimeUtcConverter()
   DateTime get expectedReturnDate;
   @override
+  @DateTimeNullableUtcConverter()
   DateTime? get actualReturnDate;
   @override
   LoanStatus get status;
@@ -839,12 +876,14 @@ abstract class _LoanItem extends LoanItem {
   @JsonKey(name: 'approved_by')
   String? get approvedBy;
   @override
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'approved_at')
   DateTime? get approvedAt;
   @override
   @JsonKey(name: 'handed_by')
   String? get handedBy;
   @override
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'handed_at')
   DateTime? get handedAt;
   @override
@@ -857,6 +896,7 @@ abstract class _LoanItem extends LoanItem {
   @JsonKey(name: 'return_condition')
   String? get returnCondition;
   @override
+  @DateTimeNullableUtcConverter()
   @JsonKey(name: 'pickup_scheduled_at')
   DateTime? get pickupScheduledAt;
   @override

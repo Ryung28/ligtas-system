@@ -24,7 +24,6 @@ export interface BorrowLog {
     platform_origin: string | null;
     created_origin: string | null;
     pickup_scheduled_at: string | null;
-    return_scheduled_at: string | null;
     purpose: string | null;
     created_at: string;
     updated_at: string | null;

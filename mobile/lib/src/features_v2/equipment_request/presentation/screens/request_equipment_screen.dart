@@ -46,7 +46,9 @@ class _RequestEquipmentScreenState extends ConsumerState<RequestEquipmentScreen>
 
     Future.microtask(() {
       if (mounted) {
-        ref.read(isDockSuppressedProvider.notifier).state = true;
+        ref
+            .read(dockSuppressionControllerProvider.notifier)
+            .suppress(DockSuppressionReason.fullScreenFlow);
         if (widget.cartItems != null && widget.cartItems!.isNotEmpty) {
           ref.read(borrowRequestNotifierProvider.notifier).reset();
           ref.read(borrowRequestNotifierProvider.notifier).initiateWithCart(widget.cartItems!);
@@ -74,14 +76,20 @@ class _RequestEquipmentScreenState extends ConsumerState<RequestEquipmentScreen>
     ref.listen(borrowRequestNotifierProvider, (prev, next) {
       if (prev?.isSuccess != true && next.isSuccess) {
         context.pop();
-        ref.read(isDockSuppressedProvider.notifier).state = false;
+        ref
+            .read(dockSuppressionControllerProvider.notifier)
+            .release(DockSuppressionReason.fullScreenFlow);
       }
     });
 
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) ref.read(isDockSuppressedProvider.notifier).state = false;
+        if (didPop) {
+          ref
+              .read(dockSuppressionControllerProvider.notifier)
+              .release(DockSuppressionReason.fullScreenFlow);
+        }
       },
       child: Scaffold(
         backgroundColor: sentinel.surface,

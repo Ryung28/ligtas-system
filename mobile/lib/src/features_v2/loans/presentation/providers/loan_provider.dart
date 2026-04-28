@@ -36,6 +36,11 @@ class MyLoansNotifier extends _$MyLoansNotifier {
     // 1. Await initial sync to populate Isar
     try {
       final fetched = await _repository.fetchMyLoans(userId: resolvedUserId);
+      Future.microtask(() async {
+        try {
+          await ref.read(inventoryNotifierProvider.notifier).silentReconcileShelf();
+        } catch (_) {}
+      });
       // Ensure UI gets immediate user-bound data on hot restart/user switch
       // even before local watch stream emits its next frame.
       yield fetched;
@@ -56,6 +61,7 @@ class MyLoansNotifier extends _$MyLoansNotifier {
     final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) return;
     await _repository.fetchMyLoans(userId: currentUser.id);
+    await ref.read(inventoryNotifierProvider.notifier).silentReconcileShelf();
   }
 
   // User Actions
@@ -90,6 +96,7 @@ class ManagerLoansNotifier extends _$ManagerLoansNotifier {
   Future<void> refresh() async {
     final user = ref.read(currentUserProvider);
     await _repository.fetchWarehouseRequests(user?.assignedWarehouse);
+    await ref.read(inventoryNotifierProvider.notifier).silentReconcileShelf();
   }
 
   /// 1.1 Pending Approvals Workflow

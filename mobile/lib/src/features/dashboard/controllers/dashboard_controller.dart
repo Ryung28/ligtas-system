@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../scanner/widgets/scanner_view.dart';
 import '../../scanner/models/qr_payload.dart';
-import '../../scanner/widgets/scan_result_sheet.dart';
+import '../../scanner/services/scanner_switchboard.dart';
 
 /// Controller for Dashboard actions and complex navigation logic.
 /// Separates the "How" from the "What" in the UI.
@@ -19,35 +19,16 @@ class DashboardController {
             final payload = LigtasQrPayload.tryParse(qrCode);
             
             if (payload == null) {
-              _showErrorSnackBar(context, 'Invalid QR Code. Please scan a ResQTrack label.');
-              return;
+              return 'That QR is not supported. Please scan an item label.';
             }
 
-            // Close scanner and show result sheet
+            // 🚀 UNIFIED DISPATCH: Delegate to Switchboard
             Navigator.of(context).pop();
-            _showScanResult(context, payload);
+            LigtasScannerSwitchboard.dispatch(context, ref, payload);
+            return null;
           },
-          overlayText: 'Scan Equipment Label',
+          overlayText: 'QUICK SCAN',
         ),
-      ),
-    );
-  }
-
-  void _showScanResult(BuildContext context, LigtasQrPayload payload) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ScanResultSheet(payload: payload),
-    );
-  }
-
-  void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }

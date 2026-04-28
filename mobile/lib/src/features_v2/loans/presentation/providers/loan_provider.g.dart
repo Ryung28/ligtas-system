@@ -149,7 +149,7 @@ final myReturnedHistoryProvider = AutoDisposeProvider<List<LoanItem>>.internal(
 );
 
 typedef MyReturnedHistoryRef = AutoDisposeProviderRef<List<LoanItem>>;
-String _$myLoansNotifierHash() => r'001c62f4b643c870794584e2c47c93ed8b28bb41';
+String _$myLoansNotifierHash() => r'c59cad2190617ab14cd0dec1c4a999f24f297f3d';
 
 /// Reactive Loan List Provider
 ///

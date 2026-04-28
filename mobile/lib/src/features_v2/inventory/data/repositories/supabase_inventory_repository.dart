@@ -27,7 +27,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       // 🔄 DIFFERENTIAL SYNC: If we have a last sync date, only fetch what's new/changed
       // Note: active_inventory view must contain 'updated_at' column
       if (updatedAfter != null) {
-        query = query.gt('updated_at', updatedAfter.toIso8601String());
+        query = query.gt('updated_at', updatedAfter.toUtc().toIso8601String());
       }
 
       final response = await query
@@ -37,7 +37,13 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       final List<dynamic> data = response;
       final items = await compute(_parseAndMapItems, data);
 
-      // Parallel Sync: Only save if we actually got items
+      // Delta sync can legitimately return 0 rows when nothing changed — but it can
+      // also return 0 if the view's updated_at didn't move while stock changed elsewhere.
+      // Fall back to a full snapshot once so Isar cannot stay stale indefinitely.
+      if (updatedAfter != null && items.isEmpty) {
+        return fetchAll(warehouseId: warehouseId);
+      }
+
       if (items.isNotEmpty) {
         await _local.saveAll(items);
       }
@@ -510,7 +516,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
             : DateTime.now();
     final expectedDateStr =
         data['expected_return_date'] as String? ??
-        DateTime.now().add(const Duration(days: 7)).toIso8601String();
+        DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String();
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
 
     return LoanItem(

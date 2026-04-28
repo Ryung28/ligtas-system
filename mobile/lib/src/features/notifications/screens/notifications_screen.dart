@@ -447,6 +447,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return type == 'item_overdue';
       case 'approval':
         return type == 'borrow_request' ||
+            type == 'borrow_request_submitted' ||
             type == 'borrow_approved' ||
             type == 'borrow_rejected' ||
             type == 'request_approved' ||

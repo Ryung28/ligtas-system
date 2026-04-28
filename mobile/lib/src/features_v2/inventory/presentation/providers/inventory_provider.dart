@@ -3,8 +3,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
-import 'package:mobile/src/core/local_storage/isar_service.dart';
-import 'package:mobile/src/features/inventory/models/inventory_model.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../../data/repositories/supabase_inventory_repository.dart';
@@ -34,6 +32,12 @@ class InventoryNotifier extends _$InventoryNotifier {
   static const String _cacheVersionKey = 'inventory_cache_version';
   static const int _currentCacheVersion = 8; // v8: active_inventory variants + qty_* per site; parent bucket columns
 
+  /// Last time we pulled a full `active_inventory` snapshot into Isar (ISO8601 in prefs).
+  static const String kLastFullShelfSyncKey = 'inventory_last_full_sync_iso';
+
+  /// How long a full snapshot stays authoritative before we prefer another full pull on boot.
+  static const Duration kFullShelfSyncTtl = Duration(minutes: 45);
+
   @override
   Future<List<InventoryItem>> build() async {
     _repository = ref.watch(inventoryRepositoryProvider);
@@ -58,17 +62,28 @@ class InventoryNotifier extends _$InventoryNotifier {
     // 2. Load what we have immediately (even if old)
     final localItems = await _loadInitial(category);
     
-    // 3. BACKGROUND SYNC: Differential or Full
+    // 3. BACKGROUND SYNC: periodic full snapshot + light delta between windows
     Future.microtask(() async {
       try {
         final user = ref.read(currentUserProvider);
         final warehouseId = user?.canEdit ?? false ? null : user?.assignedWarehouse;
-        
-        // If we have data, try a differential sync (items changed in last 7 days)
-        // If the cache was just updated, do a full fetch.
-        final lastSync = needsFullRefresh ? null : DateTime.now().subtract(const Duration(days: 7));
-        
-        await _repository.fetchAll(warehouseId: warehouseId, updatedAfter: lastSync);
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(kLastFullShelfSyncKey);
+        final lastFull = raw != null ? DateTime.tryParse(raw) : null;
+        final fullStale =
+            needsFullRefresh ||
+            lastFull == null ||
+            DateTime.now().difference(lastFull) > kFullShelfSyncTtl;
+
+        if (fullStale) {
+          await _repository.syncLocalWithRemote(warehouseId: warehouseId);
+          await prefs.setString(kLastFullShelfSyncKey, DateTime.now().toIso8601String());
+        } else {
+          await _repository.fetchAll(
+            warehouseId: warehouseId,
+            updatedAfter: DateTime.now().subtract(const Duration(days: 1)),
+          );
+        }
       } catch (e) {
         debugPrint('🛡️ Background Sync Failed (Ignored): $e');
       }
@@ -127,6 +142,22 @@ class InventoryNotifier extends _$InventoryNotifier {
     return _repository.findByQrCode(code, warehouseId: warehouseId);
   }
 
+  /// Full remote snapshot into Isar + reload first page (no loading spinner). Use after
+  /// borrow/loan changes or resume so shelf counts match Supabase without blocking UI.
+  Future<void> silentReconcileShelf() async {
+    try {
+      final user = ref.read(currentUserProvider);
+      final warehouseId = user?.canEdit ?? false ? null : user?.assignedWarehouse;
+      await _repository.syncLocalWithRemote(warehouseId: warehouseId);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kLastFullShelfSyncKey, DateTime.now().toIso8601String());
+      final category = ref.read(selectedCategoryProvider);
+      state = AsyncValue.data(await _loadInitial(category));
+    } catch (e) {
+      debugPrint('InventoryNotifier.silentReconcileShelf failed: $e');
+    }
+  }
+
   /// Reload remotely and reset window
   Future<void> refresh() async {
     final user = ref.read(currentUserProvider);
@@ -138,6 +169,8 @@ class InventoryNotifier extends _$InventoryNotifier {
     try {
       // Force a full fetch on manual refresh
       await _repository.fetchAll(warehouseId: warehouseId);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kLastFullShelfSyncKey, DateTime.now().toIso8601String());
       state = AsyncValue.data(await _loadInitial(category));
     } catch (e, st) {
       // 🛡️ RECOVERY: Prefer latest local snapshot; only surface error if no local data exists.

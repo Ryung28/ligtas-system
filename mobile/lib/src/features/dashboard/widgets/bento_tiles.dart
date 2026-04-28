@@ -26,7 +26,7 @@ class OverdueAlertBanner extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
-        context.go('/loans');
+        context.go('/requests');
       },
       child: RepaintBoundary( // 🛡️ RASTER CACHE: Isolate static banner
         child: Container(

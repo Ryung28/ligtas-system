@@ -33,7 +33,13 @@ class TacticalNotificationCard extends ConsumerWidget {
     final createdAt = DateTime.parse(notification.time);
     
     final isCritical = ['stock_out', 'item_overdue', 'borrow_rejected', 'system_alert'].contains(notification.type);
-    final isWarning = ['stock_low', 'borrow_request', 'item_returned', 'user_pending'].contains(notification.type);
+    final isWarning = [
+      'stock_low',
+      'borrow_request',
+      'borrow_request_submitted',
+      'item_returned',
+      'user_pending',
+    ].contains(notification.type);
 
     // 🎨 MOCKUP-ACCURATE PALETTE (CENTRAL INTELLIGENCE)
     final Color pillBgColor = isCritical 

@@ -7,7 +7,7 @@ part of 'borrow_request_provider.dart';
 // **************************************************************************
 
 String _$borrowRequestNotifierHash() =>
-    r'f7e438c8b358900d9c61cb556cc7806fb973119f';
+    r'f424fd837e44075de0d79d8301a29175a59f35e1';
 
 /// See also [BorrowRequestNotifier].
 @ProviderFor(BorrowRequestNotifier)

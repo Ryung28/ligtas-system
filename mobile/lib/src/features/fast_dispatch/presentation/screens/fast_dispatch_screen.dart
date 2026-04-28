@@ -23,6 +23,7 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
   static const Color stitchNavy = Color(0xFF0F172A);
   static const Color stitchSurface = Color(0xFFF8FAFC);
   static const Color stitchBorder = Color(0xFFE2E8F0);
+  late DockSuppressionController _dockSuppressionController;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _officeController = TextEditingController();
@@ -34,10 +35,15 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
   @override
   void initState() {
     super.initState();
+    _dockSuppressionController =
+        ref.read(dockSuppressionControllerProvider.notifier);
     // Reuse Hero V2 dock-suppression pattern while this screen is active.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ref.read(isDockSuppressedProvider.notifier).state = true;
+        Future<void>(() {
+          if (!mounted) return;
+          _dockSuppressionController.suppress(DockSuppressionReason.fastDispatch);
+        });
         _ensureDefaultAutoFill();
       }
     });
@@ -45,7 +51,9 @@ class _FastDispatchScreenState extends ConsumerState<FastDispatchScreen> {
 
   @override
   void dispose() {
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    Future<void>(() {
+      _dockSuppressionController.release(DockSuppressionReason.fastDispatch);
+    });
     _nameController.dispose();
     _officeController.dispose();
     _contactController.dispose();

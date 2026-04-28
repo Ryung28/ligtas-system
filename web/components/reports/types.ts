@@ -7,6 +7,7 @@ export type ReportType =
     | 'overdue'
     | 'expiry-alert'
     | 'borrower-activity'
+    | 'asset-condition'
 
 export interface ReportStats {
     totalItems: number

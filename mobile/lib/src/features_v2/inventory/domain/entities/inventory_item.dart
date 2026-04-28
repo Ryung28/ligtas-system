@@ -64,30 +64,41 @@ class InventoryItem with _$InventoryItem {
   /// 3. Expiring Soon — consumable within 30 days of expiry
   /// Use this for card-level alert indicators in the inventory list.
   bool get hasAlert {
-    if (isLowStock) return true;
-    if (qtyDamaged > 0 || qtyMaintenance > 0 || qtyLost > 0) return true;
     if (expiryDate != null) {
       final daysLeft = expiryDate!.difference(DateTime.now()).inDays;
       if (daysLeft <= expiryAlertDays) return true;
     }
+    if (isLowStock) return true;
+    if (qtyDamaged > 0 || qtyMaintenance > 0 || qtyLost > 0) return true;
     return false;
   }
 
   /// Alert label shown on the card badge (priority order matches web).
   String get alertLabel {
-    if (isOutOffStock) return 'OUT OF STOCK';
     if (expiryDate != null) {
-      final daysLeft = expiryDate!.difference(DateTime.now()).inDays;
-      if (daysLeft < 0) return 'EXPIRED';
-      if (daysLeft <= expiryAlertDays) return 'EXPIRING SOON';
+      final now = DateTime.now();
+      // 🛡️ TIMEZONE PARITY: Reset time to midnight for pure day comparison
+      final today = DateTime(now.year, now.month, now.day);
+      final expiry = DateTime(expiryDate!.year, expiryDate!.month, expiryDate!.day);
+      final daysLeft = expiry.difference(today).inDays;
+
+      if (daysLeft < 0) return 'Expired';
+      if (daysLeft == 0) return 'Expires Today';
+      if (daysLeft <= expiryAlertDays) return 'Expiring Soon';
     }
-    if (qtyDamaged > 0 || qtyMaintenance > 0 || qtyLost > 0) return 'NEEDS ATTENTION';
-    if (isLowStock) return 'LOW STOCK';
+    if (isOutOffStock) return 'Out of Stock';
+    if (qtyDamaged > 0 || qtyMaintenance > 0 || qtyLost > 0) return 'Needs Attention';
+    if (isLowStock) return 'Low Stock';
     return '';
   }
 
-  /// Prefers aggregateAvailable (cross-location sum) over single-location stock.
-  int get displayStock => aggregateAvailable > 0 ? aggregateAvailable : availableStock;
+  /// Shelf quantity for UI. Single-location rows use [availableStock] only so
+  /// aggregate fields cannot mask a decremented shelf count.
+  int get displayStock {
+    if (!hasMultipleLocations) return availableStock;
+    final agg = aggregateAvailable;
+    return agg > 0 ? agg : availableStock;
+  }
 
   /// Standardized 'Max' Stock: Prefers targetStock (Web Goal) over current physical totalStock.
   int get displayTotal => targetStock > 0 ? targetStock : (aggregateTotal > 0 ? aggregateTotal : totalStock);

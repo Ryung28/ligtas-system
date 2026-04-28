@@ -57,7 +57,9 @@ class ProfileScreen extends ConsumerWidget {
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.primaryBlue,
+                          ),
                         ),
                       ),
                     ),
@@ -66,12 +68,17 @@ class ProfileScreen extends ConsumerWidget {
             ),
 
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.of(context).padding.bottom + 40),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                MediaQuery.of(context).padding.bottom + 40,
+              ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const SyncErrorBanner(),
                   const Gap(16),
-                  
+
                   // ── Digital ID Card ──
                   DigitalIdCard(user: state.user ?? user),
 
@@ -85,7 +92,9 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.person_outline_rounded,
                         title: 'Personal Details',
                         subtitle: 'Name, email, and profile page',
-                        onTap: () => controller.navigateTo(context, 'personal-info'),
+                        onTap:
+                            () =>
+                                controller.navigateTo(context, 'personal-info'),
                         iconColor: sentinel.navy,
                       ),
                       ProfileActionTile(
@@ -95,12 +104,16 @@ class ProfileScreen extends ConsumerWidget {
                         onTap: () => controller.navigateTo(context, 'security'),
                         iconColor: sentinel.navy,
                       ),
-                      if (user?.role.toLowerCase() == 'editor' || user?.role.toLowerCase() == 'admin')
+                      if (user?.role.toLowerCase() == 'editor' ||
+                          user?.role.toLowerCase() == 'admin')
                         ProfileActionTile(
                           icon: Icons.warehouse_rounded,
                           title: 'Assigned Location',
-                          subtitle: user?.assignedWarehouse?.toUpperCase() ?? 
-                                   (user?.role.toLowerCase() == 'admin' ? 'GLOBAL ACCESS' : 'UNASSIGNED'),
+                          subtitle:
+                              user?.assignedWarehouse?.toUpperCase() ??
+                              (user?.role.toLowerCase() == 'admin'
+                                  ? 'GLOBAL ACCESS'
+                                  : 'UNASSIGNED'),
                           onTap: () {},
                           iconColor: Colors.orange[800],
                         ),
@@ -117,7 +130,8 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.notifications_none_rounded,
                         title: 'Notifications',
                         value: state.pushNotificationsEnabled,
-                        onChanged: (val) => controller.togglePushNotifications(val),
+                        onChanged:
+                            (val) => controller.togglePushNotifications(val),
                         iconColor: sentinel.navy,
                       ),
                       ProfileActionTile(
@@ -133,7 +147,8 @@ class ProfileScreen extends ConsumerWidget {
                   const Gap(24),
 
                   // ── Administration ──
-                  if (user?.role.toLowerCase() == 'editor' || user?.role.toLowerCase() == 'admin')
+                  if (user?.role.toLowerCase() == 'editor' ||
+                      user?.role.toLowerCase() == 'admin')
                     ProfileSection(
                       title: 'ADMINISTRATION',
                       children: [
@@ -212,5 +227,3 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
-
-

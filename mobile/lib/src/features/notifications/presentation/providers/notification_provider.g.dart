@@ -7,7 +7,7 @@ part of 'notification_provider.dart';
 // **************************************************************************
 
 String _$unreadNotificationCountHash() =>
-    r'c9eecdbc76b2b60eee26b366dc0602e9d7055579';
+    r'b329a99f71dc0bf07115063b82c8f5a737bdedfb';
 
 /// Provider for unread notification count (using RPC like web)
 ///

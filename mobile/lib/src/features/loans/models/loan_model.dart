@@ -4,6 +4,8 @@ import 'package:isar/isar.dart';
 import 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 export 'package:mobile/src/features_v2/loans/domain/entities/loan_item.dart' show LoanStatus;
 
+import 'package:mobile/src/core/utils/json_converters.dart';
+
 part 'loan_model.freezed.dart';
 part 'loan_model.g.dart';
 
@@ -19,9 +21,9 @@ class LoanModel with _$LoanModel {
     @Default('') String borrowerEmail,
     required String purpose,
     @JsonKey(name: 'quantity_borrowed') required int quantityBorrowed,
-    @JsonKey(name: 'borrow_date') required DateTime borrowDate,
-    @JsonKey(name: 'expected_return_date') required DateTime expectedReturnDate,
-    @JsonKey(name: 'actual_return_date') DateTime? actualReturnDate,
+    @DateTimeUtcConverter() @JsonKey(name: 'borrow_date') required DateTime borrowDate,
+    @DateTimeUtcConverter() @JsonKey(name: 'expected_return_date') required DateTime expectedReturnDate,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'actual_return_date') DateTime? actualReturnDate,
     @Default(LoanStatus.active) LoanStatus status,
     String? notes,
     @JsonKey(name: 'return_notes') String? returnNotes,
@@ -30,10 +32,10 @@ class LoanModel with _$LoanModel {
     
     // Audit & Accountability fields (Checklist 2.0)
     @JsonKey(name: 'approved_by') String? approvedBy,
-    @JsonKey(name: 'approved_at') DateTime? approvedAt,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'approved_at') DateTime? approvedAt,
     @JsonKey(name: 'handed_by') String? handedBy,
-    @JsonKey(name: 'handed_at') DateTime? handedAt,
-    @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'handed_at') DateTime? handedAt,
+    @DateTimeNullableUtcConverter() @JsonKey(name: 'pickup_scheduled_at') DateTime? pickupScheduledAt,
     @JsonKey(name: 'received_by_name') String? receivedByName,
     @JsonKey(name: 'received_by_user_id') String? receivedByUserId,
     @JsonKey(name: 'return_condition') String? returnCondition,

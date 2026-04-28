@@ -44,7 +44,7 @@ class SessionStatusChip extends StatelessWidget {
       case EventType.requisitionRejected: return 'REJECTED';
       case EventType.securityTrigger:     return 'SECURITY';
       case EventType.mixed:               return 'MIXED';
-      default:                            return 'SYNCED';
+      case EventType.systemSync:          return 'LOG';
     }
   }
 

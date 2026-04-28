@@ -1,9 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:mobile/src/features/auth/presentation/providers/auth_providers.dart';
 import '../../domain/entities/loan_item.dart';
-import '../../../inventory/domain/entities/inventory_item.dart';
+import '../../../inventory/presentation/providers/inventory_provider.dart';
 import '../../../inventory/presentation/providers/mission_cart_provider.dart';
-import '../../domain/repositories/loan_repository.dart';
 import 'loan_provider.dart';
 import 'borrow_request_state.dart';
 import '../../../../core/errors/app_exceptions.dart';
@@ -115,6 +114,8 @@ class BorrowRequestNotifier extends _$BorrowRequestNotifier {
       }).toList();
 
       await Future.wait(loanRequests.map((req) => repo.createLoan(req)));
+
+      await ref.read(inventoryNotifierProvider.notifier).silentReconcileShelf();
       
       // Clear the global cart on success
       ref.read(missionCartNotifierProvider.notifier).clearCart();

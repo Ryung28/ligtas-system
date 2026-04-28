@@ -7,7 +7,7 @@ part of 'manager_action_validation_provider.dart';
 // **************************************************************************
 
 String _$managerActionCanSubmitHash() =>
-    r'ede956a40ef18609df2dc7d777426ac718991c3a';
+    r'b7ee3aa66d1cccdac4acac925ac697d50cfed32c';
 
 /// Copied from Dart SDK
 class _SystemHash {

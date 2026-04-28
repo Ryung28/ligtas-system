@@ -28,7 +28,7 @@ class DashboardQuickActions extends StatelessWidget {
             icon: Icons.list_alt_rounded,
             label: 'My Items',
             color: AppTheme.primaryBlueDark,
-            onTap: () => context.go('/loans'),
+            onTap: () => context.go('/requests'),
           ),
         ),
         const SizedBox(width: 12),

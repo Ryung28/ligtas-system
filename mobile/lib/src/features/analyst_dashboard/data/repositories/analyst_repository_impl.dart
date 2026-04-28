@@ -30,18 +30,13 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   @override
   Future<AnalystMetrics> getMetrics({String? warehouseId}) async {
     try {
-      // Client-side counts (avoids `get_analyst_metrics` RPC, which assumed
-      // `assigned_warehouse` on views that only expose `location` / RLS scoping).
-      var invQ = _supabase.from('active_inventory').select('id');
-      if (warehouseId != null) {
-        invQ = invQ.eq('location', warehouseId);
-      }
+      // KPI parity lock: web/mobile must read global operational counts.
+      // Do not scope by warehouse here to avoid null/mismatched warehouse fields
+      // in restored/historical rows causing false-zero tiles.
+      final invQ = _supabase.from('active_inventory').select('id');
 
       Future<List<dynamic>> borrowByStatus(String status) async {
-        var q = _supabase.from('borrow_logs').select('id').eq('status', status);
-        if (warehouseId != null) {
-          q = q.eq('warehouse_id', warehouseId);
-        }
+        final q = _supabase.from('borrow_logs').select('id').eq('status', status);
         final rows = await q;
         return List<dynamic>.from(rows as List);
       }
@@ -92,13 +87,9 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       try {
         await _supabase.checkConnection();
 
-        final invStream = warehouseId != null
-            ? _supabase.from('active_inventory').stream(primaryKey: ['id']).eq('location', warehouseId)
-            : _supabase.from('active_inventory').stream(primaryKey: ['id']);
-
-        final logStream = warehouseId != null
-            ? _supabase.from('borrow_logs').stream(primaryKey: ['id']).eq('warehouse_id', warehouseId)
-            : _supabase.from('borrow_logs').stream(primaryKey: ['id']);
+        // KPI parity lock: global stream to match web formulas.
+        final invStream = _supabase.from('active_inventory').stream(primaryKey: ['id']);
+        final logStream = _supabase.from('borrow_logs').stream(primaryKey: ['id']);
 
         // Combined stream for metrics
         yield* StreamGroup.merge([
@@ -790,22 +781,31 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   }
 
   ActivityEvent _mapToActivityEvent(Map<String, dynamic> item) {
-    final status = item['status'] as String? ?? 'pending';
-    
+    final status = (item['status'] as String? ?? 'pending').toLowerCase().trim();
+
+    // Align with web `TransactionStatus` / `borrow_logs` so out+return rows
+    // map to assetOut/assetIn — `ActivitySession.updateSessionType` can then
+    // set `EventType.mixed` (vs. falling through to `systemSync` + "SYNCED" chip).
     final eventType = switch (status) {
-      'pending'   => EventType.requisitionApproved,
-      'borrowed'  => EventType.assetOut,
-      'returned'  => EventType.assetIn,
-      'overdue'   => EventType.maintenance,
+      'pending' => EventType.requisitionApproved,
+      'staged' => EventType.requisitionApproved,
+      'borrowed' => EventType.assetOut,
+      'dispensed' => EventType.assetOut,
+      'returned' => EventType.assetIn,
+      'overdue' => EventType.maintenance,
+      'lost' || 'damaged' || 'maintenance' => EventType.maintenance,
       'cancelled' => EventType.requisitionDenied,
-      _           => EventType.systemSync,
+      'rejected' => EventType.requisitionDenied,
+      'denied' => EventType.requisitionDenied,
+      'reserved' => EventType.reserved,
+      _ => EventType.systemSync,
     };
 
     final eventStatus = switch (status) {
-      'pending'                    => EventStatus.transit,
-      'overdue'                    => EventStatus.offline,
-      'returned' || 'dispensed'    => EventStatus.synced,
-      _                            => EventStatus.verified,
+      'pending' || 'staged' => EventStatus.transit,
+      'overdue' || 'lost' => EventStatus.offline,
+      'returned' || 'dispensed' => EventStatus.synced,
+      _ => EventStatus.verified,
     };
 
     final delta = 'QTY: ${item['quantity'] ?? 0}';
@@ -814,7 +814,7 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     // 🏛️ DYNAMIC REASONING: Construct smart fallbacks based on event context
     final dynamicFallback = switch (eventType) {
       EventType.assetOut => 'Authorized equipment deployment.',
-      EventType.assetIn => 'Equipment safely returned to hub.',
+      EventType.assetIn => 'Equipment safely returned.',
       EventType.requisitionApproved => 'Requisition verified by command.',
       EventType.maintenance => 'Asset flagged for service audit.',
       EventType.requisitionDenied => 'Requisition declined by supervisor.',

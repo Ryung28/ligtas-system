@@ -6,7 +6,7 @@ part of 'unread_chat_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$unreadChatCountHash() => r'cf81db75afe7797e9bff8e78ccd2618057904caa';
+String _$unreadChatCountHash() => r'4a0b7d114492bdc202d32963b6754c4a91108f5b';
 /**
  * UnreadChatCount Provider
  * 

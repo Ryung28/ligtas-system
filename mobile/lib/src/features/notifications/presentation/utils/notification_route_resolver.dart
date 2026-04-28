@@ -26,6 +26,14 @@ class NotificationRouteResolver {
       return '/inventory';
     }
 
+    if (type == 'borrow_request_submitted') {
+      final loanId = asString(meta['borrow_id']);
+      if (loanId != null) {
+        return '/requests?loanId=${Uri.encodeComponent(loanId)}';
+      }
+      return '/requests';
+    }
+
     if (type == 'borrow_request' ||
         type == 'borrow_approved' ||
         type == 'borrow_rejected' ||

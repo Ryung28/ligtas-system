@@ -128,7 +128,7 @@ class NotificationRepository {
                       'Mission status information update.',
                   time:
                       item['created_at']?.toString() ??
-                      DateTime.now().toIso8601String(),
+                      DateTime.now().toUtc().toIso8601String(),
                   type: item['type']?.toString() ?? 'system_alert',
                   isRead: item['is_read'] == true,
                   metadata:

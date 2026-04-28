@@ -64,14 +64,14 @@ class QuickBorrowService {
           'borrower_name': user?.userMetadata?['full_name'] ?? 'System',
           'borrower_user_id': user?.id,
           'status': 'returned',
-          'actual_return_date': DateTime.now().toIso8601String(),
+          'actual_return_date': DateTime.now().toUtc().toIso8601String(),
           'return_notes': 'Partial return from Log #$logId. $notes',
         });
       } else {
         // FULL RETURN: Just mark current log as returned
         await _supabase.from('borrow_logs').update({
           'status': 'returned',
-          'actual_return_date': DateTime.now().toIso8601String(),
+          'actual_return_date': DateTime.now().toUtc().toIso8601String(),
           'return_notes': notes,
         }).eq('id', logId);
       }
@@ -115,6 +115,8 @@ class QuickBorrowService {
     String? borrowerOrganization,
     String? purpose,
     int durationDays = 7,
+    required String approvedByName,
+    required String releasedByName,
   }) async {
     try {
       final user = _supabase.auth.currentUser;
@@ -134,7 +136,16 @@ class QuickBorrowService {
         };
       }
 
-      // Step 2: Create the borrow log
+      final approved = approvedByName.trim();
+      final released = releasedByName.trim();
+      if (approved.isEmpty || released.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Authorized by and Released by are required.',
+        };
+      }
+
+      // Step 2: Create the borrow log (audit fields aligned with web / inventory borrow_logs)
       final logResponse = await _supabase.from('borrow_logs').insert({
         'inventory_id': itemId,
         'inventory_item_id': itemId.toString(), // For compatibility
@@ -148,10 +159,18 @@ class QuickBorrowService {
         'borrowed_by': user?.id,      // Standard field
         'borrower_organization': borrowerOrganization ?? 'CDRRMO Field Team',
         'purpose': purpose ?? 'Field Deployment (via QR Scan)',
+        'approved_by_name': approved,
+        'released_by_name': released,
+        'released_by_user_id': user?.id,
+        'approved_by': approved,
+        'handed_by': released,
         'transaction_type': 'borrow',
         'status': 'borrowed',
         'borrow_date': DateTime.now().toUtc().toIso8601String(),
         'expected_return_date': DateTime.now().toUtc().add(Duration(days: durationDays)).toIso8601String(),
+        'platform_origin': 'Mobile',
+        'created_origin': 'Mobile',
+        'last_updated_origin': 'Mobile',
       }).select().single();
 
       return {

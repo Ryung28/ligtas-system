@@ -68,8 +68,8 @@ class SupabaseLoanRepository implements ILoanRepository {
         'quantity': request.quantityBorrowed, // REQUIRED NOT-NULL FIELD
         'quantity_borrowed': request.quantityBorrowed, 
         'transaction_type': 'borrow', // REQUIRED FOR STOCK TRIGGER
-        'expected_return_date': request.expectedReturnDate.toIso8601String(),
-        'pickup_scheduled_at': request.pickupScheduledAt?.toIso8601String(),
+        'expected_return_date': request.expectedReturnDate.toUtc().toIso8601String(),
+        'pickup_scheduled_at': request.pickupScheduledAt?.toUtc().toIso8601String(),
         'notes': request.notes,
         'status': 'pending',
         'borrowed_by': userId,
@@ -94,9 +94,9 @@ class SupabaseLoanRepository implements ILoanRepository {
     try {
       await _client.from('borrow_logs').update({
         'status': 'returned',
-        'actual_return_date': DateTime.now().toIso8601String(),
+        'actual_return_date': DateTime.now().toUtc().toIso8601String(),
         'last_updated_origin': 'Mobile',
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', loanId).eq('borrowed_by', userId);
 
       await fetchMyLoans(userId: userId);
@@ -185,7 +185,7 @@ class SupabaseLoanRepository implements ILoanRepository {
       await _client.from('borrow_logs').update({
         'status': 'approved',
         'approved_by': managerName,
-        'approved_at': DateTime.now().toIso8601String(),
+        'approved_at': DateTime.now().toUtc().toIso8601String(),
         'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
@@ -212,8 +212,8 @@ class SupabaseLoanRepository implements ILoanRepository {
       await _client.from('borrow_logs').update({
         'status': isConsumable ? 'dispensed' : 'borrowed',
         'handed_by': staffName,
-        'handed_at': DateTime.now().toIso8601String(),
-        'borrow_date': DateTime.now().toIso8601String(),
+        'handed_at': DateTime.now().toUtc().toIso8601String(),
+        'borrow_date': DateTime.now().toUtc().toIso8601String(),
         'last_updated_origin': 'Mobile',
       }).eq('id', loanId);
     } catch (e) {
@@ -230,13 +230,13 @@ class SupabaseLoanRepository implements ILoanRepository {
     try {
       await _client.from('borrow_logs').update({
         'status': 'returned',
-        'actual_return_date': DateTime.now().toIso8601String(),
+        'actual_return_date': DateTime.now().toUtc().toIso8601String(),
         'received_by_name': staffName,
         'received_by_user_id': _client.auth.currentUser?.id,
         'return_condition': condition,
         'return_notes': notes,
         'last_updated_origin': 'Mobile',
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', loanId);
     } catch (e) {
       throw ExceptionHandler.fromException(e);
@@ -269,7 +269,7 @@ class SupabaseLoanRepository implements ILoanRepository {
     DateTime borrowDate = borrowDateStr != null ? DateTime.parse(borrowDateStr).toLocal() : DateTime.now();
 
     final expectedDateStr = data['expected_return_date'] as String? ?? 
-                          DateTime.now().add(const Duration(days: 7)).toIso8601String();
+                          DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String();
     final expectedReturnDate = DateTime.parse(expectedDateStr).toLocal();
     final now = DateTime.now();
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Box, Package, ChevronRight, ChevronDown, Info, Calculator, Boxes, Plus } from 'lucide-react'
+import { Box, Package, ChevronRight, ChevronDown, Info, Calculator, Boxes, Plus, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,21 +13,34 @@ interface BulkPackagingBuilderProps {
         containerType: string;
         containerCount: number | string;
         unitsPerContainer: number | string;
-        batches: Array<{ id: string, label: string, units: number }>;
+        batches: Array<{ id: string, label: string, units: number, expiry_date?: string | null }>;
+        expiry_mode?: 'none' | 'single' | 'grouped' | 'per_carton';
+        expiry_groups?: Array<{ id: string; label: string; expiry_date: string; batch_ids: string[] }>;
     }
     onUpdate: (updates: any) => void
     onUpdateBatch: (index: number, val: number) => void
     onUpdateLabel: (index: number, label: string) => void
     onAddExtra: () => void
+    onRemoveBatch: (batchId: string) => void
+    onAddExpiryGroup: () => void
+    onUpdateExpiryGroup: (groupId: string, updates: Partial<{ label: string; expiry_date: string; batch_ids: string[] }>) => void
+    onRemoveExpiryGroup: (groupId: string) => void
+    onAssignBatchToGroup: (groupId: string, batchId: string, assigned: boolean) => void
+    onSplitExpiryPerCarton: () => void
 }
 
 const CONTAINER_TYPES = ['Carton', 'Box', 'Case', 'Bag', 'Pallet', 'Pack', 'Custom']
 
 export function V2BulkPackagingBuilder({ 
-    packaging, onUpdate, onUpdateBatch, onUpdateLabel, onAddExtra 
+    packaging, onUpdate, onUpdateBatch, onUpdateLabel, onAddExtra,
+    onRemoveBatch, onAddExpiryGroup, onUpdateExpiryGroup, onRemoveExpiryGroup, onAssignBatchToGroup, onSplitExpiryPerCarton,
 }: BulkPackagingBuilderProps) {
     const [isExpanded, setIsExpanded] = useState(true)
     const totalUnitsTotal = packaging.batches.reduce((s, b) => s + b.units, 0)
+    const expiryMode = packaging.expiry_mode || 'none'
+    const expiryGroups = packaging.expiry_groups || []
+    const assignedBatchIds = new Set(expiryGroups.flatMap((g) => g.batch_ids || []))
+    const unassignedBatches = packaging.batches.filter((b) => !assignedBatchIds.has(b.id))
     
     const isCustom = !['Carton', 'Box', 'Case', 'Bag', 'Pallet', 'Pack'].includes(packaging.containerType)
     const displayValue = isCustom ? 'Custom' : packaging.containerType
@@ -178,6 +191,14 @@ export function V2BulkPackagingBuilder({
                                                     )}
                                                 />
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => onRemoveBatch(batch.id)}
+                                                className="mt-2 w-full h-7 rounded-md border border-slate-200 text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-rose-600 hover:border-rose-200 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                                Remove
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -189,6 +210,107 @@ export function V2BulkPackagingBuilder({
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Expiry Assignment */}
+                    <div className="space-y-4 pt-2 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-zinc-900" />
+                                <p className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">3. Expiry Assignment</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => onUpdate({ expiry_mode: 'none' })} className={cn("px-2 py-1 rounded-md text-[9px] font-black uppercase", expiryMode === 'none' ? 'bg-zinc-900 text-white' : 'bg-slate-100 text-slate-500')}>No Expiry</button>
+                                <button type="button" onClick={() => onUpdate({ expiry_mode: 'single' })} className={cn("px-2 py-1 rounded-md text-[9px] font-black uppercase", expiryMode === 'single' ? 'bg-zinc-900 text-white' : 'bg-slate-100 text-slate-500')}>One Date</button>
+                                <button type="button" onClick={() => onUpdate({ expiry_mode: 'grouped' })} className={cn("px-2 py-1 rounded-md text-[9px] font-black uppercase", expiryMode === 'grouped' ? 'bg-zinc-900 text-white' : 'bg-slate-100 text-slate-500')}>Grouped</button>
+                                <button type="button" onClick={onSplitExpiryPerCarton} className={cn("px-2 py-1 rounded-md text-[9px] font-black uppercase", expiryMode === 'per_carton' ? 'bg-zinc-900 text-white' : 'bg-slate-100 text-slate-500')}>Per Carton</button>
+                            </div>
+                        </div>
+
+                        {expiryMode === 'single' && (
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Expiry Date (All Cartons)</Label>
+                                <Input
+                                    type="date"
+                                    value={expiryGroups[0]?.expiry_date || ''}
+                                    onChange={(e) => onUpdateExpiryGroup(expiryGroups[0]?.id || '', { expiry_date: e.target.value })}
+                                    className="h-9 mt-2"
+                                />
+                            </div>
+                        )}
+
+                        {(expiryMode === 'grouped' || expiryMode === 'per_carton') && (
+                            <div className="space-y-3">
+                                {expiryMode === 'grouped' && (
+                                    <button
+                                        type="button"
+                                        onClick={onAddExpiryGroup}
+                                        className="h-8 px-3 rounded-lg bg-slate-100 border border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors"
+                                    >
+                                        + Add Expiry Group
+                                    </button>
+                                )}
+                                {expiryGroups.map((group) => (
+                                    <div key={group.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                value={group.label}
+                                                onChange={(e) => onUpdateExpiryGroup(group.id, { label: e.target.value })}
+                                                className="h-8 text-[11px] font-bold"
+                                            />
+                                            <Input
+                                                type="date"
+                                                value={group.expiry_date}
+                                                onChange={(e) => onUpdateExpiryGroup(group.id, { expiry_date: e.target.value })}
+                                                className="h-8"
+                                            />
+                                            {expiryMode === 'grouped' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onRemoveExpiryGroup(group.id)}
+                                                    className="h-8 w-8 rounded-md border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 flex items-center justify-center"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {expiryMode === 'grouped' && (
+                                            <>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                                {packaging.batches
+                                                    .filter((batch) => {
+                                                        // In grouped mode, show unassigned cartons and cartons
+                                                        // already assigned to this group. Hide cartons assigned
+                                                        // to other groups.
+                                                        const ownerGroup = expiryGroups.find((g) => (g.batch_ids || []).includes(batch.id))
+                                                        return !ownerGroup || ownerGroup.id === group.id
+                                                    })
+                                                    .map((batch) => {
+                                                    const isAssigned = group.batch_ids.includes(batch.id)
+                                                    return (
+                                                        <label key={batch.id} className={cn("px-2 py-1.5 rounded-md border text-[10px] font-bold cursor-pointer", isAssigned ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600')}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isAssigned}
+                                                                onChange={(e) => onAssignBatchToGroup(group.id, batch.id, e.target.checked)}
+                                                                className="mr-1.5"
+                                                            />
+                                                            {batch.label}
+                                                        </label>
+                                                    )
+                                                })}
+                                            </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                                {expiryMode === 'grouped' && unassignedBatches.length > 0 && (
+                                    <p className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                                        Some cartons are not assigned to an expiry group.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center justify-between pt-2">

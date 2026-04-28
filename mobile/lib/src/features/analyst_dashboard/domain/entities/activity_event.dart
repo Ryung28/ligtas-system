@@ -162,7 +162,9 @@ class ActivityEvent {
 
   String get timeDisplay {
     final now = DateTime.now();
-    final diff = now.difference(timestamp);
+    // 🛡️ TIMEZONE PARITY: Ensure we compare local to local
+    final localTimestamp = timestamp.toLocal();
+    final diff = now.difference(localTimestamp);
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';

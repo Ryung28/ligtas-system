@@ -14,6 +14,7 @@ import '../../../core/design_system/widgets/primary_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
+import '../../../core/utils/storage_utils.dart';
 
 /// 🛡️ QUICK-BORROW BENTO CONSOLE (V17)
 /// User-friendly manifest with simplified wording and large visual showcases.
@@ -27,6 +28,7 @@ class ScanResultSheet extends ConsumerStatefulWidget {
 }
 
 class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
+  late DockSuppressionController _dockSuppressionController;
   bool _isLoading = false;
   bool _isFetchingStock = true;
   int _availableStock = 0;
@@ -51,6 +53,8 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
   final TextEditingController _contactController = TextEditingController();
   final TextEditingController _orgController = TextEditingController();
   final TextEditingController _purposeController = TextEditingController();
+  final TextEditingController _authorizedByController = TextEditingController();
+  final TextEditingController _releasedByController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _qtyController = TextEditingController(text: '1');
   
@@ -62,15 +66,19 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (mounted) ref.read(isDockSuppressedProvider.notifier).state = true;
+    _dockSuppressionController =
+        ref.read(dockSuppressionControllerProvider.notifier);
+    Future<void>(() {
+      if (mounted) {
+        _dockSuppressionController.suppress(DockSuppressionReason.detailSheet);
+      }
     });
     
     final user = ref.read(currentUserProvider);
     _nameController.text = user?.displayName ?? '';
     _contactController.text = user?.phoneNumber ?? '';
     _orgController.text = user?.organization ?? '';
-    
+
     _qtyController.addListener(_onQtyTextChanged);
     _fetchStatus();
   }
@@ -87,11 +95,15 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
 
   @override
   void dispose() {
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    Future<void>(() {
+      _dockSuppressionController.release(DockSuppressionReason.detailSheet);
+    });
     _nameController.dispose();
     _contactController.dispose();
     _orgController.dispose();
     _purposeController.dispose();
+    _authorizedByController.dispose();
+    _releasedByController.dispose();
     _notesController.dispose();
     _qtyController.dispose();
     super.dispose();
@@ -126,7 +138,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
         setState(() {
           _itemName = inventoryResponse['item_name'];
           _availableStock = inventoryResponse['stock_available'] ?? 0;
-          _imageUrl = inventoryResponse['image_url'];
+          _imageUrl = StorageUtils.resolveAssetUrl(inventoryResponse['image_url']);
           _category = inventoryResponse['category'];
           _allActiveBorrows = borrows;
           _isFetchingStock = false;
@@ -192,6 +204,8 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
           borrowerOrganization: _orgController.text,
           purpose: _transactionPurpose == 'Other' ? _purposeController.text : _transactionPurpose,
           durationDays: _durationDays,
+          approvedByName: _authorizedByController.text,
+          releasedByName: _releasedByController.text,
         );
       }
 
@@ -301,8 +315,8 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
                     ),
                     const Gap(12),
 
-                    // ── 4. YOUR DETAILS BENTO (Hardened) ──
-                    if (!_isReturnMode)
+                    // ── 4. YOUR DETAILS & AUDIT ──
+                    if (!_isReturnMode) ...[
                       _buildBentoSection(
                         label: 'YOUR INFO',
                         icon: Icons.person_outline_rounded,
@@ -337,7 +351,35 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
                             icon: Icons.business_rounded, 
                             validator: (v) => v!.isEmpty ? 'Office required' : null
                           ),
-                          const Gap(16),
+                        ],
+                      ),
+                      const Gap(12),
+                      _buildBentoSection(
+                        label: 'AUTHORIZATION',
+                        icon: Icons.verified_user_outlined,
+                        children: [
+                          _buildTactileField(
+                            controller: _authorizedByController,
+                            hint: 'Authorized by (name)',
+                            icon: Icons.shield_outlined,
+                            validator: (v) =>
+                                v == null || v.trim().isEmpty ? 'Required' : null,
+                          ),
+                          const Gap(8),
+                          _buildTactileField(
+                            controller: _releasedByController,
+                            hint: 'Released by (name)',
+                            icon: Icons.front_hand_outlined,
+                            validator: (v) =>
+                                v == null || v.trim().isEmpty ? 'Required' : null,
+                          ),
+                        ],
+                      ),
+                      const Gap(12),
+                      _buildBentoSection(
+                        label: 'PURPOSE & DURATION',
+                        icon: Icons.flag_outlined,
+                        children: [
                           Text('PURPOSE', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.0)),
                           const Gap(8),
                           _buildTactileField(
@@ -353,6 +395,7 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
                           _buildDurationSelector(),
                         ],
                       ),
+                    ],
 
                     if (_isReturnMode)
                       _buildBentoSection(

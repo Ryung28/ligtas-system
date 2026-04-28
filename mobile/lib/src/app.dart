@@ -40,6 +40,7 @@ import 'package:mobile/src/features/analyst_dashboard/presentation/screens/activ
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/station_provisioning_screen.dart';
 import 'package:mobile/src/features/analyst_dashboard/presentation/screens/logistical_queue_screen.dart';
 import 'package:mobile/src/features/fast_dispatch/presentation/screens/fast_dispatch_screen.dart';
+import 'package:mobile/src/features_v2/inventory/presentation/providers/inventory_provider.dart';
 // AnalystHistoryScreen liquidated as per Anti-Monolith Protocol. Hub is now ActivityLedgerScreen for audits.
 
 class ResQTrackApp extends ConsumerStatefulWidget {
@@ -50,6 +51,8 @@ class ResQTrackApp extends ConsumerStatefulWidget {
 }
 
 class _ResQTrackAppState extends ConsumerState<ResQTrackApp> with WidgetsBindingObserver {
+  Timer? _inventoryResumeTimer;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +61,7 @@ class _ResQTrackAppState extends ConsumerState<ResQTrackApp> with WidgetsBinding
 
   @override
   void dispose() {
+    _inventoryResumeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -67,6 +71,11 @@ class _ResQTrackAppState extends ConsumerState<ResQTrackApp> with WidgetsBinding
     if (state == AppLifecycleState.resumed) {
       // 🛡️ RE-ENFORCER: Reset 120Hz mode on resume as OS sometimes resets display profile
       PerformanceUtils.enforceHighRefreshRate();
+      // Shelf counts may change while the app is backgrounded (web approvals, etc.).
+      _inventoryResumeTimer?.cancel();
+      _inventoryResumeTimer = Timer(const Duration(seconds: 2), () {
+        ref.read(inventoryNotifierProvider.notifier).silentReconcileShelf();
+      });
     }
   }
 
@@ -294,7 +303,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/requests',
-            builder: (context, state) => const ActiveLoansScreen(),
+            builder: (context, state) {
+              final loanId = state.uri.queryParameters['loanId'];
+              return ActiveLoansScreen(openLoanId: loanId);
+            },
           ),
         ],
       ),
@@ -303,6 +315,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ScannerView(
           onQrCodeDetected: (qrCode) {
             Navigator.of(context).pop(qrCode);
+            return null;
           },
           overlayText: 'Scan item QR code',
         ),

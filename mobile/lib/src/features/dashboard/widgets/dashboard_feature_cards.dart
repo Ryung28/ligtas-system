@@ -17,7 +17,7 @@ class DashboardFeatureCards extends StatelessWidget {
       description: 'View your borrowed items',
       icon: Icons.list_alt_rounded,
       color: Color(0xFF1976D2),
-      route: '/loans',
+      route: '/requests',
     ),
     _FeatureCardData(
       title: 'Borrow Item',

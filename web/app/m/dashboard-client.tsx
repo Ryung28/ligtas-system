@@ -248,8 +248,8 @@ export function DashboardClient({ initialUserName = 'ANALYST' }: { initialUserNa
                                             </div>
                                             <p className="text-xs text-gray-500 truncate">
                                                 {log.borrower_name} • {log.quantity} items {
-                                                    log.status === 'returned' ? 'back' : 
-                                                    log.status === 'borrowed' ? 'out' : 
+                                                    log.status === 'returned' ? 'returned' : 
+                                                    log.status === 'borrowed' ? 'borrowed' : 
                                                     log.status === 'overdue' ? 'late' : log.status
                                                 }
                                             </p>

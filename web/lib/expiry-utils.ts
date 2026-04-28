@@ -58,6 +58,16 @@ export function getExpiryInfo(
         }
     }
 
+    if (daysRemaining === 0) {
+        return {
+            status: 'critical',
+            daysRemaining,
+            label: 'EXPIRES TODAY',
+            badgeClass: 'bg-red-50 text-red-600 border-red-200',
+            rowStripeClass: 'border-l-4 border-l-red-400',
+        }
+    }
+
     if (daysRemaining <= 7) {
         return {
             status: 'critical',

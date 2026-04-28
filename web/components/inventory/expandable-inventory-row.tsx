@@ -20,6 +20,7 @@ import { rebalanceStockAction } from '@/actions/inventory-transfer'
 import { getStorageLocations } from '@/app/actions/storage-locations'
 import { toast } from 'sonner'
 import { useStorageLocations } from '@/hooks/use-storage-locations'
+import { pluralizeContainerType } from '@/lib/container-type'
 
 // Sub-components
 import { CompositeStockBar } from './_components/composite-stock-bar'
@@ -134,6 +135,7 @@ export function ExpandableInventoryRow({
     const packaging = (item as any).packaging_json
     const showBulkDisplay = isBulkCategory && packaging?.enabled && packaging?.batches?.length > 0
     const containerCount = packaging?.batches?.length || 0
+    const containerTypePlural = pluralizeContainerType(packaging?.containerType, { uppercase: true, fallback: 'UNIT' })
 
     const expiryDateText = (item as any).expiry_date
         ? new Date((item as any).expiry_date).toLocaleDateString('en-PH', {
@@ -326,7 +328,7 @@ export function ExpandableInventoryRow({
                                             </span>
                                             <div className="flex items-center gap-1.5 mt-2">
                                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {showBulkDisplay ? `${packaging.containerType || 'UNIT'}S` : 'IN STOCK'} / {primaryVariant?.stock_total ?? 0} TOTAL
+                                                    {showBulkDisplay ? containerTypePlural : 'IN STOCK'} / {primaryVariant?.stock_total ?? 0} TOTAL
                                                 </span>
                                             </div>
                                             <SiteHealthFootnote variant={primaryVariant} />
@@ -361,7 +363,7 @@ export function ExpandableInventoryRow({
                                                 </span>
                                                 <div className="flex items-center gap-1.5 mt-2">
                                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {showBulkDisplay ? `${packaging.containerType || 'UNIT'}S` : 'IN STOCK'} / {v.stock_total ?? 0} TOTAL
+                                                        {showBulkDisplay ? containerTypePlural : 'IN STOCK'} / {v.stock_total ?? 0} TOTAL
                                                     </span>
                                                 </div>
                                                 <SiteHealthFootnote variant={v} />

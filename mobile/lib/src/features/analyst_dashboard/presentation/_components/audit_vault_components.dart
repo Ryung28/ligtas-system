@@ -278,16 +278,16 @@ IconData _getIcon(EventType type) {
 
 String _getStatusText(EventType type) {
   switch (type) {
-    case EventType.assetOut: return 'BORROWED';
-    case EventType.assetIn: return 'RETURNED';
-    case EventType.requisitionApproved: return 'VERIFIED';
-    case EventType.systemSync: return 'SYNCED';
-    case EventType.reserved: return 'RESERVED';
-    case EventType.securityTrigger: return 'SECURITY TRIGGER';
-    case EventType.requisitionRejected: return 'REJECTED';
-    case EventType.maintenance: return 'MAINTENANCE';
-    case EventType.requisitionDenied: return 'DENIED';
-    case EventType.mixed: return 'MIXED';
+    case EventType.assetOut: return 'Borrowed';
+    case EventType.assetIn: return 'Returned';
+    case EventType.requisitionApproved: return 'Request Verified';
+    case EventType.systemSync: return 'System Sync';
+    case EventType.reserved: return 'Reserved';
+    case EventType.securityTrigger: return 'Security Trigger';
+    case EventType.requisitionRejected: return 'Request Denied';
+    case EventType.maintenance: return 'Service Audit';
+    case EventType.requisitionDenied: return 'Request Denied';
+    case EventType.mixed: return 'Mixed Event';
   }
 }
 
@@ -358,7 +358,9 @@ class CommandDetailSheet extends ConsumerWidget {
 
   /// 🛡️ PROTECTED INVOCATION: Orchestrates dock suppression for forensic logs.
   static Future<T?> show<T>(BuildContext context, WidgetRef ref, ActivityEvent event) async {
-    ref.read(isDockSuppressedProvider.notifier).state = true;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .suppress(DockSuppressionReason.detailSheet);
     
     final result = await showModalBottomSheet<T>(
       context: context,
@@ -367,7 +369,9 @@ class CommandDetailSheet extends ConsumerWidget {
       builder: (context) => CommandDetailSheet(event: event),
     );
 
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .release(DockSuppressionReason.detailSheet);
     return result;
   }
 
@@ -445,9 +449,9 @@ class CommandDetailSheet extends ConsumerWidget {
         DetailRowData(
           icon: Icons.timer_rounded,
           label: 'TIME OCCURRED',
-          value: DateFormat('MMMM dd, yyyy, hh:mm a').format(event.timestamp),
+          value: DateFormat('MMM dd, yyyy • hh:mm a').format(event.timestamp.toLocal()),
           zone: 'Transaction Details',
-          isHalfWidth: false, // Make it full width since it's long now
+          isHalfWidth: false,
         ),
         if (event.quantityDelta != null)
           DetailRowData(
@@ -461,7 +465,7 @@ class CommandDetailSheet extends ConsumerWidget {
           DetailRowData(
             icon: Icons.verified_user_rounded,
             label: 'VERIFIED AT',
-            value: DateFormat('MMMM dd, yyyy, hh:mm a').format(event.verifiedAt!),
+            value: DateFormat('MMM dd, yyyy • hh:mm a').format(event.verifiedAt!.toLocal()),
             zone: 'Transaction Details',
           ),
       ],

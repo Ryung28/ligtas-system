@@ -3,15 +3,18 @@
 import { Boxes, Info } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from '@/lib/utils'
+import { getExpiryInfo } from '@/lib/expiry-utils'
+import { pluralizeContainerType } from '@/lib/container-type'
 
 interface PackagingPillProps {
     packaging: {
         enabled: boolean;
         containerType: string;
         containerCount: number | string;
-        containerCount: number | string;
         unitsPerContainer: number | string;
-        batches: Array<{ id: string, label: string, units: number, max_units?: number }>;
+        batches: Array<{ id: string, label: string, units: number, max_units?: number, expiry_date?: string | null }>;
+        expiry_mode?: 'none' | 'single' | 'grouped' | 'per_carton';
+        expiry_groups?: Array<{ id: string; label: string; expiry_date: string; batch_ids: string[] }>;
     }
     className?: string
 }
@@ -21,6 +24,12 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
 
     const totalContainers = packaging.batches.length
     const type = packaging.containerType || 'Unit'
+    const typePlural = pluralizeContainerType(type)
+    const expiryGroups = packaging.expiry_groups || []
+    const nearestExpiry = expiryGroups
+        .map((g) => g.expiry_date)
+        .filter(Boolean)
+        .sort()[0]
 
     return (
         <Popover>
@@ -33,8 +42,13 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                 >
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                     <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">
-                        {totalContainers} {type}{totalContainers !== 1 ? 's' : ''}
+                        {totalContainers} {totalContainers === 1 ? type : typePlural}
                     </span>
+                    {nearestExpiry && (
+                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">
+                            • Near {new Date(nearestExpiry).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                        </span>
+                    )}
                 </button>
             </PopoverTrigger>
             <PopoverContent 
@@ -55,33 +69,49 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                 {/* Content Matrix */}
                 <div className="p-2.5 max-h-[300px] overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-1 gap-1.5">
-                        {packaging.batches.map((batch, idx) => (
-                            <div 
-                                key={batch.id} 
-                                className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50/50 border border-transparent hover:border-slate-200 hover:bg-white transition-all group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight group-hover:text-slate-900 transition-colors truncate max-w-[140px]">
-                                        {batch.label}
-                                    </span>
+                        {packaging.batches.map((batch) => {
+                            const group = expiryGroups.find((g) => (g.batch_ids || []).includes(batch.id))
+                            const expiry = getExpiryInfo(group?.expiry_date ?? batch.expiry_date, 15)
+                            return (
+                                <div
+                                    key={batch.id}
+                                    className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50/50 border border-transparent hover:border-slate-200 hover:bg-white transition-all group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight group-hover:text-slate-900 transition-colors truncate max-w-[140px]">
+                                            {batch.label}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-baseline gap-1.5 shrink-0">
+                                        <span className={cn(
+                                            "text-[13px] font-black tabular-nums",
+                                            batch.units > 0 ? "text-slate-900" : "text-slate-400"
+                                        )}>
+                                            {batch.units}
+                                        </span>
+                                        {batch.max_units && (
+                                            <span className="text-[10px] font-bold text-slate-400">
+                                                / {batch.max_units}
+                                            </span>
+                                        )}
+                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest ml-0.5">Units</span>
+                                        {group?.expiry_date && (
+                                            <span className={cn(
+                                                "text-[9px] font-black uppercase tracking-tight ml-2",
+                                                expiry.status === 'expired'
+                                                    ? 'text-rose-600'
+                                                    : expiry.status === 'warning' || expiry.status === 'critical'
+                                                        ? 'text-amber-600'
+                                                        : 'text-emerald-600'
+                                            )}>
+                                                {new Date(group.expiry_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="flex items-baseline gap-1.5 shrink-0">
-                                     <span className={cn(
-                                         "text-[13px] font-black tabular-nums",
-                                         batch.units > 0 ? "text-slate-900" : "text-slate-400"
-                                     )}>
-                                         {batch.units}
-                                     </span>
-                                     {batch.max_units && (
-                                         <span className="text-[10px] font-bold text-slate-400">
-                                             / {batch.max_units}
-                                         </span>
-                                     )}
-                                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest ml-0.5">Units</span>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
 

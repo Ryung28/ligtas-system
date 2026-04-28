@@ -20,23 +20,52 @@ import 'package:mobile/src/features/navigation/providers/navigation_provider.dar
 import 'package:mobile/src/core/errors/app_exceptions.dart';
 
 class ActiveLoansScreen extends ConsumerStatefulWidget {
-  const ActiveLoansScreen({super.key});
+  const ActiveLoansScreen({super.key, this.openLoanId});
+
+  /// When set (e.g. `/requests?loanId=…` from notifications), opens that loan’s
+  /// details sheet once it appears in the stream (typically pending tab).
+  final String? openLoanId;
 
   @override
   ConsumerState<ActiveLoansScreen> createState() => _ActiveLoansScreenState();
 }
 
-class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with TickerProviderStateMixin {
+class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   late TabController _tabController;
+  bool _deepLinkLoanOpened = false;
+
+  /// True once we've synced [loanSelectedTabIndexProvider] after a notification
+  /// deep link. Until then we show tab 0 in the UI without writing the provider
+  /// during `initState` (Riverpod forbids that while the tree is building).
+  bool _deepLinkTabProviderSynced = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this, initialIndex: ref.read(loanSelectedTabIndexProvider));
+    final open = widget.openLoanId;
+    final deepLink = open != null && open.isNotEmpty;
+    if (deepLink) {
+      _deepLinkTabProviderSynced = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _deepLinkTabProviderSynced = true;
+        ref.read(loanSelectedTabIndexProvider.notifier).update(0);
+      });
+    }
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex:
+          deepLink ? 0 : ref.read(loanSelectedTabIndexProvider),
+    );
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging && _tabController.index != ref.read(loanSelectedTabIndexProvider)) {
-        ref.read(loanSelectedTabIndexProvider.notifier).update(_tabController.index);
+      if (!_tabController.indexIsChanging &&
+          _tabController.index != ref.read(loanSelectedTabIndexProvider)) {
+        ref
+            .read(loanSelectedTabIndexProvider.notifier)
+            .update(_tabController.index);
       }
     });
   }
@@ -50,10 +79,37 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
 
   @override
   Widget build(BuildContext context) {
-    final selectedTabIndex = ref.watch(loanSelectedTabIndexProvider);
+    final openId = widget.openLoanId;
+    if (openId != null && openId.isNotEmpty && !_deepLinkLoanOpened) {
+      ref.listen<AsyncValue<List<LoanItem>>>(myLoansNotifierProvider, (
+        _,
+        next,
+      ) {
+        next.whenData((loans) {
+          if (_deepLinkLoanOpened || !mounted) return;
+          for (final loan in loans) {
+            if (loan.id == openId) {
+              _deepLinkLoanOpened = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _showLoanDetails(context, loan);
+              });
+              break;
+            }
+          }
+        });
+      });
+    }
+
+    final providerTabIndex = ref.watch(loanSelectedTabIndexProvider);
+    final selectedTabIndex =
+        !_deepLinkTabProviderSynced &&
+                widget.openLoanId != null &&
+                widget.openLoanId!.isNotEmpty
+            ? 0
+            : providerTabIndex;
     final sortBy = ref.watch(loanSortByProvider);
     final sentinel = Theme.of(context).sentinel;
-
     return Scaffold(
       backgroundColor: sentinel.surface,
       body: Stack(
@@ -67,26 +123,34 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                 ref.invalidate(myReturnedHistoryProvider);
               },
               child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 slivers: [
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                     sliver: SliverToBoxAdapter(
                       child: Text(
-                        'My Items',
-                        style: GoogleFonts.lexend(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 30,
-                          color: sentinel.navy,
-                          letterSpacing: -0.5,
-                        ),
-                      ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0),
+                            'My Items',
+                            style: GoogleFonts.lexend(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 30,
+                              color: sentinel.navy,
+                              letterSpacing: -0.5,
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(duration: 600.ms)
+                          .slideX(begin: -0.1, end: 0),
                     ),
                   ),
                   _buildTabSection(selectedTabIndex),
                   _buildFilterSection(sortBy),
                   const SliverGap(16),
-                  _buildSliverLoanList(ref.watch(filteredLoansProvider), selectedTabIndex),
+                  _buildSliverLoanList(
+                    ref.watch(filteredLoansProvider),
+                    selectedTabIndex,
+                  ),
                   const SliverGap(100),
                 ],
               ),
@@ -138,7 +202,7 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                       ),
                     ),
                   ),
-                  
+
                   // ── Tab Buttons ──
                   Row(
                     children: List.generate(tabs.length, (index) {
@@ -148,7 +212,9 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                           onTap: () {
                             HapticFeedback.lightImpact();
                             _tabController.index = index;
-                            ref.read(loanSelectedTabIndexProvider.notifier).update(index);
+                            ref
+                                .read(loanSelectedTabIndexProvider.notifier)
+                                .update(index);
                           },
                           behavior: HitTestBehavior.opaque,
                           child: Center(
@@ -159,8 +225,15 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                                   tabs[index],
                                   style: GoogleFonts.lexend(
                                     fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                    color: isSelected ? sentinel.navy : sentinel.onSurfaceVariant.withOpacity(0.6),
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                    color:
+                                        isSelected
+                                            ? sentinel.navy
+                                            : sentinel.onSurfaceVariant
+                                                .withOpacity(0.6),
                                   ),
                                 ),
                                 if (counts[index] > 0)
@@ -169,7 +242,11 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                                     style: GoogleFonts.lexend(
                                       fontSize: 8,
                                       fontWeight: FontWeight.w800,
-                                      color: isSelected ? sentinel.navy.withOpacity(0.5) : sentinel.onSurfaceVariant.withOpacity(0.3),
+                                      color:
+                                          isSelected
+                                              ? sentinel.navy.withOpacity(0.5)
+                                              : sentinel.onSurfaceVariant
+                                                  .withOpacity(0.3),
                                     ),
                                   ),
                               ],
@@ -189,9 +266,7 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
   }
 
   Widget _buildTab(String label, int count, int index, int selectedIndex) {
-    return Tab(
-      child: Text(label),
-    );
+    return Tab(child: Text(label));
   }
 
   Widget _buildFilterSection(String sortBy) {
@@ -212,16 +287,33 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
                 ),
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (val) => ref.read(loanSearchQueryProvider.notifier).update(val),
-                  style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w500, color: sentinel.navy),
+                  onChanged:
+                      (val) => ref
+                          .read(loanSearchQueryProvider.notifier)
+                          .update(val),
+                  style: GoogleFonts.lexend(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: sentinel.navy,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Search items...',
-                    hintStyle: GoogleFonts.lexend(color: sentinel.onSurfaceVariant.withOpacity(0.4), fontSize: 13),
+                    hintStyle: GoogleFonts.lexend(
+                      color: sentinel.onSurfaceVariant.withOpacity(0.4),
+                      fontSize: 13,
+                    ),
                     prefixIcon: Container(
                       padding: const EdgeInsets.only(left: 16, right: 12),
-                      child: Icon(Icons.search_rounded, color: sentinel.onSurfaceVariant.withOpacity(0.5), size: 22),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: sentinel.onSurfaceVariant.withOpacity(0.5),
+                        size: 22,
+                      ),
                     ),
-                    prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 18),
                   ),
@@ -244,11 +336,15 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
         HapticFeedback.lightImpact();
         ref.read(loanSortByProvider.notifier).update(val);
       },
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'newest', child: Text('Newest First')),
-        const PopupMenuItem(value: 'oldest', child: Text('Oldest First')),
-        const PopupMenuItem(value: 'alphabetical', child: Text('Alphabetical')),
-      ],
+      itemBuilder:
+          (context) => [
+            const PopupMenuItem(value: 'newest', child: Text('Newest First')),
+            const PopupMenuItem(value: 'oldest', child: Text('Oldest First')),
+            const PopupMenuItem(
+              value: 'alphabetical',
+              child: Text('Alphabetical'),
+            ),
+          ],
       offset: const Offset(0, 64),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
@@ -263,10 +359,18 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
           children: [
             Text(
               sortBy == 'newest' ? 'Newest' : sortBy.toUpperCase(),
-              style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w600, color: sentinel.navy),
+              style: GoogleFonts.lexend(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: sentinel.navy,
+              ),
             ),
             const Gap(6),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: sentinel.navy),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 20,
+              color: sentinel.navy,
+            ),
           ],
         ),
       ),
@@ -289,74 +393,96 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
         return SliverPadding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final loan = items[index];
-                final isReturnable = loan.status == LoanStatus.active || loan.status == LoanStatus.overdue;
-                final isCancellable = loan.status == LoanStatus.pending;
-                final sentinel = Theme.of(context).sentinel;
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final loan = items[index];
+              final isReturnable =
+                  loan.status == LoanStatus.active ||
+                  loan.status == LoanStatus.overdue;
+              final isCancellable = loan.status == LoanStatus.pending;
+              final sentinel = Theme.of(context).sentinel;
 
-                Widget card = LoanCardGlass(
-                  loan: loan,
-                  onTap: () => _showLoanDetails(context, loan),
-                  onReturn: (isReturnable || isCancellable) 
-                    ? () async {
-                        final confirmed = await _confirmAction(
-                          context, 
-                          loan, 
-                          isReturnable ? 'Return' : 'Cancel'
-                        );
-                        if (confirmed) {
-                          isReturnable ? _handleReturn(loan) : _handleCancel(loan);
+              Widget card = LoanCardGlass(
+                loan: loan,
+                onTap: () => _showLoanDetails(context, loan),
+                onReturn:
+                    (isReturnable || isCancellable)
+                        ? () async {
+                          final confirmed = await _confirmAction(
+                            context,
+                            loan,
+                            isReturnable ? 'Return' : 'Cancel',
+                          );
+                          if (confirmed) {
+                            isReturnable
+                                ? _handleReturn(loan)
+                                : _handleCancel(loan);
+                          }
                         }
-                      }
-                    : null,
-                );
+                        : null,
+              );
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: card,
-                );
-              },
-              childCount: items.length,
-            ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: card,
+              );
+            }, childCount: items.length),
           ),
         );
       },
       loading: () => const SliverFillRemaining(child: LoanListSkeleton()),
-      error: (err, stack) => SliverFillRemaining(
-        child: LigtasErrorState(
-          title: 'V2 Data Failure',
-          message: 'Could not sync loan records locally.',
-          onRetry: () => ref.read(myLoansNotifierProvider.notifier).refresh(),
-        ),
-      ),
+      error:
+          (err, stack) => SliverFillRemaining(
+            child: LigtasErrorState(
+              title: 'V2 Data Failure',
+              message: 'Could not sync loan records locally.',
+              onRetry:
+                  () => ref.read(myLoansNotifierProvider.notifier).refresh(),
+            ),
+          ),
     );
   }
 
   void _showLoanDetails(BuildContext context, LoanItem loan) async {
-    ref.read(isDockSuppressedProvider.notifier).state = true;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .suppress(DockSuppressionReason.detailSheet);
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => LoanDetailsSheet(loan: loan, readOnly: true),
     );
-    ref.read(isDockSuppressedProvider.notifier).state = false;
+    ref
+        .read(dockSuppressionControllerProvider.notifier)
+        .release(DockSuppressionReason.detailSheet);
   }
 
-  Future<bool> _confirmAction(BuildContext context, LoanItem loan, String action) async {
+  Future<bool> _confirmAction(
+    BuildContext context,
+    LoanItem loan,
+    String action,
+  ) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Confirm $action'),
-        content: Text('Are you sure you want to $action ${loan.itemName}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Confirm $action'),
+                content: Text(
+                  'Are you sure you want to $action ${loan.itemName}?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('No'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Yes'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
   }
 
   void _handleReturn(LoanItem loan) async {
@@ -364,23 +490,31 @@ class _ActiveLoansScreenState extends ConsumerState<ActiveLoansScreen> with Tick
       await ref.read(loanRepositoryProvider).returnItem(loan.id);
       if (mounted) AppToast.showSuccess(context, 'Return request sent');
     } catch (e) {
-      if (mounted) AppToast.showError(context, ExceptionHandler.getDisplayMessage(e as Exception));
+      if (mounted)
+        AppToast.showError(
+          context,
+          ExceptionHandler.getDisplayMessage(e as Exception),
+        );
     }
   }
 
   void _handleCancel(LoanItem loan) async {
-     try {
+    try {
       await ref.read(loanRepositoryProvider).cancelLoan(loan.id);
       if (mounted) AppToast.showSuccess(context, 'Request cancelled');
     } catch (e) {
-      if (mounted) AppToast.showError(context, ExceptionHandler.getDisplayMessage(e as Exception));
+      if (mounted)
+        AppToast.showError(
+          context,
+          ExceptionHandler.getDisplayMessage(e as Exception),
+        );
     }
   }
 
   Widget _buildSectionHeader(List<LoanItem> items, int selectedTabIndex) {
     final type = ['pending', 'active', 'overdue', 'history'][selectedTabIndex];
     final sentinel = Theme.of(context).sentinel;
-    
+
     String label = 'Current Status';
     if (type == 'pending') label = 'Pending Approval';
     if (type == 'active') label = 'Active Deployments';

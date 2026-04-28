@@ -73,7 +73,7 @@
   /* 📱 PWA MOBILE READABILITY BOOST */
   @media (max-width: 768px) {
     html {
-      font-size: 106.25%; /* 17px base for premium mobile readability */
+      font-size: 93.75%; /* Reduced by 2px: 17px -> 15px */
     }
 
     :root {
@@ -83,23 +83,13 @@
     }
   }
 
-  /* 📱 PWA / MOBILE UPSCALE (+2px) */
+  /* 📱 PWA / MOBILE UPSCALE (Reverted to standard) */
   @media (max-width: 767px) {
     html {
-      font-size: 112.5%; /* 16px -> 18px */
+      font-size: 100%; /* Reduced by 2px: 18px -> 16px */
     }
-    
-    /* SCALE-UP HARDCODED PIXELS (+2px) */
-    .text-\[8px\]  { font-size: 10px !important; }
-    .text-\[9px\]  { font-size: 11px !important; }
-    .text-\[10px\] { font-size: 12px !important; }
-    .text-\[11px\] { font-size: 13px !important; }
-    .text-\[12px\] { font-size: 14px !important; }
-    .text-\[13px\] { font-size: 15px !important; }
-    .text-\[14px\] { font-size: 16px !important; }
-    .text-\[15px\] { font-size: 17px !important; }
-    .text-\[16px\] { font-size: 18px !important; }
   }
+
 
   /* 💻 14-16 INCH LAPTOP OPTIMIZATION (1366px - 1700px) */
   @media (min-width: 1366px) and (max-width: 1700px) {

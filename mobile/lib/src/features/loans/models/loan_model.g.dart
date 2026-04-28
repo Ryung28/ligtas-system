@@ -5202,12 +5202,12 @@ _$LoanModelImpl _$$LoanModelImplFromJson(Map<String, dynamic> json) =>
       borrowerEmail: json['borrowerEmail'] as String? ?? '',
       purpose: json['purpose'] as String,
       quantityBorrowed: (json['quantity_borrowed'] as num).toInt(),
-      borrowDate: DateTime.parse(json['borrow_date'] as String),
-      expectedReturnDate:
-          DateTime.parse(json['expected_return_date'] as String),
-      actualReturnDate: json['actual_return_date'] == null
-          ? null
-          : DateTime.parse(json['actual_return_date'] as String),
+      borrowDate:
+          const DateTimeUtcConverter().fromJson(json['borrow_date'] as String),
+      expectedReturnDate: const DateTimeUtcConverter()
+          .fromJson(json['expected_return_date'] as String),
+      actualReturnDate: const DateTimeNullableUtcConverter()
+          .fromJson(json['actual_return_date'] as String?),
       status: $enumDecodeNullable(_$LoanStatusEnumMap, json['status']) ??
           LoanStatus.active,
       notes: json['notes'] as String?,
@@ -5215,16 +5215,13 @@ _$LoanModelImpl _$$LoanModelImplFromJson(Map<String, dynamic> json) =>
       borrowedBy: json['borrowed_by'] as String,
       returnedBy: json['returned_by'] as String?,
       approvedBy: json['approved_by'] as String?,
-      approvedAt: json['approved_at'] == null
-          ? null
-          : DateTime.parse(json['approved_at'] as String),
+      approvedAt: const DateTimeNullableUtcConverter()
+          .fromJson(json['approved_at'] as String?),
       handedBy: json['handed_by'] as String?,
-      handedAt: json['handed_at'] == null
-          ? null
-          : DateTime.parse(json['handed_at'] as String),
-      pickupScheduledAt: json['pickup_scheduled_at'] == null
-          ? null
-          : DateTime.parse(json['pickup_scheduled_at'] as String),
+      handedAt: const DateTimeNullableUtcConverter()
+          .fromJson(json['handed_at'] as String?),
+      pickupScheduledAt: const DateTimeNullableUtcConverter()
+          .fromJson(json['pickup_scheduled_at'] as String?),
       receivedByName: json['received_by_name'] as String?,
       receivedByUserId: json['received_by_user_id'] as String?,
       returnCondition: json['return_condition'] as String?,
@@ -5245,19 +5242,24 @@ Map<String, dynamic> _$$LoanModelImplToJson(_$LoanModelImpl instance) =>
       'borrowerEmail': instance.borrowerEmail,
       'purpose': instance.purpose,
       'quantity_borrowed': instance.quantityBorrowed,
-      'borrow_date': instance.borrowDate.toIso8601String(),
-      'expected_return_date': instance.expectedReturnDate.toIso8601String(),
-      'actual_return_date': instance.actualReturnDate?.toIso8601String(),
+      'borrow_date': const DateTimeUtcConverter().toJson(instance.borrowDate),
+      'expected_return_date':
+          const DateTimeUtcConverter().toJson(instance.expectedReturnDate),
+      'actual_return_date': const DateTimeNullableUtcConverter()
+          .toJson(instance.actualReturnDate),
       'status': _$LoanStatusEnumMap[instance.status]!,
       'notes': instance.notes,
       'return_notes': instance.returnNotes,
       'borrowed_by': instance.borrowedBy,
       'returned_by': instance.returnedBy,
       'approved_by': instance.approvedBy,
-      'approved_at': instance.approvedAt?.toIso8601String(),
+      'approved_at':
+          const DateTimeNullableUtcConverter().toJson(instance.approvedAt),
       'handed_by': instance.handedBy,
-      'handed_at': instance.handedAt?.toIso8601String(),
-      'pickup_scheduled_at': instance.pickupScheduledAt?.toIso8601String(),
+      'handed_at':
+          const DateTimeNullableUtcConverter().toJson(instance.handedAt),
+      'pickup_scheduled_at': const DateTimeNullableUtcConverter()
+          .toJson(instance.pickupScheduledAt),
       'received_by_name': instance.receivedByName,
       'received_by_user_id': instance.receivedByUserId,
       'return_condition': instance.returnCondition,
