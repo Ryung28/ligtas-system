@@ -6,6 +6,7 @@ import '../../fast_dispatch/providers/dispatch_controller.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
 import '../models/qr_payload.dart';
 import '../widgets/scan_result_sheet.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
 
 /// 🛡️ ResQTrack TACTICAL SWITCHBOARD
 /// Centralized intent dispatcher for all QR scan events.
@@ -42,13 +43,7 @@ class LigtasScannerSwitchboard {
       person: (personId, personName, role, phone) {
         // 👥 PERSONNEL INTENT: Identity verification
         context.push('/transaction'); // Legacy transaction screen
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Personnel Identified: $personName ($role)'),
-            backgroundColor: const Color(0xFF0F172A),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.showInfo(context, 'Personnel Identified: $personName ($role)');
         ref
             .read(dockSuppressionControllerProvider.notifier)
             .release(DockSuppressionReason.fullScreenFlow);

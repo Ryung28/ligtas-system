@@ -503,7 +503,7 @@ export async function deleteItem(id: number) {
         if (activeBorrows && activeBorrows.length > 0) {
             return { 
                 success: false, 
-                error: `⚠️ STRATEGIC BLOCK: Cannot archive resource. Resolve active borrows (Mark as Returned or Lost) first.` 
+                error: `⚠️ NOTICE: Cannot delete item. Resolve active checkouts (Mark as Returned or Lost) first.` 
             }
         }
 
@@ -552,7 +552,7 @@ export async function getInventoryAlerts() {
 
         if (error) {
             console.error('Error fetching inventory alerts:', error);
-            return { success: false, error: 'Database intelligence fetch failed.' };
+            return { success: false, error: 'Failed to load inventory alerts.' };
         }
 
         const alerts = data || [];
@@ -575,6 +575,6 @@ export async function getInventoryAlerts() {
         };
     } catch (error) {
         console.error('Unexpected error in getInventoryAlerts:', error);
-        return { success: false, error: 'An unexpected system error occurred.' };
+        return { success: false, error: 'An unexpected error occurred.' };
     }
 }

@@ -69,7 +69,7 @@ export function HandoffCommandSheet({
     const [expandedImage, setExpandedImage] = useState<{ url: string; name: string } | null>(null);
     
     // Identity State
-    const [releasedBy, setReleasedBy] = useState('Officer Name');
+    const [releasedBy, setReleasedBy] = useState('Staff Member Name');
     const [receivedBy, setReceivedBy] = useState(borrowerName); // 🛡️ Audit State
     
     const [itemDetails, setItemDetails] = useState<{
@@ -117,7 +117,7 @@ export function HandoffCommandSheet({
     useEffect(() => {
         if (!open) return;
         const fullName = user?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-        if (fullName && (!releasedBy || releasedBy === 'Officer Name')) {
+        if (fullName && (!releasedBy || releasedBy === 'Staff Member Name')) {
             setReleasedBy(fullName);
         }
     }, [open, user, releasedBy]);
@@ -149,7 +149,7 @@ export function HandoffCommandSheet({
                 physicallyReceivedBy: receivedBy 
             });
             if (result.success) {
-                toast.success('Handoff confirmed.');
+                toast.success('Handover confirmed.');
                 setOpen(false);
                 onActionSuccess?.();
             } else {
@@ -178,7 +178,7 @@ export function HandoffCommandSheet({
                 <form onSubmit={handleHandoff}>
                     <DialogHeader className="p-8 pb-4">
                         <DialogTitle className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            📦 Process Handoff
+                            📦 Confirm Handover
                         </DialogTitle>
                         <DialogDescription className="text-slate-500 font-medium pt-1">
                             Confirm the physical release of <strong>{itemName}</strong> to the requester.
@@ -191,7 +191,7 @@ export function HandoffCommandSheet({
                             <div className="bg-slate-50/70 p-6 rounded-2xl border border-slate-100 space-y-5">
                                 <div className="flex items-center gap-2 pb-1 border-b border-slate-200/80">
                                     <Send className="h-4 w-4 text-amber-500" />
-                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Release Info</span>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Handover Details</span>
                                 </div>
 
                                 <div className="space-y-3">
@@ -269,12 +269,12 @@ export function HandoffCommandSheet({
                             <div className="p-7 md:p-8 border border-slate-100 rounded-2xl bg-white space-y-6 shadow-sm">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                     <ClipboardCheck className="h-4 w-4 text-amber-500" />
-                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Audit Trail</span>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Handover Info</span>
                                 </div>
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
-                                        <Label className="text-[13px] font-bold text-slate-700">Physically Received By <span className="text-red-500">*</span></Label>
+                                        <Label className="text-[13px] font-bold text-slate-700">Received By <span className="text-red-500">*</span></Label>
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -297,7 +297,7 @@ export function HandoffCommandSheet({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[13px] font-bold text-slate-700">Releasing Officer <span className="text-red-500">*</span></Label>
+                                    <Label className="text-[13px] font-bold text-slate-700">Handed Over By <span className="text-red-500">*</span></Label>
                                     <div className="relative">
                                         <Input 
                                             placeholder="Full name of releaser" 
@@ -335,7 +335,7 @@ export function HandoffCommandSheet({
                             className="h-14 px-8 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-bold gap-3 shadow-lg shadow-amber-500/20 flex-1 sm:flex-none transition-all"
                         >
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-5 w-5" />}
-                            Confirm Handoff
+                            Confirm Handover
                         </Button>
                     </DialogFooter>
                 </form>

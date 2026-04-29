@@ -24,7 +24,7 @@ export function StationIdentityCard({ station, onDownload }: StationIdentityCard
             <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
                 <div>
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">
-                        IDENTITY STICKER
+                        STATION LABEL
                     </p>
                     <p className="text-[14px] font-black text-slate-900 truncate uppercase italic mt-1 leading-none">
                         {station.station_code}

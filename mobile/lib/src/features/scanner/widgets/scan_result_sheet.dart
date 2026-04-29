@@ -10,6 +10,7 @@ import '../../transactions/services/quick_borrow_service.dart';
 import '../../../core/networking/supabase_client.dart';
 import '../../../core/design_system/app_theme.dart';
 import '../../../core/design_system/widgets/primary_button.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../navigation/providers/navigation_provider.dart';
@@ -229,13 +230,19 @@ class _ScanResultSheetState extends ConsumerState<ScanResultSheet> {
 
       if (mounted) {
         if (results['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(results['message'] ?? 'Transaction Successful'),
-              backgroundColor: _isReturnMode ? AppTheme.secondaryOrange : AppTheme.emeraldGreen,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (_isReturnMode) {
+            AppToast.show(
+              context,
+              results['message'] ?? 'Return Successful',
+              color: AppTheme.secondaryOrange,
+              icon: Icons.assignment_return_rounded,
+            );
+          } else {
+            AppToast.showSuccess(
+              context,
+              results['message'] ?? 'Transaction Successful',
+            );
+          }
           Navigator.of(context).pop(true);
         } else {
           setState(() => _isLoading = false);

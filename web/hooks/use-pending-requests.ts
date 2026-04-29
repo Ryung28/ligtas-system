@@ -12,8 +12,22 @@ export const fetchPendingRequests = async () => {
     const { data, error } = await supabase
         .from('borrow_logs')
         .select(`
-            *,
-            inventory:inventory_id (*)
+            id,
+            status,
+            created_at,
+            item_name,
+            borrower_name,
+            borrower_contact,
+            borrower_department,
+            requested_units,
+            purpose,
+            pickup_scheduled_at,
+            inventory:inventory_id (
+                id,
+                item_name,
+                current_stock,
+                unit_type
+            )
         `)
         .in('status', ['pending', 'staged', 'reserved'])
         .order('created_at', { ascending: false })

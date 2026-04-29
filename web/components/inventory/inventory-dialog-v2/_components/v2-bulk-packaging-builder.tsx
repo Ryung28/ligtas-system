@@ -55,14 +55,23 @@ const CartonCard = memo(({
     onRemoveBatch: (id: string) => void 
 }) => {
     return (
-        <div className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:border-zinc-300 transition-all group relative">
+        <div className="bg-white border border-slate-100 rounded-xl p-2 shadow-sm hover:border-zinc-400 hover:shadow-md transition-all group relative">
+            {/* 🗑️ ABSOLUTE DELETE (Hover Only) */}
+            <button
+                type="button"
+                onClick={() => onRemoveBatch(batch.id)}
+                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-rose-500 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-rose-600 active:scale-90 z-10"
+            >
+                <Trash2 className="h-2.5 w-2.5" />
+            </button>
+
             {/* GHOST LABEL (ID / NAME) */}
-            <div className="mb-2">
+            <div className="mb-1">
                 <input 
                     value={batch.label} 
                     onChange={(e) => onUpdateLabel(idx, e.target.value)}
-                    placeholder="Unit Name..."
-                    className="w-full text-[10px] font-extrabold text-slate-400 uppercase tracking-tighter bg-transparent border border-transparent hover:border-slate-100 hover:bg-slate-50 focus:bg-white focus:border-zinc-200 focus:text-zinc-900 rounded-md px-1.5 py-0.5 transition-all outline-none cursor-text placeholder:text-slate-300"
+                    placeholder="ID..."
+                    className="w-full text-[9px] font-black text-slate-400 uppercase tracking-tighter bg-transparent border-none hover:bg-slate-50 focus:bg-white focus:text-zinc-900 rounded px-1 py-0.5 transition-all outline-none cursor-text placeholder:text-slate-300 truncate"
                 />
             </div>
             
@@ -73,16 +82,16 @@ const CartonCard = memo(({
                     value={batch.units}
                     onChange={(e) => onUpdateBatch(idx, Number(e.target.value))}
                     className={cn(
-                        "h-10 text-center text-[15px] font-black rounded-lg border-2 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                        "h-8 text-center text-[13px] font-black rounded-lg border-2 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1",
                         batch.units === Number(packaging.unitsPerContainer) 
-                            ? "border-slate-100 bg-white text-zinc-900" 
-                            : "border-orange-200 bg-orange-50/50 text-orange-700"
+                            ? "border-slate-50 bg-slate-50/30 text-zinc-900" 
+                            : "border-orange-100 bg-orange-50/50 text-orange-700"
                     )}
                 />
             </div>
 
             {/* LOCATION BADGE */}
-            <div className="mt-2">
+            <div className="mt-1.5">
                 <Select
                     value={batch.locationId?.toString() ?? packaging.defaultLocationId?.toString() ?? '__none__'}
                     onValueChange={(val) => {
@@ -92,30 +101,21 @@ const CartonCard = memo(({
                     }}
                 >
                     <SelectTrigger className={cn(
-                        "h-6 rounded-md text-[9px] font-black uppercase tracking-wider border px-2 w-full",
+                        "h-5 rounded-md text-[8px] font-bold uppercase tracking-tight border-none px-1.5 w-full shadow-none",
                         batch.locationId && batch.locationId !== packaging.defaultLocationId
-                            ? "border-blue-200 bg-blue-50 text-blue-700"
-                            : "border-slate-100 bg-slate-50 text-slate-500"
+                            ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                            : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                     )}>
-                        <SelectValue placeholder="Location" />
+                        <SelectValue placeholder="Loc" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200">
-                        <SelectItem value="__none__" className="text-[11px] font-bold py-2 text-slate-400">— Default</SelectItem>
+                        <SelectItem value="__none__" className="text-[10px] font-bold py-1.5 text-slate-400">— Default</SelectItem>
                         {locations.map(loc => (
-                            <SelectItem key={loc.id} value={String(loc.id)} className="text-[11px] font-bold py-2">{loc.location_name}</SelectItem>
+                            <SelectItem key={loc.id} value={String(loc.id)} className="text-[10px] font-bold py-1.5">{loc.location_name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
             </div>
-
-            <button
-                type="button"
-                onClick={() => onRemoveBatch(batch.id)}
-                className="mt-2 w-full h-7 rounded-md border border-slate-200 text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-rose-600 hover:border-rose-200 transition-colors flex items-center justify-center gap-1"
-            >
-                <Trash2 className="h-3 w-3" />
-                Remove
-            </button>
         </div>
     );
 });
@@ -149,10 +149,10 @@ export function V2BulkPackagingBuilder({
     }
 
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl transition-all duration-300 mb-4 animate-in fade-in slide-in-from-top-4">
+        <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden transition-all duration-300 mb-4 animate-in fade-in slide-in-from-top-4">
             {/* 🛡️ TACTICAL HEADER */}
             <div 
-                className="bg-zinc-900 px-5 py-4 flex items-center justify-between cursor-pointer group"
+                className="bg-zinc-900 px-5 py-4 flex items-center justify-between cursor-pointer group rounded-t-2xl"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 <div className="flex items-center gap-4">
@@ -186,7 +186,7 @@ export function V2BulkPackagingBuilder({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Container Type</Label>
                                 <Select
@@ -243,9 +243,9 @@ export function V2BulkPackagingBuilder({
                             </button>
                         </div>
 
-                        <div className="bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-slate-200 min-h-[140px]">
+                        <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200 min-h-[140px]">
                             {packaging.batches.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
                                     {packaging.batches.map((batch, idx) => (
                                         <CartonCard 
                                             key={batch.id}
@@ -314,35 +314,44 @@ export function V2BulkPackagingBuilder({
 
                                 {expiryGroups.map((group) => (
                                     <div key={group.id} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                        <div className="bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <Input 
-                                                    value={group.label}
-                                                    onChange={(e) => onUpdateExpiryGroup(group.id, { label: e.target.value })}
-                                                    className="h-8 w-40 text-[11px] font-black uppercase tracking-tight bg-transparent border-transparent hover:border-slate-200 focus:bg-white"
-                                                />
-                                                <Input 
-                                                    type="date"
-                                                    value={group.expiry_date}
-                                                    onChange={(e) => onUpdateExpiryGroup(group.id, { expiry_date: e.target.value })}
-                                                    className="h-8 w-40 text-[11px] font-bold"
-                                                />
+                                        <div className="bg-white p-4 border-b border-slate-200">
+                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <Input 
+                                                        value={group.label}
+                                                        onChange={(e) => onUpdateExpiryGroup(group.id, { label: e.target.value })}
+                                                        className="h-9 w-full text-[11px] font-black uppercase tracking-tight bg-slate-50/50 border-slate-100 hover:border-slate-200 focus:bg-white px-3"
+                                                        placeholder="Group Name..."
+                                                    />
+                                                </div>
+                                                <button 
+                                                    onClick={() => onRemoveExpiryGroup(group.id)}
+                                                    className="h-9 w-9 shrink-0 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[9px] font-black text-slate-400 uppercase ml-1">Expiry Date</Label>
+                                                    <Input 
+                                                        type="date"
+                                                        value={group.expiry_date}
+                                                        onChange={(e) => onUpdateExpiryGroup(group.id, { expiry_date: e.target.value })}
+                                                        className="h-9 w-full text-[11px] font-bold rounded-xl"
+                                                    />
+                                                </div>
                                                 
-                                                <div className="h-8 border-l border-slate-200 mx-1" />
-                                                
-                                                <div className="flex-1">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[9px] font-black text-slate-400 uppercase ml-1">Warehouse</Label>
                                                     <Select
                                                         value={(() => {
                                                             const assignedBatches = packaging.batches.filter(b => (group.batch_ids || []).includes(b.id));
                                                             if (assignedBatches.length === 0) return '__none__';
-                                                            
-                                                            const getEffectiveLoc = (b: any) => {
-                                                                const id = b?.locationId ?? packaging.defaultLocationId ?? null;
-                                                                return id ? String(id) : '__none__';
-                                                            };
-
-                                                            const firstLoc = getEffectiveLoc(assignedBatches[0]);
-                                                            const allSame = assignedBatches.every(b => getEffectiveLoc(b) === firstLoc);
+                                                            const getEffectiveLoc = (b: any) => b?.locationId ?? packaging.defaultLocationId ?? null;
+                                                            const firstLoc = String(getEffectiveLoc(assignedBatches[0]) ?? '__none__');
+                                                            const allSame = assignedBatches.every(b => String(getEffectiveLoc(b) ?? '__none__') === firstLoc);
                                                             return allSame ? firstLoc : '__mixed__';
                                                         })()}
                                                         onValueChange={(val) => {
@@ -355,25 +364,11 @@ export function V2BulkPackagingBuilder({
                                                             onUpdateMultipleLocations(batchIndices, locId, locName);
                                                         }}
                                                     >
-                                                        <SelectTrigger className="h-8 rounded-lg border-slate-200 bg-white font-black text-[10px] uppercase tracking-wider w-[180px]">
-                                                            <SelectValue placeholder="Warehouse 📍" />
+                                                        <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-black text-[10px] uppercase tracking-wider">
+                                                            <SelectValue placeholder="Warehouse" />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl border-slate-200">
                                                             <SelectItem value="__none__" className="text-[11px] font-bold py-2 text-slate-400">Default Warehouse</SelectItem>
-                                                            {(() => {
-                                                                const assignedBatches = packaging.batches.filter(b => (group.batch_ids || []).includes(b.id));
-                                                                const getEffectiveLoc = (b: any) => {
-                                                                    const id = b?.locationId ?? packaging.defaultLocationId ?? null;
-                                                                    return id ? String(id) : '__none__';
-                                                                };
-                                                                const firstLoc = getEffectiveLoc(assignedBatches[0]);
-                                                                const allSame = assignedBatches.every(b => getEffectiveLoc(b) === firstLoc);
-                                                                
-                                                                if (!allSame) {
-                                                                    return <SelectItem value="__mixed__" disabled className="text-[11px] font-bold py-2 text-blue-600">Multiple Locations</SelectItem>
-                                                                }
-                                                                return null;
-                                                            })()}
                                                             {locations.map(loc => (
                                                                 <SelectItem key={loc.id} value={String(loc.id)} className="text-[11px] font-bold py-2">{loc.location_name}</SelectItem>
                                                             ))}
@@ -381,14 +376,8 @@ export function V2BulkPackagingBuilder({
                                                     </Select>
                                                 </div>
                                             </div>
-                                            <button 
-                                                onClick={() => onRemoveExpiryGroup(group.id)}
-                                                className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
                                         </div>
-                                        <div className="p-4 grid grid-cols-5 gap-2">
+                                        <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(60px,1fr))] gap-2">
                                             {packaging.batches.map((batch) => {
                                                 const isAssigned = (group.batch_ids || []).includes(batch.id)
                                                 const isAssignedElsewhere = assignedBatchIds.has(batch.id) && !isAssigned

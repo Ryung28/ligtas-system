@@ -85,7 +85,7 @@ export function ReturnCommandSheet({
     // Identity State
     const [returnCondition, setReturnCondition] = useState('Good');
     const [returnNotes, setReturnNotes] = useState('');
-    const [receivedBy, setReceivedBy] = useState('Officer Name');
+    const [receivedBy, setReceivedBy] = useState('Staff Member Name');
     const [returnedBy, setReturnedBy] = useState(borrowerName); // 🛡️ Audit State
     
     const [itemDetails, setItemDetails] = useState<{
@@ -174,7 +174,7 @@ export function ReturnCommandSheet({
     useEffect(() => {
         if (!open) return;
         const fullName = user?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-        if (fullName && (!receivedBy || receivedBy === 'Officer Name')) {
+        if (fullName && (!receivedBy || receivedBy === 'Staff Member Name')) {
             setReceivedBy(fullName);
         }
     }, [open, user, receivedBy]);
@@ -256,8 +256,8 @@ export function ReturnCommandSheet({
             if (failureCount === 0) {
                 toast.success(
                     isBatchMode
-                        ? `${successCount} item(s) recovered at ${returnedAtLabel}.`
-                        : `Recovery confirmed at ${returnedAtLabel}.`
+                        ? `${successCount} item(s) returned at ${returnedAtLabel}.`
+                        : `Return confirmed at ${returnedAtLabel}.`
                 );
                 setOpen(false);
                 onActionSuccess?.();
@@ -292,7 +292,7 @@ export function ReturnCommandSheet({
                 <form onSubmit={handleReturn} className="flex flex-col h-full overflow-hidden">
                     <DialogHeader className="p-8 pb-4 shrink-0 bg-white">
                         <DialogTitle className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            🔄 Process Return
+                            🔄 Return Item
                         </DialogTitle>
                         <DialogDescription className="text-slate-500 font-medium pt-1">
                             {isBatchMode
@@ -454,7 +454,7 @@ export function ReturnCommandSheet({
                             <div className="p-7 md:p-8 border border-slate-100 rounded-2xl bg-white space-y-6 shadow-sm">
                                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                                     <ClipboardCheck className="h-4 w-4 text-blue-500" />
-                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Audit Trail</span>
+                                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Return Details</span>
                                 </div>
 
                                 {/* 🛡️ Audit Field: Returned By */}
@@ -519,7 +519,7 @@ export function ReturnCommandSheet({
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[13px] font-bold text-slate-700">Audit Notes <span className="text-slate-400 font-normal">(Notes)</span></Label>
+                                        <Label className="text-[13px] font-bold text-slate-700">Notes <span className="text-slate-400 font-normal">(Optional)</span></Label>
                                         <Input
                                             placeholder="Condition details..."
                                             className="h-12 bg-white border-slate-200 rounded-xl"
@@ -561,14 +561,12 @@ export function ReturnCommandSheet({
                             </div>
                         </div>
 
-                        {isDamaged && (
                             <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
                                 <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
                                 <p className="text-[10px] font-bold text-red-800 uppercase tracking-tight leading-normal">
-                                    Property Alert: Item will be flagged for quarantine and maintenance registry.
+                                    Note: Item will be flagged for maintenance and inspection.
                                 </p>
                             </div>
-                        )}
                     </div>
 
                     <DialogFooter className="px-8 pb-8 pt-2 flex items-center justify-between gap-4 shrink-0 bg-white border-t border-slate-50">

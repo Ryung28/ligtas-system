@@ -16,11 +16,17 @@ import { getBorrowLogByIdAction } from '@/app/actions/logs-actions'
  * This is the "Full Card" view for mobile. 
  * It reads from the URL ?id=XXX to determine which log to show.
  */
+import useSWR from 'swr'
+import { LOGS_CACHE_KEY } from '@/hooks/use-borrow-logs'
+
 export function TransactionDetailSheet() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const triageId = searchParams.get('id')
-    const { logs, refresh } = useBorrowLogs()
+    
+    // 🚀 PERFORMANCE: Use direct cache access instead of the heavy useBorrowLogs hook
+    // This prevents expensive O(N log N) sorting from running on every page.
+    const { data: logs = [], mutate: refresh } = useSWR<BorrowLog[]>(LOGS_CACHE_KEY)
     
     const [selectedLog, setSelectedLog] = useState<BorrowLog | null>(null)
     const [isLoading, setIsLoading] = useState(false)

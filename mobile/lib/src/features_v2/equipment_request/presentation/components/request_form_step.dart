@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
@@ -12,7 +13,7 @@ import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/ta
 import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/tactile_quantity_stepper.dart';
 import 'package:mobile/src/features_v2/equipment_request/presentation/widgets/tactile_calendar_modal.dart';
 
-class RequestFormStep extends ConsumerWidget {
+class RequestFormStep extends ConsumerStatefulWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController nameController;
   final TextEditingController contactController;
@@ -35,11 +36,18 @@ class RequestFormStep extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RequestFormStep> createState() => _RequestFormStepState();
+}
+
+class _RequestFormStepState extends ConsumerState<RequestFormStep> {
+  bool _isEditingRequester = false;
+
+  @override
+  Widget build(BuildContext context) {
     final sentinel = Theme.of(context).sentinel;
 
     return Form(
-      key: formKey,
+      key: widget.formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -48,20 +56,43 @@ class RequestFormStep extends ConsumerWidget {
           TactileMissionProgress(currentStep: 1, sentinel: sentinel),
           const Gap(32),
 
-          _SectionLabel(text: 'REQUESTER DETAILS', sentinel: sentinel),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _SectionLabel(text: 'REQUESTER DETAILS', sentinel: sentinel),
+              if (!_isEditingRequester)
+                GestureDetector(
+                  onTap: () => setState(() => _isEditingRequester = true),
+                  child: Text(
+                    'EDIT INFO',
+                    style: GoogleFonts.lexend(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: sentinel.primary,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const Gap(16),
-          _buildUserSummary(sentinel),
+          
+          if (_isEditingRequester)
+            _buildEditableRequester(sentinel)
+          else
+            _buildStaticRequester(sentinel),
+
           const Gap(32),
 
           // 📦 ITEM LIST
           _SectionLabel(text: 'ITEMS FOR BORROWING', sentinel: sentinel),
           const Gap(16),
-          if (state.cartItems.isEmpty) 
+          if (widget.state.cartItems.isEmpty) 
             _buildEmptyCart(sentinel)
           else
-            ...state.cartItems.map((cartItem) {
+            ...widget.state.cartItems.map((cartItem) {
             final itemId = cartItem.item.id.toString();
-            final pickupDate = state.itemPickupDates[itemId];
+            final pickupDate = widget.state.itemPickupDates[itemId];
             final isNotToday = pickupDate != null && DateUtils.isSameDay(pickupDate, DateTime.now()) == false;
             
             return Padding(
@@ -88,7 +119,7 @@ class RequestFormStep extends ConsumerWidget {
                           label: cartItem.item.unit,
                           max: cartItem.item.displayStock,
                           onChanged: (val) {
-                            notifier.updateItemQuantity(itemId, val);
+                            widget.notifier.updateItemQuantity(itemId, val);
                           },
                         ),
                       ],
@@ -100,7 +131,7 @@ class RequestFormStep extends ConsumerWidget {
                           initialDate: pickupDate ?? DateTime.now(),
                           minDate: DateTime.now(),
                           title: 'Pickup Schedule',
-                          onDateSelected: (day) => notifier.updateItemPickupDate(itemId, day),
+                          onDateSelected: (day) => widget.notifier.updateItemPickupDate(itemId, day),
                         );
                       },
                       child: Container(
@@ -149,16 +180,16 @@ class RequestFormStep extends ConsumerWidget {
             height: 85,
             onTap: () => _showDatePicker(
               context: context,
-              initialDate: state.expectedReturnDate ?? DateTime.now().add(const Duration(days: 7)),
+              initialDate: widget.state.expectedReturnDate ?? DateTime.now().add(const Duration(days: 7)),
               minDate: DateTime.now().add(const Duration(days: 1)),
-              onDateSelected: (day) => notifier.updateReturnDate(day),
+              onDateSelected: (day) => widget.notifier.updateReturnDate(day),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  state.expectedReturnDate != null 
-                    ? DateFormat('MMMM dd, yyyy').format(state.expectedReturnDate!)
+                  widget.state.expectedReturnDate != null 
+                    ? DateFormat('MMMM dd, yyyy').format(widget.state.expectedReturnDate!)
                     : 'Select Return Date',
                   style: GoogleFonts.lexend(fontSize: 16, fontWeight: FontWeight.w800, color: sentinel.navy),
                 ),
@@ -172,7 +203,7 @@ class RequestFormStep extends ConsumerWidget {
             label: 'Purpose of Request',
             sentinel: sentinel,
             child: TextFormField(
-              controller: purposeController,
+              controller: widget.purposeController,
               maxLines: 2,
               validator: (v) => (v == null || v.isEmpty) ? 'Purpose required' : null,
               style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600, color: sentinel.navy),
@@ -190,6 +221,115 @@ class RequestFormStep extends ConsumerWidget {
     );
   }
 
+  Widget _buildStaticRequester(SentinelColors sentinel) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: sentinel.tactile.recessed,
+      ),
+      child: Column(
+        children: [
+          _SummaryRow(icon: Icons.person_outline_rounded, text: widget.nameController.text, sentinel: sentinel),
+          const Gap(12),
+          _SummaryRow(icon: Icons.business_center_outlined, text: widget.officeController.text, sentinel: sentinel),
+          const Gap(12),
+          _SummaryRow(icon: Icons.phone_android_rounded, text: widget.contactController.text, sentinel: sentinel),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditableRequester(SentinelColors sentinel) {
+    return Column(
+      children: [
+        RecessedHubCard(
+          label: 'Full Name',
+          sentinel: sentinel,
+          child: TextFormField(
+            controller: widget.nameController,
+            validator: (v) => (v == null || v.isEmpty) ? 'Name required' : null,
+            style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600, color: sentinel.navy),
+            decoration: InputDecoration(
+              hintText: 'Your full name...',
+              hintStyle: GoogleFonts.lexend(color: sentinel.navy.withOpacity(0.3)),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.only(top: 4),
+            ),
+          ),
+        ),
+        const Gap(16),
+        RecessedHubCard(
+          label: 'Contact Number',
+          sentinel: sentinel,
+          child: TextFormField(
+            controller: widget.contactController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(11),
+            ],
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Contact required';
+              if (v.length != 11) return 'Must be 11 digits';
+              if (!v.startsWith('09')) return 'Must start with 09';
+              return null;
+            },
+            style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600, color: sentinel.navy),
+            decoration: InputDecoration(
+              hintText: '09XX XXX XXXX',
+              hintStyle: GoogleFonts.lexend(color: sentinel.navy.withOpacity(0.3)),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.only(top: 4),
+            ),
+          ),
+        ),
+        const Gap(16),
+        RecessedHubCard(
+          label: 'Department / Office',
+          sentinel: sentinel,
+          child: TextFormField(
+            controller: widget.officeController,
+            validator: (v) => (v == null || v.isEmpty) ? 'Office required' : null,
+            style: GoogleFonts.lexend(fontSize: 14, fontWeight: FontWeight.w600, color: sentinel.navy),
+            decoration: InputDecoration(
+              hintText: 'e.g. CDRRMO, BFP...',
+              hintStyle: GoogleFonts.lexend(color: sentinel.navy.withOpacity(0.3)),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: const EdgeInsets.only(top: 4),
+            ),
+          ),
+        ),
+        const Gap(20),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              if (widget.formKey.currentState!.validate()) {
+                setState(() => _isEditingRequester = false);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: sentinel.navy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+            child: Text(
+              'SAVE CHANGES',
+              style: GoogleFonts.lexend(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionHeader(BuildContext context, SentinelColors sentinel) {
     return Row(
       children: [
@@ -204,26 +344,6 @@ class RequestFormStep extends ConsumerWidget {
         ),
         const SizedBox(width: 48),
       ],
-    );
-  }
-
-  Widget _buildUserSummary(SentinelColors sentinel) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: sentinel.tactile.recessed,
-      ),
-      child: Column(
-        children: [
-          _SummaryRow(icon: Icons.person_outline_rounded, text: nameController.text, sentinel: sentinel),
-          const Gap(12),
-          _SummaryRow(icon: Icons.business_center_outlined, text: officeController.text, sentinel: sentinel),
-          const Gap(12),
-          _SummaryRow(icon: Icons.alternate_email_rounded, text: emailController.text, sentinel: sentinel),
-        ],
-      ),
     );
   }
 
@@ -319,3 +439,4 @@ class _SummaryRow extends StatelessWidget {
     );
   }
 }
+

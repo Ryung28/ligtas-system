@@ -148,7 +148,7 @@ export function BorrowerIdentityForm({ defaultValues, onChange }: BorrowerIdenti
                         </div>
                     ) : (
                         <div className="h-14 flex items-center px-6 bg-slate-200/30 rounded-[18px] border border-dashed border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center justify-center">
-                            Tactical Continuity / Flexible Term
+                            Continuous / Flexible Term
                         </div>
                     )}
                 </div>

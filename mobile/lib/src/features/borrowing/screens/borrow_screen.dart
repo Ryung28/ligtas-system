@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'borrow_repository.dart';
+import '../../../core/design_system/widgets/app_toast.dart';
 
 class BorrowScreen extends ConsumerWidget {
   const BorrowScreen({super.key});
@@ -86,9 +87,7 @@ class BorrowScreen extends ConsumerWidget {
                     });
                     
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Request submitted successfully')),
-                    );
+                    AppToast.showSuccess(context, 'Request submitted successfully');
                   } catch (e) {
                     if (!context.mounted) return;
                     // Provide the user with the structured and typed repository exception

@@ -96,7 +96,7 @@ export function ManifestWorkbench({
             if (ctx) {
                 ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 400, 200); ctx.drawImage(img, 20, 20, 160, 160);
                 ctx.fillStyle = '#1e293b'; ctx.font = 'bold 24px Inter'; ctx.fillText(activeStation.station_name || activeStation.location_name, 200, 70);
-                ctx.fillStyle = '#64748b'; ctx.font = 'bold 12px Inter'; ctx.fillText('STATION IDENTIFIER', 200, 100);
+                ctx.fillStyle = '#64748b'; ctx.font = 'bold 12px Inter'; ctx.fillText('STATION LABEL', 200, 100);
                 ctx.fillStyle = '#0f172a'; ctx.font = '900 28px "JetBrains Mono"'; ctx.fillText(activeStation.station_code || '', 200, 140);
                 const link = document.createElement('a'); link.download = `LABEL-${activeStation.station_code}.png`; link.href = canvas.toDataURL(); link.click();
             }
@@ -111,7 +111,7 @@ export function ManifestWorkbench({
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center"><QrCode className="h-4 w-4 text-blue-400" /></div>
                         {isBlueprint ? (
-                            <div><h2 className="text-[13px] font-[900] text-blue-600 uppercase italic">NEW STATION BLUEPRINT</h2><p className="text-[10px] font-bold text-slate-400 uppercase leading-none mt-1">STAGING {mappedItems.length} ITEMS</p></div>
+                            <div><h2 className="text-[13px] font-[900] text-blue-600 uppercase italic">NEW STATION SETUP</h2><p className="text-[10px] font-bold text-slate-400 uppercase leading-none mt-1">ADDING {mappedItems.length} ITEMS</p></div>
                         ) : activeStation ? (
                             <div>
                                 <input type="text" defaultValue={activeStation.station_name || activeStation.location_name} onBlur={e => {
@@ -127,7 +127,7 @@ export function ManifestWorkbench({
                     </div>}
                 </div>
                 <div className="h-9 px-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between shrink-0">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Station Supply List</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Station Item List</span>
                     <Badge className="bg-slate-900 text-white text-[9px] px-2 h-4">{mappedItems.length}</Badge>
                 </div>
                 <ScrollArea className="flex-1">
@@ -140,8 +140,8 @@ export function ManifestWorkbench({
                 <InventoryPicker items={inventoryItems.filter(item => (categoryFilter === 'ALL' || item.category === categoryFilter) && item.item_name.toLowerCase().includes(searchQuery.toLowerCase()))} activeStationId={activeStationId} manifestItemIds={manifestItemIds} searchQuery={searchQuery} onSearchChange={setSearchQuery} categoryFilter={categoryFilter} onCategoryFilterChange={setCategoryFilter} categories={['ALL', ...Array.from(new Set(inventoryItems.map(i => i.category)))]} onToggleItem={toggleItem} />
                 <div className="p-4 border-t border-slate-200 bg-white space-y-3 shrink-0">
                     {!isBlueprint && activeStation && <StationIdentityCard station={activeStation} onDownload={handleDownloadQR} />}
-                    {isBlueprint ? <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl"><p className="text-[10px] font-bold text-blue-600 uppercase">💡 Setup items first, then click "Confirm Blueprint" in the Registry sidebar to deploy.</p></div> : 
-                        <Button onClick={handleCommit} disabled={!activeStation || isPending || !isDirty} className={cn("w-full h-10 font-black text-[11px] uppercase tracking-widest rounded-xl gap-2 transition-all", isDirty ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" : "bg-slate-900 hover:bg-black text-white")}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{isPending ? 'Saving...' : isDirty ? 'Save Supply List' : 'Supply List Saved'}</Button>
+                    {isBlueprint ? <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl"><p className="text-[10px] font-bold text-blue-600 uppercase">💡 Setup items first, then click "Save Station" in the sidebar to create it.</p></div> : 
+                        <Button onClick={handleCommit} disabled={!activeStation || isPending || !isDirty} className={cn("w-full h-10 font-black text-[11px] uppercase tracking-widest rounded-xl gap-2 transition-all", isDirty ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" : "bg-slate-900 hover:bg-black text-white")}>{isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{isPending ? 'Saving...' : isDirty ? 'Save Item List' : 'Item List Saved'}</Button>
                     }
                 </div>
             </div>

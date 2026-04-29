@@ -98,7 +98,7 @@ class _RequestEquipmentScreenState extends ConsumerState<RequestEquipmentScreen>
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
             physics: const BouncingScrollPhysics(),
-            child: requestState.currentStep == BorrowStep.review
+            child: (requestState.currentStep == BorrowStep.review
                 ? RequestReviewStep(state: requestState, notifier: notifier)
                 : RequestFormStep(
                     formKey: _formKey,
@@ -109,7 +109,7 @@ class _RequestEquipmentScreenState extends ConsumerState<RequestEquipmentScreen>
                     purposeController: _purposeController,
                     state: requestState,
                     notifier: notifier,
-                  ),
+                  )) as Widget,
           ),
         ),
         bottomNavigationBar: SafeArea(

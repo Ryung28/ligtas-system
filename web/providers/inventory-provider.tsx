@@ -41,27 +41,33 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         }
     )
 
+    const refreshTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+    const debounceRefresh = React.useCallback(() => {
+        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+        refreshTimerRef.current = setTimeout(() => {
+            refresh()
+            setLastUpdated(new Date())
+        }, 800) // 🛡️ PROTECTOR: Settles the burst before triggering context shift
+    }, [refresh])
+
     // ── 2. The Singleton Realtime Engine ──
     useEffect(() => {
-        // We establish the channel once and keep it alive
         const channel = supabase
             .channel('global-inventory-sync')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
-                // Background revalidate when changes occur
-                refresh()
-                setLastUpdated(new Date())
+                debounceRefresh()
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
-                // Also Refresh when logs change to keep availability numbers accurate
-                refresh()
+                debounceRefresh()
                 globalMutate('borrow_logs')
             })
             .subscribe()
 
         return () => {
+            if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
             supabase.removeChannel(channel)
         }
-    }, [refresh, supabase])
+    }, [debounceRefresh, supabase])
 
     const value = useMemo(() => ({
         inventory: Array.isArray(inventory) ? inventory : [],

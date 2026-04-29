@@ -24,6 +24,7 @@ export function ApprovalCard({ request, onApprove, onReject, onHandoff, isProces
     return (
         <Card 
             id={`request-${request.id}`}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 120px' } as React.CSSProperties}
             className={cn(
                 "p-4 rounded-2xl border-none shadow-sm bg-white active:scale-[0.98] transition-all",
                 "target:ring-4 target:ring-red-500/20 target:animate-pulse"

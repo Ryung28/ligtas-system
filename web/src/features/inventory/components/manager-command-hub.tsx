@@ -20,8 +20,8 @@ export function ManagerCommandHub({ mode, onModeChange, onAdd, disabled }: Manag
     const actions = [
         {
             id: 'borrow',
-            label: 'Hand Borrow',
-            description: 'Immediate physical issue',
+            label: 'Check Out',
+            description: 'Checkout items now',
             icon: PackageSearch,
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
@@ -33,8 +33,8 @@ export function ManagerCommandHub({ mode, onModeChange, onAdd, disabled }: Manag
         },
         {
             id: 'reserve',
-            label: 'Reserve Gear',
-            description: 'Stage for future pickup',
+            label: 'Reserve Item',
+            description: 'Reserve for later',
             icon: CalendarRange,
             color: 'text-amber-600',
             bgColor: 'bg-amber-50',
@@ -47,7 +47,7 @@ export function ManagerCommandHub({ mode, onModeChange, onAdd, disabled }: Manag
         {
             id: 'add',
             label: 'Register Item',
-            description: 'Add new asset to ledger',
+            description: 'Add new item to inventory',
             icon: PackagePlus,
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
@@ -72,7 +72,7 @@ export function ManagerCommandHub({ mode, onModeChange, onAdd, disabled }: Manag
                     'flex items-center justify-center p-0 transition-all active:scale-90 disabled:opacity-50',
                     mFocus
                 )}
-                aria-label="Logistics Command Hub"
+                aria-label="Quick Actions"
             >
                 <Plus className="w-6 h-6" aria-hidden />
             </button>
@@ -80,8 +80,8 @@ export function ManagerCommandHub({ mode, onModeChange, onAdd, disabled }: Manag
             <BottomSheet
                 open={open}
                 onOpenChange={setOpen}
-                title="Command Hub"
-                description="Tactical logistics & inventory management"
+                title="Quick Actions"
+                description="Manage inventory and checkouts"
                 className="[&_h2]:text-[19px] [&_p]:text-[15px] [&_h2]:tracking-tight [&_p]:leading-relaxed"
             >
                 <div className="grid grid-cols-1 gap-3 py-2">

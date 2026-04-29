@@ -65,15 +65,15 @@
 
   /* Fluid base font size - optimized for 14" laptops */
   html {
-    /* Mobile: 14px, 14" Laptop: 14.5px, Monitor: 16px */
-    font-size: clamp(87.5%, 0.75rem + 0.35vw, 100%);
+    /* Reduced by 2px: Mobile: 12px, 14" Laptop: 12.5px, Monitor: 14px */
+    font-size: clamp(75%, 0.625rem + 0.35vw, 87.5%);
     scroll-behavior: smooth;
   }
 
   /* 📱 PWA MOBILE READABILITY BOOST */
   @media (max-width: 768px) {
     html {
-      font-size: 93.75%; /* Reduced by 2px: 17px -> 15px */
+      font-size: 81.25%; /* Reduced by 2px: 15px -> 13px */
     }
 
     :root {
@@ -83,10 +83,10 @@
     }
   }
 
-  /* 📱 PWA / MOBILE UPSCALE (Reverted to standard) */
+  /* 📱 PWA / MOBILE UPSCALE */
   @media (max-width: 767px) {
     html {
-      font-size: 100%; /* Reduced by 2px: 18px -> 16px */
+      font-size: 87.5%; /* Reduced by 2px: 16px -> 14px */
     }
   }
 
@@ -100,15 +100,15 @@
       --section-gap: 2rem;
     }
     html {
-      /* Lock to 14.5px for crisp data density on laptops */
-      font-size: 90.625%;
+      /* Reduced by 2px: 14.5px -> 12.5px */
+      font-size: 78.125%;
     }
   }
 
   /* 🖥️ 24"+ MONITOR UPSCALE (1920px - 2559px) */
   @media (min-width: 1920px) {
     html {
-      font-size: 112.5%; /* Bumps 16px -> 18px base (+2px boost) */
+      font-size: 100%; /* Reduced by 2px: 18px -> 16px */
     }
     :root {
       --dashboard-padding: 3rem;
@@ -136,7 +136,7 @@
   /* 🛸 4K / ULTRA LARGE MONITOR (2560px+) */
   @media (min-width: 2560px) {
     html {
-      font-size: 125%; /* Bumps to 20px base (+4px boost) */
+      font-size: 112.5%; /* Reduced by 2px: 20px -> 18px */
     }
     :root {
       --dashboard-padding: 4.5rem;
@@ -270,5 +270,16 @@
     overscroll-behavior-y: none;
     touch-action: pan-x pan-y;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* 🚀 ENTERPRISE SNAPPY NAVIGATION: View Transitions API */
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.15s;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

@@ -25,20 +25,21 @@ interface InventoryDialogV2Props {
     showRestockWarningOnOpen?: boolean
 }
 
+const BULK_CATEGORIES = ['Goods', 'Consumables', 'Materials']
+
 export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSuccess, focusRestockPolicy = false, showRestockWarningOnOpen = false }: InventoryDialogV2Props) {
     const { categories, locations, parents, isLoading: isDataLoading } = useInventoryDataV2(isOpen)
-    const state = useInventoryStateV2(existingItem)
+    const state = useInventoryStateV2(existingItem, locations)
 
     const selectedCategoryName = useMemo(() => {
         const row = categories.find((c: { id: string }) => c.id === state.categoryId)
         if (row) return (row as { category_name?: string }).category_name ?? ''
-        // Legacy: category field sometimes stores the label (e.g. "Goods") instead of UUID
         return String(state.categoryId ?? '').trim()
     }, [categories, state.categoryId])
 
     const isBulkCategory = useMemo(() => {
-        return state.itemType === 'consumable'
-    }, [state.itemType])
+        return BULK_CATEGORIES.includes(selectedCategoryName)
+    }, [selectedCategoryName])
 
     /** Goods are consumables — show brand + expiry even when item type is Equipment */
     const showGoodsExpiryFields =
@@ -59,7 +60,6 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
             const targetInput = statusSectionRef.current?.querySelector<HTMLInputElement>('[data-restock-input="target"]')
             targetInput?.focus()
         }, 120)
-        // Strict triage mode: entering from "Make Restockable" means this path is intentional.
         setRestockAlertEnabled(true)
         return () => clearTimeout(timer)
     }, [isOpen, focusRestockPolicy, existingItem?.id, setRestockAlertEnabled])
@@ -156,14 +156,12 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         const formData = new FormData()
         if (existingItem?.id) formData.append('id', existingItem.id.toString())
 
-        // 1. Classification Match
         formData.append('name', state.name)
         formData.append('description', state.description || '')
         formData.append('category', state.categoryId)
         formData.append('item_type', state.itemType)
         formData.append('image_url', img.storedPath || existingItem?.image_url || '')
 
-        // 2. Metadata (Equipment vs Consumable) Match
         formData.append('serial_number', state.serialNumber)
         formData.append('model_number', state.modelNumber)
         formData.append('brand', state.brand)
@@ -175,9 +173,6 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         if (fallbackExpiryDate) formData.append('expiry_date', fallbackExpiryDate)
         if (fallbackExpiryDate && state.expiryAlertDays) formData.append('expiry_alert_days', String(state.expiryAlertDays))
 
-        // Legacy variant and model fields have been structurally severed.
-
-        // 4. Heavy-Duty Health Mapping
         formData.set('qty_good', state.totals.qtyGood.toString())
         formData.set('qty_damaged', state.totals.qtyDamaged.toString())
         formData.set('qty_maintenance', state.totals.qtyMaintenance.toString())
@@ -189,7 +184,6 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
         formData.set('restock_alert_enabled', String(state.restockAlertEnabled))
         formData.set('packaging_json', JSON.stringify(state.packaging))
 
-        // 5. Geographic Resolution (Legacy Line 328)
         formData.set('site_distributions', JSON.stringify(state.distributions))
         const first = state.distributions[0]
         if (first?.locationId) formData.append('location_id', first.locationId.toString())
@@ -200,8 +194,8 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl h-[94vh] p-0 overflow-hidden bg-white border-none shadow-2xl rounded-[48px] animate-in zoom-in-95 flex flex-col">
-                <DialogHeader className="bg-white px-6 pt-6 pb-2 border-b border-slate-50">
+            <DialogContent className="max-w-xl h-[94vh] p-0 overflow-hidden bg-slate-50 border-none shadow-2xl rounded-[48px] animate-in zoom-in-95 flex flex-col">
+                <DialogHeader className="bg-white px-8 pt-8 pb-6 border-b border-slate-100">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 bg-blue-600 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
                             <Package className="h-6 w-6 text-white" />
@@ -220,8 +214,8 @@ export function InventoryDialogV2({ isOpen, onOpenChange, existingItem, onSucces
                     </div>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 px-6 py-2">
-                    <div className="space-y-8 pb-10">
+                <ScrollArea className="flex-1 px-8 py-2">
+                    <div className="space-y-8 pb-10 w-full max-w-full overflow-x-hidden flex flex-col">
                         <V2IdentityFields
                             name={state.name} onNameChange={state.setName} 
                             categoryId={state.categoryId} onCategoryChange={state.setCategoryId}

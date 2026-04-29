@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Home, Package, AlertCircle, Settings, QrCode } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ScannerDialog } from '@/src/features/scanner/components/scanner-dialog'
@@ -13,6 +13,7 @@ import { ScannerDialog } from '@/src/features/scanner/components/scanner-dialog'
  */
 export function MobileNav() {
     const pathname = usePathname()
+    const router = useRouter()
 
     const leftTabs = [
         {
@@ -44,33 +45,52 @@ export function MobileNav() {
         }
     ]
 
+    const handleNavigate = (e: React.MouseEvent, href: string) => {
+        e.preventDefault()
+        if (pathname === href) return
+
+        // @ts-ignore - View Transition API
+        if (document.startViewTransition) {
+            // @ts-ignore
+            document.startViewTransition(() => {
+                router.push(href)
+            })
+        } else {
+            router.push(href)
+        }
+    }
+
+    const NavLink = ({ tab }: { tab: typeof leftTabs[0] }) => (
+        <Link
+            href={tab.href}
+            onClick={(e) => handleNavigate(e, tab.href)}
+            className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 relative",
+                tab.active ? "text-red-600" : "text-gray-400"
+            )}
+        >
+            <tab.icon className={cn(
+                "w-6 h-6",
+                tab.active ? "stroke-[2.5px]" : "stroke-2"
+            )} />
+            <span className={cn(
+                "text-[10px] font-medium tracking-wide leading-none",
+                tab.active ? "text-red-700" : "text-gray-500"
+            )}>
+                {tab.label}
+            </span>
+            {tab.active && (
+                <div className="absolute top-1 right-1/2 translate-x-[12px] w-1.5 h-1.5 bg-red-600 rounded-full border border-white" />
+            )}
+        </Link>
+    )
+
     return (
         <nav className="fixed bottom-0 left-0 right-0 h-[calc(64px+env(safe-area-inset-bottom))] bg-white border-t border-gray-100 z-50 pb-[env(safe-area-inset-bottom)]">
             <div className="flex w-full h-16 items-center">
                 {/* Left Tabs */}
                 {leftTabs.map((tab) => (
-                    <Link
-                        key={tab.label}
-                        href={tab.href}
-                        className={cn(
-                            "flex-1 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 relative",
-                            tab.active ? "text-red-600" : "text-gray-400"
-                        )}
-                    >
-                        <tab.icon className={cn(
-                            "w-6 h-6",
-                            tab.active ? "stroke-[2.5px]" : "stroke-2"
-                        )} />
-                        <span className={cn(
-                            "text-[10px] font-medium tracking-wide leading-none",
-                            tab.active ? "text-red-700" : "text-gray-500"
-                        )}>
-                            {tab.label}
-                        </span>
-                        {tab.active && (
-                            <div className="absolute top-1 right-1/2 translate-x-[12px] w-1.5 h-1.5 bg-red-600 rounded-full border border-white" />
-                        )}
-                    </Link>
+                    <NavLink key={tab.label} tab={tab} />
                 ))}
 
                 {/* Center QR Scanner FAB */}
@@ -87,28 +107,7 @@ export function MobileNav() {
 
                 {/* Right Tabs */}
                 {rightTabs.map((tab) => (
-                    <Link
-                        key={tab.label}
-                        href={tab.href}
-                        className={cn(
-                            "flex-1 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 relative",
-                            tab.active ? "text-red-600" : "text-gray-400"
-                        )}
-                    >
-                        <tab.icon className={cn(
-                            "w-6 h-6",
-                            tab.active ? "stroke-[2.5px]" : "stroke-2"
-                        )} />
-                        <span className={cn(
-                            "text-[10px] font-medium tracking-wide leading-none",
-                            tab.active ? "text-red-700" : "text-gray-500"
-                        )}>
-                            {tab.label}
-                        </span>
-                        {tab.active && (
-                            <div className="absolute top-1 right-1/2 translate-x-[12px] w-1.5 h-1.5 bg-red-600 rounded-full border border-white" />
-                        )}
-                    </Link>
+                    <NavLink key={tab.label} tab={tab} />
                 ))}
             </div>
         </nav>

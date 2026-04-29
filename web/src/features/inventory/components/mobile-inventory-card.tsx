@@ -79,6 +79,7 @@ export const MobileInventoryCard = React.memo(function MobileInventoryCard({
     return (
         <div
             onClick={handleClick}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 200px' } as React.CSSProperties}
             className={cn(
                 "relative bg-white rounded-[24px] border overflow-hidden shadow-sm flex flex-col active:scale-[0.98] transition-all cursor-pointer",
                 isSelected ? "ring-2 ring-slate-950 border-transparent shadow-md" : (

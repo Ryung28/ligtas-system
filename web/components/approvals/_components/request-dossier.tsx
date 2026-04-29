@@ -74,109 +74,109 @@ export function RequestDossier({ request, staffName, userRole, isReservationView
 
             {/* ── Scrollable Body ── */}
             <div className="flex-1 overflow-y-auto">
-                <div className="px-6 py-5 space-y-5">
+                <div className="px-5 py-4 space-y-4">
 
-                    {/* Section A: Borrower */}
+                    {/* Section A: Requester */}
                     <section>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Borrower</p>
-                        <div className="flex items-center gap-3 mb-3.5">
-                            <UserAvatar fullName={request.borrower_name} className="h-10 w-10 ring-2 ring-white shadow-md" />
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Requester</p>
+                        <div className="flex items-center gap-3 mb-3">
+                            <UserAvatar fullName={request.borrower_name} className="h-9 w-9 ring-2 ring-white shadow-md" />
                             <div>
-                                <p className="text-sm font-black text-slate-900 leading-tight">{request.borrower_name}</p>
-                                <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
-                                    {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                                <p className="text-sm font-bold text-slate-900 leading-tight">{request.borrower_name}</p>
+                                <p className="text-[10px] font-medium text-slate-500 mt-0.5">
+                                    Requested {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
                                 </p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2.5">
-                            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-slate-50/50 rounded-lg p-2 border border-slate-100">
                                 <div className="flex items-center gap-1 mb-0.5">
                                     <Phone className="h-2.5 w-2.5 text-slate-400" />
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Mobile</p>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Contact</p>
                                 </div>
                                 <p className="text-[11px] font-bold text-slate-800">{request.borrower_contact || 'Not provided'}</p>
                             </div>
-                            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                            <div className="bg-slate-50/50 rounded-lg p-2 border border-slate-100">
                                 <div className="flex items-center gap-1 mb-0.5">
                                     <Building className="h-2.5 w-2.5 text-slate-400" />
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Office</p>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Department</p>
                                 </div>
-                                <p className="text-[11px] font-bold text-slate-800">{request.borrower_organization || 'Not specified'}</p>
+                                <p className="text-[11px] font-bold text-slate-800">{request.borrower_department || 'General Staff'}</p>
                             </div>
                         </div>
                         {request.purpose && (
-                            <div className="mt-2.5 bg-blue-50/60 rounded-xl p-2.5 border border-blue-100/60">
+                            <div className="mt-2 bg-blue-50/40 rounded-lg p-2.5 border border-blue-100/50">
                                 <div className="flex items-center gap-1 mb-0.5">
                                     <MessageSquare className="h-2.5 w-2.5 text-blue-400" />
-                                    <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Reason</p>
+                                    <p className="text-[8px] font-bold text-blue-400 uppercase tracking-tighter">Purpose</p>
                                 </div>
                                 <p className="text-[11px] text-slate-700 leading-snug italic">&ldquo;{request.purpose}&rdquo;</p>
                             </div>
                         )}
                     </section>
 
-                    <Separator className="bg-slate-100" />
+                    <Separator className="bg-slate-100/60" />
 
-                    {/* Section B: Equipment */}
+                    {/* Section B: Item Details */}
                     <section>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Equipment</p>
-                        <div className="flex gap-3.5 items-start">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Details</p>
+                        <div className="flex gap-3 items-start">
                             <div 
                                 onClick={() => imageUrl && setExpandedImage({ url: imageUrl, name: request.item_name })}
-                                className="h-16 w-16 rounded-xl bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-blue-300 transition-all shadow-sm"
+                                className="h-14 w-14 rounded-lg bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-blue-300 transition-all shadow-sm"
                             >
                                 {imageUrl ? (
                                     <>
-                                        <Image src={imageUrl} alt={request.item_name} fill className="object-contain p-1.5 transition-transform group-hover:scale-110" unoptimized />
+                                        <Image src={imageUrl} alt={request.item_name} fill className="object-contain p-1 transition-transform group-hover:scale-110" unoptimized />
                                         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <Maximize2 className="h-3 w-3 text-blue-600" />
                                         </div>
                                     </>
                                 ) : (
-                                    <Package className="h-6 w-6 text-slate-200" strokeWidth={1} />
+                                    <Package className="h-5 w-5 text-slate-200" strokeWidth={1} />
                                 )}
                             </div>
-                            <div className="flex-1 space-y-1.5 pt-0.5">
+                            <div className="flex-1 space-y-1 pt-0.5">
                                 <div>
-                                    <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{request.item_name}</p>
-                                    <p className="text-[9px] font-mono font-bold text-slate-400 mt-0.5">ID: {request.inventory_id}</p>
+                                    <p className="text-[12px] font-bold text-slate-900 uppercase tracking-tight">{request.item_name}</p>
+                                    <p className="text-[9px] font-mono text-slate-400 mt-0.5">SKU: {request.inventory_id}</p>
                                 </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">
+                                <div className="flex flex-wrap gap-1">
+                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-bold text-slate-600">
                                         Qty: {request.quantity}
                                     </div>
-                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 rounded text-[9px] font-black text-emerald-600 border border-emerald-100">
-                                        <ShieldCheck className="h-2.5 w-2.5" /> Good Condition
+                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 rounded text-[9px] font-bold text-emerald-600 border border-emerald-100">
+                                        <ShieldCheck className="h-2.5 w-2.5" /> Functional
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <Separator className="bg-slate-100" />
+                    <Separator className="bg-slate-100/60" />
 
-                    {/* Section C: Schedule */}
+                    {/* Section C: Timeline */}
                     <section>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Schedule</p>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between py-2">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Timeline</p>
+                        <div className="grid grid-cols-1 gap-1">
+                            <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center gap-2 text-slate-500">
                                     <Clock className="h-3.5 w-3.5" />
-                                    <span className="text-xs font-semibold">Pickup</span>
+                                    <span className="text-[11px] font-semibold">Expected Pickup</span>
                                 </div>
-                                <span className="text-xs font-bold text-slate-800">
+                                <span className="text-[11px] font-bold text-slate-800">
                                     {pickupScheduledAt
                                         ? format(new Date(pickupScheduledAt), 'MMM d, yyyy · h:mm a')
-                                        : 'Immediate'}
+                                        : 'ASAP / Immediate'}
                                 </span>
                             </div>
                             {!isConsumable && (
-                                <div className="flex items-center justify-between py-2 border-t border-slate-100">
+                                <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
                                     <div className="flex items-center gap-2 text-slate-500">
                                         <Calendar className="h-3.5 w-3.5" />
-                                        <span className="text-xs font-semibold">Expected Return</span>
+                                        <span className="text-[11px] font-semibold">Expected Return</span>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-800">
+                                    <span className="text-[11px] font-bold text-slate-800">
                                         {expectedReturnDate
                                             ? format(new Date(expectedReturnDate), 'MMM d, yyyy')
                                             : 'Open-ended'}
@@ -189,12 +189,12 @@ export function RequestDossier({ request, staffName, userRole, isReservationView
             </div>
 
             {/* ── Action Cluster (sticky bottom) ── */}
-            <div className="border-t border-slate-100 p-3 bg-white/80 backdrop-blur-sm">
+            <div className="border-t border-slate-100 p-2.5 bg-white/80 backdrop-blur-sm">
                 {!isAdmin ? (
-                    <div className="flex items-center justify-center p-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <div className="flex items-center justify-center p-2 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                         <Shield className="h-3 w-3 text-slate-400 mr-2" />
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                            Only Administrators can authorize dispatches
+                            Administrator approval required
                         </p>
                     </div>
                 ) : (
@@ -203,16 +203,16 @@ export function RequestDossier({ request, staffName, userRole, isReservationView
                             variant="ghost"
                             disabled={isProcessing}
                             onClick={handleReject}
-                            className="flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                            className="flex-1 h-9 rounded-lg font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
                         >
                             <X className="h-3 w-3 mr-1.5" />
-                            Reject
+                            Decline
                         </Button>
                         <ApprovalCommandSheet
                             request={request}
                             isReservationView={isReservationView}
                             onActionSuccess={onActionComplete}
-                            triggerClassName={`flex-[2.5] h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-white shadow-md transition-all active:scale-95 border-none ${
+                            triggerClassName={`flex-[2.5] h-9 rounded-lg font-black text-[10px] uppercase tracking-widest text-white shadow-md transition-all active:scale-95 border-none ${
                                 isStaged
                                     ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
                                     : isReservationView

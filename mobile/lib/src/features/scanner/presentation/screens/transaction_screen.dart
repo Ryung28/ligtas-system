@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile/src/features/scanner/models/qr_payload.dart';
 import 'package:mobile/src/features/scanner/services/scanner_switchboard.dart';
 import 'package:mobile/src/features/scanner/widgets/scan_result_sheet.dart';
+import 'package:mobile/src/core/design_system/widgets/app_toast.dart';
 
 /// 🛡️ ResQTrack Transaction Screen
 /// Decoupled from app.dart to enforce Feature-First Siloing.
@@ -46,13 +47,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    AppToast.showError(context, message);
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) context.go('/dashboard');
     });

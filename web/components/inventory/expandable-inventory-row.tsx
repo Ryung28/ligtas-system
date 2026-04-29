@@ -224,52 +224,50 @@ export function ExpandableInventoryRow({
                     </div>
                 </TableCell>
 
-                <TableCell className="px-3 py-5 text-right">
-                    <div className="flex items-center justify-end gap-6 14in:gap-8">
-                         {/* HEALTH MATRIX */}
-                         <div className="flex flex-col gap-2 flex-1 max-w-[160px] 14in:max-w-[180px]">
-                            <CompositeStockBar 
-                                item={item} 
-                                pendingCount={pendingCount} 
-                                pendingRequests={pendingRequests} 
-                                isLoadingPending={isLoadingPending} 
-                                isInternalOpen={isInternalOpen} 
-                                setIsInternalOpen={setIsInternalOpen} 
-                                fetchPending={fetchPending}
-                                activeLoans={activeLoans}
-                                isLoadingActiveLoans={isLoadingActiveLoans}
-                                isBorrowedPopoverOpen={isBorrowedPopoverOpen}
-                                setIsBorrowedPopoverOpen={setIsBorrowedPopoverOpen}
-                                fetchActiveLoans={fetchActiveLoans} 
-                            />
-                         </div>
+                <TableCell className="px-3 py-5 w-[180px]">
+                    <div className="flex flex-col gap-2">
+                        <CompositeStockBar 
+                            item={item} 
+                            pendingCount={pendingCount} 
+                            pendingRequests={pendingRequests} 
+                            isLoadingPending={isLoadingPending} 
+                            isInternalOpen={isInternalOpen} 
+                            setIsInternalOpen={setIsInternalOpen} 
+                            fetchPending={fetchPending}
+                            activeLoans={activeLoans}
+                            isLoadingActiveLoans={isLoadingActiveLoans}
+                            isBorrowedPopoverOpen={isBorrowedPopoverOpen}
+                            setIsBorrowedPopoverOpen={setIsBorrowedPopoverOpen}
+                            fetchActiveLoans={fetchActiveLoans} 
+                        />
+                    </div>
+                </TableCell>
 
-                         {/* STOCK CONTEXT */}
-                         <div className="flex flex-col items-end gap-1 min-w-[80px] 14in:min-w-[110px]">
-                              <div className="flex items-center 14in:flex-col 14in:items-end gap-2 14in:gap-1">
-                                 <UnifiedStatusHub 
-                                     item={item} 
-                                     expiry={expiry} 
-                                     stockStatus={{ label: stockStatus.label, isProblematic }} 
-                                     className="shrink-0"
-                                 />
-                                 <span className="text-[18px] font-black text-gray-950 tabular-nums tracking-tighter">
-                                     {showBulkDisplay ? (
-                                         <span className="flex items-baseline gap-1">
-                                             <span className="text-blue-600">{containerCount}</span>
-                                             <span className="text-[14px] text-gray-400 font-bold">/</span>
-                                             <span>{displayAvailable}</span>
-                                         </span>
-                                     ) : displayAvailable}
-                                 </span>
-                              </div>
-                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.1em]">
-                                  {planStock > 0 
-                                     ? `${displayAvailable} IN STOCK / ${planStock} FIXED` 
-                                     : `IN STOCK / ${displayTotal} TOTAL`
-                                  }
-                               </span>
-                         </div>
+                <TableCell className="px-3 py-5 text-right w-[150px]">
+                    <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center 14in:flex-col 14in:items-end gap-2 14in:gap-1">
+                            <UnifiedStatusHub 
+                                item={item} 
+                                expiry={expiry} 
+                                stockStatus={{ label: stockStatus.label, isProblematic }} 
+                                className="shrink-0"
+                            />
+                            <span className="text-[18px] font-black text-gray-950 tabular-nums tracking-tighter">
+                                {showBulkDisplay ? (
+                                    <span className="flex items-baseline gap-1">
+                                        <span className="text-blue-600">{containerCount}</span>
+                                        <span className="text-[14px] text-gray-400 font-bold">/</span>
+                                        <span>{displayAvailable}</span>
+                                    </span>
+                                ) : displayAvailable}
+                            </span>
+                        </div>
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.1em]">
+                            {planStock > 0 
+                                ? `${displayAvailable} IN STOCK / ${planStock} FIXED` 
+                                : `IN STOCK / ${displayTotal} TOTAL`
+                            }
+                        </span>
                     </div>
                 </TableCell>
 

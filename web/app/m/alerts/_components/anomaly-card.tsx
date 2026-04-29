@@ -29,6 +29,7 @@ export function AnomalyCard({ item, onImageClick }: AnomalyCardProps) {
     return (
         <div
             onClick={() => router.push(`/m/inventory/${item.id}?action=restock`)}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '0 80px' } as React.CSSProperties}
             className="bg-white p-4 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all duration-200 cursor-pointer"
         >
             <div className="flex items-center gap-4 min-w-0">

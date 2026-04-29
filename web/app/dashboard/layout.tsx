@@ -38,8 +38,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 
                 <CacheWarmer />
 
-                <main className="flex-1 overflow-y-auto custom-scrollbar text-slate-900 transition-all duration-300" style={{ padding: 'var(--dashboard-padding)' }}>
-                    <div className="mx-auto w-full transition-all duration-300" style={{ maxWidth: 'var(--dashboard-content-max-width)' }}>
+                <main className="flex-1 overflow-y-auto custom-scrollbar text-slate-900" style={{ padding: 'var(--dashboard-padding)' }}>
+                    <div className="mx-auto w-full" style={{ maxWidth: 'var(--dashboard-content-max-width)' }}>
                         <Suspense fallback={<DashboardLoading />}>
                             {children}
                         </Suspense>

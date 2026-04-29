@@ -292,12 +292,12 @@ export function DispatchCommandSheet() {
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
                                 <ClipboardList className="h-5 w-5 text-blue-600" />
-                                {isConsumable ? "💊 Dispense Consumable" : "📦 Tactical Dispatch Ledger"}
+                                {isConsumable ? "💊 Checkout Consumable" : "📦 Checkout Request"}
                             </DialogTitle>
                             <DialogDescription className="text-slate-500 font-medium">
                                 {isConsumable
-                                    ? "Dispense one-time use items from regional stockpiles."
-                                    : "Execute rapid inventory issuance to personnel. Traceability is guaranteed via batch logs."}
+                                    ? "Distribute one-time use items from storage."
+                                    : "Quickly assign items to team members. All transactions are logged for tracking."}
                             </DialogDescription>
                         </DialogHeader>
                     </div>
@@ -308,10 +308,10 @@ export function DispatchCommandSheet() {
                             <Tabs value={intakeMode} onValueChange={(val: any) => setIntakeMode(val)} className="w-full">
                                 <TabsList className="grid w-full grid-cols-2 h-12 p-1.5 bg-slate-100 rounded-xl">
                                     <TabsTrigger value="immediate" className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm">
-                                        <Package className="h-3.5 w-3.5 mr-2" /> Issue Now (Real-time)
+                                        <Package className="h-3.5 w-3.5 mr-2" /> Checkout Now
                                     </TabsTrigger>
                                     <TabsTrigger value="scheduled" className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm">
-                                        <Clock className="h-3.5 w-3.5 mr-2" /> Schedule Reserve
+                                        <Clock className="h-3.5 w-3.5 mr-2" /> Reserve for Later
                                     </TabsTrigger>
                                 </TabsList>
                             </Tabs>
@@ -321,11 +321,11 @@ export function DispatchCommandSheet() {
                             <div className="grid gap-3 p-4 bg-amber-50/50 rounded-2xl border border-amber-100 animate-in slide-in-from-top-2 duration-300">
                                 <div className="flex items-center gap-2 text-amber-800">
                                     <Clock className="h-4 w-4" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Target Pickup Schedule</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Pickup Date & Time</span>
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="pickup_scheduled_at" className="text-xs font-semibold text-amber-900">
-                                        When will the responder collect this equipment? <span className="text-red-500">*</span>
+                                        When will this be picked up? <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         id="pickup_scheduled_at"
@@ -337,7 +337,7 @@ export function DispatchCommandSheet() {
                                         onChange={(e) => setPickupDate(e.target.value)}
                                         className="h-11 bg-white border-amber-200 rounded-xl shadow-sm focus:ring-amber-500"
                                     />
-                                    <p className="text-[9px] text-amber-600 font-medium">* Assets will be moved to the Command Queue.</p>
+                                    <p className="text-[9px] text-amber-600 font-medium">* Items will be added to the pending queue.</p>
                                 </div>
                             </div>
                         )}
@@ -422,7 +422,7 @@ export function DispatchCommandSheet() {
                             {/* LEFT SIDE: SELECTOR */}
                             <div className="lg:col-span-3 space-y-5">
                                 <div className="space-y-3">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">1. Select Equipment</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">1. Choose Item</Label>
                                     <Combobox
                                         options={availableItems.map(item => ({
                                             value: item.id.toString(),
@@ -471,7 +471,7 @@ export function DispatchCommandSheet() {
                                         >
                                             {/* LOCATION PICKER */}
                                             <div className="space-y-3">
-                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">2. Take from where?</Label>
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">2. Select Storage Location</Label>
                                                 <div className="flex flex-wrap gap-2">
                                                     <button 
                                                         type="button"
@@ -549,7 +549,7 @@ export function DispatchCommandSheet() {
                             <div className="lg:col-span-2">
                                 <div className="h-full min-h-[200px] bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 p-4 flex flex-col">
                                     <div className="flex items-center justify-between mb-4">
-                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Items for Respondent</Label>
+                                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500">Items to Checkout</Label>
                                         {cart.length > 0 && <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{cart.length} items</span>}
                                     </div>
 
@@ -628,7 +628,7 @@ export function DispatchCommandSheet() {
                             <div className="grid gap-4 p-5 bg-amber-50/50 rounded-2xl border border-amber-100 animate-in slide-in-from-top-2 duration-300">
                                 <div className="flex items-center gap-2 text-amber-800">
                                     <User className="h-4 w-4" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Consumable Recipient Audit</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Recipient Details</span>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
                                     <div className="grid gap-2">
@@ -641,7 +641,7 @@ export function DispatchCommandSheet() {
                                             required={hasAnyConsumable}
                                             value={recipientName}
                                             onChange={(e) => setRecipientName(e.target.value)}
-                                            placeholder="Who is receiving this item?"
+                                            placeholder="Name of the person receiving the item"
                                             className="h-11 bg-white border-amber-200 rounded-xl shadow-sm focus:ring-amber-500"
                                         />
                                     </div>
@@ -654,7 +654,7 @@ export function DispatchCommandSheet() {
                             <div className="relative space-y-4">
                                 <div className="flex items-center gap-2 mb-1">
                                     <ShieldCheck className="h-4 w-4 text-blue-500" />
-                                    <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dispatch Sign-off</h4>
+                                    <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Approval Sign-off</h4>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="grid gap-2">
@@ -681,7 +681,7 @@ export function DispatchCommandSheet() {
                             disabled={isPending}
                             className="rounded-xl h-12 px-6 font-bold text-slate-500 hover:bg-slate-50 transition-all"
                         >
-                            Cancel Operation
+                            Cancel
                         </Button>
                         <Button
                             type="submit"
@@ -693,12 +693,12 @@ export function DispatchCommandSheet() {
                             ) : cart.length > 0 ? (
                                 <>
                                     <ShoppingCart className="h-5 w-5" />
-                                    Finalize Dispatch ({cart.length})
+                                    Confirm Checkout ({cart.length})
                                 </>
                             ) : (
                                 <>
                                     <ShieldCheck className="h-5 w-5" />
-                                    Confirm Single Issuance
+                                    Confirm Checkout
                                 </>
                             )}
                         </Button>

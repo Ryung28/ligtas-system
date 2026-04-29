@@ -132,7 +132,7 @@ export function AlertsClient() {
                     {/* 📦 INVENTORY ANOMALIES */}
                     {filteredAnomalies.length > 0 && (
                         <div className="space-y-3">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Inventory Anomalies</h3>
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Inventory Alerts</h3>
                             <div className="space-y-3">
                                 {filteredAnomalies.map((item) => (
                                     <AnomalyCard 
@@ -148,7 +148,7 @@ export function AlertsClient() {
                     {/* 📋 PENDING REQUESTS */}
                     {showRequests && pendingRequests.length > 0 && (
                         <div className="space-y-3">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Logistics Queue</h3>
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Requests</h3>
                             <div className="space-y-4">
                                 {pendingRequests.map((request) => (
                                     <ApprovalCard 
@@ -170,8 +170,8 @@ export function AlertsClient() {
                                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900 text-base">Sector Clear</h3>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">No tactical alerts detected.</p>
+                                <h3 className="font-bold text-gray-900 text-base">All Clear</h3>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">No alerts detected.</p>
                             </div>
                         </div>
                     )}

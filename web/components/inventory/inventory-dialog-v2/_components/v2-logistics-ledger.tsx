@@ -69,7 +69,11 @@ export function V2LogisticsLedger({
                                     type="number" 
                                     value={site.qtyGood} 
                                     onChange={(e) => onUpdateQty(index, 'qtyGood', e.target.value)}
-                                    className="h-8 rounded-lg border-slate-100 bg-emerald-50/30 text-emerald-700 font-black text-[12px] text-center p-0 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all"
+                                    readOnly={!!(site as any)._bulkManaged}
+                                    className={cn(
+                                        "h-8 rounded-lg border-slate-100 bg-emerald-50/30 text-emerald-700 font-black text-[12px] text-center p-0 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all",
+                                        (site as any)._bulkManaged && "opacity-60 cursor-not-allowed bg-slate-100 border-transparent"
+                                    )}
                                 />
                             </div>
                             {/* DAMAGED */}

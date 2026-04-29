@@ -54,7 +54,7 @@ export function StationRegistry({ stations, activeStationId, onSelect, isCreatin
                     return
                 }
             } else {
-                toast.success(`Station ${result.data?.station_code} deployed.`)
+                toast.success(`Station ${result.data?.station_code} created.`)
             }
 
             setName('')
@@ -80,12 +80,12 @@ export function StationRegistry({ stations, activeStationId, onSelect, isCreatin
                     {isCreating ? (
                         <>
                             <Loader2 className={cn("h-3.5 w-3.5", isPending ? "animate-spin" : "hidden")} />
-                            CANCEL SETUP
+                            CANCEL
                         </>
                     ) : (
                         <>
                             <Plus className="h-3.5 w-3.5" />
-                            Setup New Station
+                            Add New Station
                         </>
                     )}
                 </Button>
@@ -95,7 +95,7 @@ export function StationRegistry({ stations, activeStationId, onSelect, isCreatin
             {isCreating && (
                 <div className="p-3 border-b border-slate-200 bg-blue-50/50 space-y-2">
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1">Identity Name</label>
+                        <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1">Station Name</label>
                         <Input
                             placeholder="e.g. Medic Alpha"
                             value={name}
@@ -104,7 +104,7 @@ export function StationRegistry({ stations, activeStationId, onSelect, isCreatin
                         />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1">Physical Area</label>
+                        <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1">Storage Location</label>
                         <Input
                             placeholder="e.g. Shelf A, Office"
                             value={location}
@@ -117,7 +117,7 @@ export function StationRegistry({ stations, activeStationId, onSelect, isCreatin
                         disabled={isPending || !name.trim() || !location}
                         className="w-full h-8 bg-slate-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest gap-2 shadow-lg shadow-slate-200 mt-2"
                     >
-                        {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Confirm Blueprint'}
+                        {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save Station'}
                     </Button>
                 </div>
             )}

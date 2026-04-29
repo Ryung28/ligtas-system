@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
  * ResQTrack V2 STATE HOOK (ULTIMATE PARITY)
  * Handles Identity, Variant, Health, Consumable Metadata, and Logistics.
  */
-export function useInventoryStateV2(initialItem?: any) {
+export function useInventoryStateV2(initialItem?: any, locations: any[] = []) {
     const createId = () => Math.random().toString(36).slice(2, 11)
     // 1. Identity & Classification
     const [name, setName] = useState(initialItem?.item_name || '')
@@ -199,12 +199,19 @@ export function useInventoryStateV2(initialItem?: any) {
                 )
 
                 if (existingIdx !== -1) {
-                    next[existingIdx] = { ...next[existingIdx], qtyGood: units, _bulkManaged: true }
+                    next[existingIdx] = { 
+                        ...next[existingIdx], 
+                        qtyGood: units, 
+                        _bulkManaged: true,
+                        // Ensure name is refreshed from master list if it was a raw ID
+                        locationName: locations.find(l => String(l.id) === String(locId))?.location_name || next[existingIdx].locationName
+                    }
                 } else {
-                    // Auto-discover new location
+                    // Auto-discover new location with proper name lookup
+                    const resolvedName = locations.find(l => String(l.id) === String(locId))?.location_name || String(locId || 'Unknown')
                     next.push({
                         locationId: locId,
-                        locationName: locId ?? 'Unknown',
+                        locationName: resolvedName,
                         qtyGood: units,
                         qtyDamaged: 0,
                         qtyMaintenance: 0,

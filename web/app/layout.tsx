@@ -5,6 +5,7 @@ import "./globals.css";
 import { AudioPermissionWrapper } from "@/components/audio-permission-wrapper";
 import { RealtimeAudioProvider } from "@/components/realtime-audio";
 import { AuthProvider } from "@/providers/auth-provider";
+import NextTopLoader from 'nextjs-toploader';
 
 const outfit = Outfit({
     subsets: ["latin"],
@@ -61,6 +62,17 @@ export default function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="CDRRMO · ResQTrack" />
             </head>
             <body className={`${dmSans.className} font-sans antialiased bg-gray-50/50`}>
+                <NextTopLoader 
+                    color="#2563eb" 
+                    initialPosition={0.08}
+                    crawlSpeed={200}
+                    height={3}
+                    crawl={true}
+                    showSpinner={false}
+                    easing="ease"
+                    speed={200}
+                    shadow="0 0 10px #2563eb,0 0 5px #2563eb"
+                />
                 <AuthProvider>
                     <AudioPermissionWrapper>
                         <RealtimeAudioProvider>
