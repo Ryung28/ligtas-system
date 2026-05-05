@@ -60,7 +60,7 @@ export async function borrowItem(input: BorrowItemInput | FormData) {
         if (inventoryItem.status === 'archived') {
             return {
                 success: false,
-                error: 'Error: Resource is archived and unavailable for checkout.',
+                error: 'Error: Resource is deleted and unavailable for checkout.',
             }
         }
 
@@ -263,7 +263,7 @@ export async function batchBorrowItems(data: {
             }
 
             if (inventoryItem.status === 'archived') {
-                errors.push(`${inventoryItem.item_name} is archived`)
+                errors.push(`${inventoryItem.item_name} is deleted`)
                 continue
             }
 

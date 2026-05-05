@@ -26,7 +26,7 @@ export interface ExpiryInfo {
     rowStripeClass: string
 }
 
-const DEFAULT_ALERT_DAYS = 30
+const DEFAULT_ALERT_DAYS = 15
 
 /**
  * Derive the urgency tier for an inventory item.

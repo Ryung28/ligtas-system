@@ -124,12 +124,20 @@ class TacticalAssetImage extends ConsumerWidget {
     // If it's already a full URL, return it
     if (input.startsWith('http')) return input;
 
-    // Clean the path (remove bucket prefix if present)
-    const bucketName = 'item-images';
+    // 🛡️ DYNAMIC BUCKET RESOLUTION
+    String bucketName = 'item-images';
     String cleanPath = input;
-    if (cleanPath.startsWith('$bucketName/')) {
-      cleanPath = cleanPath.replaceFirst('$bucketName/', '');
+
+    if (input.contains('/')) {
+      final parts = input.split('/');
+      // If the first part matches a known bucket or the repository format, extract it
+      if (parts.length > 1 && (parts[0] == 'item-images' || parts[0] == 'evidence' || parts[0] == 'inventory-images')) {
+        bucketName = parts[0];
+        cleanPath = parts.sublist(1).join('/');
+      }
     }
+
+    // Clean leading slashes
     if (cleanPath.startsWith('/')) {
       cleanPath = cleanPath.substring(1);
     }

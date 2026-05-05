@@ -77,10 +77,9 @@ class _AnomalyCardState extends State<AnomalyCard>
   Widget build(BuildContext context) {
     final anomaly = widget.anomaly;
     final bool hasMaxStock = anomaly.maxStock != null && anomaly.maxStock! > 0;
-    final int denominator =
-        hasMaxStock ? anomaly.maxStock! : anomaly.thresholdStock;
+    final int denominator = anomaly.displayTotal;
     final double percentage =
-        denominator > 0 ? (anomaly.currentStock / denominator) * 100 : 0;
+        denominator > 0 ? (anomaly.displayStock / denominator) * 100 : 0;
 
     final isSystemicFailure = anomaly.category != AnomalyCategory.depletion;
     final isOverdue = anomaly.category == AnomalyCategory.overdue;
@@ -206,16 +205,38 @@ class _AnomalyCardState extends State<AnomalyCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            anomaly.itemName,
+                            anomaly.displayTitle,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: navyBlue,
                               letterSpacing: -0.4,
                             ),
-                            maxLines: isSystemicFailure ? 1 : 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (anomaly.isGroup)
+                            Text(
+                              '📍 ${anomaly.children.length} TARGETS',
+                              style: GoogleFonts.lexend(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.neutralGray600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          else if (anomaly.storageLocation != null)
+                            Text(
+                              '📍 ${anomaly.storageLocation}',
+                              style: GoogleFonts.lexend(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.neutralGray600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           Text(
                             isOverdue
                                 ? 'OVERDUE'
@@ -398,7 +419,7 @@ class _AnomalyCardState extends State<AnomalyCard>
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                anomaly.shelfActionLabel.toUpperCase(),
+                anomaly.isGroup ? 'RESTOCK ALL GROUP' : anomaly.shelfActionLabel.toUpperCase(),
                 style: GoogleFonts.lexend(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -423,14 +444,14 @@ class _AnomalyCardState extends State<AnomalyCard>
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tight = constraints.maxHeight < 64;
-        final valueSize = tight ? 10.5 : 12.0;
+        final tight = constraints.maxHeight < 80;
+        final valueSize = tight ? 10.0 : 12.0;
         final labelSize = tight ? 8.0 : 9.0;
         final actionSize = tight ? 9.0 : 10.0;
-        final topGap = tight ? 4.0 : 8.0;
-        final rowGap = tight ? 6.0 : 10.0;
-        final progressGap = tight ? 4.0 : 8.0;
-        final progressHeight = tight ? 4.0 : 6.0;
+        final topGap = tight ? 2.0 : 6.0;
+        final rowGap = tight ? 4.0 : 8.0;
+        final progressGap = tight ? 4.0 : 6.0;
+        final progressHeight = tight ? 3.0 : 4.0;
 
         return Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -439,6 +460,44 @@ class _AnomalyCardState extends State<AnomalyCard>
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (anomaly.isGroup && !tight) ...[
+                  for (final child in anomaly.children.take(2))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 1),
+                      child: Text(
+                        '- 📦 ${child.containerIdentity} ${child.storageLocation != null ? '(${child.storageLocation})' : ''}',
+                        style: GoogleFonts.lexend(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryBlue,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (anomaly.children.length > 2)
+                    Text(
+                      '+ ${anomaly.children.length - 2} more targets...',
+                      style: GoogleFonts.lexend(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.neutralGray500,
+                      ),
+                    ),
+                  Gap(topGap / 2),
+                ] else if (!tight) ...[
+                  Text(
+                    '📦 ${anomaly.containerIdentity}',
+                    style: GoogleFonts.lexend(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryBlue,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Gap(topGap / 2),
+                ],
                 Gap(topGap),
                 Row(
                   children: [
@@ -446,7 +505,7 @@ class _AnomalyCardState extends State<AnomalyCard>
                       child: _MetricCell(
                         label: 'Current',
                         value:
-                            '${anomaly.currentStock} ${anomaly.currentStock == 1 ? "unit" : "units"}',
+                            '${anomaly.displayStock} units',
                         labelSize: labelSize,
                         valueSize: valueSize,
                       ),
@@ -454,9 +513,9 @@ class _AnomalyCardState extends State<AnomalyCard>
                     Gap(rowGap),
                     Expanded(
                       child: _MetricCell(
-                        label: 'Fixed',
+                        label: 'Total',
                         value:
-                            '$denominator ${denominator == 1 ? "unit" : "units"}',
+                            '$denominator units',
                         labelSize: labelSize,
                         valueSize: valueSize,
                       ),

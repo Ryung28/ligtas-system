@@ -32,6 +32,8 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
   final _damagedController = TextEditingController();
   final _maintenanceController = TextEditingController();
   final _lostController = TextEditingController();
+  int _selectedChildIndex = 0;
+  int? _selectedLocationId; // null = not yet chosen; auto-set if single-location
 
   bool _isProcessing = false;
   late ActionMode _mode;
@@ -40,6 +42,29 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
   int? _hydratedItemId;
 
   ResourceAnomaly get _a => widget.anomaly;
+
+  // Children filtered to the chosen location (or all if single-location / none chosen).
+  List<ResourceAnomaly> get _filteredChildren {
+    if (!_a.isGroup) return const [];
+    if (_selectedLocationId == null) return _a.children;
+    return _a.children.where((c) => c.locationRegistryId == _selectedLocationId).toList();
+  }
+
+  // Unique location IDs across all children.
+  Map<int?, List<ResourceAnomaly>> get _childrenByLocation {
+    final map = <int?, List<ResourceAnomaly>>{};
+    for (final c in _a.children) {
+      (map[c.locationRegistryId] ??= []).add(c);
+    }
+    return map;
+  }
+
+  ResourceAnomaly get _active {
+    if (!_a.isGroup) return _a;
+    final kids = _filteredChildren;
+    if (kids.isEmpty) return _a.children.first;
+    return kids[_selectedChildIndex.clamp(0, kids.length - 1)];
+  }
 
   int? get _rowLocationRegistryId =>
       _a.locationRegistryId ?? _hydratedLocationRegistryId;
@@ -76,6 +101,15 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
     final user = ref.read(currentUserProvider);
     _selectedWarehouseId = widget.anomaly.locationRegistryId ??
         int.tryParse(user?.assignedWarehouse ?? '');
+
+    // Auto-select location when all children share one warehouse — skips the picker step.
+    if (_a.isGroup) {
+      final locIds = _a.children.map((c) => c.locationRegistryId).toSet();
+      if (locIds.length == 1) {
+        _selectedLocationId = locIds.first;
+        _selectedWarehouseId = locIds.first ?? _selectedWarehouseId;
+      }
+    }
 
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _hydrateInjectionContext());
@@ -123,6 +157,28 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
     }
   }
 
+  void _onChildSelected(int index) {
+    if (index == _selectedChildIndex) return;
+    setState(() {
+      _selectedChildIndex = index;
+      _goodController.text = '0';
+      _damagedController.text = '0';
+      _maintenanceController.text = '0';
+      _lostController.text = '0';
+      _hydratedLocationRegistryId = null;
+      _hydratedItemId = null;
+    });
+    _hydrateInjectionContext();
+  }
+
+  void _onLocationSelected(int? locId) {
+    setState(() {
+      _selectedLocationId = locId;
+      _selectedChildIndex = 0;
+      _selectedWarehouseId = locId; // sync warehouse — no HubDeploymentContext needed
+    });
+  }
+
   @override
   void dispose() {
     _qtyController.dispose();
@@ -150,7 +206,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
     final lostQty = _int(_lostController);
     final total = goodQty + damagedQty + maintQty + lostQty;
 
-    if (total <= 0 || _a.inventoryId == null) {
+    if (total <= 0 || _active.inventoryId == null) {
       TopNotice.show(
         context,
         message: 'Please enter stock amounts first.',
@@ -215,6 +271,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
       damagedQty: damagedQty,
       maintQty: maintQty,
       lostQty: lostQty,
+      batchId: _active.batchId,
     );
   }
 
@@ -224,32 +281,46 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
     required int damagedQty,
     required int maintQty,
     required int lostQty,
+    String? batchId,
   }) async {
     setState(() => _isProcessing = true);
     HapticFeedback.mediumImpact();
 
     try {
       await ref.read(analystDashboardControllerProvider.notifier).restockAsset(
-            inventoryId: _a.inventoryId!,
+            inventoryId: _active.inventoryId!,
             qtyGood: goodQty,
             qtyDamaged: damagedQty,
             qtyMaint: maintQty,
             qtyLost: lostQty,
+            batchId: batchId,
           );
 
       if (mounted) {
         Navigator.pop(context);
         TopNotice.show(
           context,
-          message: 'Added $total units.',
+          message: batchId != null
+              ? 'Added $total units to ${_active.containerIdentity}.'
+              : 'Added $total units.',
           type: TopNoticeType.success,
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
+      if (mounted) {
+        // Extract just the message — never expose raw exception text to UI
+        final msg = e.toString().replaceFirst('Exception: Restock Command Failed: Exception: ', '');
+        TopNotice.show(
+          context,
+          message: 'Restock failed: $msg',
+          type: TopNoticeType.error,
+        );
+      }
+    } catch (_) {
       if (mounted) {
         TopNotice.show(
           context,
-          message: 'Could not add stock: $e',
+          message: 'An unexpected error occurred. Please try again.',
           type: TopNoticeType.error,
         );
       }
@@ -276,7 +347,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
       await ref
           .read(analystDashboardControllerProvider.notifier)
           .updateAssetHealth(
-            _a.inventoryId!,
+            _active.inventoryId!,
             qtyGood: good,
             qtyDamaged: damaged,
             qtyMaintenance: maint,
@@ -339,7 +410,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
       barrierDismissible: false,
       barrierColor: Colors.black.withOpacity(0.34),
       builder: (ctx) {
-        final onyx = const Color(0xFF001A33);
+    const onyx = Color(0xFF374151);
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -554,6 +625,10 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
   Widget build(BuildContext context) {
     final sentinel = Theme.of(context).sentinel;
     final showToggle = _a.category == AnomalyCategory.depletion && _hasHealthIssue;
+    // Load hubs for location name resolution (used in picker + HubDeploymentContext).
+    final hubs = ref.watch(managerStorageHubsProvider).valueOrNull ?? const <StorageHub>[];
+    final isMultiLocation = _childrenByLocation.length > 1;
+    final locationPending = _a.isGroup && isMultiLocation && _selectedLocationId == null;
 
     return TacticalForensicDetailSheet(
       id: _a.id,
@@ -581,18 +656,117 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
             ),
             const Gap(16),
           ],
-          HubDeploymentContext(
-            selectedWarehouseId: _selectedWarehouseId,
-            snapshotItemId: _snapshotItemId,
-            onWarehouseChanged: (id) {
-              _handleWarehouseChanged(id);
-            },
-          ),
-          const Gap(16),
-          if (_mode == ActionMode.restock)
-            _buildRestockBody(sentinel)
-          else
-            _buildTriageBody(sentinel),
+          // Hide the HubDeploymentContext when the location picker handles selection.
+          if (!locationPending && !(_a.isGroup && isMultiLocation && _selectedLocationId != null)) ...[  
+            HubDeploymentContext(
+              selectedWarehouseId: _selectedWarehouseId,
+              snapshotItemId: _snapshotItemId,
+              onWarehouseChanged: (id) {
+                _handleWarehouseChanged(id);
+              },
+            ),
+            const Gap(16),
+          ] else if (!locationPending) ...[  
+            // Show the chosen location as a read-only badge + change link.
+            Row(
+              children: [
+                const Icon(Icons.warehouse_rounded, size: 14, color: Color(0xFF374151)),
+                const Gap(6),
+                Expanded(
+                  child: Text(
+                    _hubLabel(hubs, _selectedLocationId),
+                    style: GoogleFonts.lexend(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF374151),
+                    ),
+                  ),
+                ),
+                if (isMultiLocation)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _selectedLocationId = null;
+                      _selectedChildIndex = 0;
+                    }),
+                    child: Text(
+                      'Change',
+                      style: GoogleFonts.lexend(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const Gap(16),
+          ],
+          if (locationPending)
+            _buildLocationStep(hubs)
+          else if (_a.isGroup && _filteredChildren.length > 1) ...[  
+            Text(
+              _a.isBulkPackaging ? 'SELECT TARGET CONTAINER' : 'SELECT SPECIFIC LOCATION',
+              style: GoogleFonts.lexend(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: sentinel.onSurfaceVariant.withOpacity(0.5),
+                  letterSpacing: 1.0),
+            ),
+            const Gap(12),
+            SizedBox(
+              height: 38,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _filteredChildren.length,
+                separatorBuilder: (_, __) => const Gap(8),
+                itemBuilder: (context, index) {
+                  final child = _filteredChildren[index];
+                  final isSelected = index == _selectedChildIndex;
+                  return GestureDetector(
+                    onTap: () => _onChildSelected(index),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF374151) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF374151)
+                              : AppTheme.neutralGray200,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        child.containerIdentity,
+                        style: GoogleFonts.lexend(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? Colors.white : AppTheme.neutralGray800,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const Gap(8),
+            Text(
+              'TARGETING: ${_active.containerIdentity.toUpperCase()}',
+              style: GoogleFonts.lexend(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.charcoalGrey,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const Gap(20),
+          ],
+          if (!locationPending) ...[
+            if (_mode == ActionMode.restock)
+              _buildRestockBody(sentinel)
+            else
+              _buildTriageBody(sentinel),
+          ],
         ],
       ),
     );
@@ -659,7 +833,7 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
         const Gap(16),
         AnomalySharedUI.buildConfirmButton(
           sentinel: sentinel,
-          label: 'Add stock',
+          label: 'Add stock to ${_active.containerIdentity}',
           icon: Icons.send_rounded,
           isProcessing: _isProcessing,
           onPressed: _handleRestock,
@@ -772,6 +946,86 @@ class _ActionHeroPanelState extends ConsumerState<ActionHeroPanel> {
           isProcessing: _isProcessing,
           onPressed: _handleTriage,
         ),
+      ],
+    );
+  }
+
+  /// Simple warehouse picker — shown only when children span multiple locations.
+  Widget _buildLocationStep(List<StorageHub> hubs) {
+    const charcoal = AppTheme.charcoalGrey;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'WHERE ARE YOU RESTOCKING?',
+          style: GoogleFonts.lexend(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: charcoal.withOpacity(0.45),
+            letterSpacing: 1.0,
+          ),
+        ),
+        const Gap(12),
+        for (final entry in _childrenByLocation.entries) ...[
+          GestureDetector(
+            onTap: () => _onLocationSelected(entry.key),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.neutralGray200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.warehouse_rounded,
+                      size: 16,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                  const Gap(10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _hubLabel(hubs, entry.key),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: charcoal,
+                          ),
+                        ),
+                        Text(
+                          '${entry.value.length} ${entry.value.length == 1 ? 'box' : 'boxes'} to restock',
+                          style: GoogleFonts.lexend(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: charcoal.withOpacity(0.45),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: charcoal.withOpacity(0.3),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Gap(8),
+        ],
       ],
     );
   }

@@ -18,11 +18,11 @@ class AnomalySharedUI {
     required bool isProcessing,
     required VoidCallback onPressed,
   }) {
-    const navy = Color(0xFF001A33);
+    const charcoal = Color(0xFF374151);
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: isProcessing ? navy.withOpacity(0.7) : navy,
+        color: isProcessing ? charcoal.withOpacity(0.7) : charcoal,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: isProcessing ? null : onPressed,
@@ -33,7 +33,7 @@ class AnomalySharedUI {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: navy.withOpacity(0.15),
+                    color: charcoal.withOpacity(0.15),
                     blurRadius: 15,
                     offset: const Offset(0, 8)),
               ],
@@ -169,7 +169,7 @@ class TacticalStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const onyx = Color(0xFF001A33);
+    const charcoal = Color(0xFF374151);
     final val = int.tryParse(controller.text.trim()) ?? 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -202,13 +202,13 @@ class TacticalStepper extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _stepperBtn(Icons.remove_rounded, onDecrement, onyx, false),
+              _stepperBtn(Icons.remove_rounded, onDecrement, charcoal, false),
               Text(val.toString().padLeft(2, '0'),
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
-                      color: onyx)),
-              _stepperBtn(Icons.add_rounded, onIncrement, onyx, true),
+                      color: charcoal)),
+              _stepperBtn(Icons.add_rounded, onIncrement, charcoal, true),
             ],
           ),
         ],
@@ -217,9 +217,9 @@ class TacticalStepper extends StatelessWidget {
   }
 
   Widget _stepperBtn(
-      IconData icon, VoidCallback onTap, Color onyx, bool isPrimary) {
+      IconData icon, VoidCallback onTap, Color charcoal, bool isPrimary) {
     return Material(
-      color: isPrimary ? onyx : onyx.withOpacity(0.05),
+      color: isPrimary ? charcoal : charcoal.withOpacity(0.05),
       shape: const CircleBorder(),
       child: InkWell(
         onTap: () {
@@ -230,7 +230,7 @@ class TacticalStepper extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(8),
           child: Icon(icon,
-              size: 14, color: isPrimary ? Colors.white : onyx),
+              size: 14, color: isPrimary ? Colors.white : charcoal),
         ),
       ),
     );
@@ -417,7 +417,7 @@ class _HubLedgerPreview extends ConsumerWidget {
   }
 
   Widget _snapshotItem(String label, int value, Color statusColor) {
-    const onyx = Color(0xFF001A33);
+    const charcoal = Color(0xFF374151);
     return Row(
       children: [
         Container(
@@ -432,12 +432,12 @@ class _HubLedgerPreview extends ConsumerWidget {
           children: [
             Text(value.toString(),
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, fontWeight: FontWeight.w900, color: onyx)),
+                    fontSize: 13, fontWeight: FontWeight.w900, color: charcoal)),
             Text(label,
                 style: GoogleFonts.lexend(
                     fontSize: 7,
                     fontWeight: FontWeight.w900,
-                    color: onyx.withOpacity(0.4),
+                    color: charcoal.withOpacity(0.4),
                     letterSpacing: 0.5)),
           ],
         ),

@@ -47,6 +47,7 @@ mixin _$InventoryItem {
   int get aggregateAvailable => throw _privateConstructorUsedError;
   int? get locationRegistryId => throw _privateConstructorUsedError;
   List<InventoryVariant> get variants => throw _privateConstructorUsedError;
+  List<BulkBatch> get packagingJson => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $InventoryItemCopyWith<InventoryItem> get copyWith =>
@@ -88,7 +89,8 @@ abstract class $InventoryItemCopyWith<$Res> {
       int aggregateTotal,
       int aggregateAvailable,
       int? locationRegistryId,
-      List<InventoryVariant> variants});
+      List<InventoryVariant> variants,
+      List<BulkBatch> packagingJson});
 }
 
 /// @nodoc
@@ -133,6 +135,7 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
     Object? aggregateAvailable = null,
     Object? locationRegistryId = freezed,
     Object? variants = null,
+    Object? packagingJson = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -251,6 +254,10 @@ class _$InventoryItemCopyWithImpl<$Res, $Val extends InventoryItem>
           ? _value.variants
           : variants // ignore: cast_nullable_to_non_nullable
               as List<InventoryVariant>,
+      packagingJson: null == packagingJson
+          ? _value.packagingJson
+          : packagingJson // ignore: cast_nullable_to_non_nullable
+              as List<BulkBatch>,
     ) as $Val);
   }
 }
@@ -292,7 +299,8 @@ abstract class _$$InventoryItemImplCopyWith<$Res>
       int aggregateTotal,
       int aggregateAvailable,
       int? locationRegistryId,
-      List<InventoryVariant> variants});
+      List<InventoryVariant> variants,
+      List<BulkBatch> packagingJson});
 }
 
 /// @nodoc
@@ -335,6 +343,7 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
     Object? aggregateAvailable = null,
     Object? locationRegistryId = freezed,
     Object? variants = null,
+    Object? packagingJson = null,
   }) {
     return _then(_$InventoryItemImpl(
       id: null == id
@@ -453,6 +462,10 @@ class __$$InventoryItemImplCopyWithImpl<$Res>
           ? _value._variants
           : variants // ignore: cast_nullable_to_non_nullable
               as List<InventoryVariant>,
+      packagingJson: null == packagingJson
+          ? _value._packagingJson
+          : packagingJson // ignore: cast_nullable_to_non_nullable
+              as List<BulkBatch>,
     ));
   }
 }
@@ -489,8 +502,10 @@ class _$InventoryItemImpl extends _InventoryItem {
       this.aggregateTotal = 0,
       this.aggregateAvailable = 0,
       this.locationRegistryId,
-      final List<InventoryVariant> variants = const []})
+      final List<InventoryVariant> variants = const [],
+      final List<BulkBatch> packagingJson = const []})
       : _variants = variants,
+        _packagingJson = packagingJson,
         super._();
 
   @override
@@ -580,9 +595,18 @@ class _$InventoryItemImpl extends _InventoryItem {
     return EqualUnmodifiableListView(_variants);
   }
 
+  final List<BulkBatch> _packagingJson;
+  @override
+  @JsonKey()
+  List<BulkBatch> get packagingJson {
+    if (_packagingJson is EqualUnmodifiableListView) return _packagingJson;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_packagingJson);
+  }
+
   @override
   String toString() {
-    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, expiryDate: $expiryDate, expiryAlertDays: $expiryAlertDays, isPendingSync: $isPendingSync, restockAlertEnabled: $restockAlertEnabled, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants)';
+    return 'InventoryItem(id: $id, name: $name, description: $description, category: $category, totalStock: $totalStock, availableStock: $availableStock, location: $location, qrCode: $qrCode, status: $status, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, imageUrl: $imageUrl, lastUpdated: $lastUpdated, expiryDate: $expiryDate, expiryAlertDays: $expiryAlertDays, isPendingSync: $isPendingSync, restockAlertEnabled: $restockAlertEnabled, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, parentId: $parentId, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, locationRegistryId: $locationRegistryId, variants: $variants, packagingJson: $packagingJson)';
   }
 
   @override
@@ -638,7 +662,9 @@ class _$InventoryItemImpl extends _InventoryItem {
                 other.aggregateAvailable == aggregateAvailable) &&
             (identical(other.locationRegistryId, locationRegistryId) ||
                 other.locationRegistryId == locationRegistryId) &&
-            const DeepCollectionEquality().equals(other._variants, _variants));
+            const DeepCollectionEquality().equals(other._variants, _variants) &&
+            const DeepCollectionEquality()
+                .equals(other._packagingJson, _packagingJson));
   }
 
   @override
@@ -672,7 +698,8 @@ class _$InventoryItemImpl extends _InventoryItem {
         aggregateTotal,
         aggregateAvailable,
         locationRegistryId,
-        const DeepCollectionEquality().hash(_variants)
+        const DeepCollectionEquality().hash(_variants),
+        const DeepCollectionEquality().hash(_packagingJson)
       ]);
 
   @JsonKey(ignore: true)
@@ -712,7 +739,8 @@ abstract class _InventoryItem extends InventoryItem {
       final int aggregateTotal,
       final int aggregateAvailable,
       final int? locationRegistryId,
-      final List<InventoryVariant> variants}) = _$InventoryItemImpl;
+      final List<InventoryVariant> variants,
+      final List<BulkBatch> packagingJson}) = _$InventoryItemImpl;
   const _InventoryItem._() : super._();
 
   @override
@@ -774,8 +802,182 @@ abstract class _InventoryItem extends InventoryItem {
   @override
   List<InventoryVariant> get variants;
   @override
+  List<BulkBatch> get packagingJson;
+  @override
   @JsonKey(ignore: true)
   _$$InventoryItemImplCopyWith<_$InventoryItemImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$BulkBatch {
+  String get id => throw _privateConstructorUsedError;
+  String get label => throw _privateConstructorUsedError;
+  int get units => throw _privateConstructorUsedError;
+  DateTime? get expiry => throw _privateConstructorUsedError;
+
+  @JsonKey(ignore: true)
+  $BulkBatchCopyWith<BulkBatch> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $BulkBatchCopyWith<$Res> {
+  factory $BulkBatchCopyWith(BulkBatch value, $Res Function(BulkBatch) then) =
+      _$BulkBatchCopyWithImpl<$Res, BulkBatch>;
+  @useResult
+  $Res call({String id, String label, int units, DateTime? expiry});
+}
+
+/// @nodoc
+class _$BulkBatchCopyWithImpl<$Res, $Val extends BulkBatch>
+    implements $BulkBatchCopyWith<$Res> {
+  _$BulkBatchCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? label = null,
+    Object? units = null,
+    Object? expiry = freezed,
+  }) {
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      label: null == label
+          ? _value.label
+          : label // ignore: cast_nullable_to_non_nullable
+              as String,
+      units: null == units
+          ? _value.units
+          : units // ignore: cast_nullable_to_non_nullable
+              as int,
+      expiry: freezed == expiry
+          ? _value.expiry
+          : expiry // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$BulkBatchImplCopyWith<$Res>
+    implements $BulkBatchCopyWith<$Res> {
+  factory _$$BulkBatchImplCopyWith(
+          _$BulkBatchImpl value, $Res Function(_$BulkBatchImpl) then) =
+      __$$BulkBatchImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String id, String label, int units, DateTime? expiry});
+}
+
+/// @nodoc
+class __$$BulkBatchImplCopyWithImpl<$Res>
+    extends _$BulkBatchCopyWithImpl<$Res, _$BulkBatchImpl>
+    implements _$$BulkBatchImplCopyWith<$Res> {
+  __$$BulkBatchImplCopyWithImpl(
+      _$BulkBatchImpl _value, $Res Function(_$BulkBatchImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? label = null,
+    Object? units = null,
+    Object? expiry = freezed,
+  }) {
+    return _then(_$BulkBatchImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      label: null == label
+          ? _value.label
+          : label // ignore: cast_nullable_to_non_nullable
+              as String,
+      units: null == units
+          ? _value.units
+          : units // ignore: cast_nullable_to_non_nullable
+              as int,
+      expiry: freezed == expiry
+          ? _value.expiry
+          : expiry // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$BulkBatchImpl implements _BulkBatch {
+  const _$BulkBatchImpl(
+      {required this.id,
+      required this.label,
+      required this.units,
+      this.expiry});
+
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  final int units;
+  @override
+  final DateTime? expiry;
+
+  @override
+  String toString() {
+    return 'BulkBatch(id: $id, label: $label, units: $units, expiry: $expiry)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$BulkBatchImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.label, label) || other.label == label) &&
+            (identical(other.units, units) || other.units == units) &&
+            (identical(other.expiry, expiry) || other.expiry == expiry));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, id, label, units, expiry);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$BulkBatchImplCopyWith<_$BulkBatchImpl> get copyWith =>
+      __$$BulkBatchImplCopyWithImpl<_$BulkBatchImpl>(this, _$identity);
+}
+
+abstract class _BulkBatch implements BulkBatch {
+  const factory _BulkBatch(
+      {required final String id,
+      required final String label,
+      required final int units,
+      final DateTime? expiry}) = _$BulkBatchImpl;
+
+  @override
+  String get id;
+  @override
+  String get label;
+  @override
+  int get units;
+  @override
+  DateTime? get expiry;
+  @override
+  @JsonKey(ignore: true)
+  _$$BulkBatchImplCopyWith<_$BulkBatchImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 

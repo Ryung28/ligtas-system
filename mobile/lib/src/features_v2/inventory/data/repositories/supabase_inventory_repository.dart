@@ -146,8 +146,23 @@ class SupabaseInventoryRepository implements IInventoryRepository {
         );
       }
 
-      // 2. Hard Delete
-      await _client.from('inventory').delete().eq('id', id);
+      // 2. Soft Delete Protocol
+      await _client
+          .from('inventory')
+          .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', id);
+
+      // 📜 Activity Log Entry (Ignore if table missing or insert fails)
+      try {
+        await _client.from('activity_log').insert({
+          'table_name': 'inventory',
+          'record_id': int.tryParse(id),
+          'action': 'SOFT_DELETE',
+          'changes': {'reason': 'Mobile archive action'},
+        });
+      } catch (e) {
+        debugPrint('Logging failed: $e');
+      }
 
       // 3. Local update
       final items = await _local.watchItems().first;
@@ -209,7 +224,21 @@ class SupabaseInventoryRepository implements IInventoryRepository {
       aggregateTotal: model.aggregateTotal,
       aggregateAvailable: model.aggregateAvailable,
       variants: inventoryVariantsFromModelMaps(model.variants),
+      packagingJson: _mapPackagingJson(model.packagingJson),
     );
+  }
+
+  List<BulkBatch> _mapPackagingJson(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw.map((m) {
+      final expiryStr = m['expiry'] as String?;
+      return BulkBatch(
+        id: (m['id'] ?? '').toString(),
+        label: (m['label'] ?? '').toString(),
+        units: (m['units'] as num?)?.toInt() ?? 0,
+        expiry: expiryStr != null ? DateTime.tryParse(expiryStr) : null,
+      );
+    }).toList();
   }
 
   @override
@@ -252,7 +281,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
           await _client
               .from('inventory')
               .select(
-                'id, qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, stock_available, storage_location, location_registry_id, target_stock',
+                'id, qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, stock_available, storage_location, location_registry_id, target_stock, packaging_json',
               )
               .eq('id', itemId)
               .maybeSingle();
@@ -286,6 +315,9 @@ class SupabaseInventoryRepository implements IInventoryRepository {
         storageLocation: storageLocation,
         locationRegistryId: locationRegistryId,
         targetStock: (response['target_stock'] ?? 0) as int,
+        packagingJson: response['packaging_json'] != null 
+            ? List<Map<String, dynamic>>.from(response['packaging_json'] as List)
+            : null,
       );
     } catch (e) {
       debugPrint('fetchAdminFields error: $e');
@@ -303,6 +335,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
     required String storageLocation,
     int? locationRegistryId,
     required String forensicNote,
+    List<Map<String, dynamic>>? packagingJson,
   }) async {
     try {
       // Used for future audit column wiring; keep reference to avoid analyzer warnings.
@@ -333,6 +366,7 @@ class SupabaseInventoryRepository implements IInventoryRepository {
             'status': 'Good',
             'storage_location': storageLocation,
             'location_registry_id': locationRegistryId,
+            if (packagingJson != null) 'packaging_json': packagingJson,
             // If the DB has an audit/forensic column you can wire it here.
             // For now, we keep the note for future extension.
           })

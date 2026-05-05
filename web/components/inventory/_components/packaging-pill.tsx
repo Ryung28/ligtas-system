@@ -16,10 +16,11 @@ interface PackagingPillProps {
         expiry_mode?: 'none' | 'single' | 'grouped' | 'per_carton';
         expiry_groups?: Array<{ id: string; label: string; expiry_date: string; batch_ids: string[] }>;
     }
+    alertDays?: number
     className?: string
 }
 
-export function PackagingPill({ packaging, className }: PackagingPillProps) {
+export function PackagingPill({ packaging, alertDays, className }: PackagingPillProps) {
     if (!packaging?.enabled || !packaging.batches?.length) return null
 
     const totalContainers = packaging.batches.length
@@ -30,11 +31,16 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
         .map((g) => g.expiry_date)
         .filter(Boolean)
         .sort()[0]
+    
+    // Only show the "Near" badge if it's actually within the alert threshold
+    const expiryInfo = nearestExpiry ? getExpiryInfo(nearestExpiry, alertDays) : null
+    const shouldShowNearBadge = expiryInfo && (expiryInfo.status === 'warning' || expiryInfo.status === 'critical' || expiryInfo.status === 'expired')
 
     return (
         <Popover>
             <PopoverTrigger asChild>
                 <button 
+                    onClick={(e) => e.stopPropagation()}
                     className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-blue-300 transition-all group",
                         className
@@ -44,9 +50,12 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                     <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">
                         {totalContainers} {totalContainers === 1 ? type : typePlural}
                     </span>
-                    {nearestExpiry && (
-                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">
-                            • Near {new Date(nearestExpiry).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                    {nearestExpiry && shouldShowNearBadge && (
+                        <span className={cn(
+                            "text-[9px] font-black uppercase tracking-tight",
+                            expiryInfo.status === 'expired' ? "text-rose-600" : "text-amber-600"
+                        )}>
+                            • {expiryInfo.label}
                         </span>
                     )}
                 </button>
@@ -69,12 +78,13 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                 {/* Content Matrix */}
                 <div className="p-2.5 max-h-[300px] overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-1 gap-1.5">
-                        {packaging.batches.map((batch) => {
+                        {packaging.batches.map((batch, index) => {
                             const group = expiryGroups.find((g) => (g.batch_ids || []).includes(batch.id))
-                            const expiry = getExpiryInfo(group?.expiry_date ?? batch.expiry_date, 15)
+                            const batchExpiry = group?.expiry_date ?? batch.expiry_date
+                            const expiry = getExpiryInfo(batchExpiry, alertDays)
                             return (
                                 <div
-                                    key={batch.id}
+                                    key={`${batch.id}-${index}`}
                                     className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50/50 border border-transparent hover:border-slate-200 hover:bg-white transition-all group"
                                 >
                                     <div className="flex items-center gap-3">
@@ -96,7 +106,7 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                                             </span>
                                         )}
                                         <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest ml-0.5">Units</span>
-                                        {group?.expiry_date && (
+                                        {batchExpiry && (
                                             <span className={cn(
                                                 "text-[9px] font-black uppercase tracking-tight ml-2",
                                                 expiry.status === 'expired'
@@ -105,7 +115,7 @@ export function PackagingPill({ packaging, className }: PackagingPillProps) {
                                                         ? 'text-amber-600'
                                                         : 'text-emerald-600'
                                             )}>
-                                                {new Date(group.expiry_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                                                {new Date(batchExpiry).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                                             </span>
                                         )}
                                     </div>

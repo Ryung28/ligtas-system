@@ -27,8 +27,12 @@ mixin _$ManagerActionFormState {
   int get qtyMaintenance => throw _privateConstructorUsedError;
   int get qtyLost => throw _privateConstructorUsedError;
   String get storageLocation => throw _privateConstructorUsedError;
-  int? get locationRegistryId =>
-      throw _privateConstructorUsedError; // ── Handover + Reserve: dispatch fields ──
+  int? get locationRegistryId => throw _privateConstructorUsedError;
+  List<Map<String, dynamic>> get packagingJson =>
+      throw _privateConstructorUsedError;
+  int? get activeRowId =>
+      throw _privateConstructorUsedError; // THE SURGICAL TARGET ID
+// ── Handover + Reserve: dispatch fields ──
   int get quantity => throw _privateConstructorUsedError;
   String get recipientName => throw _privateConstructorUsedError;
   String get recipientOffice => throw _privateConstructorUsedError;
@@ -70,6 +74,8 @@ abstract class $ManagerActionFormStateCopyWith<$Res> {
       int qtyLost,
       String storageLocation,
       int? locationRegistryId,
+      List<Map<String, dynamic>> packagingJson,
+      int? activeRowId,
       int quantity,
       String recipientName,
       String recipientOffice,
@@ -113,6 +119,8 @@ class _$ManagerActionFormStateCopyWithImpl<$Res,
     Object? qtyLost = null,
     Object? storageLocation = null,
     Object? locationRegistryId = freezed,
+    Object? packagingJson = null,
+    Object? activeRowId = freezed,
     Object? quantity = null,
     Object? recipientName = null,
     Object? recipientOffice = null,
@@ -168,6 +176,14 @@ class _$ManagerActionFormStateCopyWithImpl<$Res,
       locationRegistryId: freezed == locationRegistryId
           ? _value.locationRegistryId
           : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      packagingJson: null == packagingJson
+          ? _value.packagingJson
+          : packagingJson // ignore: cast_nullable_to_non_nullable
+              as List<Map<String, dynamic>>,
+      activeRowId: freezed == activeRowId
+          ? _value.activeRowId
+          : activeRowId // ignore: cast_nullable_to_non_nullable
               as int?,
       quantity: null == quantity
           ? _value.quantity
@@ -264,6 +280,8 @@ abstract class _$$ManagerActionFormStateImplCopyWith<$Res>
       int qtyLost,
       String storageLocation,
       int? locationRegistryId,
+      List<Map<String, dynamic>> packagingJson,
+      int? activeRowId,
       int quantity,
       String recipientName,
       String recipientOffice,
@@ -306,6 +324,8 @@ class __$$ManagerActionFormStateImplCopyWithImpl<$Res>
     Object? qtyLost = null,
     Object? storageLocation = null,
     Object? locationRegistryId = freezed,
+    Object? packagingJson = null,
+    Object? activeRowId = freezed,
     Object? quantity = null,
     Object? recipientName = null,
     Object? recipientOffice = null,
@@ -361,6 +381,14 @@ class __$$ManagerActionFormStateImplCopyWithImpl<$Res>
       locationRegistryId: freezed == locationRegistryId
           ? _value.locationRegistryId
           : locationRegistryId // ignore: cast_nullable_to_non_nullable
+              as int?,
+      packagingJson: null == packagingJson
+          ? _value._packagingJson
+          : packagingJson // ignore: cast_nullable_to_non_nullable
+              as List<Map<String, dynamic>>,
+      activeRowId: freezed == activeRowId
+          ? _value.activeRowId
+          : activeRowId // ignore: cast_nullable_to_non_nullable
               as int?,
       quantity: null == quantity
           ? _value.quantity
@@ -451,6 +479,8 @@ class _$ManagerActionFormStateImpl implements _ManagerActionFormState {
       this.qtyLost = 0,
       this.storageLocation = '',
       this.locationRegistryId,
+      final List<Map<String, dynamic>> packagingJson = const [],
+      this.activeRowId,
       this.quantity = 1,
       this.recipientName = '',
       this.recipientOffice = '',
@@ -468,7 +498,8 @@ class _$ManagerActionFormStateImpl implements _ManagerActionFormState {
       this.minStock = 0,
       this.isEditLoading = false,
       this.isSubmitting = false,
-      this.submitError});
+      this.submitError})
+      : _packagingJson = packagingJson;
 
 // ── Active mode ──
   @override
@@ -498,6 +529,18 @@ class _$ManagerActionFormStateImpl implements _ManagerActionFormState {
   final String storageLocation;
   @override
   final int? locationRegistryId;
+  final List<Map<String, dynamic>> _packagingJson;
+  @override
+  @JsonKey()
+  List<Map<String, dynamic>> get packagingJson {
+    if (_packagingJson is EqualUnmodifiableListView) return _packagingJson;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_packagingJson);
+  }
+
+  @override
+  final int? activeRowId;
+// THE SURGICAL TARGET ID
 // ── Handover + Reserve: dispatch fields ──
   @override
   @JsonKey()
@@ -555,7 +598,7 @@ class _$ManagerActionFormStateImpl implements _ManagerActionFormState {
 
   @override
   String toString() {
-    return 'ManagerActionFormState(mode: $mode, note: $note, localImageUrl: $localImageUrl, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, storageLocation: $storageLocation, locationRegistryId: $locationRegistryId, quantity: $quantity, recipientName: $recipientName, recipientOffice: $recipientOffice, recipientContact: $recipientContact, approvedBy: $approvedBy, releasedBy: $releasedBy, expectedReturnDate: $expectedReturnDate, pickupScheduledAt: $pickupScheduledAt, isDateReturn: $isDateReturn, itemName: $itemName, category: $category, serial: $serial, model: $model, targetStock: $targetStock, minStock: $minStock, isEditLoading: $isEditLoading, isSubmitting: $isSubmitting, submitError: $submitError)';
+    return 'ManagerActionFormState(mode: $mode, note: $note, localImageUrl: $localImageUrl, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, storageLocation: $storageLocation, locationRegistryId: $locationRegistryId, packagingJson: $packagingJson, activeRowId: $activeRowId, quantity: $quantity, recipientName: $recipientName, recipientOffice: $recipientOffice, recipientContact: $recipientContact, approvedBy: $approvedBy, releasedBy: $releasedBy, expectedReturnDate: $expectedReturnDate, pickupScheduledAt: $pickupScheduledAt, isDateReturn: $isDateReturn, itemName: $itemName, category: $category, serial: $serial, model: $model, targetStock: $targetStock, minStock: $minStock, isEditLoading: $isEditLoading, isSubmitting: $isSubmitting, submitError: $submitError)';
   }
 
   @override
@@ -577,6 +620,10 @@ class _$ManagerActionFormStateImpl implements _ManagerActionFormState {
                 other.storageLocation == storageLocation) &&
             (identical(other.locationRegistryId, locationRegistryId) ||
                 other.locationRegistryId == locationRegistryId) &&
+            const DeepCollectionEquality()
+                .equals(other._packagingJson, _packagingJson) &&
+            (identical(other.activeRowId, activeRowId) ||
+                other.activeRowId == activeRowId) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
             (identical(other.recipientName, recipientName) ||
@@ -625,6 +672,8 @@ class _$ManagerActionFormStateImpl implements _ManagerActionFormState {
         qtyLost,
         storageLocation,
         locationRegistryId,
+        const DeepCollectionEquality().hash(_packagingJson),
+        activeRowId,
         quantity,
         recipientName,
         recipientOffice,
@@ -664,6 +713,8 @@ abstract class _ManagerActionFormState implements ManagerActionFormState {
       final int qtyLost,
       final String storageLocation,
       final int? locationRegistryId,
+      final List<Map<String, dynamic>> packagingJson,
+      final int? activeRowId,
       final int quantity,
       final String recipientName,
       final String recipientOffice,
@@ -701,7 +752,12 @@ abstract class _ManagerActionFormState implements ManagerActionFormState {
   String get storageLocation;
   @override
   int? get locationRegistryId;
-  @override // ── Handover + Reserve: dispatch fields ──
+  @override
+  List<Map<String, dynamic>> get packagingJson;
+  @override
+  int? get activeRowId;
+  @override // THE SURGICAL TARGET ID
+// ── Handover + Reserve: dispatch fields ──
   int get quantity;
   @override
   String get recipientName;

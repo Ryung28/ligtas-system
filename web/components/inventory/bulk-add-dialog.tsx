@@ -82,7 +82,7 @@ const BLANK = (category = ''): BulkItemRow => ({
 
 /** Goods category OR consumable type → show expiry/brand fields (mirrors main dialog logic). */
 const needsExpiryFields = (row: BulkItemRow) =>
-    row.item_type === 'consumable' || row.category.trim().toLowerCase() === 'goods'
+    row.item_type === 'consumable' || ['goods', 'medical'].includes(row.category.trim().toLowerCase())
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -563,7 +563,7 @@ export function BulkAddDialog({ trigger, onSuccess }: BulkAddDialogProps) {
                                             <div className="mt-2 ml-[100px] p-3 rounded-xl border border-dashed border-slate-200 bg-white/50">
                                                 <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2">
                                                     <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
-                                                    <span>Switch to <strong className="text-slate-900">Consumable</strong> or choose <strong className="text-slate-900">Goods</strong> to unlock brand &amp; expiry.</span>
+                                                    <span>Switch to <strong className="text-slate-900">Consumable</strong> or choose <strong className="text-slate-900">Goods/Medical</strong> to unlock brand &amp; expiry.</span>
                                                 </p>
                                             </div>
                                         )}

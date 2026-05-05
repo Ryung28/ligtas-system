@@ -17,6 +17,9 @@ import { roleCan, mFocus } from '@/lib/mobile/tokens'
 import { aggregateInventory, isLowStock } from '@/src/features/inventory/utils'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { restockInventoryAction } from '@/app/actions/notifications'
+import { BottomSheet } from '@/components/mobile/primitives'
+import { QtyStepper } from '../qty-stepper'
 import {
     Package, 
     AlertTriangle, 
@@ -32,7 +35,9 @@ import {
     TrendingDown,
     Fingerprint,
     Calendar,
-    Tag
+    Tag,
+    Plus,
+    Loader2
 } from 'lucide-react'
 
 /**
@@ -49,6 +54,15 @@ export default function MobileItemDetailsPage() {
     const [editOpen, setEditOpen] = useState(false)
     const [archiveOpen, setArchiveOpen] = useState(false)
     const [isArchiving, startArchive] = useTransition()
+
+    // 📦 Bulk Restock State
+    const [restockOpen, setRestockOpen] = useState(false)
+    const [targetBatch, setTargetBatch] = useState<{ id: string; label: string; location: string } | null>(null)
+    const [restockQty, setRestockQty] = useState(1)
+    const [isRestocking, startRestock] = useTransition()
+
+    // 🎯 TACTICAL ANCHORS
+    const locationStockRef = React.useRef<HTMLDivElement>(null)
 
     const searchParams = useSearchParams()
     const action = searchParams.get('action')
@@ -69,14 +83,30 @@ export default function MobileItemDetailsPage() {
         )
     }, [inventory, id])
 
-    // 🎯 TACTICAL DEEP-LINKING: Auto-open restock sheet
+    // 🎯 TACTICAL DEEP-LINKING: Strategic triage landing
     React.useEffect(() => {
-        if (item && action === 'restock' && canManage) {
-            setEditOpen(true)
-            // Remove the param from URL to prevent re-opening on refresh if needed, 
-            // but for PWA jumping it's usually fine.
+        if (!item || action !== 'restock' || !canManage) return
+
+        if (hasPackaging) {
+            // 🗺️ Bulk Item: Scroll to physical distribution for container selection
+            const timer = setTimeout(() => {
+                locationStockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                toast.info("Select a container to restock", { 
+                    icon: <Package className="w-4 h-4" />,
+                    description: "Choose the specific box you are restocking."
+                })
+            }, 500)
+            return () => clearTimeout(timer)
+        } else {
+            // 📦 Standard Item: Auto-trigger quick restock for primary row
+            setTargetBatch({ 
+                id: '__master__', 
+                label: 'General Stock', 
+                location: primaryLocation 
+            })
+            setRestockOpen(true)
         }
-    }, [item, action, canManage])
+    }, [item, action, canManage, hasPackaging, primaryLocation])
 
     // 🏛️ SENIOR ASSET RESOLUTION: Hydrate path to bucket URL
     const imageUrl = item?.image_url ? getInventoryImageUrl(item.image_url) : null;
@@ -112,6 +142,28 @@ export default function MobileItemDetailsPage() {
                 }
             } catch (err: any) {
                 toast.error('Archive failed', { description: err?.message || 'Please retry.' })
+            }
+        })
+    }
+
+    const handleRestockBatch = () => {
+        if (!item || !targetBatch) return
+        startRestock(async () => {
+            try {
+                // If it's a virtual master batch, pass undefined to use standard restock logic
+                const batchId = targetBatch.id === '__master__' ? undefined : targetBatch.id
+                
+                const res = await restockInventoryAction(item.id, restockQty, batchId)
+                if (res.success) {
+                    toast.success('Restock successful', { description: `Added ${restockQty} units to ${targetBatch.label}.` })
+                    refresh()
+                    setRestockOpen(false)
+                    setRestockQty(1)
+                } else {
+                    toast.error('Restock failed', { description: res.message })
+                }
+            } catch (err: any) {
+                toast.error('Sync failure', { description: 'Could not connect to logistics server.' })
             }
         })
     }
@@ -311,7 +363,7 @@ export default function MobileItemDetailsPage() {
                     )}
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-4" ref={locationStockRef}>
                     <h2 className="text-sm font-black text-gray-900 uppercase tracking-tighter flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-red-600" />
                         Location Stock
@@ -319,7 +371,7 @@ export default function MobileItemDetailsPage() {
                     
                     <div className="space-y-3">
                         {item.variants.map((variant) => (
-                            <div key={variant.id} className="flex flex-col p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
+                            <div key={variant.id} className="flex flex-col p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
                                         <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{variant.location}</p>
@@ -334,6 +386,41 @@ export default function MobileItemDetailsPage() {
                                         </p>
                                     </div>
                                 </div>
+
+                                {/* 📦 Surgical Batch Restock (Bulk Only) */}
+                                {variant.batches && variant.batches.length > 0 && (
+                                    <div className="space-y-2 border-t border-gray-200/50 pt-3">
+                                        {variant.batches.map((batch: any) => (
+                                            <div key={batch.id} className="flex items-center justify-between bg-white/60 p-2.5 rounded-xl border border-white">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                                                    <span className="text-[10px] font-bold text-gray-700 uppercase tracking-tight">{batch.label}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-black text-gray-900 tabular-nums">{batch.units}</span>
+                                                    {canManage && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setTargetBatch({ id: batch.id, label: batch.label, location: variant.location })
+                                                                setRestockOpen(true)
+                                                            }}
+                                                            className={cn(
+                                                                "h-7 px-2.5 bg-blue-50 text-blue-700 rounded-lg flex items-center gap-1",
+                                                                "text-[9px] font-black uppercase tracking-tighter shadow-sm",
+                                                                "active:scale-95 transition-transform"
+                                                            )}
+                                                        >
+                                                            <Plus className="w-3 h-3" strokeWidth={3} />
+                                                            Restock
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 {(variant.qty_damaged > 0 || variant.qty_maintenance > 0) && (
                                     <div className="pt-2 border-t border-gray-200/50 flex gap-4">
                                         {variant.qty_damaged > 0 && (
@@ -454,6 +541,46 @@ export default function MobileItemDetailsPage() {
                         requireTypeToConfirm="ARCHIVE"
                         onConfirm={handleArchive}
                     />
+
+                    {/* 📦 BATCH RESTOCK MODAL */}
+                    <BottomSheet
+                        open={restockOpen}
+                        onOpenChange={setRestockOpen}
+                        title="Quick Restock"
+                        description={targetBatch ? `Adding units to ${targetBatch.label} at ${targetBatch.location}.` : ''}
+                        footer={
+                            <button
+                                type="button"
+                                onClick={handleRestockBatch}
+                                disabled={isRestocking || restockQty < 1}
+                                className={cn(
+                                    "w-full h-12 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2",
+                                    "shadow-lg shadow-blue-200 active:scale-[0.98] transition-all",
+                                    "disabled:opacity-50"
+                                )}
+                            >
+                                {isRestocking ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Plus className="w-4 h-4" />
+                                )}
+                                Confirm Restock
+                            </button>
+                        }
+                    >
+                        <div className="py-6">
+                            <QtyStepper 
+                                id="restock-qty"
+                                label="Units to add"
+                                tone="info"
+                                value={restockQty}
+                                onChange={setRestockQty}
+                            />
+                            <p className="mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">
+                                This will update both the physical container and site totals.
+                            </p>
+                        </div>
+                    </BottomSheet>
                 </>
             )}
         </div>

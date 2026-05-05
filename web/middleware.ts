@@ -1,11 +1,11 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { isMobileDevice } from '@/lib/device-detection'
 
 /**
  * 🛰️ High-Speed Auth Guard Middleware
  * 🛡️ SUPER SENIOR PROTOCOL: Purely stateless session guarding.
- * No database calls here. Only cookie-to-auth handshake.
+ * We use atomic setAll to prevent refresh token desync/logout loops.
  */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
@@ -13,15 +13,12 @@ export async function middleware(request: NextRequest) {
     const isMobile = isMobileDevice(userAgent)
 
     // ── 1. Fast Asset Pass ──
-    // The matcher handles most, but we double-check common static patterns
     if (pathname.includes('.') || pathname.startsWith('/_next')) {
         return NextResponse.next()
     }
 
     let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
+        request,
     })
 
     const supabase = createServerClient(
@@ -29,46 +26,29 @@ export async function middleware(request: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value
+                getAll() {
+                    return request.cookies.getAll()
                 },
-                set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({ name, value, ...options })
-                    response = NextResponse.next({ request: { headers: request.headers } })
-                    response.cookies.set({ name, value, ...options })
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({ name, value: '', ...options })
-                    response = NextResponse.next({ request: { headers: request.headers } })
-                    response.cookies.set({ name, value: '', ...options })
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+                    response = NextResponse.next({
+                        request,
+                    })
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        response.cookies.set(name, value, options)
+                    )
                 },
             },
         }
     )
 
-    const { data: { session: rawSession }, error } = await supabase.auth.getSession()
+    // 🛡️ High-Reliability Handshake: getUser() validates against server to prevent ghost sessions
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    // 🛡️ Safety Shield: Handle corrupted session strings (TypeError fix)
-    let session = null;
-    if (rawSession) {
-        if (typeof rawSession === 'string') {
-            console.error('[Middleware] Corrupted session string detected. Executing Atomic Purge.');
-            
-            // 🛡️ Atomic Purge: Force wipe all auth-related cookies to prevent crash loop
-            const loginUrl = new URL('/login', request.url)
-            loginUrl.searchParams.set('error', 'Your session was corrupted and has been reset. Please sign in again.')
-            const response = NextResponse.redirect(loginUrl)
-            
-            // Clear all possible Supabase auth cookies
-            request.cookies.getAll().forEach(c => {
-                if (c.name.includes('auth-token') || c.name.startsWith('sb-')) {
-                    response.cookies.delete(c.name)
-                }
-            })
-            
-            return response
-        }
-        session = rawSession;
+    // 🛡️ Safety Shield: Handle invalid refresh token scenarios
+    if (authError && authError.message.includes('Refresh Token Not Found')) {
+        console.warn('[Middleware] Refresh Token Invalidated. Executing Graceful Cleanup.');
+        // The logic below will handle redirection to /login since 'user' is null
     }
 
     const isDashboardPath = pathname.startsWith('/dashboard')
@@ -79,18 +59,18 @@ export async function middleware(request: NextRequest) {
     // ── 3. High-Efficiency Traffic Control ──
     
     // Auth Guard: Kicking non-users to Login
-    if ((isDashboardPath || isMobilePath) && !session) {
+    if ((isDashboardPath || isMobilePath) && !user) {
         const redirectUrl = new URL('/login', request.url)
         return NextResponse.redirect(redirectUrl)
     }
 
     // Unauthenticated root: Send to login
-    if (isRoot && !session) {
+    if (isRoot && !user) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
     // Authenticated: Device-Based Segment Pivot
-    if (session) {
+    if (user) {
         // Desktop user trying to access mobile routes
         if (!isMobile && isMobilePath) {
             return NextResponse.redirect(new URL('/dashboard/inventory', request.url))
@@ -122,3 +102,4 @@ export const config = {
         '/((?!api|_next/static|_next/image|favicon.ico|icons/|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js)$).*)',
     ],
 }
+

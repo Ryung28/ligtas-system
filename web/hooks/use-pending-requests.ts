@@ -18,15 +18,14 @@ export const fetchPendingRequests = async () => {
             item_name,
             borrower_name,
             borrower_contact,
-            borrower_department,
-            requested_units,
+            quantity,
             purpose,
             pickup_scheduled_at,
             inventory:inventory_id (
                 id,
                 item_name,
-                current_stock,
-                unit_type
+                stock_available,
+                item_type
             )
         `)
         .in('status', ['pending', 'staged', 'reserved'])

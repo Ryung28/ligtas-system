@@ -43,6 +43,7 @@ class InventoryModel with _$InventoryModel {
     @JsonKey(name: 'qty_damaged') @Default(0) int qtyDamaged,
     @JsonKey(name: 'qty_maintenance') @Default(0) int qtyMaintenance,
     @JsonKey(name: 'qty_lost') @Default(0) int qtyLost,
+    @JsonKey(name: 'packaging_json') List<Map<String, dynamic>>? packagingJson,
   }) = _InventoryModel;
 
   factory InventoryModel.fromJson(Map<String, dynamic> json) => _$InventoryModelFromJson(json);
@@ -89,6 +90,7 @@ class InventoryCollection {
   int qtyMaintenance = 0;
   int qtyLost = 0;
   String? variantsJson;
+  String? packagingJson;
 
   // Convert from Model to Entity
   static InventoryCollection fromModel(InventoryModel model) {
@@ -121,7 +123,8 @@ class InventoryCollection {
       ..qtyDamaged = model.qtyDamaged
       ..qtyMaintenance = model.qtyMaintenance
       ..qtyLost = model.qtyLost
-      ..variantsJson = _encodeVariantsList(model.variants);
+      ..variantsJson = _encodeVariantsList(model.variants)
+      ..packagingJson = _encodeVariantsList(model.packagingJson ?? []);
   }
 
   static String? _encodeVariantsList(List<Map<String, dynamic>> variants) {
@@ -165,6 +168,7 @@ class InventoryCollection {
       qtyMaintenance: qtyMaintenance,
       qtyLost: qtyLost,
       variants: _decodeVariantsList(variantsJson),
+      packagingJson: _decodeVariantsList(packagingJson),
     );
   }
 

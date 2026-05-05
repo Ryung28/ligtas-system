@@ -79,11 +79,14 @@ const CartonCard = memo(({
             <div className="relative">
                 <Input 
                     type="number"
-                    value={batch.units}
-                    onChange={(e) => onUpdateBatch(idx, Number(e.target.value))}
+                    value={batch.units === 0 ? '' : batch.units}
+                    onChange={(e) => {
+                        const val = e.target.value === '' ? 0 : Number(e.target.value)
+                        onUpdateBatch(idx, val)
+                    }}
                     className={cn(
                         "h-8 text-center text-[13px] font-black rounded-lg border-2 transition-all tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1",
-                        batch.units === Number(packaging.unitsPerContainer) 
+                        Number(batch.units) === Number(packaging.unitsPerContainer) 
                             ? "border-slate-50 bg-slate-50/30 text-zinc-900" 
                             : "border-orange-100 bg-orange-50/50 text-orange-700"
                     )}
@@ -111,7 +114,7 @@ const CartonCard = memo(({
                     <SelectContent className="rounded-xl border-slate-200">
                         <SelectItem value="__none__" className="text-[10px] font-bold py-1.5 text-slate-400">— Default</SelectItem>
                         {locations.map(loc => (
-                            <SelectItem key={loc.id} value={String(loc.id)} className="text-[10px] font-bold py-1.5">{loc.location_name}</SelectItem>
+                            <SelectItem key={`loc_select_${loc.id}`} value={String(loc.id)} className="text-[10px] font-bold py-1.5">{loc.location_name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -123,7 +126,7 @@ CartonCard.displayName = 'CartonCard';
 
 export function V2BulkPackagingBuilder({ 
     packaging, locations, onUpdate, onUpdateBatch, onUpdateLabel, onUpdateBatchLocation, onUpdateMultipleLocations, onAddExtra,
-    onRemoveBatch, onAddExpiryGroup, onUpdateExpiryGroup, onRemoveExpiryGroup, onAssignBatchToGroup, onSplitExpiryPerCarton,
+    onRemoveBatch, onAddExpiryGroup, onUpdateExpiryGroup, onRemoveExpiryGroup, onAssignBatchToGroup, onSplitExpiryPerCarton
 }: BulkPackagingBuilderProps) {
     const [isExpanded, setIsExpanded] = useState(true)
     const totalUnitsTotal = packaging.batches.reduce((s, b) => s + b.units, 0)
@@ -244,11 +247,11 @@ export function V2BulkPackagingBuilder({
                         </div>
 
                         <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200 min-h-[140px]">
-                            {packaging.batches.length > 0 ? (
+                            {isExpanded && packaging.batches.length > 0 ? (
                                 <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
                                     {packaging.batches.map((batch, idx) => (
                                         <CartonCard 
-                                            key={batch.id}
+                                            key={`carton_${batch.id}_${idx}`}
                                             batch={batch}
                                             idx={idx}
                                             packaging={packaging}
@@ -259,6 +262,12 @@ export function V2BulkPackagingBuilder({
                                             onRemoveBatch={onRemoveBatch}
                                         />
                                     ))}
+                                </div>
+                            ) : !isExpanded ? (
+                                <div className="py-10 text-center cursor-pointer" onClick={() => setIsExpanded(true)}>
+                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] animate-pulse">
+                                        Click header to manage {packaging.batches.length} containers
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="py-10 text-center">
@@ -302,7 +311,7 @@ export function V2BulkPackagingBuilder({
                             </div>
                         )}
 
-                        {expiryMode === 'grouped' && (
+                        {(expiryMode === 'grouped' || expiryMode === 'per_carton') && (
                             <div className="space-y-4">
                                 <button 
                                     onClick={onAddExpiryGroup}
@@ -312,8 +321,8 @@ export function V2BulkPackagingBuilder({
                                     Add Expiry Group
                                 </button>
 
-                                {expiryGroups.map((group) => (
-                                    <div key={group.id} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                {expiryGroups.map((group, gIdx) => (
+                                    <div key={`exp_group_${group.id}_${gIdx}`} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                                         <div className="bg-white p-4 border-b border-slate-200">
                                             <div className="flex items-center justify-between gap-2 mb-3">
                                                 <div className="flex-1 min-w-0">
@@ -370,7 +379,7 @@ export function V2BulkPackagingBuilder({
                                                         <SelectContent className="rounded-xl border-slate-200">
                                                             <SelectItem value="__none__" className="text-[11px] font-bold py-2 text-slate-400">Default Warehouse</SelectItem>
                                                             {locations.map(loc => (
-                                                                <SelectItem key={loc.id} value={String(loc.id)} className="text-[11px] font-bold py-2">{loc.location_name}</SelectItem>
+                                                                <SelectItem key={`group_loc_${loc.id}`} value={String(loc.id)} className="text-[11px] font-bold py-2">{loc.location_name}</SelectItem>
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
@@ -378,12 +387,12 @@ export function V2BulkPackagingBuilder({
                                             </div>
                                         </div>
                                         <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(60px,1fr))] gap-2">
-                                            {packaging.batches.map((batch) => {
+                                            {packaging.batches.map((batch, batchIdx) => {
                                                 const isAssigned = (group.batch_ids || []).includes(batch.id)
                                                 const isAssignedElsewhere = assignedBatchIds.has(batch.id) && !isAssigned
                                                 return (
                                                     <button
-                                                        key={batch.id}
+                                                        key={`group_assign_${group.id}_${batch.id}_${batchIdx}`}
                                                         disabled={isAssignedElsewhere}
                                                         onClick={() => onAssignBatchToGroup(group.id, batch.id, !isAssigned)}
                                                         className={cn(

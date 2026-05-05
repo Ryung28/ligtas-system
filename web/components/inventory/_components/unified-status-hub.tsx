@@ -75,15 +75,17 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
     if (count === 1) {
         const indicator = activeIndicators[0]
         if (indicator.type === 'logistics') {
-            return <PackagingPill packaging={packaging} className={className} />
+            return <PackagingPill packaging={packaging} alertDays={(item as any).expiry_alert_days} className={className} />
         }
         if (indicator.type === 'expiry') {
             return (
-                <Badge className={cn(
-                    "text-[10px] font-black tracking-tight px-2.5 min-h-6 h-6 py-0 border flex items-center gap-1.5 rounded-md whitespace-nowrap",
-                    expiry?.badgeClass,
-                    className
-                )}>
+                <Badge 
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                        "text-[10px] font-black tracking-tight px-2.5 min-h-6 h-6 py-0 border flex items-center gap-1.5 rounded-md whitespace-nowrap",
+                        expiry?.badgeClass,
+                        className
+                    )}>
                     <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
                     {expiry?.label}
                 </Badge>
@@ -91,11 +93,13 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
         }
         if (indicator.type === 'stock') {
             return (
-                <Badge className={cn(
-                    "text-[8px] font-black tracking-tighter px-1 h-4 whitespace-nowrap",
-                    stockStatus?.label === 'OUT OF STOCK' ? "bg-rose-500 text-white" : "bg-amber-500 text-white",
-                    className
-                )}>
+                <Badge 
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                        "text-[8px] font-black tracking-tighter px-1 h-4 whitespace-nowrap",
+                        stockStatus?.label === 'OUT OF STOCK' ? "bg-rose-500 text-white" : "bg-amber-500 text-white",
+                        className
+                    )}>
                     {stockStatus?.label}
                 </Badge>
             )
@@ -111,6 +115,7 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
         <Popover>
             <PopoverTrigger asChild>
                 <button 
+                    onClick={(e) => e.stopPropagation()}
                     className={cn(
                         "inline-flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm transition-all group",
                         topSeverityStatus === 'error' ? "bg-rose-50 border-rose-100" :
@@ -225,9 +230,9 @@ export function UnifiedStatusHub({ item, expiry, stockStatus, className }: Unifi
                                     <span className="text-[9px] font-black text-blue-600/60 uppercase tracking-widest italic">Breakdown</span>
                                 </div>
                                 <div className="p-1.5 space-y-1">
-                                    {packagingRows.map((batch: any) => (
+                                    {packagingRows.map((batch: any, idx: number) => (
                                         <div 
-                                            key={batch.id} 
+                                            key={`${batch.id}-${idx}`} 
                                             className="flex justify-between items-center px-2 py-1.5 rounded-lg bg-white/40 border border-transparent hover:border-slate-200 hover:bg-white transition-all group"
                                         >
                                             <div className="flex items-center gap-2">

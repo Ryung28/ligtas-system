@@ -547,7 +547,7 @@ class _CategoryIconProviderElement extends AutoDisposeProviderElement<IconData>
   String get category => (origin as CategoryIconProvider).category;
 }
 
-String _$inventoryNotifierHash() => r'28b18fc4f98bba0c5fb7471bfd5f69204916d593';
+String _$inventoryNotifierHash() => r'ccbd2fbeecc68018bb22d72f0f546ce29966d846';
 
 /// The state of our Inventory List (Reactive & Streams)
 /// 🚀 THE GOLD STANDARD: Paginated Inventory Notifier

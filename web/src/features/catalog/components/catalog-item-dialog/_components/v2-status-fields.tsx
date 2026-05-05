@@ -43,6 +43,7 @@ interface StatusFieldsProps {
     categoryName?: string
     itemType?: string
     locations?: Array<{ id: string | number; location_name: string }>
+    globalTotal?: number | string
 }
 
 /**
@@ -64,6 +65,7 @@ export function V2StatusFields({
     categoryName = '',
     itemType = 'equipment',
     locations = [],
+    globalTotal = 0,
 }: StatusFieldsProps) {
     
     const targetNum = Number(targetStock) || 0
@@ -83,9 +85,17 @@ export function V2StatusFields({
 
     return (
         <div className="bg-slate-50/50 rounded-3xl p-4 border border-slate-100 space-y-4">
-            <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tighter text-blue-600">{labels.header}</p>
+            <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                    <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tighter text-blue-600">{labels.header}</p>
+                </div>
+                {packaging?.enabled && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100/50 rounded-full border border-emerald-200">
+                        <Package className="h-3 w-3 text-emerald-600" />
+                        <span className="text-[10px] font-black text-emerald-700">GLOBAL TOTAL: {globalTotal} UNITS</span>
+                    </div>
+                )}
             </div>
 
             {/* Packaging Logic (Repositioned to TOP for Option 5) */}

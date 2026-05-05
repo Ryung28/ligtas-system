@@ -72,6 +72,9 @@ mixin _$InventoryModel {
   int get qtyMaintenance => throw _privateConstructorUsedError;
   @JsonKey(name: 'qty_lost')
   int get qtyLost => throw _privateConstructorUsedError;
+  @JsonKey(name: 'packaging_json')
+  List<Map<String, dynamic>>? get packagingJson =>
+      throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -116,7 +119,9 @@ abstract class $InventoryModelCopyWith<$Res> {
       @JsonKey(name: 'qty_good') int qtyGood,
       @JsonKey(name: 'qty_damaged') int qtyDamaged,
       @JsonKey(name: 'qty_maintenance') int qtyMaintenance,
-      @JsonKey(name: 'qty_lost') int qtyLost});
+      @JsonKey(name: 'qty_lost') int qtyLost,
+      @JsonKey(name: 'packaging_json')
+      List<Map<String, dynamic>>? packagingJson});
 }
 
 /// @nodoc
@@ -163,6 +168,7 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
     Object? qtyDamaged = null,
     Object? qtyMaintenance = null,
     Object? qtyLost = null,
+    Object? packagingJson = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -289,6 +295,10 @@ class _$InventoryModelCopyWithImpl<$Res, $Val extends InventoryModel>
           ? _value.qtyLost
           : qtyLost // ignore: cast_nullable_to_non_nullable
               as int,
+      packagingJson: freezed == packagingJson
+          ? _value.packagingJson
+          : packagingJson // ignore: cast_nullable_to_non_nullable
+              as List<Map<String, dynamic>>?,
     ) as $Val);
   }
 }
@@ -332,7 +342,9 @@ abstract class _$$InventoryModelImplCopyWith<$Res>
       @JsonKey(name: 'qty_good') int qtyGood,
       @JsonKey(name: 'qty_damaged') int qtyDamaged,
       @JsonKey(name: 'qty_maintenance') int qtyMaintenance,
-      @JsonKey(name: 'qty_lost') int qtyLost});
+      @JsonKey(name: 'qty_lost') int qtyLost,
+      @JsonKey(name: 'packaging_json')
+      List<Map<String, dynamic>>? packagingJson});
 }
 
 /// @nodoc
@@ -377,6 +389,7 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
     Object? qtyDamaged = null,
     Object? qtyMaintenance = null,
     Object? qtyLost = null,
+    Object? packagingJson = freezed,
   }) {
     return _then(_$InventoryModelImpl(
       id: null == id
@@ -503,6 +516,10 @@ class __$$InventoryModelImplCopyWithImpl<$Res>
           ? _value.qtyLost
           : qtyLost // ignore: cast_nullable_to_non_nullable
               as int,
+      packagingJson: freezed == packagingJson
+          ? _value._packagingJson
+          : packagingJson // ignore: cast_nullable_to_non_nullable
+              as List<Map<String, dynamic>>?,
     ));
   }
 }
@@ -541,8 +558,11 @@ class _$InventoryModelImpl implements _InventoryModel {
       @JsonKey(name: 'qty_good') this.qtyGood = 0,
       @JsonKey(name: 'qty_damaged') this.qtyDamaged = 0,
       @JsonKey(name: 'qty_maintenance') this.qtyMaintenance = 0,
-      @JsonKey(name: 'qty_lost') this.qtyLost = 0})
-      : _variants = variants;
+      @JsonKey(name: 'qty_lost') this.qtyLost = 0,
+      @JsonKey(name: 'packaging_json')
+      final List<Map<String, dynamic>>? packagingJson})
+      : _variants = variants,
+        _packagingJson = packagingJson;
 
   factory _$InventoryModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$InventoryModelImplFromJson(json);
@@ -647,10 +667,20 @@ class _$InventoryModelImpl implements _InventoryModel {
   @override
   @JsonKey(name: 'qty_lost')
   final int qtyLost;
+  final List<Map<String, dynamic>>? _packagingJson;
+  @override
+  @JsonKey(name: 'packaging_json')
+  List<Map<String, dynamic>>? get packagingJson {
+    final value = _packagingJson;
+    if (value == null) return null;
+    if (_packagingJson is EqualUnmodifiableListView) return _packagingJson;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
 
   @override
   String toString() {
-    return 'InventoryModel(id: $id, name: $name, description: $description, category: $category, quantity: $quantity, available: $available, location: $location, qrCode: $qrCode, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, supplier: $supplier, supplierContact: $supplierContact, notes: $notes, imageUrl: $imageUrl, restockAlertEnabled: $restockAlertEnabled, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, primaryLocation: $primaryLocation, primaryAvailable: $primaryAvailable, locationRegistryId: $locationRegistryId, variants: $variants, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost)';
+    return 'InventoryModel(id: $id, name: $name, description: $description, category: $category, quantity: $quantity, available: $available, location: $location, qrCode: $qrCode, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, code: $code, modelNumber: $modelNumber, minStockLevel: $minStockLevel, targetStock: $targetStock, unit: $unit, supplier: $supplier, supplierContact: $supplierContact, notes: $notes, imageUrl: $imageUrl, restockAlertEnabled: $restockAlertEnabled, aggregateTotal: $aggregateTotal, aggregateAvailable: $aggregateAvailable, primaryLocation: $primaryLocation, primaryAvailable: $primaryAvailable, locationRegistryId: $locationRegistryId, variants: $variants, qtyGood: $qtyGood, qtyDamaged: $qtyDamaged, qtyMaintenance: $qtyMaintenance, qtyLost: $qtyLost, packagingJson: $packagingJson)';
   }
 
   @override
@@ -709,7 +739,9 @@ class _$InventoryModelImpl implements _InventoryModel {
                 other.qtyDamaged == qtyDamaged) &&
             (identical(other.qtyMaintenance, qtyMaintenance) ||
                 other.qtyMaintenance == qtyMaintenance) &&
-            (identical(other.qtyLost, qtyLost) || other.qtyLost == qtyLost));
+            (identical(other.qtyLost, qtyLost) || other.qtyLost == qtyLost) &&
+            const DeepCollectionEquality()
+                .equals(other._packagingJson, _packagingJson));
   }
 
   @JsonKey(ignore: true)
@@ -746,7 +778,8 @@ class _$InventoryModelImpl implements _InventoryModel {
         qtyGood,
         qtyDamaged,
         qtyMaintenance,
-        qtyLost
+        qtyLost,
+        const DeepCollectionEquality().hash(_packagingJson)
       ]);
 
   @JsonKey(ignore: true)
@@ -796,7 +829,9 @@ abstract class _InventoryModel implements InventoryModel {
       @JsonKey(name: 'qty_good') final int qtyGood,
       @JsonKey(name: 'qty_damaged') final int qtyDamaged,
       @JsonKey(name: 'qty_maintenance') final int qtyMaintenance,
-      @JsonKey(name: 'qty_lost') final int qtyLost}) = _$InventoryModelImpl;
+      @JsonKey(name: 'qty_lost') final int qtyLost,
+      @JsonKey(name: 'packaging_json')
+      final List<Map<String, dynamic>>? packagingJson}) = _$InventoryModelImpl;
 
   factory _InventoryModel.fromJson(Map<String, dynamic> json) =
       _$InventoryModelImpl.fromJson;
@@ -882,6 +917,9 @@ abstract class _InventoryModel implements InventoryModel {
   @override
   @JsonKey(name: 'qty_lost')
   int get qtyLost;
+  @override
+  @JsonKey(name: 'packaging_json')
+  List<Map<String, dynamic>>? get packagingJson;
   @override
   @JsonKey(ignore: true)
   _$$InventoryModelImplCopyWith<_$InventoryModelImpl> get copyWith =>

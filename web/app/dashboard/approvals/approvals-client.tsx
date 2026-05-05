@@ -31,7 +31,7 @@ export function ApprovalsClient({ initialRequests, staffName: initialStaffName, 
         return requests.filter(r => 
             r.borrower_name.toLowerCase().includes(term) || 
             r.item_name.toLowerCase().includes(term) ||
-            r.borrower_department?.toLowerCase().includes(term)
+            r.borrower_organization?.toLowerCase().includes(term)
         )
     }, [requests, searchTerm])
 

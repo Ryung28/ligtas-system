@@ -128,6 +128,11 @@ export class NotificationRepository {
       case 'stock_out':
         action = { label: 'RESTOCK', type: 'dialog' as const, target: 'restock_modal', payload: { itemId: n.reference_id } }
         break
+      case 'expiry':
+      case 'expiry_critical':
+      case 'expiry_warning':
+        action = { label: 'VIEW ITEM', type: 'link' as const, target: `/dashboard/inventory?highlight=${n.reference_id}` }
+        break
       case 'user_pending':
         action = { label: 'REVIEW ACCESS', type: 'link' as const, target: '/dashboard/users?tab=requests' }
         break

@@ -94,6 +94,7 @@ abstract class IInventoryRepository {
     required String storageLocation,
     int? locationRegistryId,
     required String forensicNote,
+    List<Map<String, dynamic>>? packagingJson,
   });
 
   /// 🛠️ ADMIN METADATA EDIT: Update Name, Brand, Expiry, Serial, and Image

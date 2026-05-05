@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Icons, TYPE_CONFIG } from '../constants/notification.config'
 import { NotificationCardProps } from '../types/notification.types'
 import { cn } from '@/lib/utils'
-import { User, Activity, Clock, ChevronRight, Hash, Trash2 } from 'lucide-react'
+import { User, Activity, Clock, ChevronRight, Hash, Trash2, Check } from 'lucide-react'
 
 import { resolveSystemRoute } from '@/lib/utils/route-resolver'
 
@@ -42,7 +42,7 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
   return (
     <Link 
       href={target || '#'}
-      onClick={() => { if (!notif.isRead) onMarkRead(notif.id); if (onClose) onClose(); }}
+      onClick={() => { if (onClose) onClose(); }}
       className={cn(
         "group relative flex flex-col p-[13px] transition-all duration-300 cursor-pointer overflow-visible mb-2",
         "rounded-[20px] border border-slate-200",
@@ -163,11 +163,26 @@ export function NotificationCard({ notif, onMarkRead, onDelete, onClose }: Notif
                 )
             )}
         </div>
-        {onDelete && (
-          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(notif.id); }} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-600 transition-all p-1.5 hover:bg-red-50 rounded-lg active:scale-90">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!notif.isRead && (
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMarkRead(notif.id); }} 
+              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-emerald-600 transition-all p-1.5 hover:bg-emerald-50 rounded-lg active:scale-90"
+              title="Mark as read"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+          )}
+          {onDelete && (
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(notif.id); }} 
+              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-600 transition-all p-1.5 hover:bg-red-50 rounded-lg active:scale-90"
+              title="Delete notification"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     </Link>
   )

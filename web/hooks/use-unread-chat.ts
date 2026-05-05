@@ -1,18 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase-browser'
 
 export function useUnreadChat() {
     const [unreadCount, setUnreadCount] = useState(0)
-    const supabase = useMemo(
-        () =>
-            createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            ),
-        [],
-    )
+    const supabase = useMemo(() => createClient(), [])
 
     const checkUnread = useCallback(async () => {
         const { data: { user } } = await supabase.auth.getUser()

@@ -26,6 +26,7 @@ export interface InventoryVariant {
     qty_damaged?: number
     qty_maintenance?: number
     qty_lost?: number
+    batches?: any[]
 }
 
 export interface InventoryItem {

@@ -53,8 +53,22 @@ export function useNotifications() {
                 event: '*', // 🛡️ CRITICAL FIX: Watches all mutations, including backend DELETES
                 schema: 'public', 
                 table: 'system_notifications' 
-            }, () => {
-                console.log('[Sink] Intel table mutation detected. Resyncing.')
+            }, (payload) => {
+                console.log('[Sink] Intel table mutation detected:', payload.eventType)
+                
+                // 🔊 AUDIO ALERT: Trigger critical alarm for expiry and critical stock events
+                if (payload.eventType === 'INSERT') {
+                    const newNotif = payload.new as any
+                    if (newNotif.type === 'expiry' || newNotif.type === 'expiry_critical' || newNotif.type === 'stock_out') {
+                        console.log('[Sink] Critical alert detected. Playing alarm.')
+                        const audio = new Audio('/sounds/critical_alarm.mp3')
+                        audio.play().catch(err => {
+                            // 🛡️ BROWSER POLICY GUARD: Silent fail if user hasn't interacted yet
+                            console.warn('[Audio] Playback blocked by browser policy:', err.message)
+                        })
+                    }
+                }
+
                 mutate()
             })
             // 📡 STREAM B: Read-receipt synchronization (Junction table)

@@ -57,9 +57,15 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
                 debounceRefresh()
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'storage_locations' }, () => {
+                globalMutate('inventory/locations')
+            })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'borrow_logs' }, () => {
                 debounceRefresh()
                 globalMutate('borrow_logs')
+                // 🛰️ Sync Dialog Caches
+                globalMutate('inventory/locations')
+                globalMutate('catalog/categories')
             })
             .subscribe()
 

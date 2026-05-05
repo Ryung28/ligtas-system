@@ -22,6 +22,8 @@ class ManagerActionFormState with _$ManagerActionFormState {
     @Default(0) int qtyLost,
     @Default('') String storageLocation,
     int? locationRegistryId,
+    @Default([]) List<Map<String, dynamic>> packagingJson,
+    int? activeRowId, // THE SURGICAL TARGET ID
 
     // ── Handover + Reserve: dispatch fields ──
     @Default(1) int quantity,

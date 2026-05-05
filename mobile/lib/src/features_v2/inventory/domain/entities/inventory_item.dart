@@ -39,6 +39,7 @@ class InventoryItem with _$InventoryItem {
     @Default(0) int aggregateAvailable,
     int? locationRegistryId,
     @Default([]) List<InventoryVariant> variants,
+    @Default([]) List<BulkBatch> packagingJson,
   }) = _InventoryItem;
 
   /// Exact port of web's isLowStock (web/lib/inventory-utils.ts → isLowStock).
@@ -104,6 +105,18 @@ class InventoryItem with _$InventoryItem {
   int get displayTotal => targetStock > 0 ? targetStock : (aggregateTotal > 0 ? aggregateTotal : totalStock);
 
   bool get hasMultipleLocations => variants.isNotEmpty;
+
+  bool get isBulk => packagingJson.isNotEmpty;
+}
+
+@freezed
+class BulkBatch with _$BulkBatch {
+  const factory BulkBatch({
+    required String id,
+    required String label,
+    required int units,
+    DateTime? expiry,
+  }) = _BulkBatch;
 }
 
 @freezed

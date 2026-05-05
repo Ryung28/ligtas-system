@@ -21,30 +21,20 @@ final analystTerminalEntryProvider = StateProvider<bool>((ref) => false);
 class AnalystDashboardController extends _$AnalystDashboardController {
   @override
   Future<AnalystDashboardState> build() async {
-    final repository = ref.watch(analystRepositoryProvider);
     final user = ref.watch(currentUserProvider);
     final warehouseId = user?.assignedWarehouse;
     
-    try {
-      // Logic for initial load
-      final results = await Future.wait([
-        repository.getMetrics(warehouseId: warehouseId),
-        repository.getAnomalies(limit: 200, warehouseId: warehouseId),
-        repository.getActivityStream(limit: 50, warehouseId: warehouseId),
-      ]);
+    // 🛰️ WATCH STREAMS FOR REACTIVITY: This ensures the controller re-builds
+    // automatically whenever Supabase metrics, anomalies, or activity change.
+    final metrics = await ref.watch(watchMetricsStreamProvider.future);
+    final anomalies = await ref.watch(watchResourceAnomaliesProvider.future);
+    final activity = await ref.watch(watchActivityStreamProvider.future);
 
-      return AnalystDashboardState(
-        metrics: results[0] as AnalystMetrics,
-        anomalies: results[1] as List<ResourceAnomaly>,
-        activityStream: results[2] as List<ActivityEvent>,
-      );
-    } catch (e, stack) {
-      throw AnalystDashboardException(
-        'Failed to load dashboard data',
-        originalError: e,
-        stackTrace: stack,
-      );
-    }
+    return AnalystDashboardState(
+      metrics: metrics,
+      anomalies: anomalies,
+      activityStream: activity,
+    );
   }
 
   /// ⚙️ COMMAND OVERRIDE: Administratively restock an asset
@@ -55,6 +45,7 @@ class AnalystDashboardController extends _$AnalystDashboardController {
     int qtyMaint = 0,
     int qtyLost = 0,
     String? notes,
+    String? batchId,
   }) async {
     final repository = ref.read(analystRepositoryProvider);
     final user = ref.read(currentUserProvider);
@@ -67,6 +58,7 @@ class AnalystDashboardController extends _$AnalystDashboardController {
         addedMaintenance: qtyMaint,
         addedLost: qtyLost,
         notes: notes ?? 'Terminal Restock by ${user?.fullName ?? "Analyst"}',
+        batchId: batchId,
       );
       
       // Force refresh to update stock numbers globally

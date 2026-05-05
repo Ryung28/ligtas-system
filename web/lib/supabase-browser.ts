@@ -1,12 +1,16 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+let client: ReturnType<typeof createBrowserClient> | null = null
+
 /**
- * 🛰️ TACTICAL BROWSER CLIENT
- * Factory for instantiating the Supabase client in Client Components.
- * Used exclusively for Realtime and Session management on the edge.
+ * 🛰️ TACTICAL BROWSER CLIENT (SINGLETON)
+ * 🛡️ SUPER SENIOR PROTOCOL: We cache the client instance to prevent
+ * "Multiple GoTrueClient instances" warnings and auth session desync.
  */
 export function createClient() {
-  return createBrowserClient(
+  if (client) return client
+
+  client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -20,13 +24,9 @@ export function createClient() {
 
           if (!cookie) return undefined
           
-          // 🛡️ Factory Guard: De-poison corrupted session strings
           try {
             const decoded = decodeURIComponent(cookie)
-            if (decoded.startsWith('{')) {
-              return JSON.parse(decoded)
-            }
-            return decoded
+            return decoded.startsWith('{') ? JSON.parse(decoded) : decoded
           } catch {
             return cookie
           }
@@ -48,4 +48,5 @@ export function createClient() {
       },
     }
   )
+  return client
 }

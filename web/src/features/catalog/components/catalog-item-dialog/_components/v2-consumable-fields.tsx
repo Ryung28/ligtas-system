@@ -1,8 +1,9 @@
 "use client"
 
-import { ShoppingBag, Calendar, Bell } from 'lucide-react'
+import { ShoppingBag, Calendar, Bell, Boxes } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 interface ConsumableFieldsProps {
     brand: string
@@ -11,6 +12,7 @@ interface ConsumableFieldsProps {
     onExpiryChange: (val: string) => void
     expiryAlertDays: number | string
     onExpiryAlertDaysChange: (val: number | string) => void
+    isBulkEnabled?: boolean
 }
 
 /**
@@ -18,7 +20,7 @@ interface ConsumableFieldsProps {
  * Specialized tracking for non-equipment assets (Medical, Food, etc.)
  */
 export function V2ConsumableFields({
-    brand, onBrandChange, expiryDate, onExpiryChange, expiryAlertDays, onExpiryAlertDaysChange,
+    brand, onBrandChange, expiryDate, onExpiryChange, expiryAlertDays, onExpiryAlertDaysChange, isBulkEnabled = false
 }: ConsumableFieldsProps) {
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
@@ -37,14 +39,28 @@ export function V2ConsumableFields({
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black text-rose-600 uppercase tracking-widest pl-1">Expires on</Label>
+                    <div className="flex items-center justify-between pr-1">
+                        <Label className="text-[10px] font-black text-rose-600 uppercase tracking-widest pl-1">Expires on</Label>
+                        {isBulkEnabled && (
+                            <span className="flex items-center gap-1 text-[8px] font-black text-blue-600 uppercase bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100 animate-in fade-in zoom-in-95">
+                                <Boxes className="h-2 w-2" />
+                                Managed
+                            </span>
+                        )}
+                    </div>
                     <div className="relative group">
                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-rose-500 transition-colors" />
                         <Input
                             type="date"
                             value={expiryDate}
                             onChange={(e) => onExpiryChange(e.target.value)}
-                            className="h-10 pl-9 rounded-2xl border-slate-200 text-[13px] font-bold text-slate-700 bg-rose-50/5"
+                            disabled={isBulkEnabled}
+                            className={cn(
+                                "h-10 pl-9 rounded-2xl border-slate-200 text-[13px] font-bold transition-all",
+                                isBulkEnabled 
+                                    ? "bg-slate-100 text-slate-400 border-dashed border-slate-300 opacity-80" 
+                                    : "text-slate-700 bg-rose-50/5"
+                            )}
                         />
                     </div>
                 </div>

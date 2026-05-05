@@ -10,6 +10,7 @@ class InventoryAdminFields {
   final String storageLocation;
   final int? locationRegistryId;
   final int targetStock;
+  final List<Map<String, dynamic>>? packagingJson;
 
   const InventoryAdminFields({
     required this.qtyGood,
@@ -21,6 +22,7 @@ class InventoryAdminFields {
     required this.storageLocation,
     required this.locationRegistryId,
     required this.targetStock,
+    this.packagingJson,
   });
 }
 

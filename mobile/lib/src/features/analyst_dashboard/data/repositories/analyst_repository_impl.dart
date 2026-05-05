@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -182,89 +183,176 @@ class AnalystRepositoryImpl implements IAnalystRepository {
           .map((item) {
             final meta = item['metadata'] as Map<String, dynamic>? ?? {};
             // 🛡️ SAFE PARSE: IDs often come as Strings in JSONB
-        final rawId = meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id'];
-        if (rawId is int) return rawId;
-        if (rawId is String) return int.tryParse(rawId);
-        return null;
+            final rawId = meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id'];
+            if (rawId is int) return rawId;
+            if (rawId is String) return int.tryParse(rawId);
+            return null;
           })
           .whereType<int>()
           .toList();
 
-      // 🛡️ LIVE LINK: Scoped fetch from the inventory ledger
-      final liveMap = await _fetchLiveInventoryMap(inventoryIds, warehouseId: warehouseId);
+      // 🛡️ SIBLING SYNC: Fetch all other locations for these items to enable cross-location selection.
+      // 1. Get the item names from the current alert batch
+      final alertItemNames = await _supabase
+          .from('inventory')
+          .select('item_name')
+          .filter('id', 'in', inventoryIds);
+      
+      final uniqueNames = (alertItemNames as List)
+          .map((r) => r['item_name']?.toString())
+          .whereType<String>()
+          .toSet()
+          .toList();
+
+      // 2. Expand inventoryIds to include ALL locations for these items
+      final expandedIds = uniqueNames.isEmpty ? inventoryIds : (await _supabase
+          .from('inventory')
+          .select('id')
+          .filter('item_name', 'in', uniqueNames)
+          .then((res) => (res as List).map((r) => int.tryParse(r['id'].toString())).whereType<int>().toList()));
+
+      // 🛡️ LIVE LINK: Scoped fetch from the inventory ledger for all relevant locations
+      final liveMap = await _fetchLiveInventoryMap(expandedIds.isEmpty ? inventoryIds : expandedIds, warehouseId: warehouseId);
 
       final anomalies = <ResourceAnomaly>[];
+      final enrichedNames = <String>{};
+
       for (final item in data) {
         try {
-          // Mobile analyst terminal is operational-only: skip access-governance alerts.
           final categoryRaw = item['category']?.toString().toUpperCase();
           if (categoryRaw == 'ACCESS') continue;
 
           final meta = item['metadata'] as Map<String, dynamic>? ?? {};
           final rawId = (meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id']);
           final invId = rawId is int ? rawId : (rawId is String ? int.tryParse(rawId) : null);
-          
           final liveData = invId != null ? liveMap[invId] : null;
 
-          // 🛰️ GOAL FALLBACK: Admin "Max" can be in target_stock, stock_total, quantity, or goal alias
-          final maxStockVal = (liveData?['target_stock'] ?? liveData?['stock_total'] ?? liveData?['max_stock'] ?? liveData?['goal'] ?? meta['target_stock'] as num?)?.toInt();
+          // 🛰️ TACTICAL EXPLOSION FILTER: Skip the Master aggregate row.
+          // Analysts handle physical containers. The master row is a virtual aggregate.
+          final isMaster = liveData != null && liveData['parent_id'] == null;
+          final packagingMap = _readMap(liveData?['packaging_json']);
+          final itemName = liveData?['item_name']?.toString() ?? meta['item_name']?.toString() ?? 'System Alert';
 
-          anomalies.add(ResourceAnomaly(
-            id: item['id'].toString(),
-            inventoryId: invId,
-            itemId: _inventoryGroupIdFromRow(liveData) ??
-                (meta['item_id'] as num?)?.toInt(),
-            locationRegistryId: (liveData?['location_registry_id'] as num?)?.toInt(),
-            itemName: liveData?['item_name']?.toString() ?? item['title']?.toString() ?? 'System Alert',
-            reason: item['message']?.toString() ?? 'Check required.',
-            imageUrl: _resolveRawPath(liveData?['image_url'] ?? meta['image_url']),
-            category: _mapCategoryToType(item['category'] as String?),
-            severity: _mapSeverity(item['priority'] as String?),
-            currentStock: (liveData?['stock_available'] ?? meta['stock_available'] as num?)?.toInt() ?? 0,
-            thresholdStock: (liveData?['low_stock_threshold'] ?? liveData?['minStockLevel'] ?? meta['low_stock_threshold'] as num?)?.toInt() ?? 0,
-            maxStock: maxStockVal,
-            detectedAt: item['created_at'] != null
-                ? DateTime.parse(item['created_at'])
-                : DateTime.now(),
-            // 🛰️ MAP OVERDUE CONTEXT (now fully enriched by system_intel view)
-            borrowId: (meta['borrow_id'] as num?)?.toInt(),
-            borrowerName: meta['borrower_name']?.toString(),
-            borrowerContact: meta['borrower_contact']?.toString(),
-            borrowerEmail: meta['borrower_email']?.toString(),
-            borrowerOrg: meta['borrower_organization']?.toString(),
-            borrowedQty: (meta['quantity'] as num?)?.toInt() ?? 0,
-            dueDate: DateTime.tryParse(
-              (meta['due_date'] ??
-                      meta['expected_return_date'] ??
-                      meta['return_date'] ??
-                      item['expected_return_date'] ??
-                      item['due_date'])
-                  ?.toString() ??
-                  '',
-            ),
-            borrowedAt: DateTime.tryParse(
-              (meta['borrowed_at'] ??
-                      meta['borrow_date'] ??
-                      meta['handed_at'] ??
-                      item['borrowed_at'] ??
-                      item['borrow_date'])
-                  ?.toString() ??
-                  '',
-            ),
-            approvedByName: meta['approved_by_name']?.toString(),
-            releasedByName: (meta['released_by_name'] ?? meta['handed_by'])?.toString(),
-            platformOrigin: meta['platform_origin']?.toString(),
-            qtyGood: (liveData?['qty_good'] ?? meta['qty_good'] as num?)?.toInt() ?? 0,
-            qtyDamaged: (liveData?['qty_damaged'] ?? meta['qty_damaged'] as num?)?.toInt() ?? 0,
-            qtyMaintenance: (liveData?['qty_maintenance'] ?? meta['qty_maintenance'] as num?)?.toInt() ?? 0,
-            qtyLost: (liveData?['qty_lost'] ?? meta['qty_lost'] as num?)?.toInt() ?? 0,
-          ));
+          // 1. Add the primary anomaly. We add the master row so it can be exploded into batches later.
+          final primary = _parseAnomaly(item, liveData, meta);
+          anomalies.add(primary);
+
+          // 2. SIBLING SYNC: Even if we skip the master, we pull in all physical siblings.
+          if (itemName != 'System Alert' && !enrichedNames.contains(itemName)) {
+            enrichedNames.add(itemName);
+            
+            // Find all rows in liveMap that share this item name but are NOT the current one
+            final siblings = liveMap.values.where((l) {
+              final isSiblingMaster = l['parent_id'] == null;
+              final siblingPackaging = _readMap(l['packaging_json']);
+              // Only pull in physical siblings (not other master rows)
+              return l['item_name']?.toString() == itemName && 
+                     l['id']?.toString() != invId?.toString() &&
+                     !(isSiblingMaster && siblingPackaging != null && siblingPackaging['enabled'] == true);
+            });
+
+            for (final sibling in siblings) {
+              final sInvId = int.tryParse(sibling['id'].toString());
+              anomalies.add(ResourceAnomaly(
+                id: 'sibling_${sibling['id']}',
+                inventoryId: sInvId,
+                itemId: _inventoryGroupIdFromRow(sibling),
+                locationRegistryId: (sibling['location_registry_id'] as num?)?.toInt(),
+                itemName: itemName,
+                baseName: sibling['base_name']?.toString() ?? _extractBaseName(itemName),
+                storageLocation: sibling['location']?.toString() ?? sibling['storage_location']?.toString(),
+                reason: 'Available location',
+                category: _mapCategoryToType(item['category'] as String?),
+                severity: AnomalySeverity.info,
+                currentStock: (sibling['stock_available'] as num?)?.toInt() ?? 0,
+                thresholdStock: (sibling['low_stock_threshold'] as num?)?.toInt() ?? 0,
+                maxStock: (sibling['target_stock'] ?? sibling['stock_total'] as num?)?.toInt(),
+                packagingJson: _readMap(sibling['packaging_json']),
+                detectedAt: DateTime.now(),
+              ));
+            }
+          }
         } catch (e) {
           debugPrint('[AnalystRepo] Skipped anomaly row: $e');
         }
       }
 
-      return sortResourceAnomaliesLikeActionCenter(anomalies);
+      // Group depletion anomalies by base resource name
+      final grouped = <String, ResourceAnomaly>{};
+      final other = <ResourceAnomaly>[];
+
+      void _addGrouped(ResourceAnomaly a) {
+        final key = a.displayTitle;
+        if (grouped.containsKey(key)) {
+          // Deduplicate by stable ID — multiple alert rows for the same bulk item
+          // can produce the same virtual box children.
+          final existingIds = grouped[key]!.children.map((c) => c.id).toSet();
+          if (!existingIds.contains(a.id)) {
+            grouped[key] = grouped[key]!.copyWith(children: [...grouped[key]!.children, a]);
+          }
+        } else {
+          grouped[key] = a.copyWith(children: [a]);
+        }
+      }
+
+      for (final a in anomalies) {
+        if (a.category == AnomalyCategory.depletion) {
+          // 🛰️ TACTICAL EXPLOSION: Bulk-packaged items explode into per-box virtual anomalies.
+          // ALL batches across ALL locations are included so the analyst can choose
+          // which warehouse and which specific box to restock.
+          final packaging = a.packagingJson;
+          if (packaging != null && packaging['enabled'] == true) {
+            final batches = packaging['batches'] as List?;
+            if (batches != null && batches.isNotEmpty) {
+              for (final batch in batches) {
+                if (batch is! Map<String, dynamic>) continue;
+                final label = batch['label']?.toString() ?? 'Box';
+                final batchId = batch['id']?.toString();
+                // Stable ID: inventoryId_batchId — survives multiple alert rows for same item.
+                final stableId = '${a.inventoryId}_$batchId';
+                // Each child carries its own locationRegistryId for the location picker.
+                final batchLocId = int.tryParse(
+                  (batch['locationId'] ?? packaging['defaultLocationId'])?.toString() ?? '',
+                );
+                
+                String locName = 'Unknown Location';
+                if (batchLocId != null) {
+                  final matches = liveMap.values.where((l) => 
+                    l['location_registry_id']?.toString() == batchLocId.toString() &&
+                    l['item_name']?.toString() == a.itemName
+                  ).toList();
+                  if (matches.isNotEmpty) {
+                    final rawLoc = matches.first['location']?.toString() ?? matches.first['storage_location']?.toString();
+                    if (rawLoc != null && rawLoc.isNotEmpty) {
+                      locName = formatStorageLocationLabel(rawLoc);
+                    }
+                  }
+                }
+                final fullLabel = '$label • $locName';
+
+                final exploded = a.copyWith(
+                  id: stableId,
+                  itemName: fullLabel,
+                  variantLabel: fullLabel,
+                  batchId: batchId,
+                  locationRegistryId: batchLocId,
+                  currentStock: (batch['units'] as num?)?.toInt() ?? 0,
+                  storageLocation: locName,
+                );
+                _addGrouped(exploded);
+              }
+              continue; // Skip the aggregate row
+            }
+          }
+          _addGrouped(a);
+        } else {
+          other.add(a);
+        }
+      }
+
+      final finalAnomalies = [...grouped.values, ...other];
+
+      return sortResourceAnomaliesLikeActionCenter(finalAnomalies);
     } catch (e) {
       debugPrint('[AnalystRepo] getAnomalies failed: $e');
       return [];
@@ -276,15 +364,35 @@ class AnalystRepositoryImpl implements IAnalystRepository {
   Future<Map<int, Map<String, dynamic>>> _fetchLiveInventoryMap(List<int> ids, {String? warehouseId}) async {
     if (ids.isEmpty) return {};
     try {
-      // 🛡️ DATA TRUST: Since we have the exact IDs, we query them directly to avoid RLS-flicker
+      // 🛡️ DATA TRUST: Using active_inventory to get unified aggregate counts for bulk assets.
       final response = await _supabase
-          .from('inventory')
-          .select('id, parent_id, location_registry_id, item_name, image_url, target_stock, stock_total, stock_available, low_stock_threshold, qty_good, qty_damaged, qty_maintenance, qty_lost')
+          .from('active_inventory')
+          .select('id, location_registry_id, item_name, location, image_url, target_stock, stock_total, stock_available, low_stock_threshold, aggregate_total, aggregate_available, qty_good, qty_damaged, qty_maintenance, qty_lost, unit')
           .filter('id', 'in', ids);
       
       final Map<int, Map<String, dynamic>> map = {};
       for (final item in (response as List)) {
-        map[item['id'] as int] = item as Map<String, dynamic>;
+        final id = int.tryParse(item['id'].toString());
+        if (id != null) map[id] = item as Map<String, dynamic>;
+      }
+
+      // 🛰️ METADATA SYNC: Fetch bulk packaging info from master inventory table since it's missing from the view
+      final metaResponse = await _supabase
+          .from('inventory')
+          .select('id, parent_id, variant_label, packaging_json')
+          .filter('id', 'in', ids);
+      
+      if (metaResponse != null) {
+        for (final meta in (metaResponse as List)) {
+          final id = int.tryParse(meta['id'].toString());
+          if (id != null) {
+            if (map.containsKey(id)) {
+              map[id]!.addAll(meta as Map<String, dynamic>);
+            } else {
+              map[id] = meta as Map<String, dynamic>;
+            }
+          }
+        }
       }
       return map;
     } catch (e) {
@@ -632,12 +740,13 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     int addedMaintenance = 0,
     int addedLost = 0,
     String? notes,
+    String? batchId,
   }) async {
     try {
       // 1. Fetch current health state (baseline)
       final response = await _supabase
           .from('inventory')
-          .select('qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total')
+          .select('qty_good, qty_damaged, qty_maintenance, qty_lost, stock_total, packaging_json')
           .eq('id', inventoryId)
           .single();
 
@@ -653,18 +762,84 @@ class AnalystRepositoryImpl implements IAnalystRepository {
       final newLost = currentLost + addedLost;
       final newTotal = newGood + newDamaged + newMaint + newLost;
 
-      // 3. EXECUTE COMMAND OVERRIDE
-      await _supabase.from('inventory').update({
+      // 3. Build base update payload
+      final Map<String, dynamic> updatePayload = {
         'qty_good': newGood,
         'qty_damaged': newDamaged,
         'qty_maintenance': newMaint,
         'qty_lost': newLost,
         'stock_total': newTotal,
-        'stock_available': newGood, // Available is strictly linked to Good bucket
+        'stock_available': newGood,
         'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', inventoryId);
+      };
 
-      debugPrint('⚙️ ResQTrack-RESTOCK: Asset $inventoryId Injected. Good: +$addedGood, Damaged: +$addedDamaged');
+      String? targetLocationId;
+
+      // 4. SURGICAL BULK PATCH: If batchId is provided, update the specific
+      // container's units inside packaging_json.batches (per-box restock).
+      if (batchId != null) {
+        final rawJson = response['packaging_json'];
+        if (rawJson is Map<String, dynamic>) {
+          final batches = (rawJson['batches'] as List?)
+              ?.map((b) => Map<String, dynamic>.from(b as Map))
+              .toList() ?? [];
+
+          bool patched = false;
+          for (final batch in batches) {
+            if (batch['id']?.toString() == batchId) {
+              final oldUnits = (batch['units'] as num?)?.toInt() ?? 0;
+              batch['units'] = oldUnits + addedGood; // Good units go into the box
+              targetLocationId = (batch['locationId'] ?? rawJson['defaultLocationId'])?.toString();
+              patched = true;
+              break;
+            }
+          }
+
+          if (patched) {
+            // Recompute aggregate total from all batches after the patch
+            final aggregateFromBatches = batches.fold<int>(
+              0, (sum, b) => sum + ((b['units'] as num?)?.toInt() ?? 0));
+
+            final updatedJson = Map<String, dynamic>.from(rawJson)
+              ..['batches'] = batches;
+
+            updatePayload['packaging_json'] = updatedJson;
+            // Sync aggregate stock_available to sum of all box units
+            updatePayload['stock_available'] = aggregateFromBatches;
+            updatePayload['qty_good'] = aggregateFromBatches;
+            updatePayload['stock_total'] = aggregateFromBatches + newDamaged + newMaint + newLost;
+          }
+        }
+      }
+
+      // 5. EXECUTE COMMAND OVERRIDE (MASTER ROW)
+      await _supabase.from('inventory').update(updatePayload).eq('id', inventoryId);
+
+      // 6. DUAL-UPDATE SIBLING (PHYSICAL LOCATION)
+      if (batchId != null && targetLocationId != null) {
+         final siblingRes = await _supabase
+             .from('inventory')
+             .select('id, stock_available, qty_good, stock_total')
+             .eq('parent_id', inventoryId)
+             .eq('location_registry_id', targetLocationId)
+             .maybeSingle();
+         
+         if (siblingRes != null) {
+            final sibId = siblingRes['id'];
+            final sGood = (siblingRes['qty_good'] as num?)?.toInt() ?? 0;
+            final sAvail = (siblingRes['stock_available'] as num?)?.toInt() ?? 0;
+            final sTotal = (siblingRes['stock_total'] as num?)?.toInt() ?? 0;
+            
+            await _supabase.from('inventory').update({
+              'qty_good': sGood + addedGood,
+              'stock_available': sAvail + addedGood,
+              'stock_total': sTotal + addedGood,
+              'updated_at': DateTime.now().toIso8601String(),
+            }).eq('id', sibId);
+         }
+      }
+
+      debugPrint('⚙️ ResQTrack-RESTOCK: Asset $inventoryId${batchId != null ? " BOX[$batchId]" : ""} Injected. Good: +$addedGood, Damaged: +$addedDamaged');
     } catch (e) {
       throw Exception('Restock Command Failed: $e');
     }
@@ -922,9 +1097,10 @@ class AnalystRepositoryImpl implements IAnalystRepository {
           final uri = Uri.parse(pathOrUrl);
           final segments = uri.pathSegments;
           final objectIndex = segments.indexOf('object');
-          if (objectIndex != -1 && objectIndex + 3 < segments.length) {
-             // segments: [... object, public, bucket, path...]
-             return segments.sublist(objectIndex + 3).join('/');
+          // segments: [... object, public/authenticated, bucket, path...]
+          if (objectIndex != -1 && objectIndex + 2 < segments.length) {
+             // 🛡️ BUCKET PRESERVATION: Return 'bucket/path' for TacticalAssetImage resolution
+             return segments.sublist(objectIndex + 2).join('/');
           }
         } catch (_) {}
       }
@@ -1011,5 +1187,124 @@ class AnalystRepositoryImpl implements IAnalystRepository {
     await for (final _ in StreamGroup.merge([logStream, invStream])) {
       yield await getStationManifest(stationId: stationId);
     }
+  }
+
+  ResourceAnomaly _parseAnomaly(Map<String, dynamic> item, Map<String, dynamic>? liveData, Map<String, dynamic> meta) {
+    final rawId = (meta['inventory_id'] ?? meta['id'] ?? item['inventory_id'] ?? meta['item_id']);
+    final invId = rawId is int ? rawId : (rawId is String ? int.tryParse(rawId) : null);
+    final maxStockVal = (liveData?['target_stock'] ?? liveData?['stock_total'] ?? liveData?['max_stock'] ?? liveData?['goal'] ?? meta['target_stock'] as num?)?.toInt();
+
+    // 🛡️ TYPE SAFETY: Ensure itemId is an integer cross-reference
+    final rawGroupId = _inventoryGroupIdFromRow(liveData);
+    final groupId = rawGroupId ?? (meta['item_id'] as num?)?.toInt();
+
+    return ResourceAnomaly(
+      id: item['id'].toString(),
+      inventoryId: invId,
+      itemId: groupId,
+      locationRegistryId: (liveData?['location_registry_id'] as num?)?.toInt(),
+      itemName: liveData?['item_name']?.toString() ?? meta['item_name']?.toString() ?? item['title']?.toString() ?? 'System Alert',
+      baseName: (liveData?['base_name'] ?? meta['base_name'] ?? _extractBaseName(liveData?['item_name'] ?? meta['item_name']))?.toString(),
+      storageLocation: (liveData?['storage_location'] ?? meta['storage_location'] ?? liveData?['location'] ?? meta['location'])?.toString(),
+      reason: item['message']?.toString() ?? 'Check required.',
+      imageUrl: _resolveRawPath(liveData?['image_url'] ?? meta['image_url']),
+      category: _mapCategoryToType(item['category'] as String?),
+      severity: _mapSeverity(item['priority'] as String?),
+      currentStock: (liveData?['stock_available'] ?? meta['stock_available'] as num?)?.toInt() ?? 0,
+      aggregateAvailable: (liveData?['aggregate_available'] ?? meta['aggregate_available'] as num?)?.toInt() ?? 0,
+      aggregateTotal: (liveData?['aggregate_total'] ?? meta['aggregate_total'] as num?)?.toInt() ?? 0,
+      unit: (liveData?['unit'] ?? meta['unit'] as String?) ?? 'pcs',
+      thresholdStock: (liveData?['low_stock_threshold'] ?? liveData?['minStockLevel'] ?? meta['low_stock_threshold'] as num?)?.toInt() ?? 0,
+      maxStock: maxStockVal,
+      variantLabel: _resolveBatchLabel(
+            _readMap(liveData?['packaging_json']),
+            (liveData?['location_registry_id'] as num?)?.toInt(),
+            (liveData?['storage_location'] ?? meta['storage_location'] ?? liveData?['location'] ?? meta['location'])?.toString(),
+          ) ??
+          (liveData?['variant_label'] ?? meta['variant_label'])?.toString(),
+      packagingJson: _readMap(liveData?['packaging_json']),
+      detectedAt: item['created_at'] != null ? DateTime.parse(item['created_at']) : DateTime.now(),
+      borrowId: (meta['borrow_id'] as num?)?.toInt(),
+      borrowerName: meta['borrower_name']?.toString(),
+      borrowerContact: meta['borrower_contact']?.toString(),
+      borrowerEmail: meta['borrower_email']?.toString(),
+      borrowerOrg: meta['borrower_organization']?.toString(),
+      borrowedQty: (meta['quantity'] as num?)?.toInt() ?? 0,
+      dueDate: DateTime.tryParse((meta['due_date'] ??
+              meta['expected_return_date'] ??
+              meta['return_date'] ??
+              item['expected_return_date'] ??
+              item['due_date'])
+          ?.toString() ??
+          ''),
+      borrowedAt: DateTime.tryParse((meta['borrowed_at'] ??
+              meta['borrow_date'] ??
+              meta['handed_at'] ??
+              item['borrowed_at'] ??
+              item['borrow_date'])
+          ?.toString() ??
+          ''),
+      approvedByName: meta['approved_by_name']?.toString(),
+      releasedByName: (meta['released_by_name'] ?? meta['handed_by'])?.toString(),
+      platformOrigin: meta['platform_origin']?.toString(),
+      qtyGood: (liveData?['qty_good'] ?? meta['qty_good'] as num?)?.toInt() ?? 0,
+      qtyDamaged: (liveData?['qty_damaged'] ?? meta['qty_damaged'] as num?)?.toInt() ?? 0,
+      qtyMaintenance: (liveData?['qty_maintenance'] ?? meta['qty_maintenance'] as num?)?.toInt() ?? 0,
+      qtyLost: (liveData?['qty_lost'] ?? meta['qty_lost'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  int? _inventoryGroupIdFromRow(Map<String, dynamic>? row) {
+    if (row == null) return null;
+    final raw = row['item_id'] ?? row['parent_id'] ?? row['group_id'];
+    if (raw is int) return raw;
+    if (raw is String) return int.tryParse(raw);
+    return null;
+  }
+
+  /// 🛡️ LOGICAL EXTRACTOR: Strips variant suffixes (e.g. " - Carton A" or " (Large)") 
+  /// to ensure consistent grouping when the base_name column is missing from the view.
+  String? _extractBaseName(dynamic rawName) {
+    if (rawName == null) return null;
+    final name = rawName.toString();
+    // Strip " - ..." or " (..." suffixes
+    final regExp = RegExp(r'\s*[\-\(].*');
+    return name.replaceFirst(regExp, '').trim();
+  }
+
+  /// 🛰️ BULK MATCH ENGINE: Maps a physical inventory row back to the Admin's named "Card/Box"
+  /// from the web builder's packaging_json.
+  /// Returns null for multi-box scenarios — the Tactical Explosion engine handles those.
+  String? _resolveBatchLabel(Map<String, dynamic>? packaging, int? locationId, String? storageLocation) {
+    if (packaging == null || packaging['enabled'] != true) return null;
+    
+    final batchesRaw = packaging['batches'];
+    if (batchesRaw is! List || batchesRaw.isEmpty) return null;
+
+    // Filter batches that align with this specific warehouse location
+    final matches = batchesRaw.where((b) {
+      if (b is! Map<String, dynamic>) return false;
+      final bLoc = (b['locationId'] ?? packaging['defaultLocationId'])?.toString();
+      return bLoc == locationId?.toString();
+    }).toList();
+
+    // Multiple boxes at same location → explosion engine takes over, don't pre-bake a label
+    if (matches.isEmpty || matches.length > 1) return null;
+
+    // 1:1 match — use the exact label (e.g. "BOX 1")
+    return matches.first['label']?.toString();
+  }
+
+  Map<String, dynamic>? _readMap(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 }

@@ -25,7 +25,7 @@ export const resolveSystemRoute = (ctx: RouteContext): string | null => {
     const refId = meta.borrow_id || meta.log_id || meta.item_id || ctx.referenceId || ctx.reference_id || meta.id || '';
 
     // 1. ASSET DOMAIN (Inventory Hub)
-    const inventoryTypes = ['stock_low', 'stock_out', 'low_stock', 'inventory_alert', 'restock_alert', 'inventory'];
+    const inventoryTypes = ['stock_low', 'stock_out', 'low_stock', 'inventory_alert', 'restock_alert', 'inventory', 'expiry', 'expiry_critical', 'expiry_warning'];
     const isInventoryContext = 
         category === 'INVENTORY' || 
         inventoryTypes.includes(type) || 

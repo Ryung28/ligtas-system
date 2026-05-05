@@ -65,7 +65,9 @@ abstract class IAnalystRepository {
     required String handedBy,
   });
 
-  /// ⚙️ COMMAND OVERRIDE: Administratively restock an asset with condition tracking
+  /// ⚙️ COMMAND OVERRIDE: Administratively restock an asset with condition tracking.
+  /// [batchId] — if non-null, surgically patches that specific container inside
+  /// packaging_json.batches instead of just adding to the aggregate health buckets.
   Future<void> restockAsset({
     required int inventoryId,
     int addedGood = 0,
@@ -73,6 +75,7 @@ abstract class IAnalystRepository {
     int addedMaintenance = 0,
     int addedLost = 0,
     String? notes,
+    String? batchId,
   });
 
   /// ⚙️ COMMAND OVERRIDE: Set the logistical strategy for an item (Fixed vs Consumable)

@@ -13,6 +13,7 @@ export interface AggregatedInventoryItem extends InventoryItem {
         stock_total: number
         status: string
         ids: number[]
+        batches?: any[]
     }>
     is_multi_location: boolean
     primary_location: string

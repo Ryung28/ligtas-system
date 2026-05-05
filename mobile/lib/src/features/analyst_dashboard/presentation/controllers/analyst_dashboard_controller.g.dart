@@ -560,7 +560,7 @@ class _StationManifestProviderElement
 }
 
 String _$analystDashboardControllerHash() =>
-    r'9546fa599dccad760e9889fc1f2c4946417639d2';
+    r'9d890bb719877e64ec26a080acd1831bffedbbcf';
 
 /// Master Controller: Aggregates all analyst dashboard data
 /// Updated for Sentinel Real-Time Logistical Reactivity

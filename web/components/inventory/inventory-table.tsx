@@ -20,11 +20,14 @@ import { ExpandableInventoryRow } from './expandable-inventory-row'
 import { CategoryManager } from './advanced-query-builder'
 import { InventoryImagePreviewDialog } from '@/components/ui/inventory-image-preview-dialog'
 import { useStorageLocations } from '@/hooks/use-storage-locations'
+import { aggregateInventory } from '@/src/features/inventory/utils'
+import { isExpiringSoon } from '@/lib/expiry-utils'
+
 
 interface InventoryTableProps {
     items: InventoryItem[]
     onDelete: (id: number, name: string) => void
-    isDeleting: boolean
+    deletingIds: number[]
     onRefresh?: () => void
     selectedItems?: number[]
     onSelectionChange?: (selected: number[]) => void
@@ -42,7 +45,7 @@ interface AggregatedInventoryItem extends InventoryItem {
 
 const ITEMS_PER_PAGE = 10
 
-export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selectedItems = [], onSelectionChange, onEdit, isLoading }: InventoryTableProps) {
+export function InventoryTable({ items, onDelete, deletingIds, onRefresh, selectedItems = [], onSelectionChange, onEdit, isLoading }: InventoryTableProps) {
     const { locations: registryLocations } = useStorageLocations()
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -168,10 +171,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
             const hasPending = (item as any).stock_pending > 0
             const isLowStockItem = isLowStock(item)
             const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
-            const expiry = (item as any).expiry_date
-            const isExpiring = expiry
-                ? (new Date(expiry).getTime() - now) / (1000 * 60 * 60 * 24) <= 30
-                : false
+            const isExpiring = isExpiringSoon(item.expiry_date, (item as any).expiry_alert_days, now)
 
             if (hasPending || isLowStockItem || hasHealthIssues || isExpiring) pendingCount++
         }
@@ -252,12 +252,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                 const isLowStockItem = isLowStock(item)
                 const hasHealthIssues = item.qty_damaged > 0 || item.qty_maintenance > 0 || item.qty_lost > 0
                 
-                let isExpiring = false
-                const expiry = (item as any).expiry_date
-                if (expiry) {
-                    const diff = (new Date(expiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-                    isExpiring = diff <= 30
-                }
+                const isExpiring = isExpiringSoon(item.expiry_date, (item as any).expiry_alert_days)
 
                 matchesStatus = hasPending || isLowStockItem || hasHealthIssues || isExpiring
             } else if (statusFilter === 'low_stock') {
@@ -288,71 +283,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
 
     // 🏛️ SENIOR AGGREGATION ENGINE: Group by Name + Category to prevent Card Proliferation
     const aggregatedItems = useMemo(() => {
-        const itemMap = new Map<string, AggregatedInventoryItem>()
-        
-        filteredItems.forEach(item => {
-            const groupKey = `${item.item_name.toLowerCase().trim()}-${(item.category || '').toLowerCase().trim()}`
-            const itemLocation = item.storage_location || 'unknown'
-            
-            if (!itemMap.has(groupKey)) {
-                // Initialize Master SKU with neutral balances then add first record
-                itemMap.set(groupKey, { 
-                    ...item, 
-                    // Reset balances to zero initially so we can sum them safely
-                    stock_total: 0,
-                    stock_available: 0,
-                    qty_good: 0,
-                    qty_damaged: 0,
-                    qty_maintenance: 0,
-                    qty_lost: 0,
-                    variants: [], 
-                    is_multi_location: false,
-                    primary_location: itemLocation,
-                } as any)
-            }
-            
-            const group = itemMap.get(groupKey)!
-            
-            // 🏛️ ATOMIC REDUCTION: Sum Global SKU metadata
-            group.stock_total += (item.stock_total || 0)
-            group.stock_available += (item.stock_available || 0)
-            group.qty_good += (item.qty_good || 0)
-            group.qty_damaged += (item.qty_damaged || 0)
-            group.qty_maintenance += (item.qty_maintenance || 0)
-            group.qty_lost += (item.qty_lost || 0)
-
-            // 🏛️ GEOGRAPHIC CONSOLIDATOR: Track unique sites
-            const existingVariant = group.variants.find(v => v.location === itemLocation)
-            
-            if (existingVariant) {
-                // MELD: Combine data if multiple rows exist for same location (edge case)
-                existingVariant.stock_available += item.stock_available
-                existingVariant.stock_total += item.stock_total
-                existingVariant.qty_good += item.qty_good
-                existingVariant.qty_damaged += item.qty_damaged
-                existingVariant.qty_maintenance += item.qty_maintenance
-                existingVariant.qty_lost += item.qty_lost
-                existingVariant.ids.push(item.id)
-            } else {
-                // REGISTER: New physical site for this SKU
-                if (group.variants.length > 0) group.is_multi_location = true
-                group.variants.push({
-                    id: item.id,
-                    location: itemLocation,
-                    location_id: (item as any).location_registry_id,
-                    qty_good: item.qty_good,
-                    qty_damaged: item.qty_damaged,
-                    qty_maintenance: item.qty_maintenance,
-                    qty_lost: item.qty_lost,
-                    stock_available: item.stock_available,
-                    stock_total: item.stock_total,
-                    status: item.status,
-                    ids: [item.id]
-                })
-            }
-        })
-        
-        return Array.from(itemMap.values())
+        return aggregateInventory(filteredItems)
     }, [filteredItems])
 
     // Paginate Items
@@ -602,7 +533,7 @@ export function InventoryTable({ items, onDelete, isDeleting, onRefresh, selecte
                                         item={item}
                                         index={index}
                                         onDelete={onDelete}
-                                        isDeleting={isDeleting}
+                                        isDeleting={deletingIds.includes(item.id)}
                                         onRefresh={onRefresh}
                                         onImageClick={(url, name) => setExpandedImage({ url, name })}
                                         getCategoryIcon={getCategoryIcon}

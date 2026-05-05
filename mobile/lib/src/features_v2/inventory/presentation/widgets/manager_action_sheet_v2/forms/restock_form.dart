@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gap/gap.dart';
@@ -130,12 +131,17 @@ class _RestockFormState extends ConsumerState<RestockForm> {
           sentinel: sentinel,
           hasStockAtLocation: isHomeHub && total > 0,
         ),
-        const Gap(12),
+        const Gap(24),
 
-        // ── Multi-hub fleet map ─────────────────────────────────────────────
+        // ── Tactical Batch Triage (Bulk items only) ─────────────────────────
+        _BatchSection(item: widget.item),
+
+        const Gap(32),
+
+        // ── Multi-hub fleet map (Interactive site selector) ─────────────────
         if (widget.item.variants.isNotEmpty) ...[
           _FleetMap(item: widget.item, sentinel: sentinel),
-          const Gap(12),
+          const Gap(32),
         ],
 
         // ── Editable bucket distribution ────────────────────────────────────
@@ -144,7 +150,8 @@ class _RestockFormState extends ConsumerState<RestockForm> {
           style: GoogleFonts.lexend(
             fontSize: 10,
             fontWeight: FontWeight.w900,
-            color: AppTheme.carbonGray,
+            color: sentinel.navy.withOpacity(0.5),
+            letterSpacing: 1.0,
           ),
         ),
         const Gap(12),
@@ -207,6 +214,146 @@ class _RestockFormState extends ConsumerState<RestockForm> {
         ),
         const Gap(24),
       ],
+    );
+  }
+}
+
+// ── Bulk Batch Restock Section ──────────────────────────────────────────────
+
+class _BatchSection extends ConsumerWidget {
+  final InventoryItem item;
+  const _BatchSection({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!item.isBulk) return const SizedBox.shrink();
+
+    final state = ref.watch(managerActionControllerProvider(item));
+    final ctrl = ref.read(managerActionControllerProvider(item).notifier);
+    final sentinel = Theme.of(context).sentinel;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.inventory_2_rounded, color: sentinel.primary, size: 16),
+            const Gap(8),
+            Text(
+              'BATCHES AT THIS LOCATION',
+              style: GoogleFonts.lexend(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: sentinel.onSurfaceVariant.withOpacity(0.6),
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
+        const Gap(16),
+        ...state.packagingJson.map((batch) {
+          final batchId = (batch['id'] ?? '').toString();
+          final label = (batch['label'] ?? 'Unknown').toString();
+          final units = (batch['units'] as num?)?.toInt() ?? 0;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: sentinel.containerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: sentinel.outlineVariant.withOpacity(0.5)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label.toUpperCase(),
+                          style: GoogleFonts.lexend(fontSize: 13, fontWeight: FontWeight.w800, color: sentinel.navy)),
+                      Text('$units units',
+                          style: GoogleFonts.lexend(
+                              fontSize: 11, fontWeight: FontWeight.w600, color: sentinel.onSurfaceVariant.withOpacity(0.5))),
+                    ],
+                  ),
+                ),
+                _QuantityStepper(
+                  value: units,
+                  onChanged: (v) => ctrl.setBatchUnits(batchId, v),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _QuantityStepper extends StatelessWidget {
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  const _QuantityStepper({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: sentinel.tactile.raised,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StepperBtn(
+            icon: Icons.remove_rounded,
+            onTap: value > 0 ? () => onChanged(value - 1) : null,
+          ),
+          SizedBox(
+            width: 48,
+            child: Text(
+              value.toString(),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.lexend(fontSize: 16, fontWeight: FontWeight.w900, color: sentinel.navy),
+            ),
+          ),
+          _StepperBtn(
+            icon: Icons.add_rounded,
+            onTap: () => onChanged(value + 1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepperBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _StepperBtn({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final sentinel = Theme.of(context).sentinel;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: onTap == null ? sentinel.containerLow : sentinel.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon,
+            size: 18, color: onTap == null ? sentinel.onSurfaceVariant.withOpacity(0.3) : sentinel.primary),
+      ),
     );
   }
 }
@@ -382,14 +529,14 @@ String _restockSiteHealthCaption(int damaged, int maintenance, int lost) {
   return parts.join(' · ');
 }
 
-class _FleetMap extends StatelessWidget {
+class _FleetMap extends ConsumerWidget {
   final InventoryItem item;
   final SentinelColors sentinel;
 
   const _FleetMap({required this.item, required this.sentinel});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -409,121 +556,80 @@ class _FleetMap extends StatelessWidget {
           ],
         ),
         const Gap(8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-          decoration: BoxDecoration(
-            color: sentinel.containerLow,
+        ...item.variants.map((v) {
+          final isActive = ref.watch(managerActionControllerProvider(item).select((s) => s.activeRowId == v.id));
+
+          return InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              ref.read(managerActionControllerProvider(item).notifier).switchToSite(v.id);
+            },
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: sentinel.onSurfaceVariant.withOpacity(0.05)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: item.variants.map((v) {
-              final isLast = item.variants.last == v;
-              return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── COLUMN 1: SUBJECT & STATE ──
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            v.location.toUpperCase(),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.onyxBlack,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const Gap(4),
-                          if (v.qtyDamaged > 0 || v.qtyMaintenance > 0 || v.qtyLost > 0)
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                if (v.qtyDamaged > 0)
-                                  _HealthIndicator(
-                                    label: 'DAMAGED',
-                                    count: v.qtyDamaged,
-                                    color: AppTheme.errorRed,
-                                  ),
-                                if (v.qtyMaintenance > 0)
-                                  _HealthIndicator(
-                                    label: 'MAINT.',
-                                    count: v.qtyMaintenance,
-                                    color: AppTheme.warningOrange,
-                                  ),
-                                if (v.qtyLost > 0)
-                                  _HealthIndicator(
-                                    label: 'LOST',
-                                    count: v.qtyLost,
-                                    color: AppTheme.neutralGray500,
-                                  ),
-                              ],
-                            )
-                          else
-                            Text(
-                              'ALL UNITS SERVICEABLE',
-                              style: GoogleFonts.lexend(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.successGreen,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    const Gap(12),
-
-                    // ── COLUMN 2: CAPACITY readout ──
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: isActive ? sentinel.primary.withOpacity(0.05) : sentinel.containerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isActive ? sentinel.primary.withOpacity(0.3) : sentinel.outlineVariant.withOpacity(0.3),
+                  width: isActive ? 1.5 : 1.0,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isActive ? Icons.location_on_rounded : Icons.location_on_outlined,
+                    size: 18,
+                    color: isActive ? sentinel.primary : sentinel.onSurfaceVariant.withOpacity(0.4),
+                  ),
+                  const Gap(12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.lexend(
-                              fontSize: 14,
-                              color: AppTheme.onyxBlack,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: '${v.stockAvailable}',
-                                style: const TextStyle(fontWeight: FontWeight.w900),
-                              ),
-                              TextSpan(
-                                text: ' / ${v.stockTotal}',
-                                style: TextStyle(
-                                  color: AppTheme.carbonGray.withOpacity(0.5),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         Text(
-                          'AVAIL / TOTAL',
+                          v.location.toUpperCase(),
                           style: GoogleFonts.lexend(
-                            fontSize: 7,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.carbonGray.withOpacity(0.4),
-                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                            color: isActive ? sentinel.navy : sentinel.navy.withOpacity(0.7),
                           ),
                         ),
+                        if (isActive)
+                          Text(
+                            'ACTIVE SELECTION',
+                            style: GoogleFonts.lexend(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              color: sentinel.primary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                       ],
                     ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: sentinel.tactile.recessed,
+                    ),
+                    child: Text(
+                      '${v.stockAvailable} ${item.unit}',
+                      style: GoogleFonts.lexend(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: sentinel.navy,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
       ],
     );
   }

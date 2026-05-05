@@ -100,6 +100,7 @@ class LigtasColors extends ThemeExtension<LigtasColors> {
   final Color primaryFixed;
   final Color onPrimaryFixedVariant;
   final Color error;
+  final Color outlineVariant;
   final TactileDesign tactile;
   final BoxDecoration glass;
 
@@ -114,6 +115,7 @@ class LigtasColors extends ThemeExtension<LigtasColors> {
     required this.primaryFixed,
     required this.onPrimaryFixedVariant,
     required this.error,
+    required this.outlineVariant,
     required this.tactile,
     required this.glass,
   });
@@ -130,6 +132,7 @@ class LigtasColors extends ThemeExtension<LigtasColors> {
     Color? primaryFixed,
     Color? onPrimaryFixedVariant,
     Color? error,
+    Color? outlineVariant,
     TactileDesign? tactile,
     BoxDecoration? glass,
   }) {
@@ -144,6 +147,7 @@ class LigtasColors extends ThemeExtension<LigtasColors> {
       primaryFixed: primaryFixed ?? this.primaryFixed,
       onPrimaryFixedVariant: onPrimaryFixedVariant ?? this.onPrimaryFixedVariant,
       error: error ?? this.error,
+      outlineVariant: outlineVariant ?? this.outlineVariant,
       tactile: tactile ?? this.tactile,
       glass: glass ?? this.glass,
     );
@@ -163,6 +167,7 @@ class LigtasColors extends ThemeExtension<LigtasColors> {
       primaryFixed: Color.lerp(primaryFixed, other.primaryFixed, t)!,
       onPrimaryFixedVariant: Color.lerp(onPrimaryFixedVariant, other.onPrimaryFixedVariant, t)!,
       error: Color.lerp(error, other.error, t)!,
+      outlineVariant: Color.lerp(outlineVariant, other.outlineVariant, t)!,
       tactile: TactileDesign.lerp(tactile, other.tactile, t),
       glass: BoxDecoration.lerp(glass, other.glass, t) as BoxDecoration,
     );
@@ -183,6 +188,7 @@ class LigtasColors extends ThemeExtension<LigtasColors> {
     primaryFixed: const Color(0xFFD2E4FF),
     onPrimaryFixedVariant: const Color(0xFF324863),
     error: const Color(0xFFE53935),
+    outlineVariant: const Color(0xFFE2E8F0),
     tactile: TactileDesign.standard,
     glass: BoxDecoration(
       color: Colors.white.withOpacity(0.4),
@@ -252,6 +258,7 @@ class AppTheme {
 
   // 🛡️ TACTICAL INK PALETTE (Not all black)
   static const Color onyxBlack = Color(0xFF0F172A); // 90% Midnight Onyx
+  static const Color charcoalGrey = Color(0xFF374151); // 🏗️ PREMIUM ASSET HERO CHARCOAL
   static const Color carbonGray = Color(0xFF475569); // 70% Slate Carbon
 
   static TextTheme get textTheme => GoogleFonts.plusJakartaSansTextTheme().copyWith(

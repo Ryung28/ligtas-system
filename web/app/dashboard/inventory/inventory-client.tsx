@@ -3,12 +3,12 @@
 import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
-import { deleteItem } from '@/src/features/catalog'
+import { deleteItem, bulkDeleteItem } from '@/src/features/catalog'
 import { InventoryHeader } from '@/components/inventory/inventory-header'
 import { InventoryTable } from '@/components/inventory/inventory-table'
 import { useInventory } from '@/hooks/use-inventory'
 import { InventoryItem } from '@/lib/supabase'
-import { InventoryDialogV2 } from '@/components/inventory/inventory-dialog-v2'
+import { CatalogItemDialog } from '@/src/features/catalog/components/catalog-item-dialog'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,6 +31,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
     const [selectedItems, setSelectedItems] = useState<number[]>([])
     const [selectionMode, setSelectionMode] = useState(false)
     const [activeItem, setActiveItem] = useState<InventoryItem | null | 'new'>(null)
+    const [deletingIds, setDeletingIds] = useState<number[]>([])
     
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -49,11 +50,9 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
     
     // Use server data during initial load, then switch to live data
     // 🏛️ DATA FLOW FIX: Stop redundant aggregation here. 
-    // InventoryTable is the designated Master SKU Engine.
-    const displayInventory = (isLoading && inventory.length === 0) ? initialInventory : inventory 
-    
-
-    const [isDeleting, startDeleteTransition] = useTransition()
+    // 🎯 OPTIMISTIC UI: Filter out deleting items immediately.
+    const displayInventory = ((isLoading && inventory.length === 0) ? initialInventory : inventory)
+        .filter(item => !deletingIds.includes(item.id))
 
     const handleDeleteClick = (id: number, name: string) => {
         setItemToDelete({ id, name })
@@ -62,23 +61,28 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
 
     const handleDeleteConfirm = async () => {
         if (!itemToDelete) return
+        const id = itemToDelete.id
+        // 🎯 OPTIMISTIC FEEDBACK: Add to list immediately
+        setDeletingIds(prev => [...prev, id])
+        setDeleteDialogOpen(false)
 
-        startDeleteTransition(async () => {
-            try {
-                const result = await deleteItem(itemToDelete.id)
-                if (result.success) {
-                    toast.success(result.message)
-                    refresh()
-                } else {
-                    toast.error(result.error)
-                }
-            } catch (error) {
-                toast.error('An unexpected error occurred while removing the item.')
-            } finally {
-                setDeleteDialogOpen(false)
-                setItemToDelete(null)
+        try {
+            const result = await deleteItem(id)
+            if (result.success) {
+                toast.success(result.message)
+                // Refresh still happens in background but UI is already updated
+                refresh()
+            } else {
+                toast.error(result.error)
+                // Rollback if failed
+                setDeletingIds(prev => prev.filter(itemId => itemId !== id))
             }
-        })
+        } catch (error) {
+            toast.error('An unexpected error occurred while deleting the item.')
+            setDeletingIds(prev => prev.filter(itemId => itemId !== id))
+        } finally {
+            setItemToDelete(null)
+        }
     }
 
     const handleBulkDelete = async () => {
@@ -87,31 +91,24 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
             return
         }
 
-        startDeleteTransition(async () => {
-            try {
-                let successCount = 0
-                let failCount = 0
+        const idsToClear = [...selectedItems]
+        setDeletingIds(prev => [...prev, ...idsToClear])
+        setSelectedItems([])
+        setSelectionMode(false)
 
-                for (const id of selectedItems) {
-                    const result = await deleteItem(id)
-                    if (result.success) successCount++
-                    else failCount++
-                }
-
-                if (successCount > 0) {
-                    toast.success(`Successfully archived ${successCount} item(s)`)
-                }
-                if (failCount > 0) {
-                    toast.error(`Failed to archive ${failCount} item(s)`)
-                }
-
-                setSelectedItems([])
-                setSelectionMode(false)
+        try {
+            const result = await bulkDeleteItem(idsToClear)
+            if (result.success) {
+                toast.success(result.message || `Successfully deleted ${idsToClear.length} item(s)`)
                 refresh()
-            } catch (error) {
-                toast.error('An unexpected error occurred during bulk delete.')
+            } else {
+                toast.error(result.error)
+                setDeletingIds(prev => prev.filter(id => !idsToClear.includes(id)))
             }
-        })
+        } catch (error) {
+            toast.error('An unexpected error occurred during bulk delete.')
+            setDeletingIds(prev => prev.filter(id => !idsToClear.includes(id)))
+        }
     }
 
     const toggleSelectionMode = () => {
@@ -139,7 +136,7 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                 <InventoryTable
                     items={displayInventory}
                     onDelete={handleDeleteClick}
-                    isDeleting={isDeleting}
+                    deletingIds={deletingIds}
                     onRefresh={refresh}
                     selectedItems={selectedItems}
                     onSelectionChange={selectionMode ? setSelectedItems : undefined}
@@ -152,11 +149,11 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                 <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-900">
-                            Archive Item?
+                            Delete Item?
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-600">
-                            Are you sure you want to archive <span className="font-semibold text-gray-900">&quot;{itemToDelete?.name}&quot;</span>? 
-                            It will be removed from active service but kept in historical records.
+                            Are you sure you want to delete <span className="font-semibold text-gray-900">&quot;{itemToDelete?.name}&quot;</span>? 
+                            This action cannot be undone and will remove the item from active service.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -165,15 +162,15 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
                             onClick={handleDeleteConfirm}
                             className="rounded-lg bg-red-600 hover:bg-red-700 text-white"
                         >
-                            Archive Item
+                            Delete Item
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <InventoryDialogV2
-                key={activeItem === 'new' ? 'new_asset' : activeItem?.id || 'idle'}
+            <CatalogItemDialog
+                key={activeItem === 'new' ? 'inv_v3_new' : `inv_v3_edit_${(activeItem as any)?.id || 'idle'}`}
                 isOpen={!!activeItem}
-                existingItem={activeItem === 'new' ? undefined : activeItem || undefined}
+                item={activeItem === 'new' ? undefined : activeItem || undefined}
                 onOpenChange={(open: boolean) => !open && setActiveItem(null)}
                 onSuccess={refresh}
             />

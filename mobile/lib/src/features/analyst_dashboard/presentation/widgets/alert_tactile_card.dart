@@ -173,7 +173,7 @@ class AlertTactileCard extends StatelessWidget {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      anomaly.itemName,
+                                      anomaly.displayTitle,
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w900,
@@ -186,6 +186,15 @@ class AlertTactileCard extends StatelessWidget {
                                   ),
                                 ],
                               ),
+                              if (anomaly.storageLocation != null)
+                                Text(
+                                  '📍 ${anomaly.storageLocation}',
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.neutralGray600,
+                                  ),
+                                ),
                               const Gap(6),
                               Text(
                                 'Borrower: ${_safeBorrowerName(anomaly)}',
@@ -218,7 +227,7 @@ class AlertTactileCard extends StatelessWidget {
                               ),
                             ] else if (isInventory) ...[
                               Text(
-                                anomaly.itemName,
+                                anomaly.displayTitle,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
@@ -228,26 +237,44 @@ class AlertTactileCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (anomaly.isGroup)
+                                Text(
+                                  '📍 ${anomaly.children.length} TARGETS',
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.neutralGray600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              else if (anomaly.storageLocation != null)
+                                Text(
+                                  '📍 ${anomaly.storageLocation} · 📦 ${anomaly.containerIdentity}',
+                                  style: GoogleFonts.lexend(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.neutralGray600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               const Gap(4),
                               Expanded(
                                 child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    final tight = constraints.maxHeight < 44;
-                                    final labelSize = tight ? 6.5 : 7.0;
-                                    final valueSize = tight ? 11.0 : 12.0;
-                                    final actionSize = tight ? 8.5 : 9.0;
-                                    final metricGap = tight ? 8.0 : 10.0;
-                                    final progressGap = tight ? 4.0 : 6.0;
-                                    final progressHeight = tight ? 3.0 : 4.0;
+                                    builder: (context, constraints) {
+                                      final tight = constraints.maxHeight < 60;
+                                      final labelSize = tight ? 6.0 : 7.0;
+                                      final valueSize = tight ? 10.0 : 12.0;
+                                      final actionSize = tight ? 8.0 : 9.0;
+                                      final metricGap = tight ? 6.0 : 8.0;
+                                      final progressGap = tight ? 2.0 : 4.0;
+                                      final progressHeight = tight ? 2.0 : 3.0;
 
-                                    final denominator =
-                                        anomaly.maxStock != null &&
-                                                anomaly.maxStock! > 0
-                                            ? anomaly.maxStock!
-                                            : anomaly.thresholdStock;
+                                    final denominator = anomaly.displayTotal;
                                     final percentage =
                                         denominator > 0
-                                            ? (anomaly.currentStock /
+                                            ? (anomaly.displayStock /
                                                     denominator)
                                                 .clamp(0.0, 1.0)
                                             : 0.0;
@@ -263,14 +290,14 @@ class AlertTactileCard extends StatelessWidget {
                                             AlertMetricPill(
                                               label: 'CURRENT',
                                               value:
-                                                  '${anomaly.currentStock} units',
+                                                  '${anomaly.displayStock} units',
                                               sentinel: sentinel,
                                               labelSize: labelSize,
                                               valueSize: valueSize,
                                             ),
                                             Gap(metricGap),
                                             AlertMetricPill(
-                                              label: 'FIXED',
+                                              label: 'TOTAL',
                                               value: '$denominator units',
                                               sentinel: sentinel,
                                               labelSize: labelSize,
@@ -312,8 +339,10 @@ class AlertTactileCard extends StatelessWidget {
                                             Align(
                                               alignment: Alignment.centerRight,
                                               child: Text(
-                                                anomaly.shelfActionLabel
-                                                    .toUpperCase(),
+                                                anomaly.isGroup
+                                                    ? 'RESTOCK ALL GROUP'
+                                                    : anomaly.shelfActionLabel
+                                                        .toUpperCase(),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: GoogleFonts.lexend(

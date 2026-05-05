@@ -25,8 +25,21 @@ class StorageUtils {
       return pathOrUrl;
     }
     
-    // 🛡️ CANONICAL HYDRATION: Construct Public URL for item-images bucket
-    return '${Environment.supabaseUrl}/storage/v1/object/public/${Environment.itemImagesBucket}/$pathOrUrl';
+    // 🛡️ CANONICAL HYDRATION: Construct Public URL with dynamic bucket support
+    String bucket = Environment.itemImagesBucket;
+    String cleanPath = pathOrUrl.trim().replaceAll(RegExp(r'^\/+'), '');
+
+    // Check for explicit bucket prefix
+    final knownBuckets = ['item-images', 'evidence', 'inventory-images'];
+    for (final b in knownBuckets) {
+      if (cleanPath.startsWith('$b/')) {
+        bucket = b;
+        cleanPath = cleanPath.substring(b.length + 1);
+        break;
+      }
+    }
+
+    return '${Environment.supabaseUrl}/storage/v1/object/public/$bucket/$cleanPath';
   }
 
   /// 🛡️ THE ARCHITECT'S UPLOAD: Uploads raw bytes to the item-images bucket.

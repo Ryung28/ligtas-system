@@ -13,6 +13,7 @@ import { TrendingInventoryChart } from '@/components/dashboard/trending-inventor
 import { DeploymentClustersChart } from '@/components/dashboard/deployment-clusters-chart'
 import { OperationalControls } from '@/components/dashboard/operational-controls'
 import { StrategyTriageBar } from '@/components/dashboard/strategy-triage-bar'
+import { ActionCenterView } from '@/components/dashboard/action-center-view'
 
 export default function DashboardClient() {
     const { stats, isLoading, topItemsData, categoryDistribution } = useDashboardStats()
@@ -125,19 +126,42 @@ export default function DashboardClient() {
                     </Card>
                 </div>
 
-                {/* 🛠️ OPERATIONS HUB: Category Analysis */}
+                {/* 🛠️ OPERATIONS HUB: Comprehensive Tactical Triage */}
                 <div className="lg:col-span-5 space-y-6">
-                    <Card className="bg-white/80 backdrop-blur-md shadow-xl shadow-slate-200/40 border-none rounded-[1.5rem] ring-1 ring-slate-100 overflow-hidden min-h-[460px]">
-                        <CardHeader className="p-6 pb-2 bg-slate-50/30 border-b border-slate-100/50">
-                            <div>
-                                <CardTitle className="text-sm font-heading font-semibold text-slate-900 uppercase tracking-wide">Category Distribution</CardTitle>
-                                <CardDescription className="text-[10px] text-slate-500 font-medium uppercase tracking-tight mt-0.5">Tactical Resource Allocation</CardDescription>
-                            </div>
-                        </CardHeader>
-                        
-                        <div className="flex-1 p-6">
-                            <DeploymentClustersChart data={categoryDistribution} />
-                        </div>
+                    <Card className="bg-white/80 backdrop-blur-md shadow-2xl shadow-slate-200/50 border-none rounded-[2.5rem] ring-1 ring-slate-100 overflow-hidden h-[600px] flex flex-col">
+                        <Tabs defaultValue="actions" className="flex-1 flex flex-col min-h-0">
+                            <CardHeader className="p-6 pb-3 flex flex-row items-start justify-between border-b border-slate-50/50 shrink-0">
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-none mb-1 font-heading">Action Center</h3>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Items Needing Attention</p>
+                                </div>
+                                
+                                <TabsList className="bg-slate-100/50 p-1 rounded-lg h-9 border border-slate-100 shrink-0">
+                                    <TabsTrigger 
+                                        value="actions" 
+                                        className="h-full px-4 rounded-md text-[9px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-400 flex items-center justify-center gap-1.5 transition-all"
+                                    >
+                                        Tasks <div className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-sm shadow-rose-200" />
+                                    </TabsTrigger>
+                                    <TabsTrigger 
+                                        value="distribution" 
+                                        className="h-full px-4 rounded-md text-[9px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-400 transition-all"
+                                    >
+                                        Categories
+                                    </TabsTrigger>
+                                </TabsList>
+                            </CardHeader>
+                            
+                            <TabsContent value="actions" className="flex-1 m-0 min-h-0 overflow-hidden data-[state=active]:flex flex-col">
+                                <ActionCenterView />
+                            </TabsContent>
+
+                            <TabsContent value="distribution" className="flex-1 m-0 min-h-0 data-[state=active]:flex flex-col">
+                                <div className="p-8 pt-6 flex-1 min-h-0">
+                                    <DeploymentClustersChart data={categoryDistribution} />
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     </Card>
 
                     <OperationalControls />
@@ -146,3 +170,4 @@ export default function DashboardClient() {
         </div>
     )
 }
+

@@ -15,14 +15,26 @@ class ResourceAnomaly {
   /// [storage_locations] / [inventory.location_registry_id] for this row.
   final int? locationRegistryId;
   final String itemName;
+  final String? baseName;
+  final String? variantLabel;
+  final Map<String, dynamic>? packagingJson;
+  /// For exploded bulk-packaging alerts: the specific batch id (e.g. "abc123") inside
+  /// packaging_json.batches. Null for aggregate/non-bulk anomalies.
+  final String? batchId;
+  final String? storageLocation;
   final String reason;
   final AnomalyCategory category;
   final int currentStock;
   final int thresholdStock;
   final int? maxStock; 
+  final int aggregateAvailable;
+  final int aggregateTotal;
+  final String unit;
   final AnomalySeverity severity;
   final DateTime? detectedAt;
   final String? imageUrl; 
+  final List<ResourceAnomaly> children;
+
 
   // 🛰️ OVERDUE CONTEXT (enriched from borrow_logs via system_intel view)
   final int? borrowId;          // borrow_logs.id — used for force-return
@@ -48,14 +60,23 @@ class ResourceAnomaly {
     this.itemId,
     this.locationRegistryId,
     required this.itemName,
+    this.baseName,
+    this.variantLabel,
+    this.packagingJson,
+    this.batchId,
+    this.storageLocation,
     required this.reason,
     this.category = AnomalyCategory.depletion,
     this.currentStock = 0,
     this.thresholdStock = 0,
     this.maxStock,
+    this.aggregateAvailable = 0,
+    this.aggregateTotal = 0,
+    this.unit = 'pcs',
     this.severity = AnomalySeverity.warning,
     this.detectedAt,
     this.imageUrl,
+    this.children = const [],
     this.borrowId,
     this.borrowerName,
     this.borrowerContact,
@@ -72,6 +93,56 @@ class ResourceAnomaly {
     this.qtyMaintenance = 0,
     this.qtyLost = 0,
   });
+
+  bool get isGroup => children.isNotEmpty;
+
+  /// 🛡️ IDENTITY CHECK: Determines if this is a true "Bulk Packaging" item 
+  /// (e.g. Box, Carton) vs just a group of physical locations.
+  bool get isBulkPackaging => packagingJson != null && packagingJson!['enabled'] == true;
+
+  /// Shelf quantity for UI. Prioritizes aggregate counts for bulk/multi-location items.
+  int get displayStock {
+    if (aggregateAvailable > 0) return aggregateAvailable;
+    return currentStock;
+  }
+
+  /// Tactical Name: Prioritizes base name for headers, itemName for box identity.
+  String get displayTitle => baseName ?? itemName;
+
+  /// Identity of the specific physical container.
+  String get containerIdentity {
+    // 1. Explicit label from database (Gold Standard)
+    if (variantLabel != null && variantLabel!.trim().isNotEmpty) {
+      return variantLabel!;
+    }
+
+    // 2. Extract from item name (Legacy fallback)
+    if (itemName != baseName && itemName.contains(' - ')) {
+      return itemName.split(' - ').last;
+    }
+    
+    // 3. Smart extraction from brackets
+    if (itemName.contains(' (')) {
+      final parts = itemName.split(' (');
+      final lastPart = parts.last.replaceAll(')', '');
+      // Filter out brand names or generic types that aren't container IDs
+      final genericNames = {'mega', 'small', 'medium', 'large', 'pcs', 'kg', 'kgs'};
+      if (!genericNames.contains(lastPart.toLowerCase())) {
+        return lastPart;
+      }
+    }
+
+    // 4. Fallback to Packaging Metadata — only if we have a usable location name
+    if (packagingJson != null && storageLocation != null) {
+      final type = packagingJson!['containerType']?.toString() ?? 'Box';
+      return '$type @ $storageLocation';
+    }
+
+    return (itemName != baseName) ? itemName : 'Primary Container';
+  }
+
+  /// Standardized 'Max' Stock for progress bars.
+  int get displayTotal => maxStock ?? (aggregateTotal > 0 ? aggregateTotal : currentStock);
 
   /// ── VISUAL GETTERS (UI Parity with Web Action Center) ──
   String get serviceStatus {
@@ -112,6 +183,70 @@ class ResourceAnomaly {
     }
   }
 
+  ResourceAnomaly copyWith({
+    String? id,
+    int? inventoryId,
+    int? locationRegistryId,
+    List<ResourceAnomaly>? children,
+    String? variantLabel,
+    String? batchId,
+    String? itemName,
+    String? baseName,
+    String? storageLocation,
+    String? reason,
+    AnomalyCategory? category,
+    Map<String, dynamic>? packagingJson,
+    int? currentStock,
+    int? thresholdStock,
+    int? maxStock,
+    int? aggregateAvailable,
+    int? aggregateTotal,
+    String? unit,
+    AnomalySeverity? severity,
+    DateTime? detectedAt,
+    String? imageUrl,
+  }) {
+    return ResourceAnomaly(
+      id: id ?? this.id,
+      inventoryId: inventoryId ?? this.inventoryId,
+      itemId: itemId,
+      locationRegistryId: locationRegistryId ?? this.locationRegistryId,
+      itemName: itemName ?? this.itemName,
+      baseName: baseName ?? this.baseName,
+      variantLabel: variantLabel ?? this.variantLabel,
+      packagingJson: packagingJson ?? this.packagingJson,
+      batchId: batchId ?? this.batchId,
+      storageLocation: storageLocation ?? this.storageLocation,
+      reason: reason ?? this.reason,
+      category: category ?? this.category,
+      currentStock: currentStock ?? this.currentStock,
+      thresholdStock: thresholdStock ?? this.thresholdStock,
+      maxStock: maxStock ?? this.maxStock,
+      aggregateAvailable: aggregateAvailable ?? this.aggregateAvailable,
+      aggregateTotal: aggregateTotal ?? this.aggregateTotal,
+      unit: unit ?? this.unit,
+      severity: severity ?? this.severity,
+      detectedAt: detectedAt ?? this.detectedAt,
+      imageUrl: imageUrl ?? this.imageUrl,
+      children: children ?? this.children,
+      borrowId: borrowId,
+      borrowerName: borrowerName,
+      borrowerContact: borrowerContact,
+      borrowerEmail: borrowerEmail,
+      borrowerOrg: borrowerOrg,
+      borrowedQty: borrowedQty,
+      dueDate: dueDate,
+      borrowedAt: borrowedAt,
+      approvedByName: approvedByName,
+      releasedByName: releasedByName,
+      platformOrigin: platformOrigin,
+      qtyGood: qtyGood,
+      qtyDamaged: qtyDamaged,
+      qtyMaintenance: qtyMaintenance,
+      qtyLost: qtyLost,
+    );
+  }
+
   factory ResourceAnomaly.fromJson(Map<String, dynamic> json) {
     try {
       final metadata = (json['metadata'] as Map<String, dynamic>? ?? {});
@@ -121,7 +256,13 @@ class ResourceAnomaly {
         inventoryId: _readNullableInt(metadata['inventory_id'] ?? json['inventory_id']),
         itemId: _readNullableInt(metadata['item_id']),
         locationRegistryId: _readNullableInt(metadata['location_registry_id']),
-        itemName: json['title']?.toString() ?? 'System Alert',
+        itemName: json['title']?.toString() ?? metadata['item_name']?.toString() ?? 'System Alert',
+        baseName: (metadata['base_name'] ?? metadata['item_name'])?.toString(),
+        variantLabel: metadata['variant_label']?.toString(),
+        packagingJson: metadata['packaging_json'] is Map<String, dynamic> 
+            ? metadata['packaging_json'] as Map<String, dynamic> 
+            : null,
+        storageLocation: (metadata['storage_location'] ?? metadata['location'])?.toString(),
         reason: json['message']?.toString() ?? 'Check required.',
         imageUrl: metadata['image_url']?.toString(),
         category: _mapCategory(json['category'] as String?),
@@ -129,6 +270,9 @@ class ResourceAnomaly {
         currentStock: (metadata['stock_available'] as num?)?.toInt() ?? 0,
         thresholdStock: (metadata['low_stock_threshold'] ?? metadata['minStockLevel'] as num?)?.toInt() ?? 0,
         maxStock: (metadata['target_stock'] ?? metadata['max_stock'] ?? metadata['goal'] as num?)?.toInt(),
+        aggregateAvailable: (metadata['aggregate_available'] as num?)?.toInt() ?? 0,
+        aggregateTotal: (metadata['aggregate_total'] as num?)?.toInt() ?? 0,
+        unit: (metadata['unit'] as String?) ?? 'pcs',
         detectedAt: json['created_at'] != null 
             ? DateTime.parse(json['created_at']) 
             : DateTime.now(),

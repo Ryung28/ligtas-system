@@ -28,7 +28,11 @@ final alertQueueFilteredProvider = Provider<List<ResourceAnomaly>>((ref) {
   final q = searchQuery.toLowerCase();
 
   return alerts.where((a) {
-    if (!a.itemName.toLowerCase().contains(q)) return false;
+    // Search against displayTitle (baseName ?? itemName) so bulk items like "Sardines (Mega)"
+    // are still found even after explosion renames the group's itemName to "BOX 1".
+    final titleMatch = a.displayTitle.toLowerCase().contains(q);
+    final nameMatch = a.itemName.toLowerCase().contains(q);
+    if (!titleMatch && !nameMatch) return false;
 
     switch (activeFilter) {
       case 'All':

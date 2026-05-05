@@ -4,27 +4,62 @@ import { revalidatePath } from 'next/cache'
 import { supabase } from '@/lib/supabase'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { z } from 'zod'
-import { addItemSchema } from '../schemas/catalog.schema'
+import { addItemSchema, siteDistributionSchema } from '../schemas/catalog.schema'
+
+/**
+ * Helper to partition a bulk packaging manifest for a specific location.
+ * Ensures that a location's inventory record only contains its own allocated boxes.
+ */
+function partitionPackagingJson(globalPackaging: any, locationId: number | string | null, isPrimary: boolean = false) {
+    if (!globalPackaging || !globalPackaging.enabled || !globalPackaging.batches) return globalPackaging
+
+    // 🛡️ TYPE COERCION SAFEGUARD: Convert all IDs to strings for robust comparison
+    const targetLocId = locationId ? String(locationId) : null
+    
+    const filteredBatches = globalPackaging.batches.filter((b: any) => {
+        const batchLocId = b.locationId ? String(b.locationId) : null
+        
+        // 1. Exact match (Explicitly assigned to this warehouse)
+        if (batchLocId === targetLocId) return true
+
+        // 2. Default/Orphan rescue (If box is "Default", it lives on the Primary Record)
+        if (isPrimary && batchLocId === null) return true
+
+        return false
+    })
+
+    const filteredBatchIds = new Set(filteredBatches.map((b: any) => b.id))
+
+    let filteredGroups = globalPackaging.expiry_groups
+    if (filteredGroups) {
+        filteredGroups = filteredGroups
+            .map((g: any) => ({
+                ...g,
+                batch_ids: g.batch_ids.filter((id: string) => filteredBatchIds.has(id))
+            }))
+            .filter((g: any) => g.batch_ids.length > 0)
+    }
+
+    return {
+        ...globalPackaging,
+        batches: filteredBatches,
+        containerCount: filteredBatches.length,
+        expiry_groups: filteredGroups
+    }
+}
 
 /**
  * CATALOG DOMAIN - Mutation Actions
- * 
- * Create, Update, Delete operations for inventory items.
- * Includes variant logic and tactical safeguards.
  */
 
 export async function addItem(formData: FormData) {
     try {
-        // 🔐 SESSION-AWARE CLIENT: Required for RLS to pass auth.uid() checks
         const supabase = await createSupabaseServer()
         const thresholdRaw = formData.get('low_stock_threshold')
-        const parsedThreshold =
-            thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
+        const parsedThreshold = thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
         const restockAlertEnabledRaw = formData.get('restock_alert_enabled')
-        const restockAlertEnabled =
-            restockAlertEnabledRaw === null ? true : `${restockAlertEnabledRaw}` === 'true'
+        const restockAlertEnabled = restockAlertEnabledRaw === null ? true : `${restockAlertEnabledRaw}` === 'true'
 
-        // Parse and validate form data
         const rawData = {
             name: formData.get('name'),
             description: formData.get('description'),
@@ -38,7 +73,7 @@ export async function addItem(formData: FormData) {
             equipment_type: formData.get('equipment_type'),
             item_type: formData.get('item_type') || 'equipment',
             storage_location: formData.get('storage_location'),
-            location_id: formData.get('location_id'),
+            location_registry_id: formData.get('location_id'),
             brand: formData.get('brand'),
             expiry_date: formData.get('expiry_date'),
             expiry_alert_days: formData.get('expiry_alert_days') ? Number(formData.get('expiry_alert_days')) : null,
@@ -47,7 +82,6 @@ export async function addItem(formData: FormData) {
             low_stock_threshold: parsedThreshold,
             target_stock: Number(formData.get('target_stock') ?? 0) || 0,
             restock_alert_enabled: restockAlertEnabled,
-            // Enterprise Sub-Buckets
             qty_good: Number(formData.get('qty_good')) || Number(formData.get('stock_total')) || 0,
             qty_damaged: Number(formData.get('qty_damaged')) || 0,
             qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
@@ -55,11 +89,9 @@ export async function addItem(formData: FormData) {
             packaging_json: formData.get('packaging_json') ? JSON.parse(formData.get('packaging_json') as string) : null,
         }
 
-        // 🛡️ RECONCILIATION: Ensure stock_total matches the sum of buckets
         const calculatedTotal = Number(rawData.qty_good) + Number(rawData.qty_damaged) + Number(rawData.qty_maintenance) + Number(rawData.qty_lost)
         const finalStockTotal = Math.max(Number(rawData.stock_total) || 0, calculatedTotal)
         
-        // Finalize rawData for validation
         const finalRawData = {
             ...rawData,
             stock_total: finalStockTotal,
@@ -68,24 +100,11 @@ export async function addItem(formData: FormData) {
 
         const validatedData = addItemSchema.parse(finalRawData)
 
-        // Validate that current stock doesn't exceed total stock
-        if (validatedData.stock_available > finalStockTotal) {
-            return {
-                success: false,
-                error: 'Current stock cannot exceed fixed total stock',
-            }
-        }
-
-        // Handle variant logic - Auto-create parent if variant specified
         let baseName = validatedData.name
         let finalParentId = null
         let finalVariantLabel = validatedData.variant_label
 
         if (finalVariantLabel) {
-            // User wants to create a variant - auto-create parent
-            baseName = validatedData.name // Use item name as base
-            
-            // Check if parent already exists with this base_name
             const { data: existingParent } = await supabase
                 .from('inventory')
                 .select('id')
@@ -95,10 +114,8 @@ export async function addItem(formData: FormData) {
                 .single()
 
             if (existingParent) {
-                // Parent exists, use it
                 finalParentId = existingParent.id
             } else {
-                // Create new parent
                 const { data: newParent, error: parentError } = await supabase
                     .from('inventory')
                     .insert([{
@@ -132,203 +149,108 @@ export async function addItem(formData: FormData) {
                     .select()
                     .single()
 
-                if (parentError || !newParent) {
-                    console.error('Failed to create parent:', parentError)
-                    return {
-                        success: false,
-                        error: 'Failed to create parent item',
-                    }
-                }
-
+                if (parentError || !newParent) throw new Error('Failed to create parent item')
                 finalParentId = newParent.id
             }
         }
 
-        // Insert into Supabase
-        const { data, error } = await supabase.from('inventory').insert([
-            {
-                item_name: validatedData.name,
-                base_name: baseName,
-                parent_id: finalParentId,
-                variant_label: finalVariantLabel,
-                description: validatedData.description,
-                model_number: validatedData.model_number,
-                category: validatedData.category,
-                stock_total: finalStockTotal,
-                stock_available: rawData.qty_good, // Available is strictly Ready for Deployment
-                qty_good: rawData.qty_good,
-                qty_damaged: rawData.qty_damaged,
-                qty_maintenance: rawData.qty_maintenance,
-                qty_lost: rawData.qty_lost,
-                status: 'Good', // Base status is Good; sub-buckets handle triage
-                packaging_json: (rawData as any).packaging_json,
-                image_url: validatedData.image_url,
-                serial_number: validatedData.serial_number,
-                equipment_type: validatedData.equipment_type,
-                item_type: validatedData.item_type,
-                storage_location: validatedData.storage_location,
-                location_registry_id: validatedData.location_id,
-                brand: validatedData.brand,
-                expiry_date: validatedData.expiry_date,
-                expiry_alert_days: validatedData.expiry_alert_days ?? null,
-                low_stock_threshold: validatedData.low_stock_threshold,
-                target_stock: validatedData.target_stock,
-                restock_alert_enabled: restockAlertEnabled,
-            },
-        ]).select()
-
-        if (error) {
-            console.error('Supabase error:', error)
-            return {
-                success: false,
-                error: 'Failed to add item to database',
-            }
-        }
-
-        const newItem = data[0]
-
-        // 🏛️ Handle Initial Distribution if provided
         const siteDistRaw = formData.get('site_distributions')
-        if (siteDistRaw) {
-            try {
-                const distributions = JSON.parse(siteDistRaw as string)
-                if (distributions.length > 1) {
-                    // Create siblings for other sites (skip the first one as it's the primary just created)
-                    const siblings = distributions.slice(1).map((dist: any) => ({
-                        ...newItem,
-                        id: undefined, // Let DB generate ID
-                        storage_location: dist.locationName,
-                        location_registry_id: dist.locationId,
-                        qty_good: dist.qtyGood,
-                        qty_damaged: dist.qtyDamaged,
-                        qty_maintenance: dist.qtyMaintenance,
-                        qty_lost: dist.qtyLost,
-                        stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
-                        stock_available: dist.qtyGood
-                    }))
-                    
-                    await supabase.from('inventory').insert(siblings)
-                }
-            } catch (e) {
-                console.error('Error processing initial distribution:', e)
-            }
+        const distributions = siteDistRaw ? JSON.parse(siteDistRaw as string) : []
+        const hasDistributions = distributions.length > 0
+        // 🏛️ SINGULAR AUTHORITY: Find the distribution explicitly marked as master
+        const masterDist = hasDistributions 
+            ? (distributions.find((d: any) => d._isMaster) || distributions[0]) 
+            : null
+
+        const basePayload = {
+            item_name: validatedData.name,
+            base_name: baseName,
+            parent_id: finalParentId,
+            variant_label: finalVariantLabel,
+            description: validatedData.description,
+            model_number: validatedData.model_number,
+            category: validatedData.category,
+            status: 'Good',
+            image_url: validatedData.image_url,
+            serial_number: validatedData.serial_number,
+            equipment_type: validatedData.equipment_type,
+            item_type: validatedData.item_type,
+            brand: validatedData.brand,
+            expiry_date: validatedData.expiry_date,
+            expiry_alert_days: validatedData.expiry_alert_days ?? null,
+            low_stock_threshold: validatedData.low_stock_threshold,
+            target_stock: validatedData.target_stock,
+            restock_alert_enabled: restockAlertEnabled,
         }
 
-        if (error) {
-            console.error('Supabase error:', error)
-            return {
-                success: false,
-                error: 'Failed to add item to database',
-            }
+        const isBulkItem = rawData.packaging_json?.enabled === true
+
+        // 🏛️ SINGULAR AUTHORITY: For bulk items, derive stock from the manifest.
+        // For non-bulk, use distribution totals or raw qty fields.
+        const stockFromManifest = isBulkItem
+            ? (rawData.packaging_json?.batches || []).reduce((s: number, b: any) => s + (Number(b.units) || 0), 0)
+            : null
+
+        const masterPayload = {
+            ...basePayload,
+            // Location: first distribution or the form field
+            storage_location: masterDist ? masterDist.locationName : validatedData.storage_location,
+            location_registry_id: masterDist ? masterDist.locationId : validatedData.location_id,
+            // Stock: manifest-derived for bulk, distribution-based for non-bulk
+            qty_good: stockFromManifest ?? (masterDist ? masterDist.qtyGood : rawData.qty_good),
+            qty_damaged: isBulkItem ? 0 : (masterDist ? masterDist.qtyDamaged : rawData.qty_damaged),
+            qty_maintenance: isBulkItem ? 0 : (masterDist ? masterDist.qtyMaintenance : rawData.qty_maintenance),
+            qty_lost: isBulkItem ? 0 : (masterDist ? masterDist.qtyLost : rawData.qty_lost),
+            stock_total: stockFromManifest ?? (masterDist
+                ? (masterDist.qtyGood + masterDist.qtyDamaged + masterDist.qtyMaintenance + masterDist.qtyLost)
+                : finalStockTotal),
+            stock_available: stockFromManifest ?? (masterDist ? masterDist.qtyGood : rawData.qty_good),
+            // 🏛️ SINGULAR AUTHORITY: Full manifest always lives on the one parent row.
+            packaging_json: rawData.packaging_json,
         }
 
-        // Revalidate the inventory page to show new data
-        revalidatePath('/dashboard/inventory')
-        revalidatePath('/dashboard')
+        const { data: newItem, error } = await supabase.from('inventory').insert([masterPayload]).select().single()
+        if (error || !newItem) throw new Error('Failed to add master item')
 
-        return {
-            success: true,
-            data: data[0],
-            message: finalVariantLabel ? `Variant "${baseName} (${finalVariantLabel})" added successfully` : 'Item added successfully',
-        }
-    } catch (error) {
-        if (error instanceof z.ZodError) {
-            return {
-                success: false,
-                error: error.errors[0].message,
-            }
-        }
-
-        console.error('Unexpected error:', error)
-        return {
-            success: false,
-            error: 'An unexpected error occurred',
-        }
-    }
-}
-
-export async function bulkAddItems(items: Array<{
-    name: string
-    category: string
-    item_type?: string
-    stock_total: number
-    stock_available?: number
-    qty_good?: number
-    qty_damaged?: number
-    qty_maintenance?: number
-    qty_lost?: number
-    status: string
-    storage_location?: string
-    serial_number?: string
-    model_number?: string
-    brand?: string
-    expiry_date?: string
-    expiry_alert_days?: number
-    description?: string
-}>) {
-    try {
-        const supabase = await createSupabaseServer()
-        const validatedItems = z.array(addItemSchema).parse(items)
-
-        const insertData = validatedItems.map(item => ({
-            item_name: item.name,
-            description: item.description ?? null,
-            category: item.category,
-            item_type: item.item_type ?? 'equipment',
-            stock_total: item.stock_total,
-            stock_available: item.qty_good ?? item.stock_available ?? item.stock_total,
-            qty_good: item.qty_good ?? item.stock_available ?? item.stock_total,
-            qty_damaged: item.qty_damaged ?? 0,
-            qty_maintenance: item.qty_maintenance ?? 0,
-            qty_lost: item.qty_lost ?? 0,
-            status: item.status,
-            storage_location: item.storage_location ?? null,
-            serial_number: item.serial_number ?? null,
-            model_number: item.model_number ?? null,
-            brand: item.brand ?? null,
-            expiry_date: item.expiry_date ?? null,
-            expiry_alert_days: item.expiry_alert_days ?? null,
-        }))
-
-        const { data, error } = await supabase.from('inventory').insert(insertData).select()
-
-        if (error) {
-            console.error('Supabase bulk insert error:', error)
-            return { success: false, error: 'Failed to insert items. Please check your data.' }
+        // 🏛️ SINGULAR AUTHORITY: Never create child rows for bulk items.
+        // Location data lives in the manifest batches (batch.locationId), not in sibling rows.
+        if (!isBulkItem && hasDistributions && distributions.length > 1) {
+            const siblings = distributions.slice(1).map((dist: any) => ({
+                ...basePayload,
+                parent_id: newItem.id,
+                storage_location: dist.locationName,
+                location_registry_id: dist.locationId,
+                qty_good: dist.qtyGood,
+                qty_damaged: dist.qtyDamaged,
+                qty_maintenance: dist.qtyMaintenance,
+                qty_lost: dist.qtyLost,
+                stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
+                stock_available: dist.qtyGood,
+                packaging_json: null,
+            }))
+            const { error: siblingError } = await supabase.from('inventory').insert(siblings)
+            if (siblingError) throw siblingError
         }
 
         revalidatePath('/dashboard/inventory')
         revalidatePath('/dashboard')
-
-        return {
-            success: true,
-            count: data.length,
-            message: `Successfully added ${data.length} items`,
-        }
+        return { success: true, data: newItem }
     } catch (error: any) {
-        if (error instanceof z.ZodError) {
-            return { success: false, error: 'Validation failed: ' + error.errors[0].message }
-        }
-        return { success: false, error: 'An unexpected error occurred' }
+        return { success: false, error: error.message || 'An unexpected error occurred' }
     }
 }
-
-import { siteDistributionSchema } from '../schemas/catalog.schema'
 
 export async function updateItem(formData: FormData) {
     try {
-        // 🔐 SESSION-AWARE CLIENT: Required for RLS to pass auth.uid() checks
         const supabase = await createSupabaseServer()
         const id = formData.get('id')
         if (!id) throw new Error('Item ID is required')
+        
         const thresholdRaw = formData.get('low_stock_threshold')
-        const parsedThreshold =
-            thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
+        const parsedThreshold = thresholdRaw === null || `${thresholdRaw}`.trim() === '' ? 20 : Number(thresholdRaw)
         const restockAlertEnabledRaw = formData.get('restock_alert_enabled')
-        const restockAlertEnabled =
-            restockAlertEnabledRaw === null ? true : `${restockAlertEnabledRaw}` === 'true'
+        const restockAlertEnabled = restockAlertEnabledRaw === null ? true : `${restockAlertEnabledRaw}` === 'true'
 
-        // 1. Data Extraction & Coercion
         const rawData = {
             name: String(formData.get('name') || ''),
             description: formData.get('description') ? String(formData.get('description')) : null,
@@ -350,9 +272,13 @@ export async function updateItem(formData: FormData) {
             qty_maintenance: Number(formData.get('qty_maintenance')) || 0,
             qty_lost: Number(formData.get('qty_lost')) || 0,
             packaging_json: formData.get('packaging_json') ? JSON.parse(formData.get('packaging_json') as string) : null,
+            location_registry_id: formData.get('location_id') ? String(formData.get('location_id')) : null,
         }
 
-        // 🔒 IDENTITY LOCK: Get current name/category for targeting siblings
+        const siteDistRaw = formData.get('site_distributions')
+        const distributions = siteDistRaw ? JSON.parse(siteDistRaw as string) as any[] : []
+        const masterDist = distributions.find((d: any) => d._isMaster) || distributions[0] || null
+
         const { data: itemBefore, error: fetchError } = await supabase
             .from('inventory')
             .select('id, item_name, category, parent_id')
@@ -361,27 +287,18 @@ export async function updateItem(formData: FormData) {
 
         if (fetchError || !itemBefore) throw new Error('Could not find item to update')
 
-        const siteDistRaw = formData.get('site_distributions')
-        
-        if (siteDistRaw) {
-            // 🛡️ ZOD VALIDATION (Rule 21)
-            const distributions = z.array(siteDistributionSchema).parse(JSON.parse(siteDistRaw as string))
-            const activeIds = distributions.filter(d => d.id).map(d => d.id) as number[]
+        const isBulkItem = rawData.packaging_json?.enabled === true
+        const clusterParentId = itemBefore.parent_id || itemBefore.id
 
-            // 1. Identify Deletions
-            const { data: siblings } = await supabase
+        if (isBulkItem) {
+            // 🏛️ SINGULAR AUTHORITY: Bulk item — one row, one manifest.
+            // Derive all stock from the manifest. Soft-delete any existing children.
+            const manifestBatches = rawData.packaging_json?.batches || []
+            const stockFromManifest = manifestBatches.reduce((s: number, b: any) => s + (Number(b.units) || 0), 0)
+
+            const { error: updateError } = await supabase
                 .from('inventory')
-                .select('id')
-                .eq('item_name', itemBefore.item_name)
-                .eq('category', itemBefore.category)
-
-            const existingIds = siblings?.map(s => s.id) || []
-            const idsToDelete = existingIds.filter(eid => !activeIds.includes(eid))
-
-            // 2. Verified Sequential Sync (Rule 62)
-            const parentIdToUse = itemBefore.parent_id || itemBefore.id
-            for (const dist of distributions) {
-                const payload = {
+                .update({
                     item_name: rawData.name,
                     description: rawData.description,
                     category: rawData.category,
@@ -396,91 +313,163 @@ export async function updateItem(formData: FormData) {
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
                     restock_alert_enabled: rawData.restock_alert_enabled,
-                    storage_location: dist.locationName,
-                    location_registry_id: dist.locationId,
-                    qty_good: dist.qtyGood,
-                    qty_damaged: dist.qtyDamaged,
-                    qty_maintenance: dist.qtyMaintenance,
-                    qty_lost: dist.qtyLost,
-                    stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
-                    stock_available: dist.qtyGood,
-                    status: 'Good',
+                    // 🛰️ Location Authority
+                    storage_location: masterDist ? masterDist.locationName : rawData.storage_location,
+                    location_registry_id: masterDist ? masterDist.locationId : rawData.location_id,
+                    // Stock is manifest-derived, not from distribution fields
+                    qty_good: stockFromManifest,
+                    qty_damaged: 0,
+                    qty_maintenance: 0,
+                    qty_lost: 0,
+                    stock_total: stockFromManifest,
+                    stock_available: stockFromManifest,
+                    // Full manifest always on the parent
                     packaging_json: rawData.packaging_json,
-                    // If inserting a news distribution, link it to the current item's parent cluster
-                    parent_id: dist.id === itemBefore.id ? itemBefore.parent_id : parentIdToUse
-                }
+                    // Ensure this is the root row
+                    parent_id: null,
+                    status: 'Good',
+                })
+                .eq('id', clusterParentId)
+            if (updateError) throw updateError
 
-                const { error: dbError } = dist.id 
-                    ? await supabase.from('inventory').update(payload).eq('id', dist.id)
-                    : await supabase.from('inventory').insert([payload])
-
-                if (dbError) throw new Error(`Sync Error: ${dbError.message}`)
-            }
-
-            // 3. Handle Deletions
-            if (idsToDelete.length > 0) {
-                const { error: delError } = await supabase.from('inventory').delete().in('id', idsToDelete)
-                if (delError) throw delError
-            }
-        } else {
-            // Standard Single-Site Update
-            const { error: updateError } = await supabase
+            // Purge all child rows — they are no longer part of the model
+            await supabase
                 .from('inventory')
-                .update({
+                .update({ deleted_at: new Date().toISOString() })
+                .eq('parent_id', clusterParentId)
+                .is('deleted_at', null)
+
+        } else {
+            if (distributions.length > 0) {
+                // 🏛️ SINGULAR AUTHORITY: Identify the master distribution
+                const activeIds = distributions.filter((d: any) => d.id).map((d: any) => d.id) as number[]
+                
+                const { data: siblings } = await supabase
+                    .from('inventory')
+                    .select('id')
+                    .or(`id.eq.${clusterParentId},parent_id.eq.${clusterParentId}`)
+
+                const existingIds = siblings?.map(s => s.id) || []
+                const idsToDelete = existingIds.filter(eid => !activeIds.includes(eid))
+
+                // ── 1. Update the Master (Root) Row ──
+                // The master row is always the one with id === clusterParentId
+                const masterPayload = {
                     item_name: rawData.name,
                     description: rawData.description,
                     category: rawData.category,
-                    stock_total: rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost,
-                    stock_available: rawData.qty_good,
-                    qty_good: rawData.qty_good,
-                    qty_damaged: rawData.qty_damaged,
-                    qty_maintenance: rawData.qty_maintenance,
-                    qty_lost: rawData.qty_lost,
                     image_url: rawData.image_url,
-                    storage_location: rawData.storage_location,
+                    brand: rawData.brand,
+                    equipment_type: rawData.equipment_type,
+                    item_type: rawData.item_type,
                     serial_number: rawData.serial_number,
                     model_number: rawData.model_number,
-                    equipment_type: rawData.equipment_type,
-                    brand: rawData.brand,
                     expiry_date: rawData.expiry_date,
                     expiry_alert_days: rawData.expiry_alert_days ?? null,
                     low_stock_threshold: rawData.low_stock_threshold,
                     target_stock: rawData.target_stock,
                     restock_alert_enabled: rawData.restock_alert_enabled,
+                    storage_location: masterDist.locationName,
+                    location_registry_id: masterDist.locationId,
+                    qty_good: masterDist.qtyGood,
+                    qty_damaged: masterDist.qtyDamaged,
+                    qty_maintenance: masterDist.qtyMaintenance,
+                    qty_lost: masterDist.qtyLost,
+                    stock_total: masterDist.qtyGood + masterDist.qtyDamaged + masterDist.qtyMaintenance + masterDist.qtyLost,
+                    stock_available: masterDist.qtyGood,
+                    status: 'Good',
                     packaging_json: rawData.packaging_json,
-                })
-                .eq('id', id)
-            
-            if (updateError) throw updateError
+                    parent_id: null
+                }
+                const { error: masterError } = await supabase.from('inventory').update(masterPayload).eq('id', clusterParentId)
+                if (masterError) throw masterError
+
+                // ── 2. Sync Sibling Rows ──
+                // All other distributions are children of the root row
+                const otherDists = distributions.filter(d => d !== masterDist)
+                for (const dist of otherDists) {
+                    if (dist.id && idsToDelete.includes(dist.id)) continue
+                    
+                    // If the master we just set was previously a sibling, we need to delete its old row 
+                    // because its data is now merged into the master root row.
+                    if (dist.id === clusterParentId) {
+                        // This case handles when the old master is now a sibling.
+                        // It needs a NEW row because the old row ID is taken by the new master data.
+                        const payload = {
+                            ...masterPayload,
+                            storage_location: dist.locationName,
+                            location_registry_id: dist.locationId,
+                            qty_good: dist.qtyGood,
+                            qty_damaged: dist.qtyDamaged,
+                            qty_maintenance: dist.qtyMaintenance,
+                            qty_lost: dist.qtyLost,
+                            stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
+                            stock_available: dist.qtyGood,
+                            packaging_json: null,
+                            parent_id: clusterParentId
+                        }
+                        const { error: insertError } = await supabase.from('inventory').insert([payload])
+                        if (insertError) throw insertError
+                        continue
+                    }
+
+                    const payload = {
+                        ...masterPayload,
+                        storage_location: dist.locationName,
+                        location_registry_id: dist.locationId,
+                        qty_good: dist.qtyGood,
+                        qty_damaged: dist.qtyDamaged,
+                        qty_maintenance: dist.qtyMaintenance,
+                        qty_lost: dist.qtyLost,
+                        stock_total: dist.qtyGood + dist.qtyDamaged + dist.qtyMaintenance + dist.qtyLost,
+                        stock_available: dist.qtyGood,
+                        packaging_json: null,
+                        parent_id: clusterParentId
+                    }
+
+                    const { error: dbError } = dist.id
+                        ? await supabase.from('inventory').update(payload).eq('id', dist.id)
+                        : await supabase.from('inventory').insert([payload])
+                    if (dbError) throw dbError
+                }
+
+                // ── 3. Cleanup ──
+                // If the new master was previously a sibling, delete its old sibling row
+                if (masterDist.id && masterDist.id !== clusterParentId) {
+                    idsToDelete.push(masterDist.id)
+                }
+
+                if (idsToDelete.length > 0) {
+                    await supabase.from('inventory')
+                        .update({ deleted_at: new Date().toISOString() })
+                        .in('id', idsToDelete)
+                }
+            } else {
+                const { error: updateError } = await supabase
+                    .from('inventory')
+                    .update({
+                        ...rawData,
+                        stock_total: rawData.qty_good + rawData.qty_damaged + rawData.qty_maintenance + rawData.qty_lost,
+                        stock_available: rawData.qty_good,
+                    })
+                    .eq('id', id)
+                if (updateError) throw updateError
+            }
         }
 
         revalidatePath('/dashboard/inventory')
         revalidatePath('/dashboard')
-        
-        return { 
-            success: true, 
-            message: 'Inventory updated' 
-        }
+        return { success: true, message: 'Inventory updated' }
     } catch (error: any) {
-        console.error('ResQTrack_UPDATE_CRITICAL:', error)
-        return { 
-            success: false, 
-            message: 'Failed to save changes', 
-            error: error.message || 'Check connection' 
-        }
+        return { success: false, error: error.message || 'Failed to save changes' }
     }
 }
 
 export async function updateItemLocation(itemId: number, newLocation: string) {
     try {
         const supabase = await createSupabaseServer()
-        const { error } = await supabase
-            .from('inventory')
-            .update({ storage_location: newLocation })
-            .eq('id', itemId)
-
+        const { error } = await supabase.from('inventory').update({ storage_location: newLocation }).eq('id', itemId)
         if (error) throw error
-
         revalidatePath('/dashboard/inventory')
         return { success: true }
     } catch (error: any) {
@@ -491,72 +480,58 @@ export async function updateItemLocation(itemId: number, newLocation: string) {
 export async function deleteItem(id: number) {
     try {
         const supabase = await createSupabaseServer()
-        // 🚨 STRICT PROTOCOL: Check for active borrows before archiving
-        const { data: activeBorrows, error: checkError } = await supabase
+        const { data: activeBorrows } = await supabase.from('borrow_logs').select('id').eq('inventory_id', id).eq('status', 'borrowed')
+        if (activeBorrows && activeBorrows.length > 0) return { success: false, error: 'Active checkouts exist' }
+        
+        const { error } = await supabase.from('inventory').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+        if (error) throw error
+        
+        revalidatePath('/dashboard/inventory')
+        return { success: true, message: 'Item deleted successfully' }
+    } catch (error: any) {
+        return { success: false, error: error.message || 'Failed to delete item' }
+    }
+}
+
+export async function bulkDeleteItem(ids: number[]) {
+    try {
+        if (!ids.length) return { success: true }
+        const supabase = await createSupabaseServer()
+        
+        // 🛡️ BATCH VALIDATION: Check for active borrows across all items
+        const { data: activeBorrows } = await supabase
             .from('borrow_logs')
-            .select('id')
-            .eq('inventory_id', id)
+            .select('inventory_id')
+            .in('inventory_id', ids)
             .eq('status', 'borrowed')
-
-        if (checkError) throw checkError
-
+            
         if (activeBorrows && activeBorrows.length > 0) {
-            return { 
-                success: false, 
-                error: `⚠️ NOTICE: Cannot delete item. Resolve active checkouts (Mark as Returned or Lost) first.` 
-            }
+            return { success: false, error: 'Some items have active checkouts and cannot be deleted.' }
         }
 
-        // 🛡️ LOGISTICAL LIQUIDATION: Hard Delete
-        // The user has requested to remove soft-delete logic. 
-        // Items are permanently removed from the database.
         const { error } = await supabase
             .from('inventory')
-            .delete()
-            .eq('id', id)
-
+            .update({ deleted_at: new Date().toISOString() })
+            .in('id', ids)
+            
         if (error) throw error
-
+        
         revalidatePath('/dashboard/inventory')
-        return { success: true, message: 'Item archived successfully' }
+        return { success: true, message: `Successfully deleted ${ids.length} item(s)` }
     } catch (error: any) {
-        console.error('Archive Error:', error)
-        return { success: false, error: error.message || 'Failed to archive item' }
+        return { success: false, error: error.message || 'Failed to perform bulk delete' }
     }
 }
 
-/**
- * TACTICAL STOCK SPLIT (LIQUIDATED)
- * This function is now deprecated in favor of the Single-Row Bucket model.
- * Status distribution is now handled directly in updateItem.
- */
 export async function splitInventoryItem(id: number, _splitQty: number, _targetStatus: string) {
-    return {
-        success: false,
-        message: "Split Mode is deprecated.",
-        error: "Split Mode is deprecated. Use the 'Status Distribution' ledger in the Edit dialog instead. 🟢"
-    }
+    return { success: false, error: "Deprecated." }
 }
-/**
- * GET INVENTORY ALERTS
- * Unified retrieval of mission-critical intelligence from v_inventory_actionable_alerts view.
- * Used for Overview Page Action Center.
- */
+
 export async function getInventoryAlerts() {
     try {
-        // Query the intelligence view
-        const { data, error } = await supabase
-            .from('v_inventory_actionable_alerts')
-            .select('*')
-            .eq('needs_action', true);
-
-        if (error) {
-            console.error('Error fetching inventory alerts:', error);
-            return { success: false, error: 'Failed to load inventory alerts.' };
-        }
-
-        const alerts = data || [];
-        
+        const { data, error } = await supabase.from('v_inventory_actionable_alerts').select('*').eq('needs_action', true)
+        if (error) throw error
+        const alerts = data || []
         const summary = {
             out_of_stock: alerts.filter(i => i.is_out_of_stock).length,
             low_stock: alerts.filter(i => i.is_low_stock).length,
@@ -566,15 +541,9 @@ export async function getInventoryAlerts() {
             maintenance: alerts.filter(i => i.is_maintenance).length,
             missing: alerts.filter(i => i.is_missing).length,
             total_active_alerts: alerts.length
-        };
-
-        return { 
-            success: true, 
-            data: summary,
-            items: alerts.slice(0, 10) // Return top 10 most critical for quick triage
-        };
+        }
+        return { success: true, data: summary, items: alerts.slice(0, 10) }
     } catch (error) {
-        console.error('Unexpected error in getInventoryAlerts:', error);
-        return { success: false, error: 'An unexpected error occurred.' };
+        return { success: false, error: 'An unexpected error occurred.' }
     }
 }

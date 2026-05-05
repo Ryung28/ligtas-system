@@ -162,7 +162,7 @@ export function CompositeStockBar({
     return (
         <div className="flex flex-col gap-2 min-w-[160px]">
             {/* 🏥 COMPOSITE HEALTH STRIP */}
-            <div className="group/strip relative">
+            <div className="group/strip relative" onClick={(e) => e.stopPropagation()}>
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner border border-slate-200/30">
                     <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${availablePct}%` }} />
                     <div className="h-full bg-blue-500 transition-all duration-500 shadow-[inset_-1px_0_0_rgba(0,0,0,0.1)]" style={{ width: `${borrowedPct}%` }} />

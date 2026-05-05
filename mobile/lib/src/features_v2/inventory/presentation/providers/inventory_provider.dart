@@ -59,6 +59,10 @@ class InventoryNotifier extends _$InventoryNotifier {
       }
     });
 
+    // 🛡️ REAL-TIME REMOTE WATCH: Keep local Isar synced with Supabase.
+    // This subscription stays alive as long as InventoryNotifier is active.
+    ref.watch(remoteInventorySubscriptionProvider);
+
     // 2. Load what we have immediately (even if old)
     final localItems = await _loadInitial(category);
     
@@ -370,4 +374,10 @@ final storageHubsProvider = FutureProvider<List<StorageHub>>((ref) async {
     id: e['id'] as int,
     name: e['location_name'] as String,
   )).toList();
+});
+
+final remoteInventorySubscriptionProvider = StreamProvider.autoDispose<void>((ref) {
+  final user = ref.watch(currentUserProvider);
+  final warehouseId = user?.canEdit ?? false ? null : user?.assignedWarehouse;
+  return ref.watch(inventoryRepositoryProvider).watchRemote(warehouseId: warehouseId);
 });

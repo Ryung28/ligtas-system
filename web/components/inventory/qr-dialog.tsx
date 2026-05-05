@@ -89,7 +89,12 @@ export function QRDialog({ item, trigger }: QRDialogProps) {
         <Dialog>
             <DialogTrigger asChild>
                 {trigger || (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                    >
                         <QrCode className="h-4 w-4" />
                     </Button>
                 )}

@@ -95,7 +95,7 @@ export function EditableStorageLocation({
 
     if (isEditing) {
         return (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                 <Select 
                     value={selectedLocation} 
                     onValueChange={handleLocationChange}
@@ -157,7 +157,10 @@ export function EditableStorageLocation({
         <Badge 
             variant="outline" 
             className={`text-[11px] font-semibold whitespace-nowrap cursor-pointer transition-all ${getLocationColor(currentLocation)}`}
-            onClick={() => setIsEditing(true)}
+            onClick={(e) => {
+                e.stopPropagation()
+                setIsEditing(true)
+            }}
         >
             {isCustomLocation ? (
                 <MapPin className="h-3 w-3 mr-1" />

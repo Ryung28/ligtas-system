@@ -28,7 +28,7 @@ export async function getInventoryItems(options: {
             query = query.gt('stock_pending', 0)
         } else {
             // Default view usually shows items with actual stock, 
-            // but for Admin Dashboard 'all' should show everything not archived.
+            // but for Admin Dashboard 'all' should show everything not deleted.
         }
 
         // Apply Search
@@ -94,10 +94,13 @@ export async function getAvailableItems() {
  */
 export async function getCategories() {
     try {
+        // Optimization: Fetch only the category column with a limit
+        // For a tactical system, we should avoid full table scans.
         const { data, error } = await supabase
             .from('inventory')
             .select('category')
-            .order('category')
+            .not('category', 'is', null)
+            .limit(1000) // Don't scan more than 1000 items for dynamic categories
 
         if (error) throw error
 

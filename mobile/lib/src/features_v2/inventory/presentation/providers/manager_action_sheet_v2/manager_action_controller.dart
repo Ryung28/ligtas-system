@@ -26,6 +26,7 @@ class ManagerActionController extends _$ManagerActionController {
       storageLocation: item.location,
       locationRegistryId: item.locationRegistryId,
       releasedBy: user?.displayName ?? '',
+      activeRowId: item.id, // DEFAULT TO PRIMARY ROW
     );
   }
 
@@ -59,6 +60,56 @@ class ManagerActionController extends _$ManagerActionController {
 
   void setLocationRegistry(int? id, String locationName) {
     state = state.copyWith(locationRegistryId: id, storageLocation: locationName);
+    // 🛡️ RE-SYNC: If user selects a location that has a variant, switch to it automatically.
+    if (id != null) {
+      final variant = item.variants.where((v) => v.locationRegistryId == id).firstOrNull;
+      if (variant != null) {
+        switchToSite(variant.id);
+      } else if (item.locationRegistryId == id) {
+        switchToSite(item.id);
+      }
+    }
+  }
+
+  void switchToSite(int rowId) async {
+    if (state.isEditLoading) return;
+    state = state.copyWith(activeRowId: rowId, isEditLoading: true, submitError: null);
+    try {
+      final repo = ref.read(inventoryRepositoryProvider);
+      final fields = await repo.fetchAdminFields(rowId);
+      state = state.copyWith(
+        isEditLoading: false,
+        qtyGood: fields.qtyGood,
+        qtyDamaged: fields.qtyDamaged,
+        qtyMaintenance: fields.qtyMaintenance,
+        qtyLost: fields.qtyLost,
+        storageLocation: fields.storageLocation,
+        locationRegistryId: fields.locationRegistryId,
+        packagingJson: fields.packagingJson ?? [],
+      );
+    } catch (_) {
+      state = state.copyWith(
+        isEditLoading: false,
+        submitError: 'Failed to sync site details.',
+      );
+    }
+  }
+
+  void setBatchUnits(String batchId, int newUnits) {
+    final updatedBatches = state.packagingJson.map((b) {
+      if (b['id'] == batchId) {
+        return {...b, 'units': newUnits};
+      }
+      return b;
+    }).toList();
+
+    // 🛡️ ATOMIC SYNC: Aggregate units back to qtyGood
+    final totalUnits = updatedBatches.fold<int>(0, (sum, b) => sum + ((b['units'] as num?)?.toInt() ?? 0));
+    
+    state = state.copyWith(
+      packagingJson: updatedBatches,
+      qtyGood: totalUnits, // FORCE SYNC
+    );
   }
 
   // ── Handover / Reserve ────────────────────────────────────────────────────
@@ -123,7 +174,7 @@ class ManagerActionController extends _$ManagerActionController {
       switch (state.mode) {
         case ManagerMode.restock:
           await repo.updateAdminFields(
-            itemId: item.id,
+            itemId: state.activeRowId ?? item.id,
             qtyGood: state.qtyGood,
             qtyDamaged: state.qtyDamaged,
             qtyMaintenance: state.qtyMaintenance,
@@ -131,6 +182,7 @@ class ManagerActionController extends _$ManagerActionController {
             storageLocation: state.storageLocation,
             locationRegistryId: state.locationRegistryId,
             forensicNote: state.note,
+            packagingJson: state.packagingJson.isNotEmpty ? state.packagingJson : null,
           );
 
         case ManagerMode.edit:

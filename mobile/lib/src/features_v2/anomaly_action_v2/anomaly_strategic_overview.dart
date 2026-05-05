@@ -12,8 +12,8 @@ class AnomalyStrategicOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = anomaly;
-    final current = a.currentStock;
-    final goal = a.maxStock ?? a.thresholdStock;
+    final current = a.displayStock;
+    final goal = a.displayTotal;
     final readiness = goal > 0 ? (current / goal * 100).clamp(0, 100).toInt() : 0;
 
     return Column(

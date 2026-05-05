@@ -93,73 +93,78 @@ const InventoryCollectionSchema = CollectionSchema(
       name: r'originalId',
       type: IsarType.long,
     ),
-    r'qrCode': PropertySchema(
+    r'packagingJson': PropertySchema(
       id: 15,
+      name: r'packagingJson',
+      type: IsarType.string,
+    ),
+    r'qrCode': PropertySchema(
+      id: 16,
       name: r'qrCode',
       type: IsarType.string,
     ),
     r'qtyDamaged': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'qtyDamaged',
       type: IsarType.long,
     ),
     r'qtyGood': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'qtyGood',
       type: IsarType.long,
     ),
     r'qtyLost': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'qtyLost',
       type: IsarType.long,
     ),
     r'qtyMaintenance': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'qtyMaintenance',
       type: IsarType.long,
     ),
     r'quantity': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'quantity',
       type: IsarType.long,
     ),
     r'restockAlertEnabled': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'restockAlertEnabled',
       type: IsarType.bool,
     ),
     r'status': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'status',
       type: IsarType.string,
     ),
     r'supplier': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'supplier',
       type: IsarType.string,
     ),
     r'supplierContact': PropertySchema(
-      id: 24,
+      id: 25,
       name: r'supplierContact',
       type: IsarType.string,
     ),
     r'targetStock': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'targetStock',
       type: IsarType.long,
     ),
     r'unit': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'unit',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'variantsJson': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'variantsJson',
       type: IsarType.string,
     )
@@ -249,6 +254,12 @@ int _inventoryCollectionEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.packagingJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.qrCode.length * 3;
   bytesCount += 3 + object.status.length * 3;
   {
@@ -299,20 +310,21 @@ void _inventoryCollectionSerialize(
   writer.writeString(offsets[12], object.name);
   writer.writeString(offsets[13], object.notes);
   writer.writeLong(offsets[14], object.originalId);
-  writer.writeString(offsets[15], object.qrCode);
-  writer.writeLong(offsets[16], object.qtyDamaged);
-  writer.writeLong(offsets[17], object.qtyGood);
-  writer.writeLong(offsets[18], object.qtyLost);
-  writer.writeLong(offsets[19], object.qtyMaintenance);
-  writer.writeLong(offsets[20], object.quantity);
-  writer.writeBool(offsets[21], object.restockAlertEnabled);
-  writer.writeString(offsets[22], object.status);
-  writer.writeString(offsets[23], object.supplier);
-  writer.writeString(offsets[24], object.supplierContact);
-  writer.writeLong(offsets[25], object.targetStock);
-  writer.writeString(offsets[26], object.unit);
-  writer.writeDateTime(offsets[27], object.updatedAt);
-  writer.writeString(offsets[28], object.variantsJson);
+  writer.writeString(offsets[15], object.packagingJson);
+  writer.writeString(offsets[16], object.qrCode);
+  writer.writeLong(offsets[17], object.qtyDamaged);
+  writer.writeLong(offsets[18], object.qtyGood);
+  writer.writeLong(offsets[19], object.qtyLost);
+  writer.writeLong(offsets[20], object.qtyMaintenance);
+  writer.writeLong(offsets[21], object.quantity);
+  writer.writeBool(offsets[22], object.restockAlertEnabled);
+  writer.writeString(offsets[23], object.status);
+  writer.writeString(offsets[24], object.supplier);
+  writer.writeString(offsets[25], object.supplierContact);
+  writer.writeLong(offsets[26], object.targetStock);
+  writer.writeString(offsets[27], object.unit);
+  writer.writeDateTime(offsets[28], object.updatedAt);
+  writer.writeString(offsets[29], object.variantsJson);
 }
 
 InventoryCollection _inventoryCollectionDeserialize(
@@ -338,20 +350,21 @@ InventoryCollection _inventoryCollectionDeserialize(
   object.name = reader.readString(offsets[12]);
   object.notes = reader.readStringOrNull(offsets[13]);
   object.originalId = reader.readLongOrNull(offsets[14]);
-  object.qrCode = reader.readString(offsets[15]);
-  object.qtyDamaged = reader.readLong(offsets[16]);
-  object.qtyGood = reader.readLong(offsets[17]);
-  object.qtyLost = reader.readLong(offsets[18]);
-  object.qtyMaintenance = reader.readLong(offsets[19]);
-  object.quantity = reader.readLong(offsets[20]);
-  object.restockAlertEnabled = reader.readBool(offsets[21]);
-  object.status = reader.readString(offsets[22]);
-  object.supplier = reader.readStringOrNull(offsets[23]);
-  object.supplierContact = reader.readStringOrNull(offsets[24]);
-  object.targetStock = reader.readLongOrNull(offsets[25]);
-  object.unit = reader.readStringOrNull(offsets[26]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[27]);
-  object.variantsJson = reader.readStringOrNull(offsets[28]);
+  object.packagingJson = reader.readStringOrNull(offsets[15]);
+  object.qrCode = reader.readString(offsets[16]);
+  object.qtyDamaged = reader.readLong(offsets[17]);
+  object.qtyGood = reader.readLong(offsets[18]);
+  object.qtyLost = reader.readLong(offsets[19]);
+  object.qtyMaintenance = reader.readLong(offsets[20]);
+  object.quantity = reader.readLong(offsets[21]);
+  object.restockAlertEnabled = reader.readBool(offsets[22]);
+  object.status = reader.readString(offsets[23]);
+  object.supplier = reader.readStringOrNull(offsets[24]);
+  object.supplierContact = reader.readStringOrNull(offsets[25]);
+  object.targetStock = reader.readLongOrNull(offsets[26]);
+  object.unit = reader.readStringOrNull(offsets[27]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[28]);
+  object.variantsJson = reader.readStringOrNull(offsets[29]);
   return object;
 }
 
@@ -393,9 +406,9 @@ P _inventoryCollectionDeserializeProp<P>(
     case 14:
       return (reader.readLongOrNull(offset)) as P;
     case 15:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 16:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 17:
       return (reader.readLong(offset)) as P;
     case 18:
@@ -405,20 +418,22 @@ P _inventoryCollectionDeserializeProp<P>(
     case 20:
       return (reader.readLong(offset)) as P;
     case 21:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 22:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 23:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 24:
       return (reader.readStringOrNull(offset)) as P;
     case 25:
-      return (reader.readLongOrNull(offset)) as P;
-    case 26:
       return (reader.readStringOrNull(offset)) as P;
+    case 26:
+      return (reader.readLongOrNull(offset)) as P;
     case 27:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 28:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 29:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2500,6 +2515,160 @@ extension InventoryCollectionQueryFilter on QueryBuilder<InventoryCollection,
   }
 
   QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'packagingJson',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'packagingJson',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'packagingJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'packagingJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'packagingJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'packagingJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'packagingJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'packagingJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'packagingJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'packagingJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'packagingJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
+      packagingJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'packagingJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterFilterCondition>
       qrCodeEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -4045,6 +4214,20 @@ extension InventoryCollectionQuerySortBy
   }
 
   QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByPackagingJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'packagingJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      sortByPackagingJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'packagingJson', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
       sortByQrCode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'qrCode', Sort.asc);
@@ -4468,6 +4651,20 @@ extension InventoryCollectionQuerySortThenBy
   }
 
   QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByPackagingJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'packagingJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
+      thenByPackagingJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'packagingJson', Sort.desc);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QAfterSortBy>
       thenByQrCode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'qrCode', Sort.asc);
@@ -4772,6 +4969,14 @@ extension InventoryCollectionQueryWhereDistinct
   }
 
   QueryBuilder<InventoryCollection, InventoryCollection, QDistinct>
+      distinctByPackagingJson({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'packagingJson',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<InventoryCollection, InventoryCollection, QDistinct>
       distinctByQrCode({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'qrCode', caseSensitive: caseSensitive);
@@ -4980,6 +5185,13 @@ extension InventoryCollectionQueryProperty
     });
   }
 
+  QueryBuilder<InventoryCollection, String?, QQueryOperations>
+      packagingJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'packagingJson');
+    });
+  }
+
   QueryBuilder<InventoryCollection, String, QQueryOperations> qrCodeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'qrCode');
@@ -5117,6 +5329,9 @@ _$InventoryModelImpl _$$InventoryModelImplFromJson(Map<String, dynamic> json) =>
       qtyDamaged: (json['qty_damaged'] as num?)?.toInt() ?? 0,
       qtyMaintenance: (json['qty_maintenance'] as num?)?.toInt() ?? 0,
       qtyLost: (json['qty_lost'] as num?)?.toInt() ?? 0,
+      packagingJson: (json['packaging_json'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
     );
 
 Map<String, dynamic> _$$InventoryModelImplToJson(
@@ -5153,4 +5368,5 @@ Map<String, dynamic> _$$InventoryModelImplToJson(
       'qty_damaged': instance.qtyDamaged,
       'qty_maintenance': instance.qtyMaintenance,
       'qty_lost': instance.qtyLost,
+      'packaging_json': instance.packagingJson,
     };

@@ -149,7 +149,7 @@ final myReturnedHistoryProvider = AutoDisposeProvider<List<LoanItem>>.internal(
 );
 
 typedef MyReturnedHistoryRef = AutoDisposeProviderRef<List<LoanItem>>;
-String _$myLoansNotifierHash() => r'c59cad2190617ab14cd0dec1c4a999f24f297f3d';
+String _$myLoansNotifierHash() => r'd47f31fe4fb46baa08bf86278792640b6e9959c0';
 
 /// Reactive Loan List Provider
 ///
@@ -168,7 +168,7 @@ final myLoansNotifierProvider =
 
 typedef _$MyLoansNotifier = AutoDisposeStreamNotifier<List<LoanItem>>;
 String _$managerLoansNotifierHash() =>
-    r'2958ae7b89df5a011aaa7e59b22821eff8754efe';
+    r'182707593e446c13a5c24c49ecd7cd4b81bef2ec';
 
 /// 🏢 MANAGER-LEVEL PROVIDER (WMS Checklist 1.0)
 /// Provides a high-density stream of ALL requests for situational awareness.

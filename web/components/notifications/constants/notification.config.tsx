@@ -121,6 +121,27 @@ export const TYPE_CONFIG: Record<string, TypeConfig> = {
     bg: "rgba(241, 245, 249, 0.8)",
     border: "rgba(148, 163, 184, 0.1)",
   },
+  expiry: {
+    icon: Icons.bell,
+    label: "Expired",
+    accent: "#991b1b",
+    bg: "rgba(241, 245, 249, 0.8)",
+    border: "rgba(148, 163, 184, 0.1)",
+  },
+  expiry_critical: {
+    icon: Icons.bell,
+    label: "Expiring Soon",
+    accent: "#dc2626",
+    bg: "rgba(241, 245, 249, 0.8)",
+    border: "rgba(148, 163, 184, 0.1)",
+  },
+  expiry_warning: {
+    icon: Icons.bell,
+    label: "Expiry Alert",
+    accent: "#d97706",
+    bg: "rgba(241, 245, 249, 0.8)",
+    border: "rgba(148, 163, 184, 0.1)",
+  },
   low_stock: {
     icon: Icons.bell,
     label: "Inventory",
@@ -187,8 +208,8 @@ export const TYPE_CONFIG: Record<string, TypeConfig> = {
 }
 
 export const FILTER_MAP: Record<Category, string[]> = {
-  ALL: ['borrow', 'return', 'borrow_request', 'borrow_approved', 'borrow_rejected', 'item_returned', 'user_pending', 'user_request', 'user_approved', 'user_suspended', 'user_reactivated', 'stock_low', 'stock_out', 'low_stock', 'overdue_alert', 'item_overdue'],
+  ALL: ['borrow', 'return', 'borrow_request', 'borrow_approved', 'borrow_rejected', 'item_returned', 'user_pending', 'user_request', 'user_approved', 'user_suspended', 'user_reactivated', 'stock_low', 'stock_out', 'low_stock', 'overdue_alert', 'item_overdue', 'expiry', 'expiry_critical', 'expiry_warning'],
   LOGS: ['borrow', 'return', 'borrow_request', 'borrow_approved', 'borrow_rejected', 'item_returned'],
   AUTH: ['user_pending', 'user_request', 'user_approved', 'user_suspended', 'user_reactivated'],
-  ALERTS: ['stock_low', 'stock_out', 'low_stock', 'overdue_alert', 'item_overdue'],
+  ALERTS: ['stock_low', 'stock_out', 'low_stock', 'overdue_alert', 'item_overdue', 'expiry', 'expiry_critical', 'expiry_warning'],
 }

@@ -12,8 +12,8 @@ export async function getStorageLocations() {
         
         const { data, error } = await supabase
             .from(STORAGE_LOCATIONS_TABLE)
-            .select('*')
-            .order('created_at', { ascending: false })
+            .select('id, location_name')
+            .order('location_name', { ascending: true })
 
         if (error) throw error
 

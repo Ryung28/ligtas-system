@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldCheck, Box, X } from 'lucide-react'
+import { ShieldCheck, Box, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import useSWR from 'swr'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
-import { InventoryDialogV2 } from '@/components/inventory/inventory-dialog-v2'
+import { CatalogItemDialog } from '@/src/features/catalog/components/catalog-item-dialog'
 
 const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,7 @@ export function StrategyTriageBar() {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false)
     const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
     const [openMode, setOpenMode] = useState<'review' | 'restock'>('review')
+    const [isMutating, setIsMutating] = useState(false)
 
     const { data: triageItems = [], mutate } = useSWR('strategic_triage_v3', async () => {
         const { data } = await supabase
@@ -32,11 +34,37 @@ export function StrategyTriageBar() {
             .select('*')
             .eq('stock_available', 1)
             .eq('stock_total', 1)
-            .eq('restock_alert_enabled', false)
+            .eq('restock_alert_enabled', true)
             .is('deleted_at', null)
             .limit(5) // Get a few to handle rapid triage
         return data || []
     }, { refreshInterval: 30000 })
+    
+    const handleConfirmSingleUnit = async () => {
+        if (isMutating || !triageItems[0]) return
+        const target = triageItems[0]
+        setIsMutating(true)
+        
+        try {
+            const { error } = await supabase
+                .from('inventory')
+                .update({ 
+                    restock_alert_enabled: false,
+                    low_stock_threshold: 0 
+                })
+                .eq('id', target.id)
+
+            if (error) throw error
+            
+            toast.success(`${target.item_name} confirmed as single-unit.`)
+            mutate()
+        } catch (err) {
+            console.error('Triage error:', err)
+            toast.error("Failed to update item strategy.")
+        } finally {
+            setIsMutating(false)
+        }
+    }
 
     if (triageItems.length === 0 || isHidden) return null
     const item = triageItems[0]
@@ -86,10 +114,18 @@ export function StrategyTriageBar() {
 
                     {/* Badges + actions row */}
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest h-9 px-4">
-                            <ShieldCheck className="h-3 w-3 mr-2" />
+                        <Button
+                            onClick={handleConfirmSingleUnit}
+                            disabled={isMutating}
+                            className="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest h-9 px-4 rounded-lg transition-all active:scale-95 border-0 disabled:opacity-70"
+                        >
+                            {isMutating ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                            ) : (
+                                <ShieldCheck className="h-3 w-3 mr-2" />
+                            )}
                             Only 1 unit
-                        </span>
+                        </Button>
                         {!isRestockEnabled ? (
                             <Button
                                 onClick={() => {
@@ -126,12 +162,13 @@ export function StrategyTriageBar() {
             </Card>
         </div>
 
-        <InventoryDialogV2
+        <CatalogItemDialog
             key={item.id}
             isOpen={isPreviewOpen}
-            existingItem={item as any}
+            item={item as any}
             focusRestockPolicy={openMode === 'restock'}
             showRestockWarningOnOpen={openMode === 'restock'}
+            forceDisableAlerts={openMode === 'review'}
             onOpenChange={(open) => {
                 setIsPreviewOpen(open)
                 if (!open) setOpenMode('review')
