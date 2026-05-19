@@ -94,20 +94,29 @@ export function useCatalogSubmit(onSuccess: () => void) {
                 // Packaging manifest
                 fd.set('packaging_json', JSON.stringify(payload.packaging))
 
-                // Site distributions
-                fd.set('site_distributions', JSON.stringify(payload.distributions))
-                
                 // 🎯 Resolve the actual Main Location by flag, not index
-                const primarySite = payload.distributions.find(d => d._isMaster) || payload.distributions[0]
+                const masterIdx = payload.distributions.findIndex(d => d._isMaster)
+                const finalMasterIdx = masterIdx !== -1 ? masterIdx : 0
+                
+                const finalDistributions = payload.distributions.map((d, i) => ({
+                    ...d,
+                    _isMaster: i === finalMasterIdx
+                }))
+
+                const primarySite = finalDistributions[finalMasterIdx]
+                
+                // Site distributions
+                fd.set('site_distributions', JSON.stringify(finalDistributions))
                 
                 if (primarySite?.locationId) fd.append('location_id', String(primarySite.locationId))
                 if (primarySite?.locationName) fd.append('storage_location', primarySite.locationName)
 
-                const action = isEdit ? updateItem : addItem
-                const result = await action(fd)
+                const result = isEdit 
+                    ? await updateItem(Number(payload.itemId), fd) 
+                    : await addItem(fd)
 
-                if (result.success) {
-                    toast.success(result.message)
+                if (result.error === null) {
+                    toast.success(isEdit ? 'Item updated' : 'Item added')
                     onSuccess()
                     router.refresh()
                 } else {

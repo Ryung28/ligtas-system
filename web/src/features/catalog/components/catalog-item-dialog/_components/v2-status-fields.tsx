@@ -145,30 +145,46 @@ export function V2StatusFields({
                 <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
                     <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">{labels.damaged}</Label>
                     <Input 
+                        readOnly={packaging?.enabled}
                         type="number" value={qtyDamaged} onChange={(e) => setQtyDamaged(e.target.value)}
-                        className="h-9 rounded-lg border-none font-black text-rose-500 text-lg bg-rose-50/10 px-2 focus-visible:ring-0" 
+                        className={cn(
+                            "h-9 rounded-lg border-none font-black text-rose-500 text-lg bg-rose-50/10 px-2 focus-visible:ring-0",
+                            packaging?.enabled && "opacity-70 cursor-not-allowed bg-slate-50"
+                        )}
                     />
                 </div>
 
                 <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
                     <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">{labels.maintenance}</Label>
                     <Input 
+                        readOnly={packaging?.enabled}
                         type="number" value={qtyMaintenance} onChange={(e) => setQtyMaintenance(e.target.value)}
-                        className="h-9 rounded-lg border-none font-black text-amber-500 text-lg bg-amber-50/10 px-2 focus-visible:ring-0" 
+                        className={cn(
+                            "h-9 rounded-lg border-none font-black text-amber-500 text-lg bg-amber-50/10 px-2 focus-visible:ring-0",
+                            packaging?.enabled && "opacity-70 cursor-not-allowed bg-slate-50"
+                        )}
                     />
                 </div>
 
                 <div className="bg-white p-3 rounded-2xl border border-slate-100/50 shadow-sm">
                     <Label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">{labels.lost}</Label>
                     <Input 
+                        readOnly={packaging?.enabled}
                         type="number" value={qtyLost} onChange={(e) => setQtyLost(e.target.value)}
                         className={cn(
                             "h-9 rounded-lg border-none font-black text-lg px-2 focus-visible:ring-0",
-                            "text-slate-500 bg-slate-50/10"
+                            "text-slate-500 bg-slate-50/10",
+                            packaging?.enabled && "opacity-70 cursor-not-allowed"
                         )}
                     />
                 </div>
             </div>
+
+            {packaging?.enabled && (
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight px-0.5">
+                    Damaged / maintenance / lost for each site: use the location rows below (bulk mode).
+                </p>
+            )}
 
             {/* Strategic Warning Section */}
             <div className="pt-3 border-t border-slate-100">

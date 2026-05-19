@@ -1,9 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
-import type { StorageLocation, CatalogPackaging, CatalogDistribution } from '../types'
-import type { BulkPackagingState } from './use-bulk-packaging'
-import type { SiteLogisticsState } from './use-site-logistics'
+import { useEffect, useMemo } from 'react'
+import type { CatalogPackaging, CatalogDistribution } from '../types'
+
+/** Stable fingerprint so SWR re-instantiating the locations array does not re-trigger a full sync. */
+function computeLocationsSignature(locations: any[] | undefined): string {
+    if (!locations?.length) return ''
+    return [...locations]
+        .map((l: any) => `${String(l?.id ?? '')}:${String(l?.location_name ?? '').trim()}`)
+        .sort()
+        .join('|')
+}
 
 /**
  * CATALOG ITEM DIALOG V3 — Packaging Sync Hook
@@ -16,6 +23,10 @@ import type { SiteLogisticsState } from './use-site-logistics'
  * - Writes to distributions (via setDistributions).
  * - NEVER reads distributions back. No feedback loop.
  * - Does NOT trigger updatePackaging. No circular dependency.
+ *
+ * Dependency note: effect keys off `locationsSignature` (semantic content), not the
+ * `locations` array reference, so refetches that return an equivalent list do not
+ * zero and rebuild site rows (avoids “numbers jumped while I was editing”).
  */
 export function usePackagingSync(
     packaging: CatalogPackaging,
@@ -23,6 +34,11 @@ export function usePackagingSync(
     setDistributions: React.Dispatch<React.SetStateAction<CatalogDistribution[]>>,
     locations: any[]
 ) {
+    const locationsSignature = useMemo(
+        () => computeLocationsSignature(locations),
+        [locations]
+    )
+
     useEffect(() => {
         if (!packaging.enabled) return
 
@@ -118,5 +134,8 @@ export function usePackagingSync(
             
             return hasChanged ? next : prev
         })
-    }, [syncKey, packaging.enabled, setDistributions, locations])
+    // `locations` omitted from deps on purpose: `locationsSignature` captures semantic changes only,
+    // so SWR re-instantiating the array does not re-run a full zero + rebuild.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [syncKey, packaging.enabled, packaging, setDistributions, locationsSignature])
 }

@@ -68,13 +68,11 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
 
         try {
             const result = await deleteItem(id)
-            if (result.success) {
-                toast.success(result.message)
-                // Refresh still happens in background but UI is already updated
+            if (result.error === null) {
+                toast.success('Item deleted successfully')
                 refresh()
             } else {
                 toast.error(result.error)
-                // Rollback if failed
                 setDeletingIds(prev => prev.filter(itemId => itemId !== id))
             }
         } catch (error) {
@@ -98,8 +96,8 @@ export function InventoryClient({ initialInventory }: InventoryClientProps) {
 
         try {
             const result = await bulkDeleteItem(idsToClear)
-            if (result.success) {
-                toast.success(result.message || `Successfully deleted ${idsToClear.length} item(s)`)
+            if (result.error === null) {
+                toast.success(`Successfully deleted ${idsToClear.length} item(s)`)
                 refresh()
             } else {
                 toast.error(result.error)

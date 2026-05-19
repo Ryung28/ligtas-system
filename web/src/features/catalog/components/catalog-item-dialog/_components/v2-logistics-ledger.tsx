@@ -176,16 +176,22 @@ export function V2LogisticsLedger({
                             </div>
                         </div>
 
-                        <Button 
-                            variant="ghost" size="icon" onClick={() => onRemove(index)}
-                            className={cn(
-                                "h-8 w-8 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg shrink-0",
-                                site._isMaster && "opacity-20 cursor-not-allowed hover:bg-transparent hover:text-slate-300"
-                            )}
-                            disabled={distributions.length === 1 || site._isMaster}
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {(() => {
+                            const hasStock = (Number(site.qtyGood) || 0) + (Number(site.qtyDamaged) || 0) + (Number(site.qtyMaintenance) || 0) + (Number(site.qtyLost) || 0) > 0;
+                            return (
+                                <Button 
+                                    variant="ghost" size="icon" onClick={() => onRemove(index)}
+                                    className={cn(
+                                        "h-8 w-8 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg shrink-0",
+                                        (site._isMaster || hasStock) && "opacity-20 cursor-not-allowed hover:bg-transparent hover:text-slate-300"
+                                    )}
+                                    disabled={distributions.length === 1 || site._isMaster || hasStock}
+                                    title={hasStock ? "Transfer stock before removing site" : "Remove Location"}
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            );
+                        })()}
                     </div>
                 ))}
             </div>

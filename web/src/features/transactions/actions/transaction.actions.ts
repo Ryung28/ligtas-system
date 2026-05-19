@@ -457,24 +457,6 @@ export async function returnItem(
 
         if (updateError) throw updateError
 
-        // 3. Update Inventory (Increment Stock)
-        // Variant-aware: restore to the exact row that was deducted on borrow.
-        const targetInventoryId = log.inventory_variant_id ?? log.inventory_id
-        const { data: item, error: itemError } = await supabase
-            .from('inventory')
-            .select('stock_available')
-            .eq('id', targetInventoryId)
-            .single()
-
-        if (item) {
-            await supabase
-                .from('inventory')
-                .update({
-                    stock_available: item.stock_available + log.quantity,
-                })
-                .eq('id', targetInventoryId)
-        }
-
         revalidatePath('/dashboard/logs')
         revalidatePath('/dashboard/inventory')
         revalidatePath('/dashboard')
@@ -550,23 +532,6 @@ export async function revertReturnItem(logId: number) {
             .eq('id', logId)
 
         if (updateError) throw updateError
-
-        // Step B: Pull stock back out of Inventory
-        // Variant-aware: revert from the exact row that was restored on return.
-        const targetInventoryId = log.inventory_variant_id ?? log.inventory_id
-        const { data: item, error: itemError } = await supabase
-            .from('inventory')
-            .select('stock_available')
-            .eq('id', targetInventoryId)
-            .single()
-
-        if (item) {
-            const newStock = Math.max(0, item.stock_available - log.quantity)
-            await supabase
-                .from('inventory')
-                .update({ stock_available: newStock })
-                .eq('id', targetInventoryId)
-        }
 
         revalidatePath('/dashboard/logs')
         revalidatePath('/dashboard/inventory')

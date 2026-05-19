@@ -64,6 +64,17 @@ interface CartItem {
     cart_key: string;
     item: AvailableItem;
     quantity: number;
+    /** null = primary (cluster master row); satellite = child inventory id */
+    inventory_variant_id?: number | null;
+}
+
+/** Main site in UI; server RPC expects `inventory_variant_id: null` for the master row. */
+const PRIMARY_SITE_TOKEN = 'primary' as const
+
+function inventoryVariantIdFromSelection(selectedVariantId: string | null): number | null {
+    if (!selectedVariantId || selectedVariantId === PRIMARY_SITE_TOKEN) return null
+    const n = Number(selectedVariantId)
+    return Number.isFinite(n) ? n : null
 }
 
 export function DispatchCommandSheet() {
@@ -192,7 +203,7 @@ export function DispatchCommandSheet() {
                 result = await borrowItem({
                     ...commonData,
                     item_id: selectedItem.id,
-                    inventory_variant_id: selectedVariantId ? Number(selectedVariantId) : null,
+                    inventory_variant_id: inventoryVariantIdFromSelection(selectedVariantId),
                     quantity: Number(selectedQuantity) || 1,
                     source_batch: selectedBatchId ? { batch_id: selectedBatchId, label: selectedItem.packaging_json?.batches?.find((b: any) => b.id === selectedBatchId)?.label } : null
                 });
@@ -222,13 +233,18 @@ export function DispatchCommandSheet() {
     const handleItemSelect = (itemId: string) => {
         const item = availableItems.find((i) => i.id.toString() === itemId)
         setSelectedItem(item as any || null)
-        setSelectedVariantId(null)
+        const hasSatellites = !!(item as AvailableItem | undefined)?.variants?.length
+        setSelectedVariantId(hasSatellites ? PRIMARY_SITE_TOKEN : null)
         setSelectedBatchId(null)
     }
 
     const handleAddToCart = () => {
         if (!selectedItem) return;
-        if (selectedItem.variants?.length > 0 && !selectedVariantId) {
+        if (
+            selectedItem.variants?.length > 0 &&
+            selectedVariantId !== PRIMARY_SITE_TOKEN &&
+            !inventoryVariantIdFromSelection(selectedVariantId)
+        ) {
             toast.error('Please select a pickup location');
             return;
         }
@@ -236,8 +252,9 @@ export function DispatchCommandSheet() {
         let maxAvailable = selectedItem.primary_stock_available
         let targetId = selectedItem.id
 
-        if (selectedVariantId) {
-            const variant = selectedItem.variants?.find(v => String(v.id) === selectedVariantId)
+        const satelliteId = inventoryVariantIdFromSelection(selectedVariantId)
+        if (satelliteId) {
+            const variant = selectedItem.variants?.find(v => v.id === satelliteId)
             if (variant) {
                 maxAvailable = variant.stock_available
                 targetId = variant.id
@@ -252,18 +269,18 @@ export function DispatchCommandSheet() {
 
         const cartItem: any = {
             ...selectedItem,
-            item_name: selectedVariantId 
-                ? `${selectedItem.item_name} (${selectedItem.variants?.find(v => String(v.id) === selectedVariantId)?.storage_location || 'Distributed'})`
+            item_name: satelliteId
+                ? `${selectedItem.item_name} (${selectedItem.variants?.find(v => v.id === satelliteId)?.storage_location || 'Distributed'})`
                 : selectedItem.item_name,
             source_batch: selectedBatchId ? { batch_id: selectedBatchId, label: (selectedItem as any).packaging_json?.batches?.find((b: any) => b.id === selectedBatchId)?.label } : null
         }
 
         const quantity = Number(selectedQuantity) || 1
-        const cart_key = `${selectedItem.id}-${selectedVariantId || 'none'}-${selectedBatchId || 'none'}`
+        const cart_key = `${selectedItem.id}-${selectedVariantId ?? 'none'}-${selectedBatchId || 'none'}`
         
         // Remove existing entry for same key if any to prevent duplicates in list
         const filteredCart = cart.filter(c => c.cart_key !== cart_key)
-        setCart([...filteredCart, { cart_key, item: cartItem, quantity, inventory_variant_id: selectedVariantId ? Number(selectedVariantId) : null }])
+        setCart([...filteredCart, { cart_key, item: cartItem, quantity, inventory_variant_id: satelliteId }])
         
         setSelectedItem(null)
         setSelectedVariantId(null)
@@ -475,15 +492,28 @@ export function DispatchCommandSheet() {
                                                 <div className="flex flex-wrap gap-2">
                                                     <button 
                                                         type="button"
-                                                        onClick={() => setSelectedVariantId(null)}
+                                                        onClick={() =>
+                                                            setSelectedVariantId(
+                                                                selectedItem.variants?.length ? PRIMARY_SITE_TOKEN : null
+                                                            )
+                                                        }
                                                         className={cn(
                                                             "flex-1 min-w-[140px] px-4 py-3 rounded-xl border-2 transition-all text-left",
-                                                            selectedVariantId === null 
+                                                            (selectedItem.variants?.length
+                                                                ? selectedVariantId === PRIMARY_SITE_TOKEN
+                                                                : selectedVariantId === null)
                                                                 ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50" 
                                                                 : "bg-white border-slate-100 hover:border-slate-200"
                                                         )}
                                                     >
-                                                        <p className={cn("text-[11px] font-bold", selectedVariantId === null ? "text-blue-700" : "text-slate-600")}>
+                                                        <p className={cn(
+                                                            "text-[11px] font-bold",
+                                                            (selectedItem.variants?.length
+                                                                ? selectedVariantId === PRIMARY_SITE_TOKEN
+                                                                : selectedVariantId === null)
+                                                                ? "text-blue-700"
+                                                                : "text-slate-600"
+                                                        )}>
                                                             {selectedItem.storage_location || 'Main Hub'}
                                                         </p>
                                                         <p className="text-[9px] text-slate-400 font-medium">Ready: {selectedItem.primary_stock_available}</p>
